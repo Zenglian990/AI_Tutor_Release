@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { checkSafetyAndRedirect } = require('../../trie');
+const { checkSafetyAndRedirect } = require('../trie');
 const { streamChatToClient } = require('../services/stream');
 const { getChatPrompt, getChapterStartPrompt, correctPageOffset } = require('../prompts/guidelines');
 const { performHybridSearch } = require('../services/search');

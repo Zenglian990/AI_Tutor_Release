@@ -47,10 +47,10 @@ cd ..
 2. 运行：
 ```bash
 # 下载教材 (可选)
-python download_textbooks.py
+python scripts/download_textbooks.py
 
 # 导入并建立向量索引
-python ingest_2_0.py
+python scripts/ingest_2_0.py
 ```
 
 ### 5. 启动服务

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { checkSafetyAndRedirect } = require('../trie');
+const { checkSafetyAndRedirect } = require('../server/trie');
 
 test('Sensitive word filtering — exact match', () => {
   // Profanity

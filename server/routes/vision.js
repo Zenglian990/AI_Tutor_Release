@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
-const { checkSafetyAndRedirect } = require('../../trie');
+const { checkSafetyAndRedirect } = require('../trie');
 const { streamChatToClient } = require('../services/stream');
 const { getPromptGuidelines, GRADE_ALIASES, correctPageOffset } = require('../prompts/guidelines');
 const { performHybridSearch } = require('../services/search');
