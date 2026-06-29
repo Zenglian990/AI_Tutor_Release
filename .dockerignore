@@ -1,0 +1,35 @@
+# Dependency directories
+node_modules
+client/node_modules
+
+# Build outputs
+client/dist
+
+# Environment and sensitive configuration
+.env
+.env*.local
+.env.production
+.env.development
+
+# Python caches and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local database files and logs
+data/
+logs/
+*.log
+
+# Version control and editor config
+.git
+.gitignore
+.dockerignore
+.vscode/
+.idea/
+
+# Scratch/temp files
+scratch/
+temp/
+tmp/

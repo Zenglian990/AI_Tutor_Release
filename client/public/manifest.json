@@ -1,0 +1,16 @@
+{
+  "name": "曾练专属私教",
+  "short_name": "AI Tutor",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "基于人教版1-9年级教材的AI辅导平台",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4712/4712139.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

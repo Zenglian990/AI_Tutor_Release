@@ -1,0 +1,35 @@
+{
+  "name": "ai_tutor_release",
+  "version": "1.0.0",
+  "description": "曾练专属私教 - 基于人教版1-9年级教材的智能辅导系统",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node server/index.js",
+    "build:client": "cd client && npm run build",
+    "start:prod": "npm run build:client && npm start",
+    "test": "npm run test:all",
+    "test:all": "node --test tests/*.test.js",
+    "healthcheck": "node scripts/health-check.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "puppeteer": "^24.43.0"
+  },
+  "dependencies": {
+    "@lancedb/lancedb": "^0.27.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.0",
+    "helmet": "^8.2.0",
+    "multer": "^2.1.1",
+    "pdf-parse": "^2.4.5",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^6.0.1",
+    "undici": "^8.1.0"
+  }
+}

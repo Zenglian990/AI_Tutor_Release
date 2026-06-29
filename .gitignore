@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment (contains API keys)
+.env
+.env.local
+.env.*.local
+
+# Database files
+data/lancedb/
+data/mistakes.db*
+data/textbooks/
+data/processed_pdfs.log
+data/backups/
+
+# Build output
+client/dist/
+client/.vite/
+client/.vite-temp/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Scratch / debug scripts
+scratch/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/

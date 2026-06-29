@@ -1,0 +1,8 @@
+lancedb>=0.17.0
+pymupdf>=1.24.0
+pymupdf4llm>=0.0.12
+requests>=2.31.0
+python-dotenv>=1.0.0
+easyocr>=1.7.1
+numpy>=1.24.0
+pyarrow>=15.0.0

@@ -1,0 +1,147 @@
+@media print {
+  /* 1. 彻底将打印时无意义的主聊天框大块从 DOM 树和布局层彻底隐藏（不留物理占位空间） */
+  .header,
+  .action-bar,
+  .chat-container,
+  .input-container,
+  .offline-banner,
+  .no-print,
+  .close-btn,
+  .close-map-btn,
+  .mermaid-download-btn {
+    display: none !important;
+  }
+
+  /* 2. 释放外层骨架的高度限制，使其遵循自然的分页高度 */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-container {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  body {
+    display: block !important;
+  }
+  
+  /* 3. 使用双重保险，隐藏任何可能散落在 body 下的其它无关悬浮组件，但保留试卷的可见性 */
+  body * {
+    visibility: hidden;
+  }
+  
+  .mistake-overlay, 
+  .mistake-overlay * {
+    visibility: visible;
+  }
+  
+  .mistake-overlay {
+    position: relative !important;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  
+  .mistake-modal {
+    display: block !important;
+    position: relative !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+  }
+  
+  .mistake-content,
+  .test-content-outer,
+  .test-content-inner {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: none !important;
+    padding-right: 0 !important;
+  }
+  
+  .no-print, .close-btn, .close-map-btn, .mermaid-download-btn {
+    display: none !important;
+  }
+  
+  .mistake-item {
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+    background: white !important;
+    color: black !important;
+    margin-bottom: 20px !important;
+    padding: 15px !important;
+  }
+  
+  .mistake-query {
+    color: black !important;
+    font-weight: bold !important;
+  }
+  
+  .mistake-answer {
+    color: #333 !important;
+  }
+  
+  .test-blank-space {
+    border-color: #999 !important;
+    background: transparent !important;
+  }
+
+  /* Mindmaps clean print */
+  .mermaid-wrapper {
+    break-inside: avoid;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 20px 0 !important;
+  }
+
+  /* Test paper inputs and report containers print styling */
+  .mistake-overlay input[type="text"], 
+  .mistake-overlay textarea,
+  .mistake-overlay select {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #999 !important;
+    box-shadow: none !important;
+  }
+  .mistake-overlay div[style*="background"] {
+    background: #f3f4f6 !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+  }
+  .mistake-overlay button {
+    border-color: #999 !important;
+    background: transparent !important;
+    color: black !important;
+  }
+}

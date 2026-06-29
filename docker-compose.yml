@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  ai-tutor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_tutor_app
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped

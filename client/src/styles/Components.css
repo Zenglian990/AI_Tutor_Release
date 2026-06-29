@@ -1,0 +1,802 @@
+/* 错题本相关样式 */
+.mistake-btn {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 10px 0;
+}
+
+.mistake-btn:hover {
+  background: var(--accent-color);
+  color: white;
+}
+
+.mistake-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.mistake-modal {
+  width: 100%;
+  max-width: 700px;
+  max-height: 80vh;
+  background: #1e293b;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.mistake-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mistake-header h2 {
+  font-size: 1.2rem;
+  color: #60a5fa;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.mistake-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mistake-item {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.mistake-meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+}
+
+.grade-tag {
+  background: #3b82f6;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.time-tag {
+  color: var(--text-secondary);
+}
+
+.mistake-query {
+  margin-bottom: 8px;
+  color: #f8fafc;
+}
+
+.mistake-answer {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.loading-text, .empty-text {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 40px;
+}
+
+
+
+body.light-mode { --bg-color: #f1f5f9; --text-primary: #0f172a; --text-secondary: #475569; --glass-bg: rgba(255, 255, 255, 0.85); --glass-border: rgba(0, 0, 0, 0.1); --ai-msg-bg: rgba(255, 255, 255, 0.95); --user-msg-bg: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); --input-bg: rgba(255, 255, 255, 0.9); } body.light-mode .chat-message.ai { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); color: #0f172a; } body.light-mode .input-bar { color: #0f172a; } body.light-mode .header { background: rgba(255,255,255,0.8); color: #0f172a; } body.light-mode .mistake-modal { background: #ffffff; color: #0f172a; } body.light-mode .mistake-modal h2 { color: #3b82f6 !important; } body.light-mode .mistake-item { background: #f8fafc; border: 1px solid #e2e8f0; color: #0f172a; }
+
+/* Premium Mermaid Loading Placeholder */
+.mermaid-loading-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  margin: 16px 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(56, 189, 248, 0.25);
+  backdrop-filter: blur(8px);
+  animation: pulse-glowing 2s infinite ease-in-out;
+  gap: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+body.light-mode .mermaid-loading-placeholder {
+  background: rgba(59, 130, 246, 0.03);
+  border: 1px dashed rgba(59, 130, 246, 0.25);
+}
+
+.mermaid-loading-placeholder .brain-icon {
+  font-size: 32px;
+  animation: spin-slow 4s infinite linear;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.4));
+}
+
+.mermaid-loading-placeholder .title {
+  color: #38bdf8;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+body.light-mode .mermaid-loading-placeholder .title {
+  color: #2563eb;
+}
+
+.mermaid-loading-placeholder .subtitle {
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+@keyframes pulse-glowing {
+  0% { transform: scale(0.99); opacity: 0.95; box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.05); }
+  50% { transform: scale(1.01); opacity: 1; box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.12); }
+  100% { transform: scale(0.99); opacity: 0.95; box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.05); }
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ========================================== */
+/* 2, 3, 4, 5 号诊断问题专属高级美学 UI 样式 */
+/* ========================================== */
+
+/* 1. 关卡式章节地图 (Learning Map Overlay) */
+.learning-map-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.learning-map-container {
+  width: 100%;
+  max-width: 800px;
+  height: 90vh;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+body.light-mode .learning-map-container {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.2);
+}
+
+.learning-map-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.header-info .map-badge {
+  background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.header-info h2 {
+  font-size: 1.5rem;
+  color: #fff;
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+body.light-mode .header-info h2 {
+  color: #0f172a;
+}
+
+.header-info .subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.close-map-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+body.light-mode .close-map-btn {
+  background: rgba(0, 0, 0, 0.05);
+  color: #0f172a;
+}
+
+.close-map-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* 章节地图路径和关卡卡片 (Map Road and Cards) */
+.map-road-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px;
+  position: relative;
+}
+
+.map-road {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.road-path-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.map-node-container {
+  position: absolute;
+  width: 280px;
+  z-index: 2;
+  transition: transform 0.3s;
+}
+
+.node-left {
+  left: 20px;
+}
+
+.node-right {
+  right: 20px;
+}
+
+.map-island-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+body.light-mode .map-island-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+.unlocked .map-island-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 15px 30px -10px rgba(59, 130, 246, 0.4);
+}
+
+.locked .map-island-card {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.island-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.island-step {
+  font-size: 0.75rem;
+  color: #38bdf8;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.island-difficulty {
+  color: #f59e0b;
+  font-size: 0.75rem;
+}
+
+.island-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+}
+
+body.light-mode .island-title {
+  color: #0f172a;
+}
+
+.island-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.island-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.island-action-btn {
+  font-size: 0.8rem;
+  color: #60a5fa;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.island-locked-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.map-loading, .map-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 2. 家长验证锁样式 (Parental Gate Overlay) */
+.parent-gate-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(16px);
+  z-index: 1001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.parent-gate-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  padding: 32px 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  position: relative;
+}
+
+body.light-mode .parent-gate-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+}
+
+.gate-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.gate-close-btn:hover {
+  color: #ef4444;
+}
+
+.gate-header {
+  margin-bottom: 24px;
+}
+
+.gate-shield-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3));
+}
+
+.gate-header h3 {
+  font-size: 1.3rem;
+  color: white;
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+body.light-mode .gate-header h3 {
+  color: #0f172a;
+}
+
+.gate-header .reason-text {
+  font-size: 0.85rem;
+  color: #f59e0b;
+  margin: 0 0 4px 0;
+}
+
+.gate-header .sub-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* PIN Dots */
+.pin-display-container {
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.pin-dots {
+  display: flex;
+  gap: 16px;
+}
+
+.pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s;
+}
+
+body.light-mode .pin-dot {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.pin-dot.filled {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  box-shadow: 0 0 8px #3b82f6;
+}
+
+.pin-dot.error {
+  background: #ef4444;
+  border-color: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.error-message-text {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 8px;
+}
+
+/* Numeric Numpad */
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 270px;
+  margin: 0 auto 24px auto;
+}
+
+.numpad-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: white;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  font-size: 1.3rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+body.light-mode .numpad-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.05);
+  color: #0f172a;
+}
+
+.numpad-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+}
+
+body.light-mode .numpad-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.numpad-btn:active {
+  transform: scale(0.95);
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.numpad-btn.control-btn {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.numpad-btn.control-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-mode .numpad-btn.control-btn:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.gate-footer .tip-text {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Animations */
+.animate-float {
+  animation: float-island 4s infinite ease-in-out;
+}
+
+@keyframes float-island {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.shake-error {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 600px) {
+  .learning-map-overlay {
+    padding: 12px;
+  }
+  .learning-map-container {
+    height: 95vh;
+    border-radius: 18px;
+  }
+  .learning-map-header {
+    padding: 16px 20px;
+  }
+  .learning-map-header h2 {
+    font-size: 1.2rem;
+  }
+  .map-road-wrapper {
+    padding: 20px 10px;
+  }
+  .map-node-container {
+    width: 90%;
+    position: relative !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto 24px auto !important;
+    top: 0 !important;
+  }
+  .road-path-svg {
+    display: none;
+  }
+  .map-island-card {
+    padding: 14px 16px;
+  }
+  .island-title {
+    font-size: 0.95rem;
+  }
+  .map-road {
+    display: flex;
+    flex-direction: column;
+    height: auto !important;
+  }
+  .map-road > div {
+    height: auto !important;
+  }
+}
+
+/* 微信周报卡片弹窗 */
+.share-card-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1002;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.share-card-modal {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  animation: scaleIn 0.3s ease;
+}
+
+body.light-mode .share-card-modal {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.share-card-canvas-container {
+  margin: 16px 0;
+  display: flex;
+  justify-content: center;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.share-card-canvas-container canvas {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.share-card-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.share-card-btn {
+  padding: 10px 20px;
+  border-radius: 99px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.share-card-btn.download {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.share-card-btn.download:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.share-card-btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.share-card-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+body.light-mode .share-card-btn.cancel {
+  background: rgba(0, 0, 0, 0.05);
+}
+body.light-mode .share-card-btn.cancel:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
