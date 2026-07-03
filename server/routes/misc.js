@@ -87,7 +87,7 @@ router.post('/chat-history', async (req, res) => {
     }
 
     await dbQueue.enqueue(async () => {
-      await sqliteDb.run('BEGIN TRANSACTION');
+      await sqliteDb.run('BEGIN IMMEDIATE TRANSACTION');
       try {
         await sqliteDb.run(`
           DELETE FROM chat_history_fts 

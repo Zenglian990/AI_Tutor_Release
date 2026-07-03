@@ -171,7 +171,7 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
       const dbQueue = require('./dbQueue');
       const { encryptField, generateFtsIndexText } = require('../utils/crypto');
       dbQueue.enqueue(async () => {
-        await sqliteDb.run('BEGIN TRANSACTION');
+        await sqliteDb.run('BEGIN IMMEDIATE TRANSACTION');
         try {
           const r1 = await sqliteDb.run(
             'INSERT INTO chat_history (profile_id, grade, subject, role, text) VALUES (?, ?, ?, ?, ?)',
