@@ -10,8 +10,24 @@ let sqliteDb = null;
 async function initDB() {
   try {
     const db = await lancedb.connect(DB_PATH);
-    table = await db.openTable('textbooks');
-    logger.info("Connected to LanceDB 'textbooks' table successfully.");
+    try {
+      table = await db.openTable('textbooks');
+      logger.info("Connected to LanceDB 'textbooks' table successfully.");
+    } catch (openErr) {
+      if (openErr.message.includes('not found') || openErr.message.includes('Table') || openErr.message.includes('Dataset')) {
+        logger.warn("LanceDB table 'textbooks' not found. Creating a blank table for testing/runtime...");
+        const emptyData = [{
+          id: 0,
+          vector: new Array(768).fill(0),
+          text: 'mock_initial_data',
+          source: 'mock.txt'
+        }];
+        table = await db.createTable('textbooks', emptyData);
+        logger.info("Blank LanceDB 'textbooks' table created successfully.");
+      } else {
+        throw openErr;
+      }
+    }
 
     // Verify embedding dimension and model compatibility asynchronously (Issue 6)
     (async () => {
