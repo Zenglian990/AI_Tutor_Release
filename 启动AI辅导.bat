@@ -16,6 +16,30 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Check if .env has GEMINI_API_KEY
+set "has_key=0"
+if exist ".env" (
+    findstr /C:"GEMINI_API_KEY=" .env >nul
+    if %errorlevel% equ 0 set "has_key=1"
+)
+
+if "%has_key%"=="0" (
+    echo ============================================================
+    echo   欢迎使用曾练专属私教 AI Tutor！
+    echo ============================================================
+    echo   首次运行需要配置您的 Gemini API Key。
+    echo   您可以前往 Google AI Studio (https://aistudio.google.com/) 免费申请。
+    echo ============================================================
+    echo.
+    set /p user_key="请输入您的 Gemini API Key: "
+    
+    :: Write to .env
+    echo.>>.env
+    echo GEMINI_API_KEY=%user_key%>>.env
+    echo [INFO] 已成功将您的 Gemini API Key 写入 .env 文件。
+    echo.
+)
+
 :: Install server dependencies if needed
 if not exist "node_modules" (
     echo [1/3] Installing server dependencies...
