@@ -27,6 +27,7 @@ jobs:
       run: npm run test:all
       env:
         NODE_ENV: test
+        GEMINI_API_KEY: mock_gemini_key
         DEEPSEEK_API_KEY: mock_key
 
     - name: Install client dependencies
