@@ -8,7 +8,7 @@ describe('App Component', () => {
     render(<App />);
     
     // Check that the title is rendered
-    expect(screen.getByText(/曾练专属私教/)).toBeDefined();
+    expect(screen.getByText('曾练专属私教')).toBeDefined();
 
     // Check that the welcome message is rendered asynchronously
     const welcomeMsg = await screen.findByText(/您好！我是您的专属私教/);
