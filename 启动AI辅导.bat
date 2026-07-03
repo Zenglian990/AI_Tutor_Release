@@ -28,7 +28,7 @@ if "%has_key%"=="0" (
     echo   欢迎使用曾练专属私教 AI Tutor！
     echo ============================================================
     echo   首次运行需要配置您的 Gemini API Key。
-    echo   您可以前往 Google AI Studio (https://aistudio.google.com/) 免费申请。
+    echo   您可以前往 Google AI Studio ^(https://aistudio.google.com/^) 免费申请。
     echo ============================================================
     echo.
     set /p user_key="请输入您的 Gemini API Key: "
