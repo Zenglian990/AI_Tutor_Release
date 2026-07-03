@@ -22,8 +22,39 @@ const API_KEYS = (() => {
   return keys;
 })();
 
-// Optional HTTP proxy for reaching Google APIs
-const proxyUrl = process.env.HTTP_PROXY || process.env.PROXY_URL;
+// Optional HTTP proxy for reaching Google APIs - dynamically check listening ports
+const proxyUrl = (() => {
+  const envProxy = process.env.HTTP_PROXY || process.env.PROXY_URL || '';
+  
+  // Helper to extract port from URL
+  const getPort = (urlStr) => {
+    const match = urlStr.match(/:(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  const candidatePorts = [10909, 10910, 7890, 7897, 10809];
+  const envPort = envProxy ? getPort(envProxy) : null;
+  
+  // Check the envPort first, then fallback to other common ports
+  const portsToCheck = envPort ? [envPort, ...candidatePorts.filter(p => p !== envPort)] : candidatePorts;
+
+  try {
+    const execSync = require('child_process').execSync;
+    const netstatOut = execSync('netstat -an', { encoding: 'utf8', timeout: 500 });
+    
+    for (const port of portsToCheck) {
+      const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1):${port}\\s+.*LISTENING`, 'i');
+      if (portRegex.test(netstatOut)) {
+        const detectedUrl = `http://127.0.0.1:${port}`;
+        return detectedUrl;
+      }
+    }
+  } catch (err) {
+    // Fall back to environment variable on error
+  }
+
+  return envProxy || null;
+})();
 
 // API auth token — if not set, generate a random one and log it for the admin
 const API_TOKEN = (() => {

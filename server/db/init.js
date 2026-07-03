@@ -13,35 +13,37 @@ async function initDB() {
     table = await db.openTable('textbooks');
     logger.info("Connected to LanceDB 'textbooks' table successfully.");
 
-    // Verify embedding dimension and model compatibility (Issue 6)
-    try {
-      const { getEmbedding } = require('../services/embedding');
-      const sampleText = 'test_dimension_alignment';
-      const currentVector = await getEmbedding(sampleText);
-      if (currentVector && Array.isArray(currentVector)) {
-        const currentDim = currentVector.length;
-        logger.info(`[Embedding] Configured model '${EMBED_MODEL}' dimension: ${currentDim}`);
+    // Verify embedding dimension and model compatibility asynchronously (Issue 6)
+    (async () => {
+      try {
+        const { getEmbedding } = require('../services/embedding');
+        const sampleText = 'test_dimension_alignment';
+        const currentVector = await getEmbedding(sampleText);
+        if (currentVector && Array.isArray(currentVector)) {
+          const currentDim = currentVector.length;
+          logger.info(`[Embedding] Configured model '${EMBED_MODEL}' dimension: ${currentDim}`);
 
-        // Get a sample from LanceDB table to verify dimension compatibility
-        const samples = await table.query().limit(1).toArray();
-        if (samples.length > 0 && samples[0].vector) {
-          const dbDim = samples[0].vector.length;
-          logger.info(`[LanceDB] Existing table vector dimension: ${dbDim}`);
-          if (dbDim !== currentDim) {
-            logger.error(`FATAL: Embedding dimension mismatch! Configured model '${EMBED_MODEL}' returns ${currentDim}-dimensional vectors, but the existing database table has ${dbDim}-dimensional vectors. Please re-ingest your textbooks or check your EMBED_MODEL config.`);
-            process.exit(1);
+          // Get a sample from LanceDB table to verify dimension compatibility
+          const samples = await table.query().limit(1).toArray();
+          if (samples.length > 0 && samples[0].vector) {
+            const dbDim = samples[0].vector.length;
+            logger.info(`[LanceDB] Existing table vector dimension: ${dbDim}`);
+            if (dbDim !== currentDim) {
+              logger.error(`FATAL: Embedding dimension mismatch! Configured model '${EMBED_MODEL}' returns ${currentDim}-dimensional vectors, but the existing database table has ${dbDim}-dimensional vectors. Please re-ingest your textbooks or check your EMBED_MODEL config.`);
+              process.exit(1);
+            } else {
+              logger.info(`[Embedding] Dimension check passed: ${currentDim} (matching LanceDB).`);
+            }
           } else {
-            logger.info(`[Embedding] Dimension check passed: ${currentDim} (matching LanceDB).`);
+            logger.info('[LanceDB] Table is empty, skipping dimension alignment check.');
           }
         } else {
-          logger.info('[LanceDB] Table is empty, skipping dimension alignment check.');
+          logger.warn('[Embedding] Could not retrieve startup test embedding. Skipping dimension validation.');
         }
-      } else {
-        logger.warn('[Embedding] Could not retrieve startup test embedding. Skipping dimension validation.');
+      } catch (err) {
+        logger.warn('[Embedding] Failed during startup embedding dimension validation:', err.message);
       }
-    } catch (err) {
-      logger.warn('[Embedding] Failed during startup embedding dimension validation:', err.message);
-    }
+    })().catch(err => logger.error('[Embedding] Async dimension validation failed:', err));
 
     // Create Full-Text Search (FTS) index on the 'text' column for hybrid search
     try {
