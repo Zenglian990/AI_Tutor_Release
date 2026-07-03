@@ -22,8 +22,17 @@ async function initDB() {
           text: 'mock_initial_data',
           source: 'mock.txt'
         }];
-        table = await db.createTable('textbooks', emptyData);
-        logger.info("Blank LanceDB 'textbooks' table created successfully.");
+        try {
+          table = await db.createTable('textbooks', emptyData);
+          logger.info("Blank LanceDB 'textbooks' table created successfully.");
+        } catch (createErr) {
+          if (createErr.message.includes('already exists') || createErr.message.includes('Table')) {
+            table = await db.openTable('textbooks');
+            logger.info("Opened existing textbooks table (created concurrently).");
+          } else {
+            throw createErr;
+          }
+        }
       } else {
         throw openErr;
       }
