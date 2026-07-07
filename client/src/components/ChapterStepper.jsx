@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 
 export default function ChapterStepper({
   activeChapterData,
@@ -52,21 +53,15 @@ export default function ChapterStepper({
                 text = `进入最终关【${step.pct}% 终极通关】！我已经准备好迎接最后的测试了，请出题！`;
                 if (!isConfettiActiveRef.current) {
                   isConfettiActiveRef.current = true;
-                  const interval = setInterval(() => {
-                    const confetti = document.createElement('div');
-                    confetti.className = 'confetti-particle';
-                    confetti.innerText = '🎉';
-                    confetti.style.cssText = `position:fixed;left:${Math.random() * 100}vw;top:-50px;font-size:${Math.random() * 20 + 20}px;transition:transform 3s linear,opacity 3s linear;z-index:9999;`;
-                    document.body.appendChild(confetti);
-                    const t1 = setTimeout(() => { confetti.style.transform = `translateY(${window.innerHeight + 100}px) rotate(${Math.random() * 360}deg)`; confetti.style.opacity = '0'; }, 50);
-                    const t2 = setTimeout(() => confetti.remove(), 3000);
-                    confettiTimersRef.current.push(t1, t2);
-                  }, 100);
-                  confettiTimersRef.current.push(interval);
-                  confettiTimersRef.current.push(setTimeout(() => {
-                    clearInterval(interval);
+                  confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    zIndex: 9999
+                  });
+                  setTimeout(() => {
                     isConfettiActiveRef.current = false;
-                  }, 2000));
+                  }, 3000);
                 }
               }
               onSubmit(null, text);

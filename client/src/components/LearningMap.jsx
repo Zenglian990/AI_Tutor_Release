@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 export default function LearningMap({ currentGrade, currentSubject, currentEdition, onSelectChapter, onClose, authFetch }) {
   const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [unlockAll, setUnlockAll] = useState(false);
 
   // Parse a readable grade name
@@ -23,14 +24,19 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     authFetch(`/api/chapters?grade=${currentGrade}&subject=${currentSubject}&edition=${currentEdition || ''}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load chapters');
+        return res.json();
+      })
       .then(data => {
         setChapters(data.chapters || []);
         setLoading(false);
       })
       .catch(err => {
         console.error("Error fetching chapters:", err);
+        setError(err.message);
         setLoading(false);
       });
   }, [currentGrade, currentSubject, currentEdition]);
@@ -52,12 +58,26 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
           </div>
         </div>
 
-        {loading ? (
-          <div className="map-loading">
-            <div className="spinner"></div>
-            <p>正在拉取章节星空地图...</p>
-          </div>
-        ) : chapters.length === 0 ? (
+        <div className="learning-map-content">
+          {error ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', margin: '20px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚠️</div>
+              <div>无法加载学习地图: {error}</div>
+              <button onClick={() => {
+                setLoading(true);
+                setError(null);
+                authFetch(`/api/chapters?grade=${currentGrade}&subject=${currentSubject}&edition=${currentEdition || ''}`)
+                  .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
+                  .then(d => { setChapters(d.chapters||[]); setLoading(false); })
+                  .catch(e => { setError(e.message); setLoading(false); });
+              }} style={{ marginTop: '15px', padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>重试</button>
+            </div>
+          ) : loading ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <span>正在生成专属学习地图...</span>
+            </div>
+          ) : chapters.length === 0 ? (
           <div className="map-empty">
             <span className="empty-icon">🌌</span>
             <h3>暂无章节地图</h3>
@@ -100,7 +120,17 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
                   >
                     <div 
                       className={`map-island-card glass-panel ${isCompleted ? 'completed' : ''}`}
+                      role="button"
+                      tabIndex={isUnlocked ? 0 : -1}
+                      aria-label={`第 ${index + 1} 关: ${chapter.name}。${isUnlocked ? '点击开始' : '尚未解锁'}`}
+                      aria-disabled={!isUnlocked}
                       onClick={() => isUnlocked && onSelectChapter(chapter)}
+                      onKeyDown={(e) => {
+                        if (isUnlocked && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          onSelectChapter(chapter);
+                        }
+                      }}
                     >
                       {isCompleted && <div className="island-badge-completed">✅</div>}
                       <div className="island-header">

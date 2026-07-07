@@ -9,9 +9,9 @@ function signatureMiddleware(req, res, next) {
   // In development, optionally skip signature if REQUIRE_AUTH is not set
   if (NODE_ENV === 'development' && !process.env.REQUIRE_AUTH) return next();
 
-  // For localhost connections we bypass for ease of developer tools / direct curl
+  // For localhost connections we bypass ONLY if explicitly enabled
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-  if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
+  if ((clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
     return next();
   }
 
@@ -58,9 +58,9 @@ function signatureMiddleware(req, res, next) {
 function verifyMultipartIntegrity(req, res, next) {
   if (NODE_ENV === 'development' && !process.env.REQUIRE_AUTH) return next();
 
-  // For localhost connections we bypass
+  // For localhost connections we bypass ONLY if explicitly enabled
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-  if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
+  if ((clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
     return next();
   }
 

@@ -8,6 +8,11 @@ const logger = require('../services/logger');
 const { encryptField, decryptField, generateFtsIndexText } = require('../utils/crypto');
 const { formatGradeName, GRADE_ALIASES, getPromptGuidelines } = require('../prompts/guidelines');
 const { verifyMultipartIntegrity } = require('../middleware/signature');
+const { getTable } = require('../db/init');
+const { API_TOKEN } = require('../config');
+const TEXTBOOK_CHAPTERS = require('../prompts/chapters.json');
+const fs = require('fs');
+const path = require('path');
 
 // Allowed audio MIME types
 const ALLOWED_AUDIO_TYPES = [
@@ -38,7 +43,7 @@ const upload = multer({
 
 // Health check — restricted info in production
 router.get('/health', (req, res) => {
-  const { getTable } = require('../db/init');
+
   const base = {
     status: 'ok',
     uptime: process.uptime(),
@@ -224,7 +229,7 @@ router.get('/stats', async (req, res) => {
 router.get('/export/data', async (req, res) => {
   try {
     // Verify token — even localhost requests must provide a valid token for data export
-    const { API_TOKEN } = require('../config');
+
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.query.token;
     if (!token || token !== API_TOKEN) {
@@ -270,8 +275,16 @@ router.post('/report/weekly', async (req, res) => {
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id = 'default', grade = 'unknown' } = req.body;
     // Sanitize free-text user inputs to prevent prompt injection
-    const parent_name = String(req.body.parent_name || '家长').replace(/[^a-zA-Z0-9一-龥_\-\s]/g, '').trim().slice(0, 30) || '家长';
-    const student_name = String(req.body.student_name || '学生').replace(/[^a-zA-Z0-9一-龥_\-\s]/g, '').trim().slice(0, 30) || '学生';
+    const sanitizeName = (str, fallback) => {
+      let clean = String(str || fallback).replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\-\s]/g, '').trim().slice(0, 15);
+      if (/ignore|prompt|instruction|system|forget|bypass|指令|提示|忽略|忘记|系统/i.test(clean)) {
+        return fallback;
+      }
+      return clean || fallback;
+    };
+    const parent_name = sanitizeName(req.body.parent_name, '家长');
+    const student_name = sanitizeName(req.body.student_name, '学生');
+    const safeGrade = formatGradeName(grade);
 
     const gradeFilter = (grade && grade !== 'unknown') ? ` AND grade = ?` : '';
     const gradeParams = (grade && grade !== 'unknown') ? [grade] : [];
@@ -285,7 +298,7 @@ router.post('/report/weekly', async (req, res) => {
       [profile_id, ...gradeParams]
     );
 
-    const prompt = `你是一位认真负责的"教导主任"，现在要给家长【${parent_name}】发一份关于他的孩子【${student_name}】（${grade}）的【本周AI私教学习周报】。
+    const prompt = `你是一位认真负责的"教导主任"，现在要给家长【${parent_name}】发一份关于他的孩子【${student_name}】（${safeGrade}）的【本周AI私教学习周报】。
 
 本周客观数据如下：
 - 师生对话互动总次数：${chatCount.c} 次
@@ -339,7 +352,7 @@ router.post('/active-plan/generate', async (req, res) => {
     const { profile_id, grade, subject, edition } = req.body;
     if (!grade || !subject) return res.status(400).json({ error: "Grade and subject are required" });
 
-    const TEXTBOOK_CHAPTERS = require('../prompts/chapters.json');
+
     const key = edition ? `${grade}_${edition}` : grade;
     const gradeChapters = TEXTBOOK_CHAPTERS[key] || TEXTBOOK_CHAPTERS[grade] || {};
     const list = gradeChapters[subject] || [];
@@ -351,13 +364,16 @@ router.post('/active-plan/generate', async (req, res) => {
 
     const chaptersStr = list.map((c, i) => `${i + 1}. ${c.name} (${c.description})`).join('\n');
 
-    let gradeStr = '未知年级';
-    if (grade) {
-      const rawGrade = String(grade).split('_')[0];
-      gradeStr = GRADE_ALIASES[rawGrade] ? GRADE_ALIASES[rawGrade][0] : `${rawGrade}年级`;
-    }
+    const gradeStr = formatGradeName(grade);
     // Sanitize free-text user input to prevent prompt injection
-    const name = String(req.body.student_name || '孩子').replace(/[^a-zA-Z0-9一-龥_\-\s]/g, '').trim().slice(0, 30) || '孩子';
+    const sanitizeName = (str, fallback) => {
+      let clean = String(str || fallback).replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\-\s]/g, '').trim().slice(0, 15);
+      if (/ignore|prompt|instruction|system|forget|bypass|指令|提示|忽略|忘记|系统/i.test(clean)) {
+        return fallback;
+      }
+      return clean || fallback;
+    };
+    const name = sanitizeName(req.body.student_name, '孩子');
 
     const prompt = `你是一位极其优秀的 AI 专属伴读私教。现在你要为学生【${name}】（处于【${gradeStr}】【${subject}】阶段）制定一份【全学期主动通关学习规划方案】。
 根据该教材的章节大纲目录：
@@ -396,8 +412,7 @@ router.post('/generate-variation', async (req, res) => {
     const safeQuery = String(query).slice(0, 500);
     const safeAnswer = answer ? String(answer).slice(0, 1000) : '';
 
-    const rawGrade = grade ? String(grade).split('_')[0] : '';
-    let gradeStr = rawGrade ? (GRADE_ALIASES[rawGrade] ? GRADE_ALIASES[rawGrade][0] : `${rawGrade}年级`) : '未知年级';
+    const gradeStr = formatGradeName(grade);
 
     const prompt = `你是一位专业的 AI 助教。学生在做以下题目时遇到困难并收录到了错题本：
 
@@ -452,8 +467,7 @@ router.post('/grade-variation', async (req, res) => {
     const safeSolution = solution ? String(solution).slice(0, 1000) : null;
     const safeStudentAnswer = String(student_answer).slice(0, 500);
 
-    const rawGrade = grade ? String(grade).split('_')[0] : '';
-    let gradeStr = rawGrade ? (GRADE_ALIASES[rawGrade] ? GRADE_ALIASES[rawGrade][0] : `${rawGrade}年级`) : '未知年级';
+    const gradeStr = formatGradeName(grade);
 
     const prompt = `你是一位耐心且专业的 AI 助教。现在你要批改学生的题目解答（学生处于【${gradeStr}】阶段）。
 
@@ -662,7 +676,7 @@ router.get('/admin/stats', async (req, res) => {
 // POST /api/admin/shutdown — Graceful shutdown
 router.post('/admin/shutdown', async (req, res) => {
   try {
-    const { API_TOKEN } = require('../config');
+
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.query.token;
     if (!token || token !== API_TOKEN) {
@@ -686,22 +700,28 @@ router.post('/admin/shutdown', async (req, res) => {
 router.post('/admin/errors', async (req, res) => {
   try {
     const { message, stack, url, profile_id } = req.body;
-    logger.error(`[Client-APM] Error from profile ${profile_id || 'unknown'} on ${url || 'unknown'}: ${message}\nStack: ${stack || 'no stack'}`);
+    const safeMessage = String(message || 'unknown').slice(0, 500);
+    const safeStack = String(stack || '').slice(0, 2000);
+    const safeUrl = String(url || 'unknown').slice(0, 500);
+    const safeProfileId = String(profile_id || 'unknown').slice(0, 100);
+
+    logger.error(`[Client-APM] Error from profile ${safeProfileId} on ${safeUrl}: ${safeMessage}\nStack: ${safeStack}`);
     
-    const fs = require('fs');
-    const path = require('path');
     const clientLogDir = path.join(__dirname, '..', '..', 'logs');
     if (!fs.existsSync(clientLogDir)) {
       fs.mkdirSync(clientLogDir, { recursive: true });
     }
     const logEntry = JSON.stringify({
       timestamp: new Date().toISOString(),
-      profile_id: profile_id || 'unknown',
-      url: url || 'unknown',
-      message: message || 'unknown',
-      stack: stack || ''
+      profile_id: safeProfileId,
+      url: safeUrl,
+      message: safeMessage,
+      stack: safeStack
     }) + '\n';
-    fs.appendFileSync(path.join(clientLogDir, 'client_errors.log'), logEntry, 'utf8');
+    
+    fs.appendFile(path.join(clientLogDir, 'client_errors.log'), logEntry, 'utf8', (err) => {
+      if (err) logger.error('Failed to write client_errors.log:', err);
+    });
 
     res.json({ success: true });
   } catch (err) {

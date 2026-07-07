@@ -169,9 +169,11 @@ function buildLanceDBWhereClause(grade, subject, edition) {
     '体育与健康': ['体育与健康', '体育', 'Physical Education', 'PE']
   };
 
+  const escapeSql = (str) => String(str).replace(/'/g, "''");
+
   if (subject && SUBJECT_MAP[subject]) {
     const aliases = SUBJECT_MAP[subject];
-    const subjectConditions = aliases.map(alias => `source LIKE '%${alias}%'`);
+    const subjectConditions = aliases.map(alias => `source LIKE '%${escapeSql(alias)}%'`);
     conditions.push(`(${subjectConditions.join(' OR ')})`);
   }
 

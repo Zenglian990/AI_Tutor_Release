@@ -123,11 +123,10 @@ const SENSITIVE_WORDS = [
   { word: '撕逼', category: 'profanity' }, { word: '傻吊', category: 'profanity' },
   // English profanity
   { word: 'fuck', category: 'profanity' }, { word: 'shit', category: 'profanity' },
-  { word: 'damn', category: 'profanity' }, { word: 'bitch', category: 'profanity' },
+  { word: 'bitch', category: 'profanity' },
   { word: 'asshole', category: 'profanity' }, { word: 'bastard', category: 'profanity' },
-  { word: 'dick', category: 'profanity' }, { word: 'piss', category: 'profanity' },
-  { word: 'cunt', category: 'profanity' }, { word: 'moron', category: 'profanity' },
-  { word: 'idiot', category: 'profanity' }, { word: 'stupid', category: 'profanity' },
+  { word: 'dick', category: 'profanity' },
+  { word: 'cunt', category: 'profanity' },
   { word: 'fuk', category: 'profanity' }, { word: 'fck', category: 'profanity' },
   { word: 'dumbass', category: 'profanity' }, { word: 'jackass', category: 'profanity' },
   // Violence / Self-harm

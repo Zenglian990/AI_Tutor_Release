@@ -1,8 +1,10 @@
 require('dotenv').config({ override: true });
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const NODE_ENV = process.env.NODE_ENV || 'production';
 const EMBED_MODEL = process.env.EMBED_MODEL || 'gemini-embedding-2';
 const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-flash-lite-latest';
 const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();
@@ -39,14 +41,16 @@ const proxyUrl = (() => {
   const portsToCheck = envPort ? [envPort, ...candidatePorts.filter(p => p !== envPort)] : candidatePorts;
 
   try {
-    const execSync = require('child_process').execSync;
-    const netstatOut = execSync('netstat -an', { encoding: 'utf8', timeout: 500 });
-    
-    for (const port of portsToCheck) {
-      const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1):${port}\\s+.*LISTENING`, 'i');
-      if (portRegex.test(netstatOut)) {
-        const detectedUrl = `http://127.0.0.1:${port}`;
-        return detectedUrl;
+    if (process.platform === 'win32') {
+      const execSync = require('child_process').execSync;
+      const netstatOut = execSync('netstat -an', { encoding: 'utf8', timeout: 500 });
+      
+      for (const port of portsToCheck) {
+        const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1):${port}\\s+.*LISTENING`, 'i');
+        if (portRegex.test(netstatOut)) {
+          const detectedUrl = `http://127.0.0.1:${port}`;
+          return detectedUrl;
+        }
       }
     }
   } catch (err) {
@@ -79,8 +83,7 @@ const API_TOKEN = (() => {
   console.warn('   Set API_TOKEN in .env for persistence.');
 
   try {
-    const fs = require('fs');
-    const path = require('path');
+
     const envPath = path.join(__dirname, '..', '..', '.env');
     let envContent = '';
     if (fs.existsSync(envPath)) {
@@ -118,8 +121,7 @@ const DB_ENCRYPTION_KEY = (() => {
   }
 
   try {
-    const fs = require('fs');
-    const path = require('path');
+
     const envPath = path.join(__dirname, '..', '..', '.env');
     let envContent = '';
     if (fs.existsSync(envPath)) {
@@ -133,6 +135,13 @@ const DB_ENCRYPTION_KEY = (() => {
     }
     fs.writeFileSync(envPath, envContent, 'utf8');
     console.info(`   Successfully persisted DB_ENCRYPTION_KEY to .env`);
+
+    // Backup the key
+    const backupPath = path.join(__dirname, '..', '..', 'db_key_backup.txt');
+    if (!fs.existsSync(backupPath)) {
+      fs.writeFileSync(backupPath, `DB_ENCRYPTION_KEY=${keyHex}\n# KEEP THIS FILE SAFE! IF LOST, DATABASE CANNOT BE DECRYPTED.\n`, 'utf8');
+      console.warn(`[WARNING] A new DB_ENCRYPTION_KEY was generated and backed up to ${backupPath}. KEEP THIS FILE SAFE!`);
+    }
   } catch (envErr) {
     console.error('   Failed to persist DB_ENCRYPTION_KEY to .env:', envErr.message);
   }

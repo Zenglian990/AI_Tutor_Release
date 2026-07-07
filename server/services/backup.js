@@ -35,14 +35,22 @@ async function runBackup() {
       return;
     }
 
-    // 0. Perform SQLite WAL Checkpoint to flush all journal modifications into the main database file
+    // 0. Perform SQLite WAL Checkpoint and Integrity Check
     const sqliteDb = getSqliteDb();
     if (sqliteDb) {
       try {
         await sqliteDb.run('PRAGMA wal_checkpoint(TRUNCATE);');
         logger.info('[Backup] SQLite WAL checkpoint completed (flushed journal to main database file).');
-      } catch (checkpointErr) {
-        logger.warn('[Backup] Warning: Failed to execute WAL checkpoint before backup:', checkpointErr.message);
+        
+        // Fixed A4: Add PRAGMA integrity_check before backup
+        const integrityResult = await sqliteDb.get('PRAGMA integrity_check;');
+        if (integrityResult && integrityResult.integrity_check !== 'ok') {
+           throw new Error(`Integrity check failed: ${integrityResult.integrity_check}`);
+        }
+        logger.info('[Backup] SQLite integrity check passed.');
+      } catch (err) {
+        logger.error('[Backup] Critical error before backup (WAL checkpoint or Integrity check failed):', err.message);
+        return; // Abort backup to prevent backing up corrupted state
       }
     }
 

@@ -64,8 +64,6 @@ function createApp() {
           origin.startsWith('https://localhost:') || 
           origin.startsWith('https://127.0.0.1:')) {
         callback(null, true);
-      } else if (NODE_ENV === 'development') {
-        callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
       }
@@ -102,7 +100,14 @@ function createApp() {
   // --- Serve static frontend ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');
   if (fs.existsSync(CLIENT_DIST)) {
-    app.use(express.static(CLIENT_DIST));
+    const staticLimiter = rateLimit({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      max: 500, // higher limit for static assets
+      standardHeaders: true,
+      legacyHeaders: false
+    });
+    app.use(staticLimiter);
+    app.use(express.static(CLIENT_DIST, { maxAge: '1d' }));
     // SPA fallback: return index.html for all non-API, non-static routes
     app.use((req, res, next) => {
       if (req.path.startsWith('/api/')) return next();
@@ -116,7 +121,8 @@ function createApp() {
     logger.error('[Unhandled Error]', err);
     const status = err.status || 500;
     res.status(status).json({
-      error: status === 500 ? '服务器内部错误' : err.message,
+      error: status === 500 ? '内部服务器错误' : err.message,
+      code: err.code || (status === 500 ? 'ERR_INTERNAL' : 'ERR_BAD_REQUEST'),
       details: NODE_ENV === 'development' ? err.stack : undefined
     });
   });

@@ -74,6 +74,7 @@ export function playTTS(text, grade, onStart, onEnd) {
     .replace(/\[.*?\]\(.*?\)/g, '')
     .replace(/[`*~_#>-]/g, '')
     .replace(/[\p{Extended_Pictographic}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\\/g, '')
     .trim();
   
   if (!cleanText) {
@@ -81,9 +82,18 @@ export function playTTS(text, grade, onStart, onEnd) {
     return;
   }
 
-  const url = `/api/tts?text=${encodeURIComponent(cleanText)}&grade=${encodeURIComponent(grade || '')}`;
+  const url = '/api/tts';
 
-  authFetch(url)
+  authFetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      text: cleanText,
+      grade: grade || ''
+    })
+  })
     .then(res => {
       if (!res.ok) throw new Error('Cloud TTS server error: ' + res.status);
       return res.blob();

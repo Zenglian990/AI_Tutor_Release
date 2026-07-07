@@ -83,7 +83,9 @@ function writeToLogFile(filename, data) {
   const logPath = path.join(LOGS_DIR, filename);
   try {
     rotateLogFile(logPath);
-    fs.appendFileSync(logPath, data, 'utf8');
+    fs.appendFile(logPath, data, 'utf8', (err) => {
+      if (err) console.error(`Failed to async write to log file ${filename}:`, err);
+    });
   } catch (err) {
     console.error(`Failed to write/rotate log file ${filename}:`, err);
   }

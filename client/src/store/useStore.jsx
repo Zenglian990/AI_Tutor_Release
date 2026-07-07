@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getTranslation } from '../utils/i18n';
+import { encryptData, decryptData } from '../utils/crypto_helper';
 
 const AppContext = createContext(null);
 
@@ -38,7 +39,8 @@ function getApiUrl(path) {
  * Get the stored API token.
  */
 function getApiToken() {
-  return localStorage.getItem('ai_tutor_api_token') || '';
+  const encrypted = localStorage.getItem('ai_tutor_api_token');
+  return decryptData(encrypted) || '';
 }
 
 async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {
@@ -147,7 +149,10 @@ function loadProfiles() {
 
 export function AppProvider({ children }) {
   const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('ai_tutor_backend_url') || '');
-  const [apiToken, setApiToken] = useState(() => localStorage.getItem('ai_tutor_api_token') || '');
+  const [apiToken, setApiToken] = useState(() => {
+    const encrypted = localStorage.getItem('ai_tutor_api_token');
+    return decryptData(encrypted) || '';
+  });
   const [profiles, setProfiles] = useState(loadProfiles);
   const [currentProfileId, setCurrentProfileId] = useState(() =>
     localStorage.getItem('ai_tutor_active_profile') || 'default'
@@ -177,7 +182,13 @@ export function AppProvider({ children }) {
   useEffect(() => { localStorage.setItem('ai_tutor_subject', selectedSubject); }, [selectedSubject]);
   useEffect(() => { localStorage.setItem('ai_tutor_socratic_level', socraticLevel); }, [socraticLevel]);
   useEffect(() => { localStorage.setItem('ai_tutor_backend_url', backendUrl); }, [backendUrl]);
-  useEffect(() => { localStorage.setItem('ai_tutor_api_token', apiToken); }, [apiToken]);
+  useEffect(() => { 
+    if (apiToken) {
+      localStorage.setItem('ai_tutor_api_token', encryptData(apiToken)); 
+    } else {
+      localStorage.removeItem('ai_tutor_api_token');
+    }
+  }, [apiToken]);
   useEffect(() => { localStorage.setItem('ai_tutor_language', language); }, [language]);
   useEffect(() => { localStorage.setItem('ai_tutor_chat_model', chatModel); }, [chatModel]);
 

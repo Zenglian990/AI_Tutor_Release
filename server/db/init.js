@@ -1,7 +1,7 @@
 const lancedb = require('@lancedb/lancedb');
 const { open } = require('sqlite');
 const sqlite3 = require('sqlite3');
-const { DB_PATH, SQLITE_DB_PATH, EMBED_MODEL } = require('../config');
+const { RAG_TOP_K, EMBED_MODEL, SQLITE_DB_PATH, DB_PATH } = require('../config');
 const logger = require('../services/logger');
 
 let table = null;
@@ -42,6 +42,7 @@ async function initDB() {
     (async () => {
       try {
         const { getEmbedding } = require('../services/embedding');
+
         const sampleText = 'test_dimension_alignment';
         const currentVector = await getEmbedding(sampleText);
         if (currentVector && Array.isArray(currentVector)) {
@@ -54,8 +55,8 @@ async function initDB() {
             const dbDim = samples[0].vector.length;
             logger.info(`[LanceDB] Existing table vector dimension: ${dbDim}`);
             if (dbDim !== currentDim) {
-              logger.error(`FATAL: Embedding dimension mismatch! Configured model '${EMBED_MODEL}' returns ${currentDim}-dimensional vectors, but the existing database table has ${dbDim}-dimensional vectors. Please re-ingest your textbooks or check your EMBED_MODEL config.`);
-              process.exit(1);
+              logger.error(`FATAL: Embedding dimension mismatch! Configured model '${EMBED_MODEL}' returns ${currentDim}-dimensional vectors, but the existing database table has ${dbDim}-dimensional vectors. Please re-ingest your textbooks or check your EMBED_MODEL config. (Application will attempt to continue but search may fail)`);
+              // Fixed A3-1: Removed process.exit(1)
             } else {
               logger.info(`[Embedding] Dimension check passed: ${currentDim} (matching LanceDB).`);
             }
@@ -72,7 +73,8 @@ async function initDB() {
 
     // Create Full-Text Search (FTS) index on the 'text' column for hybrid search
     try {
-      await table.createIndex('text', { config: lancedb.Index.fts(), replace: true });
+      // Fixed A3-2: Removed replace: true to prevent unnecessary rebuilds
+      await table.createIndex('text', { config: lancedb.Index.fts() });
       logger.info("[LanceDB] FTS index verified/created on 'text' column.");
     } catch (e) {
       logger.warn("[LanceDB] FTS index warning (it might already exist or is loading):", e);
@@ -217,6 +219,16 @@ async function runMigrations(db) {
     `);
   } catch (e) {
     logger.error('Failed to create chat_history_fts table:', e);
+  }
+
+  // Fixed A3-3: Cleanup api_usage records older than 30 days to prevent unbounded growth
+  try {
+    const result = await db.run("DELETE FROM api_usage WHERE timestamp < datetime('now', '-30 days')");
+    if (result.changes > 0) {
+      logger.info(`[Cleanup] Deleted ${result.changes} old api_usage records.`);
+    }
+  } catch (e) {
+    logger.error('Failed to cleanup old api_usage records:', e);
   }
 
   logger.info('[Migrations] All schema migrations applied.');

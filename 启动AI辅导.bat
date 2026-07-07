@@ -33,10 +33,15 @@ if "%has_key%"=="0" (
     echo.
     set /p user_key="请输入您的 Gemini API Key: "
     
-    :: Write to .env
-    echo.>>.env
-    echo GEMINI_API_KEY=%user_key%>>.env
-    echo [INFO] 已成功将您的 Gemini API Key 写入 .env 文件。
+    :: Write to .env, preventing duplicate
+    findstr /C:"GEMINI_API_KEY=" .env >nul 2>&1
+    if errorlevel 1 (
+        echo.>>.env
+        echo GEMINI_API_KEY=%user_key%>>.env
+        echo [INFO] 已成功将您的 Gemini API Key 写入 .env 文件。
+    ) else (
+        echo [INFO] .env 中已存在 GEMINI_API_KEY，跳过写入。
+    )
     echo.
 )
 

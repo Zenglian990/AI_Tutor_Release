@@ -38,8 +38,8 @@ function authMiddleware(req, res, next) {
   // Brute-force check per IP
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
-  // Allow local requests without token for easy desktop usage
-  if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
+  // Allow local requests without token ONLY if explicitly enabled for development
+  if ((clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
     return next();
   }
   const now = Date.now();

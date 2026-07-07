@@ -5,24 +5,14 @@ const { getSqliteDb } = require('../db/init');
 const logger = require('../services/logger');
 const { NODE_ENV } = require('../config');
 const TEXTBOOK_CHAPTERS = require('../prompts/chapters.json');
+const { GRADE_ALIASES } = require('../prompts/guidelines');
 
-// 年级别名映射
-const GRADE_ALIASES = {
-  '1': ['一年级', '1年级', '小学一年级'],
-  '2': ['二年级', '2年级', '小学二年级'],
-  '3': ['三年级', '3年级', '小学三年级'],
-  '4': ['四年级', '4年级', '小学四年级'],
-  '5': ['五年级', '5年级', '小学五年级'],
-  '6': ['六年级', '6年级', '小学六年级'],
-  '7': ['七年级', '7年级', '初一', '初中一年级'],
-  '8': ['八年级', '8年级', '初二', '初中二年级'],
-  '9': ['九年级', '9年级', '初三', '初中三年级']
-};
+
 
 /**
  * 拼装出题的 System Prompt (三段式 150分制)
  */
-function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr) {
+function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr, knowledgePoints) {
   const gradeNames = {
     '1_up': '一年级上册', '1_down': '一年级下册',
     '2_up': '二年级上册', '2_down': '二年级下册',
@@ -39,7 +29,9 @@ function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, sylla
   const isLowerGrade = ['1', '2', '3'].includes(rawGrade); // 1-3年级为低年级
 
   let scopeStr = '';
-  if (type === 'unit' && chapterName) {
+  if (type === 'custom' && knowledgePoints) {
+    scopeStr = `当前测试范围为用户主动要求的知识点：【${knowledgePoints}】。请紧扣这些自定义知识点出题，确保全面覆盖用户的学习需求。`;
+  } else if (type === 'unit' && chapterName) {
     scopeStr = `当前测试范围为特定单元章节：《${chapterName}》（章节描述：${chapterDesc}）。请紧扣本单元知识点出题，严禁超出本单元范围。`;
   } else if (type === 'midterm') {
     scopeStr = '当前测试范围为期中（半期）综合测试。请综合考查该学期前半段的核心考点。';
@@ -235,7 +227,7 @@ ${questionsReport}
  */
 router.post('/test-paper/generate', async (req, res) => {
   try {
-    const { grade, subject, type, chapter_id, edition } = req.body;
+    const { grade, subject, type, chapter_id, edition, knowledge_points } = req.body;
     if (!grade || !subject || !type) {
       return res.status(400).json({ error: '缺少必需的年级、科目或测试类型' });
     }
@@ -267,7 +259,7 @@ router.post('/test-paper/generate', async (req, res) => {
       logger.error('Failed to parse chapter info from JSON config:', err);
     }
 
-    const prompt = getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr);
+    const prompt = getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr, knowledge_points);
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',

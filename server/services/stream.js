@@ -1,6 +1,10 @@
-const { fetchWithKeyRotation, buildStreamURL } = require('./embedding');
+const { fetchWithKeyRotation, buildChatURL, buildStreamURL } = require('./embedding');
 const { getSqliteDb } = require('../db/init');
-const { NODE_ENV } = require('../config');
+const { logApiUsage } = require('./usage');
+const dbQueue = require('./dbQueue');
+const { encryptField, generateFtsIndexText } = require('../utils/crypto');
+const config = require('../config');
+const { NODE_ENV } = config;
 const logger = require('./logger');
 
 const STREAM_TIMEOUT_MS = 120_000; // 2 minutes max for streaming response
@@ -159,8 +163,7 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
 
     // Log API Token usage statistics in database
     try {
-      const { logApiUsage } = require('./usage');
-      logApiUsage(require('../config').CHAT_MODEL, 'chat', query || '', fullAnswer || '', 'success');
+      logApiUsage(config.CHAT_MODEL, 'chat', query || '', fullAnswer || '', 'success');
     } catch (usageErr) {
       logger.error('Failed to log streaming API usage:', usageErr);
     }
@@ -168,8 +171,7 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
     // Save chat history in background with transaction protection
     const sqliteDb = getSqliteDb();
     if (sqliteDb) {
-      const dbQueue = require('./dbQueue');
-      const { encryptField, generateFtsIndexText } = require('../utils/crypto');
+
       dbQueue.enqueue(async () => {
         await sqliteDb.run('BEGIN IMMEDIATE TRANSACTION');
         try {
@@ -207,8 +209,7 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
   } catch (e) {
     cleanupTimersAndStream();
     try {
-      const { logApiUsage } = require('./usage');
-      logApiUsage(require('../config').CHAT_MODEL, 'chat', query || '', 0, 'error');
+      logApiUsage(config.CHAT_MODEL, 'chat', query || '', 0, 'error');
     } catch (usageErr) {}
     if (streamAborted) {
       logger.info('[Stream] Stream was aborted due to timeout or client disconnect.');

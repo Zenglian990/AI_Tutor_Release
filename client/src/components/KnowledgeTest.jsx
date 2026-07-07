@@ -1,73 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useStore';
-import mermaid from 'mermaid';
+import DOMPurify from 'dompurify';
+import { initMermaid, sanitizeMermaid } from '../utils/mermaid_helper';
 
-// 初始化 Mermaid 图表渲染器
-try {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'dark', // 暗色主题，更契合我们玻璃面板的夜空感
-    useMaxWidth: false,
-    securityLevel: 'loose',
-    flowchart: {
-      htmlLabels: false,
-      padding: 12
-    }
-  });
-} catch (e) {
-  console.warn("Mermaid init error:", e);
-}
-
-const sanitizeMermaid = (code) => {
-  if (typeof code !== 'string') return code;
-
-  // 1. Clean math delimiters in the entire code block first
-  let cleanedCode = code
-    .replace(/\\\[/g, '') // remove \[
-    .replace(/\\\]/g, '') // remove \]
-    .replace(/\\\(/g, '') // remove \(
-    .replace(/\\\)/g, '') // remove \)
-    .replace(/\$/g, '')   // remove $
-    .replace(/\\times/g, '×')
-    .replace(/\\div/g, '÷')
-    .replace(/\\pi/g, 'π')
-    .replace(/\\le/g, '≤')
-    .replace(/\\ge/g, '≥')
-    .replace(/\\pm/g, '±')
-    .replace(/\\ne/g, '≠')
-    .replace(/\\angle/g, '∠');
-
-  // Helper to clean remaining quotes/backslashes inside labels
-  const cleanLabel = (label, fallback) => {
-    const cleaned = label
-      .replace(/\\/g, '') // strip remaining backslashes
-      .replace(/"/g, '')  // strip double quotes entirely to prevent inner nesting conflict
-      .trim();
-    // If the label becomes empty after cleaning, use the node ID as fallback
-    // In Mermaid, an empty label like A("") or A[""] crashes the parser.
-    return cleaned === '' ? fallback : cleaned;
-  };
-
-  // Match node definitions:
-  // 1. Match ID((...)) and safely downgrade to ID("...") to prevent lexical/parse errors in Mermaid
-  let sanitized = cleanedCode.replace(/([a-zA-Z0-9_-]+)\s*\(\(([^)\r\n]*)\)\)/g, (match, id, label) => {
-    return `${id}("${cleanLabel(label, id)}")`;
-  });
-
-  // 2. Match ID(...)
-  sanitized = sanitized.replace(/([a-zA-Z0-9_-]+)\s*\(([^)\r\n]*)\)/g, (match, id, label) => {
-    if (label.startsWith('"') && label.endsWith('"')) return match;
-    if (label.startsWith('(') && label.endsWith(')')) return match;
-    return `${id}("${cleanLabel(label, id)}")`;
-  });
-
-  // 3. Match ID[...]
-  sanitized = sanitized.replace(/([a-zA-Z0-9_-]+)\s*\[([^\]\r\n]*)\]/g, (match, id, label) => {
-    return `${id}["${cleanLabel(label, id)}"]`;
-  });
-
-  return sanitized;
-};
+initMermaid();
 
 /**
  * Mermaid 图表渲染子组件
@@ -82,11 +18,21 @@ function MermaidRenderer({ chart }) {
       const id = `mermaid-test-${Math.random().toString(36).substring(7)}`;
       const cleaned = sanitizeMermaid(chart);
         
-      mermaid.render(id, cleaned).then((result) => {
-        setSvg(result.svg);
-      }).catch(err => {
+      import('mermaid').then(mermaid => {
+        mermaid.default.render(id, cleaned).then((result) => {
+          const cleanSvg = DOMPurify.sanitize(result.svg, {
+            USE_PROFILES: { svg: true },
+            ADD_TAGS: ['foreignObject']
+          });
+          setSvg(cleanSvg);
+        }).catch(err => {
         setError(err.message);
-      });
+        const danglingSvg = document.getElementById(id);
+        if (danglingSvg) danglingSvg.remove();
+        const dDanglingSvg = document.getElementById('d' + id);
+        if (dDanglingSvg) dDanglingSvg.remove();
+        });
+      }).catch(err => setError("Failed to load mermaid: " + err.message));
     } catch (err) {
       setError(err.message);
     }
@@ -120,10 +66,91 @@ function MermaidRenderer({ chart }) {
 
 export default function KnowledgeTest({ onClose, currentProfileId, currentGrade, selectedSubject, currentEdition, authFetch }) {
   const { language } = useAppStore();
+
+  const getExamGuideAndButtonText = () => {
+    const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
+    const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+    
+    let guide = {
+      title: '📋 本卷信息与作答指南（依照中考题型格式出题）：',
+      btnText: '🚀 依据中考格式出题',
+      desc: (
+        <>
+          • <b>一、选择题（第1-5题，共40分）：</b>包含平方根、几何角度、平移象限等，每小题 8 分，只有一个正确选项。<br />
+          • <b>二、填空题（第6-8题，共24分）：</b>包含有理数绝对值化简、不等式整数解等，每小题 8 分，直接输入最终结果。<br />
+          • <b>三、解答题（第9-11题，共86分）：</b>第 9 题（20分）为计算题；第 10 题（26分）为几何证明填空，需要在证明步骤的横线上补齐结论或定理根据；第 11 题（40分）为直方图/折线图或学科综合应用题。
+        </>
+      )
+    };
+
+    
+    if (selectedSubject === '语文') {
+      if (isElementary) {
+        guide.title = '📋 本卷信息与作答指南（完全依照真实小学语文考试格式）：';
+        guide.btnText = '🚀 依据真题试卷格式出题';
+        guide.desc = (
+          <>
+            • <b>一、字音与词语拼写：</b>看拼音写词语、形近字组词，考查基础字词。<br />
+            • <b>二/三、词语与句子练习：</b>成语补充、句子仿写及改错，强化表达能力。<br />
+            • <b>四、判断题：</b>对课文内容及寓意的理解判断（点击 √ 或 ×）。<br />
+            • <b>五/六/七、默写与阅读：</b>古诗默写、课内外精美文章阅读理解分析。<br />
+            • <b>八、习作表达：</b>看图写话或半命题小作文，考查综合书面表达能力。
+          </>
+        );
+      } else {
+        guide.title = '📋 本卷信息与作答指南（依照中考语文格式出题）：';
+        guide.btnText = '🚀 依据中考语文格式出题';
+        guide.desc = (
+          <>
+            • <b>基础与默写：</b>字音字形、病句辨析、名句默写等。<br />
+            • <b>阅读与判断：</b>古诗文阅读、现代文大阅读，新增判断题型。<br />
+            • <b>写作表达：</b>命题/材料作文大纲与片段练习。
+          </>
+        );
+      }
+    } else if (selectedSubject === '数学') {
+      if (isElementary) {
+        guide.title = '📋 本卷信息与作答指南（完全依照真实小学数学考试格式）：';
+        guide.btnText = '🚀 依据真题试卷格式出题';
+        guide.desc = (
+          <>
+            • <b>一、填空题：</b>核心概念的细节考查（倍数、规律、基础算术）。<br />
+            • <b>二、判断题：</b>对数理概念和公式的明辨是非（点击 √ 或 ×）。<br />
+            • <b>三/四、选择与计算：</b>估算及算式推演选择，口算与竖式计算综合大题。<br />
+            • <b>五、操作题：</b>方位图或格纸操作作图题（使用自动几何绘图引擎渲染）。<br />
+            • <b>六、解决问题：</b>购物、周长、行程等包含多问的经典实际应用题。
+          </>
+        );
+      } else {
+        guide.title = '📋 本卷信息与作答指南（依照中考数学格式出题）：';
+        guide.btnText = '🚀 依据中考数学格式出题';
+        guide.desc = (
+          <>
+            • <b>判断与选择：</b>新增判断题，考查代数几何性质、函数系数等。<br />
+            • <b>填空与计算：</b>代数式化简求值、线段与角度计算。<br />
+            • <b>解答与证明：</b>几何证明推理、函数与动点压轴综合应用题。
+          </>
+        );
+      }
+    } else {
+       guide.title = '📋 本卷信息与作答指南（全真模拟试卷）：';
+       guide.btnText = '🚀 依据真题试卷格式出题';
+       guide.desc = (
+         <>
+           • <b>综合卷面结构：</b>包含判断、选择、填空与综合解答题，全面覆盖知识考点。<br />
+           • <b>题型多样：</b>新增判断题型（点击 √ 或 ×），解答题字数充实。<br />
+           • <b>严谨判卷：</b>AI 将依据详细的答题步骤给予得分，请认真作答。
+         </>
+       );
+    }
+
+    return guide;
+  };
   
   // UI 阶段状态: 'setup' | 'generating' | 'testing' | 'grading' | 'report'
   const [stage, setStage] = useState('setup'); 
-  const [testType, setTestType] = useState('unit'); // 'unit' | 'midterm' | 'final'
+  const [testType, setTestType] = useState('custom'); // 'custom' | 'unit' | 'midterm' | 'final'
+  const [customKnowledgePoints, setCustomKnowledgePoints] = useState('');
   
   // 章节列表和选择
   const [chapters, setChapters] = useState([]);
@@ -250,7 +277,8 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
           subject: selectedSubject,
           type: testType,
           chapter_id: testType === 'unit' ? selectedChapterId : undefined,
-          edition: currentEdition
+          edition: currentEdition,
+          knowledge_points: testType === 'custom' ? customKnowledgePoints : undefined
         })
       });
 
@@ -343,24 +371,44 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     }
   };
 
-  // 150分制评级
+  // 动态分值评级 (小学满分 100，初中满分 150)
   const getScoreRating = (score) => {
-    if (score >= 135) return { label: '👑 优秀 (特等奖)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
-    if (score >= 90) return { label: '⭐ 及格 (通过)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+    const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
+    const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+    const excellentLimit = isElementary ? 90 : 135;
+    const passLimit = isElementary ? 60 : 90;
+
+    if (score >= excellentLimit) return { label: '👑 优秀 (特等奖)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
+    if (score >= passLimit) return { label: '⭐ 及格 (通过)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
     return { label: '🔥 需努力', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
   };
 
   // 按真题类型分类
-  const getGroupedQuestions = () => {
-    if (!paper) return { choices: [], blanks: [], essays: [] };
-    return {
-      choices: paper.questions.filter(q => q.type === 'choice'),
-      blanks: paper.questions.filter(q => q.type === 'blank'),
-      essays: paper.questions.filter(q => q.type === 'essay')
-    };
+  
+  const getQuestionBlocks = () => {
+    if (!paper || !paper.questions) return [];
+    let blocks = [];
+    let currentBlock = null;
+
+    paper.questions.forEach((q, idx) => {
+      if (!currentBlock || currentBlock.type !== q.type) {
+        currentBlock = {
+          type: q.type,
+          questions: [],
+          score: 0,
+          id: `block_${idx}`
+        };
+        blocks.push(currentBlock);
+      }
+      currentBlock.questions.push(q);
+      currentBlock.score += q.score;
+    });
+
+    return blocks;
   };
 
-  const { choices, blanks, essays } = getGroupedQuestions();
+  const questionBlocks = getQuestionBlocks();
+
 
   return (
     <div className="mistake-overlay" style={{ zIndex: 1000 }}>
@@ -387,9 +435,16 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
               <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold', color: '#fbbf24' }}>
                 {stage === 'testing' ? paper?.title : '真题测试中心'}
               </h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
-                {getGradeName(currentGrade)} · {selectedSubject} （考试时间：120分钟  满分：150分）
-              </p>
+              {(() => {
+                const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
+                const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+                const scoreText = isElementary ? '考试时间：90分钟  满分：100分' : '考试时间：120分钟  满分：150分';
+                return (
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                    {getGradeName(currentGrade)} · {selectedSubject} （{scoreText}）
+                  </p>
+                );
+              })()}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -434,6 +489,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
               </h3>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
                 {[
+                  { id: 'custom', label: '✨ 自定义知识点' },
                   { id: 'unit', label: '📖 单元阶段测试' },
                   { id: 'midterm', label: '📅 期中阶段大考' },
                   { id: 'final', label: '🎓 期末综合检测' }
@@ -490,42 +546,69 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                   )}
                 </div>
               )}
+
+              {testType === 'custom' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', color: '#9ca3af' }}>请输入您想测试的具体知识点（可输入多个）：</label>
+                  <textarea
+                    value={customKnowledgePoints}
+                    onChange={e => setCustomKnowledgePoints(e.target.value)}
+                    placeholder="例如：一元二次方程、勾股定理的应用..."
+                    rows={3}
+                    style={{
+                      padding: '12px',
+                      background: '#1f2937',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      outline: 'none',
+                      resize: 'vertical',
+                      fontSize: '13px'
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(251, 191, 36, 0.04)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
-              <h4 style={{ margin: 0, color: '#fbbf24', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                📋 本卷信息与作答指南（依照中考题型格式出题）：
-              </h4>
-              <div style={{ margin: 0, fontSize: '12px', color: '#cbd5e1', lineHeight: '1.7' }}>
-                • <b>一、选择题（第1-5题，共40分）：</b>包含平方根、几何角度、平移象限等，每小题 8 分，只有一个正确选项。<br />
-                • <b>二、填空题（第6-8题，共24分）：</b>包含有理数绝对值化简、不等式整数解等，每小题 8 分，直接输入最终结果。<br />
-                • <b>三、解答题（第9-11题，共86分）：</b>第 9 题（20分）为计算题；第 10 题（26分）为几何证明填空，需要在证明步骤的横线上补齐结论或定理根据；第 11 题（40分）为直方图/折线图或学科综合应用题。
-              </div>
-            </div>
+            {(() => {
+              const guideInfo = getExamGuideAndButtonText();
+              return (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(251, 191, 36, 0.04)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
+                    <h4 style={{ margin: 0, color: '#fbbf24', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {guideInfo.title}
+                    </h4>
+                    <div style={{ margin: 0, fontSize: '12px', color: '#cbd5e1', lineHeight: '1.7' }}>
+                      {guideInfo.desc}
+                    </div>
+                  </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={testType === 'unit' && chapters.length === 0}
-              style={{
-                marginTop: 'auto',
-                width: '100%',
-                padding: '14px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                color: 'white',
-                border: 'none',
-                fontWeight: 'bold',
-                fontSize: '15px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
-                transition: 'transform 0.2s',
-                opacity: (testType === 'unit' && chapters.length === 0) ? 0.5 : 1
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              🚀 依据中考格式出题
-            </button>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={(testType === 'unit' && chapters.length === 0) || (testType === 'custom' && !customKnowledgePoints.trim())}
+                    style={{
+                      marginTop: 'auto',
+                      width: '100%',
+                      padding: '14px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                      color: 'white',
+                      border: 'none',
+                      fontWeight: 'bold',
+                      fontSize: '15px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
+                      transition: 'transform 0.2s',
+                      opacity: ((testType === 'unit' && chapters.length === 0) || (testType === 'custom' && !customKnowledgePoints.trim())) ? 0.5 : 1
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    {guideInfo.btnText}
+                  </button>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -544,129 +627,142 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         {stage === 'testing' && paper && (
           <div className="test-content-outer" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="test-content-inner" style={{ flex: 1, overflowY: 'auto', paddingRight: '6px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              {/* 3.1 一、选择题 */}
-              {choices.length > 0 && (
-                <div>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fbbf24', borderLeft: '4px solid #3b82f6', paddingLeft: '8px' }}>
-                    一、选择题（单选，每小题 8 分，共 40 分）
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {choices.map((q, idx) => (
-                      <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                        <div style={{ fontSize: '13px', color: '#f3f4f6', lineHeight: '1.6', marginBottom: '10px' }}>
-                          <b>第 {idx + 1} 题.</b> {renderQuestionText(q.question)}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                          {q.options && q.options.map(opt => {
-                            const optLetter = opt.trim().charAt(0).toUpperCase();
-                            const isSelected = answers[q.id] === optLetter;
-                            return (
-                              <button
-                                key={opt}
-                                onClick={() => setAnswers(prev => ({ ...prev, [q.id]: optLetter }))}
-                                style={{
-                                  textAlign: 'left',
-                                  padding: '10px 14px',
-                                  borderRadius: '8px',
-                                  border: '1px solid',
-                                  borderColor: isSelected ? '#3b82f6' : 'rgba(255,255,255,0.06)',
-                                  background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.01)',
-                                  color: isSelected ? '#60a5fa' : '#d1d5db',
-                                  cursor: 'pointer',
-                                  fontSize: '13px',
-                                  transition: 'all 0.15s'
-                                }}
-                              >
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* 3.2 二、填空题 */}
-              {blanks.length > 0 && (
-                <div>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fbbf24', borderLeft: '4px solid #3b82f6', paddingLeft: '8px' }}>
-                    二、填空题（每小题 8 分，共 24 分）
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {blanks.map((q, idx) => (
-                      <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                        <div style={{ fontSize: '13px', color: '#f3f4f6', lineHeight: '1.6', marginBottom: '10px' }}>
-                          <b>第 {choices.length + idx + 1} 题.</b> {renderQuestionText(q.question)}
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="在此处填写填空题最终答案（如具体数值或表达式）"
-                          value={answers[q.id] || ''}
-                          onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                          style={{
-                            width: '100%',
-                            padding: '10px 12px',
-                            background: '#1f2937',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            borderRadius: '8px',
-                            color: 'white',
-                            fontSize: '13px',
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {questionBlocks.map((block, bIdx) => {
+                const getBlockTitle = (type) => {
+                  switch(type) {
+                    case 'choice': return '选择题';
+                    case 'judgment': return '判断题';
+                    case 'blank': return '填空题';
+                    case 'essay': return '解答/作图/应用题';
+                    default: return '解答题';
+                  }
+                };
+                
+                return (
+                  <div key={block.id}>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fbbf24', borderLeft: '4px solid #3b82f6', paddingLeft: '8px' }}>
+                      {getBlockTitle(block.type)}（共 {block.questions.length} 题，每小题 {block.questions[0]?.score} 分，共 {block.score} 分）
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {block.questions.map((q) => (
+                        <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 'bold' }}>
+                              题 {q.id}.
+                            </span>
+                            <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold' }}>
+                              {q.score} 分
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#f3f4f6', lineHeight: '1.6', marginBottom: '12px' }}>
+                            {renderQuestionText(q.question)}
+                          </div>
+                          
+                          {block.type === 'choice' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                              {q.options && q.options.map(opt => {
+                                const optLetter = opt.trim().charAt(0).toUpperCase();
+                                const isSelected = answers[q.id] === optLetter;
+                                return (
+                                  <button
+                                    key={opt}
+                                    onClick={() => setAnswers(prev => ({ ...prev, [q.id]: optLetter }))}
+                                    style={{
+                                      textAlign: 'left',
+                                      padding: '10px 14px',
+                                      borderRadius: '8px',
+                                      border: '1px solid',
+                                      borderColor: isSelected ? '#3b82f6' : 'rgba(255,255,255,0.06)',
+                                      background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.01)',
+                                      color: isSelected ? '#60a5fa' : '#d1d5db',
+                                      cursor: 'pointer',
+                                      fontSize: '13px',
+                                      transition: 'all 0.15s'
+                                    }}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
-              {/* 3.3 三、解答题 */}
-              {essays.length > 0 && (
-                <div>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fbbf24', borderLeft: '4px solid #3b82f6', paddingLeft: '8px' }}>
-                    三、解答题（共 86 分，请写出必要的解答或证明步骤）
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {essays.map((q, idx) => (
-                      <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <span style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 'bold' }}>
-                            第 {choices.length + blanks.length + idx + 1} 题. {q.id === 9 ? '计算与分析题' : q.id === 10 ? '几何证明与逻辑填空题' : '综合实际应用题'}
-                          </span>
-                          <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold' }}>
-                            {q.score} 分
-                          </span>
+                          {block.type === 'judgment' && (
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                              {['√', '×'].map(opt => {
+                                const isSelected = answers[q.id] === opt;
+                                return (
+                                  <button
+                                    key={opt}
+                                    onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                                    style={{
+                                      flex: 1,
+                                      padding: '10px 14px',
+                                      borderRadius: '8px',
+                                      border: '1px solid',
+                                      borderColor: isSelected ? '#3b82f6' : 'rgba(255,255,255,0.06)',
+                                      background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.01)',
+                                      color: isSelected ? (opt === '√' ? '#10b981' : '#ef4444') : '#d1d5db',
+                                      cursor: 'pointer',
+                                      fontSize: '16px',
+                                      fontWeight: 'bold',
+                                      transition: 'all 0.15s'
+                                    }}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {block.type === 'blank' && (
+                            <input
+                              type="text"
+                              placeholder="在此处填写填空题最终答案"
+                              value={answers[q.id] || ''}
+                              onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                              style={{
+                                width: '100%',
+                                padding: '12px 14px',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: '#1f2937',
+                                color: '#f9fafb',
+                                fontSize: '13px',
+                                boxSizing: 'border-box',
+                                outline: 'none'
+                              }}
+                            />
+                          )}
+
+                          {block.type === 'essay' && (
+                            <textarea
+                              placeholder="在此处写下你的解答过程、分析思路或作文..."
+                              value={answers[q.id] || ''}
+                              onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                              rows={5}
+                              style={{
+                                width: '100%',
+                                padding: '12px 14px',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: '#1f2937',
+                                color: '#f9fafb',
+                                fontSize: '13px',
+                                resize: 'vertical',
+                                boxSizing: 'border-box',
+                                outline: 'none'
+                              }}
+                            />
+                          )}
                         </div>
-                        <div style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '12px' }}>
-                          {renderQuestionText(q.question)}
-                        </div>
-                        <textarea
-                          placeholder={q.id === 10 ? "请在此横向输入对应横线 ______ 处的推导结论或几何定理依据（如：1. ∠1；2. 平行公理）..." : "请详细写出你的计算核心公式、推导过程、答题结论（AI 阅卷官会按你的解题步骤给分）..."}
-                          rows={6}
-                          value={answers[q.id] || ''}
-                          onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                          style={{
-                            width: '100%',
-                            padding: '12px',
-                            background: '#1f2937',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            borderRadius: '8px',
-                            color: 'white',
-                            fontSize: '13px',
-                            outline: 'none',
-                            resize: 'none',
-                            fontFamily: 'inherit',
-                            lineHeight: '1.6'
-                          }}
-                        />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
 
             <button

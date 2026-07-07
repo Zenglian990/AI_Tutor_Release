@@ -4,72 +4,10 @@ import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
 import React, { useState, useEffect, useRef } from 'react'
 import { preprocessLatex } from '../utils/math'
-import mermaid from 'mermaid'
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'default',
-  useMaxWidth: false,
-  securityLevel: 'loose',
-  htmlLabels: false,
-  flowchart: {
-    htmlLabels: false,
-    padding: 18,
-    useWidth: true
-  },
-  mindmap: {
-    htmlLabels: false
-  }
-});
-const sanitizeMermaid = (code) => {
-  if (typeof code !== 'string') return code;
+import DOMPurify from 'dompurify';
+import { initMermaid, sanitizeMermaid, mermaid } from '../utils/mermaid_helper';
 
-  // 1. Clean math delimiters in the entire code block first
-  let cleanedCode = code
-    .replace(/\\\[/g, '') // remove \[
-    .replace(/\\\]/g, '') // remove \]
-    .replace(/\\\(/g, '') // remove \(
-    .replace(/\\\)/g, '') // remove \)
-    .replace(/\$/g, '')   // remove $
-    .replace(/\\times/g, '×')
-    .replace(/\\div/g, '÷')
-    .replace(/\\pi/g, 'π')
-    .replace(/\\le/g, '≤')
-    .replace(/\\ge/g, '≥')
-    .replace(/\\pm/g, '±')
-    .replace(/\\ne/g, '≠')
-    .replace(/\\angle/g, '∠');
-
-  // Helper to clean remaining quotes/backslashes inside labels
-  const cleanLabel = (label, fallback) => {
-    const cleaned = label
-      .replace(/\\/g, '') // strip remaining backslashes
-      .replace(/"/g, '')  // strip double quotes entirely to prevent inner nesting conflict
-      .trim();
-    // If the label becomes empty after cleaning, use the node ID as fallback
-    // In Mermaid, an empty label like A("") or A[""] crashes the parser.
-    return cleaned === '' ? fallback : cleaned;
-  };
-
-  // Match node definitions:
-  // 1. Match ID((...)) and safely downgrade to ID("...") to prevent lexical/parse errors in Mermaid
-  let sanitized = cleanedCode.replace(/([a-zA-Z0-9_-]+)\s*\(\(([^)\r\n]*)\)\)/g, (match, id, label) => {
-    return `${id}("${cleanLabel(label, id)}")`;
-  });
-
-  // 2. Match ID(...)
-  sanitized = sanitized.replace(/([a-zA-Z0-9_-]+)\s*\(([^)\r\n]*)\)/g, (match, id, label) => {
-    if (label.startsWith('"') && label.endsWith('"')) return match;
-    if (label.startsWith('(') && label.endsWith(')')) return match;
-    return `${id}("${cleanLabel(label, id)}")`;
-  });
-
-  // 3. Match ID[...]
-  sanitized = sanitized.replace(/([a-zA-Z0-9_-]+)\s*\[([^\]\r\n]*)\]/g, (match, id, label) => {
-    return `${id}["${cleanLabel(label, id)}"]`;
-  });
-
-  return sanitized;
-};
+initMermaid();
 
 function MermaidChart({ chart }) {
   const svgRef = useRef(null);
@@ -94,9 +32,12 @@ function MermaidChart({ chart }) {
         const id = `mermaid-${Math.random().toString(36).substring(7)}`;
         mermaid.render(id, sanitizedChart).then((result) => {
           if (svgRef.current) {
-            // mermaid 已对输入做安全处理，直接使用原始 SVG 输出
-            // 使用 DOMPurify 会导致 foreignObject 内的 HTML 文字被过滤，造成节点空白
-            svgRef.current.innerHTML = result.svg;
+            // Fixed S2: Use DOMPurify to sanitize SVG and allow foreignObject for HTML labels
+            const cleanSvg = DOMPurify.sanitize(result.svg, {
+              USE_PROFILES: { svg: true },
+              ADD_TAGS: ['foreignObject']
+            });
+            svgRef.current.innerHTML = cleanSvg;
             const svgEl = svgRef.current.querySelector('svg');
             if (svgEl) {
               svgEl.style.maxWidth = 'none';
@@ -130,6 +71,10 @@ function MermaidChart({ chart }) {
           }
         }).catch(e => {
           if (svgRef.current) svgRef.current.innerHTML = `<pre style="color:red;font-size:12px;">图表渲染错误: ${e.message}</pre>`;
+          const danglingSvg = document.getElementById(id);
+          if (danglingSvg) danglingSvg.remove();
+          const dDanglingSvg = document.getElementById('d' + id);
+          if (dDanglingSvg) dDanglingSvg.remove();
         });
       } catch (error) {
         if (svgRef.current) svgRef.current.innerHTML = `<pre style="color:red;font-size:12px;">图表渲染错误: ${error.message}</pre>`;
@@ -141,99 +86,27 @@ function MermaidChart({ chart }) {
     const svgEl = svgRef.current?.querySelector('svg');
     if (!svgEl) return;
 
-    // Clone the SVG so we can modify it safely without affecting the display
+    // Fixed U4: Removed Canvas 2D and PNG conversion that crashes on mobile
     const clonedSvg = svgEl.cloneNode(true);
-
-    // Get width and height from viewBox or client bounds
-    const viewBox = clonedSvg.getAttribute('viewBox');
-    let width = 800;
-    let height = 600;
-    if (viewBox) {
-      const parts = viewBox.split(/\s+/);
-      if (parts.length === 4) {
-        width = parseFloat(parts[2]);
-        height = parseFloat(parts[3]);
-      }
-    } else {
-      const rect = svgEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        width = rect.width;
-        height = rect.height;
-      }
-    }
-
-    // Set explicit width and height attributes on the cloned SVG tag so the Image object can measure it
-    clonedSvg.setAttribute('width', width);
-    clonedSvg.setAttribute('height', height);
-    clonedSvg.style.width = width + 'px';
-    clonedSvg.style.height = height + 'px';
-
     const svgData = new XMLSerializer().serializeToString(clonedSvg);
     const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
     const url = URL.createObjectURL(svgBlob);
     blobUrlRef.current = url;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous'; // Prevent security taint errors
-    img.onload = () => {
-      try {
-        const scale = 2; // High-definition 2x scale for printing/zooming
-        const canvas = document.createElement('canvas');
-        canvas.width = width * scale;
-        canvas.height = height * scale;
-        const ctx = canvas.getContext('2d');
-        
-        // Fill canvas with a solid white background (instead of default black/transparent)
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, 0, 0, width, height);
+    setGeneratedPngUrl(url); // We just pass the SVG blob URL
+    setShowSaveModal(true);
 
-        const pngUrl = canvas.toDataURL('image/png');
-        setGeneratedPngUrl(pngUrl);
-        setShowSaveModal(true);
-
-        // Also attempt auto-download for desktop convenience
-        try {
-          const a = document.createElement('a');
-          a.href = pngUrl;
-          a.download = `思维导图_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        } catch (err) {
-          console.warn("Auto-download failed or not supported in this client", err);
-        }
-      } catch (e) {
-        console.error('Failed to convert mindmap to PNG, falling back to SVG:', e);
-        triggerSvgFallback(url);
-      }
-    };
-    
-    img.onerror = (err) => {
-      console.error('Image load failed for SVG download, falling back to direct SVG:', err);
-      triggerSvgFallback(url);
-    };
-
-    function triggerSvgFallback(blobUrl) {
-      setGeneratedPngUrl(blobUrl);
-      setShowSaveModal(true);
-
-      try {
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = `思维导图_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.svg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (err) {
-        console.warn("Auto-download fallback failed", err);
-      }
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `思维导图_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.warn("Auto-download failed or not supported in this client", err);
     }
-
-    img.src = url;
   };
 
   return (

@@ -79,6 +79,8 @@ const SOCRATIC_LEVELS = [
   { value: 'strict', label: '🦉 苏格拉底', title: 'AI只用提问引导，绝不直接给答案' },
 ];
 
+import { getTranslation } from '../utils/i18n';
+
 export default function Header({
   profiles, currentProfileId, onProfileChange, onDeleteProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
@@ -100,8 +102,8 @@ export default function Header({
         🎓
       </div>
       <div className="header-text">
-        <h1>曾练专属私教</h1>
-        <div className="header-subtitle">基于{selectedEdition}1-9年级教材 · 支持拍照识题 · 语音提问</div>
+        <h1>{getTranslation(language, 'app.title')}</h1>
+        <div className="header-subtitle">{getTranslation(language, 'app.subtitle')}</div>
       </div>
       <button onClick={onThemeToggle} aria-label={isLightMode ? '切换到深色模式' : '切换到浅色模式'} title="切换主题"
         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', marginRight: '5px' }}>

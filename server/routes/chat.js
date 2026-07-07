@@ -11,7 +11,8 @@ const logger = require('../services/logger');
 router.post('/chat', async (req, res) => {
   try {
     const { query, grade, subject, history, profile_id, socratic, edition, model } = req.body;
-    if (!query) return res.status(400).json({ error: "Query is required" });
+    if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
+    if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
 
     // Trie Safety Check
     const safetyRedirect = checkSafetyAndRedirect(query);

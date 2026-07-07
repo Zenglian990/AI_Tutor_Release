@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../store/useStore';
+import { encryptData, decryptData } from '../utils/crypto_helper';
 
 /**
  * Strengthened ParentalGate:
@@ -52,7 +53,8 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = 'ÊïèÊ
   const [tamperedError, setTamperedError] = useState('');
 
   const handleVerifyTamperedToken = () => {
-    const activeToken = localStorage.getItem('ai_tutor_api_token') || '';
+    const encrypted = localStorage.getItem('ai_tutor_api_token') || '';
+    const activeToken = decryptData(encrypted) || '';
     if (tamperedToken.trim() === activeToken && activeToken !== '') {
       setIsTampered(false);
       setIsSettingUp(true);
@@ -63,8 +65,10 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = 'ÊïèÊ
     }
   };
 
-  const savedPinHash = localStorage.getItem(GATE_PIN_HASH_KEY);
-  const savedSecurityAnswerHash = localStorage.getItem(GATE_SECURITY_ANSWER_HASH);
+  const savedPinHashEnc = localStorage.getItem(GATE_PIN_HASH_KEY);
+  const savedPinHash = decryptData(savedPinHashEnc);
+  const savedSecurityAnswerHashEnc = localStorage.getItem(GATE_SECURITY_ANSWER_HASH);
+  const savedSecurityAnswerHash = decryptData(savedSecurityAnswerHashEnc);
 
   useEffect(() => {
     if (isOpen) {
@@ -157,7 +161,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = 'ÊïèÊ
         } else {
           if (newPinVal === firstPin) {
             const hash = await sha256(newPinVal);
-            localStorage.setItem(GATE_PIN_HASH_KEY, hash);
+            const ansHash = await sha256(securityAnswer.trim().toLowerCase());
+            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+            localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(selectedQuestion + ':' + ansHash));
             sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
             authFetch('/api/admin/pin', {
               method: 'POST',
@@ -245,7 +251,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = 'ÊïèÊ
       return;
     }
     const hash = await sha256(newPin);
-    localStorage.setItem(GATE_PIN_HASH_KEY, hash);
+    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
     sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
     authFetch('/api/admin/pin', {
       method: 'POST',

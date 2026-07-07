@@ -3,12 +3,15 @@ const router = express.Router();
 const { synthesizeSpeech } = require('../services/tts-service');
 const logger = require('../services/logger');
 
-// GET /api/tts
-router.get('/tts', async (req, res) => {
+// POST /api/tts
+router.post('/tts', async (req, res) => {
   try {
-    const { text, grade, voice } = req.query;
+    const { text, grade, voice } = req.body;
     if (!text) {
       return res.status(400).json({ error: 'Text parameter is required' });
+    }
+    if (text.length > 5000) {
+      return res.status(400).json({ error: 'Text is too long for TTS (max 5000 chars)', code: 'ERR_VALIDATION' });
     }
 
     // Determine voice based on grade or parameters

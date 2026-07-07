@@ -52,10 +52,15 @@ async function startDataRetentionCleanup(getSqliteDb) {
 
     if (totalChanges > 0) {
       try {
+        await db.run('PRAGMA busy_timeout = 5000;');
         await db.run('VACUUM;');
         logger.info(`[DataRetention] SQLite database vacuumed successfully (cleaned ${totalChanges} records).`);
       } catch (err) {
-        logger.error('[DataRetention] Failed to vacuum SQLite database:', err);
+        if (err.code === 'SQLITE_BUSY') {
+          logger.warn('[DataRetention] SQLite database is busy; skipping VACUUM this time.');
+        } else {
+          logger.error('[DataRetention] Failed to vacuum SQLite database:', err);
+        }
       }
     }
   };

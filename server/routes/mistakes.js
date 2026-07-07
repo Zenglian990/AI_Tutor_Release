@@ -4,6 +4,7 @@ const { getSqliteDb } = require('../db/init');
 const { NODE_ENV } = require('../config');
 const logger = require('../services/logger');
 const { encryptField, decryptField } = require('../utils/crypto');
+const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 
 // GET /api/mistakes
 router.get('/mistakes', async (req, res) => {
@@ -102,7 +103,7 @@ router.get('/mistakes/review-challenge', async (req, res) => {
     const decryptedQuery = decryptField(row.query);
     const decryptedAnswer = decryptField(row.answer);
 
-    const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
+
     const prompt = `你是一位专属私教。学生在之前的学习中遇到了一道错题：
 【错题原题/问题】：${decryptedQuery}
 【当时AI的解答】：${decryptedAnswer}
