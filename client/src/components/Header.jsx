@@ -80,12 +80,14 @@ const SOCRATIC_LEVELS = [
 ];
 
 import { getTranslation } from '../utils/i18n';
+import { useAppStore } from '../store/useStore';
 
 export default function Header({
   profiles, currentProfileId, onProfileChange, onDeleteProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen
 }) {
+  const { language } = useAppStore();
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
   const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
 

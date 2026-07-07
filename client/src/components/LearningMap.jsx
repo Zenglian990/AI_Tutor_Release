@@ -171,5 +171,6 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
         )}
       </div>
     </div>
+  </div>
   );
 }
