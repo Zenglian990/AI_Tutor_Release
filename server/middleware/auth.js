@@ -33,7 +33,7 @@ function authMiddleware(req, res, next) {
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // In development, optionally skip auth
-  if (NODE_ENV === 'development' && !process.env.REQUIRE_AUTH) return next();
+  if ((NODE_ENV === 'development' || NODE_ENV === 'test') && !process.env.REQUIRE_AUTH) return next();
 
   // Brute-force check per IP
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';

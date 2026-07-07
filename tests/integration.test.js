@@ -237,11 +237,15 @@ test('Integration: POST /api/chat-vision — uploads image and streams response'
   assert.ok(streamData.text.includes('Gemini streaming response'), "Should receive mock Gemini response");
 });
 
-test('Integration: GET /api/tts — returns WAV audio response', async () => {
+test('Integration: POST /api/tts — returns WAV audio response', async () => {
   mockGeminiFail = false;
   geminiCalled = 0;
 
-  const res = await fetch(`${baseUrl}/api/tts?text=测试语音合成&grade=1_up`);
+  const res = await fetch(`${baseUrl}/api/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: '测试语音合成', grade: '1_up' })
+  });
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('Content-Type'), 'audio/wav');
   

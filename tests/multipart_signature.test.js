@@ -1,9 +1,13 @@
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
 
 // Force signature check logic to run by enabling REQUIRE_AUTH before importing middlewares
 process.env.REQUIRE_AUTH = 'true';
+
+after(() => {
+  delete process.env.REQUIRE_AUTH;
+});
 
 const { signatureMiddleware, verifyMultipartIntegrity } = require('../server/middleware/signature');
 const { API_TOKEN } = require('../server/config');

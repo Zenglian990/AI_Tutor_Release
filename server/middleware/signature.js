@@ -7,7 +7,7 @@ function signatureMiddleware(req, res, next) {
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // In development, optionally skip signature if REQUIRE_AUTH is not set
-  if (NODE_ENV === 'development' && !process.env.REQUIRE_AUTH) return next();
+  if ((NODE_ENV === 'development' || NODE_ENV === 'test') && !process.env.REQUIRE_AUTH) return next();
 
   // For localhost connections we bypass ONLY if explicitly enabled
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
@@ -56,7 +56,7 @@ function signatureMiddleware(req, res, next) {
  * against the cryptographically signed headers.
  */
 function verifyMultipartIntegrity(req, res, next) {
-  if (NODE_ENV === 'development' && !process.env.REQUIRE_AUTH) return next();
+  if ((NODE_ENV === 'development' || NODE_ENV === 'test') && !process.env.REQUIRE_AUTH) return next();
 
   // For localhost connections we bypass ONLY if explicitly enabled
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
