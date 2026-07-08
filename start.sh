@@ -13,6 +13,35 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
+# Check if .env has GEMINI_API_KEY
+has_key=0
+if [ -f ".env" ]; then
+    if grep -q "GEMINI_API_KEY=" .env; then
+        has_key=1
+    fi
+fi
+
+if [ "$has_key" -eq 0 ]; then
+    echo "============================================================"
+    echo "  Welcome to EduAgent (曾练专属私教 AI Tutor)!"
+    echo "============================================================"
+    echo "  First-time setup requires your Gemini API Key."
+    echo "  You can get one for free at Google AI Studio (https://aistudio.google.com/)."
+    echo "============================================================"
+    echo ""
+    read -p "Please enter your Gemini API Key: " user_key
+    
+    # Write to .env
+    if ! grep -q "GEMINI_API_KEY=" .env 2>/dev/null; then
+        echo "" >> .env
+        echo "GEMINI_API_KEY=$user_key" >> .env
+        echo "[INFO] Successfully saved your Gemini API Key to .env file."
+    else
+        echo "[INFO] GEMINI_API_KEY already exists in .env, skipping."
+    fi
+    echo ""
+fi
+
 # Install server dependencies if needed
 if [ ! -d "node_modules" ]; then
     echo "[1/3] Installing server dependencies..."

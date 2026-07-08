@@ -63,46 +63,27 @@ graph TD
 
 ### 🚀 快速开始 (Quick Start)
 
-#### 1. 环境准备
-- **Node.js** (v18 或更高)
-- **Python** (3.8 - 3.11)
+得益于我们高度自动化的启动脚本，您**不需要**手动配置复杂的 Node.js 和环境依赖。
 
-#### 2. 安装与构建
+#### 1. 克隆仓库
 ```bash
-# 克隆仓库并安装后端依赖
 git clone https://github.com/Zenglian990/AI_Tutor_Release.git
 cd AI_Tutor_Release
-npm install
-
-# 安装 Python 依赖 (用于 RAG 知识库更新)
-pip install -r requirements.txt
-
-# 构建前端页面
-cd client && npm install && npm run build && cd ..
 ```
 
-#### 3. 环境变量配置
-复制配置模板并填写您的密钥：
-```bash
-cp .env.example .env
-```
-在 `.env` 中填写：
-- `GEMINI_API_KEY`: 您的 Google Gemini API 密钥
-- `PROXY_URL`: (可选) 代理地址，如 `http://127.0.0.1:7897`
-
-#### 4. 知识库初始化
-> **🎁 开箱即用**：本发行版已内置约 90MB 的人教版教材向量数据，您可以跳过此步直接启动！
-
-如需加载最新教材：
-```bash
-# 将 PDF 教材放入 data/textbooks/ 后运行：
-python scripts/ingest_2_0.py
-```
-
-#### 5. 一键启动服务
+#### 2. 一键启动 (全自动构建)
 - **Windows**: 双击运行 `启动AI辅导.bat`
-- **Mac/Linux**: `sh start.sh` 或者直接运行 `npm start`
-服务启动后，系统将自动打开 `http://localhost:3001`。
+- **Mac/Linux**: 在终端执行 `sh start.sh`
+
+> **🪄 魔法体验**: 脚本会自动检查您的 Node.js 环境，并**全自动下载前后端依赖、打包构建前端页面**。
+> 首次启动时，终端会**自动弹窗**请求输入您的 `Gemini API Key`（去 Google AI Studio 免费申请即可），然后直接启动服务！
+
+系统将在 `http://localhost:3001` 自动打开主界面。
+
+#### 3. 关于知识库 (RAG)
+> **🎁 开箱即用**：本发行版已内置约 90MB 的人教版教材向量数据，您可以跳过任何 Python 配置，直接开始提问！
+
+（如果您后续需要用 Python 增量更新其他年级的 PDF，请参考 `scripts/ingest_2_0.py` 及 `requirements.txt`）。
 
 ## 🤝 参与贡献 (Contributing)
 我们非常欢迎社区成员的参与！无论您是开发者、教育工作者还是家长，都欢迎提交 Pull Request 或提出 Issue。让我们共同把这个工具打磨得更好，惠及更多普通家庭。

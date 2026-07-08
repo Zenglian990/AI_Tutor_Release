@@ -63,46 +63,27 @@ graph TD
 
 ### 🚀 Quick Start
 
-#### 1. Prerequisites
-- **Node.js** (v18 or higher)
-- **Python** (3.8 - 3.11)
+Thanks to our highly automated startup scripts, you **DO NOT** need to manually configure complex Node.js or Python dependencies.
 
-#### 2. Install and Build
+#### 1. Clone the repository
 ```bash
-# Clone the repository and install backend dependencies
 git clone https://github.com/Zenglian990/AI_Tutor_Release.git
 cd AI_Tutor_Release
-npm install
-
-# Install Python dependencies (for RAG knowledge base updates)
-pip install -r requirements.txt
-
-# Build the frontend application
-cd client && npm install && npm run build && cd ..
 ```
 
-#### 3. Environment Variables Configuration
-Copy the configuration template and fill in your keys:
-```bash
-cp .env.example .env
-```
-Fill in the following inside `.env`:
-- `GEMINI_API_KEY`: Your Google Gemini API Key
-- `PROXY_URL`: (Optional) Proxy address, e.g., `http://127.0.0.1:7897`
-
-#### 4. Knowledge Base Initialization
-> **🎁 Out-of-the-box**: This release includes approximately 90MB of pre-built vector data for K-9 textbooks. You can skip this step and start directly!
-
-To load the latest textbooks:
-```bash
-# Place PDF textbooks into data/textbooks/ and run:
-python scripts/ingest_2_0.py
-```
-
-#### 5. Start the Service
+#### 2. One-Click Start (Fully Automated)
 - **Windows**: Double-click to run `启动AI辅导.bat`
-- **Mac/Linux**: `sh start.sh` or run `npm start` directly
-After the service starts, the system will automatically open `http://localhost:3001`.
+- **Mac/Linux**: Run `sh start.sh` in your terminal
+
+> **🪄 Magic Experience**: The script will automatically check your Node.js environment, **download all backend/frontend dependencies, and build the React frontend automatically**.
+> On first run, it will **automatically prompt** you to enter your `Gemini API Key` (get one for free at Google AI Studio), and then start the server directly!
+
+The system will automatically open the main interface at `http://localhost:3001`.
+
+#### 3. About the Knowledge Base (RAG)
+> **🎁 Out-of-the-box**: This release includes approximately 90MB of pre-built vector data for K-9 textbooks. You can skip any Python configurations and start asking questions immediately!
+
+(If you need to incrementally update PDFs for other grades using Python later, please refer to `scripts/ingest_2_0.py` and `requirements.txt`).
 
 ## 🤝 Contributing
 We highly welcome contributions from community members! Whether you are a developer, an educator, or a parent, you are welcome to submit Pull Requests or open Issues. Let's work together to polish this tool and benefit more ordinary families.
