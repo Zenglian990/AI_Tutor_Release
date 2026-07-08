@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5242880
+      },
       manifest: {
         name: '曾练专属私教',
         short_name: '曾练AI',

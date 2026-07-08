@@ -15,11 +15,15 @@ router.get('/chapters', async (req, res) => {
 
     // Do not apply a default grade — return empty list if grade is unspecified
     // to prevent showing wrong grade content to uninitialised profiles.
-    if (!grade) return res.json({ chapters: [] });
+    if (!grade) {
+      logger.info('No grade provided, returning empty chapters');
+      return res.json({ chapters: [] });
+    }
 
     const key = edition ? `${grade}_${edition}` : grade;
     const gradeChapters = TEXTBOOK_CHAPTERS[key] || TEXTBOOK_CHAPTERS[grade] || {};
     const list = gradeChapters[subject] || [];
+    logger.info(`[DEBUG] grade=${grade}, subject=${subject}, edition=${edition}, key=${key}, list.length=${list.length}`);
 
     let progressMap = {};
     const sqliteDb = getSqliteDb();

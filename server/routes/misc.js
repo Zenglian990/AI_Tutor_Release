@@ -285,13 +285,13 @@ router.post('/report/weekly', async (req, res) => {
     const parent_name = sanitizeName(req.body.parent_name, '家长');
     const student_name = sanitizeName(req.body.student_name, '学生');
     const safeGrade = formatGradeName(grade);
-
     const gradeFilter = (grade && grade !== 'unknown') ? ` AND grade = ?` : '';
     const gradeParams = (grade && grade !== 'unknown') ? [grade] : [];
 
+    // chat_history table does not have a grade column, so we count all messages for the profile
     const chatCount = await sqliteDb.get(
-      `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')` + gradeFilter,
-      [profile_id, ...gradeParams]
+      `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')`,
+      [profile_id]
     );
     const mistakeCount = await sqliteDb.get(
       `SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')` + gradeFilter,

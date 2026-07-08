@@ -25,7 +25,7 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
   useEffect(() => {
     setLoading(true);
     setError(null);
-    authFetch(`/api/chapters?grade=${currentGrade}&subject=${currentSubject}&edition=${currentEdition || ''}`)
+    authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load chapters');
         return res.json();
@@ -66,7 +66,7 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
               <button onClick={() => {
                 setLoading(true);
                 setError(null);
-                authFetch(`/api/chapters?grade=${currentGrade}&subject=${currentSubject}&edition=${currentEdition || ''}`)
+                authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
                   .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
                   .then(d => { setChapters(d.chapters||[]); setLoading(false); })
                   .catch(e => { setError(e.message); setLoading(false); });

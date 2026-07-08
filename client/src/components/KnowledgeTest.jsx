@@ -205,8 +205,11 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   useEffect(() => {
     if (testType === 'unit' && stage === 'setup') {
       setChaptersLoading(true);
-      authFetch(`/api/chapters?grade=${currentGrade}&subject=${selectedSubject}&edition=${currentEdition || ''}`)
-        .then(res => res.json())
+      authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(selectedSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
+        .then(res => {
+          if (!res.ok) throw new Error('网络异常或验证失败，无法加载章节');
+          return res.json();
+        })
         .then(data => {
           const list = data.chapters || [];
           setChapters(list);
@@ -217,6 +220,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         })
         .catch(err => {
           console.error("Error fetching chapters:", err);
+          alert(err.message || '获取章节失败，请重新登录或重试');
           setChaptersLoading(false);
         });
     }
