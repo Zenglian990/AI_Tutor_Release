@@ -18,6 +18,18 @@
 
 ---
 
+## 📸 界面预览 (UI Showcase)
+
+<div align="center">
+  <img src="docs/assets/ui-main.png" alt="主界面演示" width="800"/>
+  <br/>
+  <img src="docs/assets/ui-settings.png" alt="系统设置演示" width="800"/>
+  <br/>
+  <img src="docs/assets/ui-levels.png" alt="年级选择演示" width="800"/>
+</div>
+
+---
+
 
 ## 中文版
 

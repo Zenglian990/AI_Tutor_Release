@@ -18,6 +18,18 @@
 
 ---
 
+## 📸 UI Showcase
+
+<div align="center">
+  <img src="docs/assets/ui-main.png" alt="UI Main" width="800"/>
+  <br/>
+  <img src="docs/assets/ui-settings.png" alt="UI Settings" width="800"/>
+  <br/>
+  <img src="docs/assets/ui-levels.png" alt="UI Levels" width="800"/>
+</div>
+
+---
+
 
 ## English Version
 
