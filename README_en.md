@@ -20,7 +20,7 @@
 
 ## 📸 UI Showcase
 
-> **💡 Tip**: (Please add screenshots or a 10-second GIF demo here later. This is the most crucial step to attract developers!)
+![UI Showcase](docs/assets/main-ui.png)
 
 ---
 
