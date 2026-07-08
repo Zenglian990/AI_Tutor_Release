@@ -111,4 +111,4 @@ python scripts/ingest_2_0.py
 We welcome contributions from the community! Whether you are a developer, an educator, or a parent, please feel free to submit Pull Requests or open Issues to make this tool better for everyone.
 
 ---
-*Built with ❤️ by Zeng Lian & the Open Source Community.*
+*Built with ❤️ by 曾练 (Zeng Lian) & the Open Source Community.*
