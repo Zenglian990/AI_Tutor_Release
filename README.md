@@ -18,11 +18,6 @@
 
 ---
 
-## 📸 界面预览 (UI Showcase)
-
-![主界面](docs/assets/main-ui.png)
-
----
 
 ## 中文版
 

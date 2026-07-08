@@ -18,11 +18,6 @@
 
 ---
 
-## 📸 UI Showcase
-
-![UI Showcase](docs/assets/main-ui.png)
-
----
 
 ## English Version
 
