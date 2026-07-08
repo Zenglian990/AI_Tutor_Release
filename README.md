@@ -1,79 +1,114 @@
-# 曾练专属私教 (AI Tutor Release v1.0)
+<div align="center">
 
-基于人教版 1-9 年级教材的智能辅导系统，专为1-9年级学生定制。教育平等从来不是一句口号！！！！！！
-我是一个电脑小白，深知教育的重要性，在经济教育的今天，尽了自己最大的努力，希望各路有共识的电脑大神，把这个产品继续
-做下去，让那些为了补课费而烦恼的普通家庭减轻一些困难。。。感谢！
+# 🎓 EduAgent : AI Tutor for K-9 Education
 
-## 🌟 核心功能
-- **双模式教学**：1-3年级（活泼鼓励型） vs 4-9（严谨逻辑型）。
-- **RAG 知识库**：深度集成人教版教材，所有回答优先引用课本原话。
-- **苏格拉底模式**：启发式提问，引导学生自主思考而非直接给答案。
-- **多模态搜题**：支持拍照上传题目，AI 自动解析。
-- **错题笔记本**：自动识别疑惑点并收录，支持“举一反三”变式练习。
+**国内首个专为 1-9 年级量身定制的开源 RAG AI 智能教辅系统**
 
-## 🚀 快速开始
+[![React](https://img.shields.io/badge/Frontend-React-blue?style=flat-square&logo=react)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/RAG-Python-yellow?style=flat-square&logo=python)](https://python.org/)
+[![Database](https://img.shields.io/badge/Vector_DB-LanceDB-orange?style=flat-square)](https://lancedb.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-### 1. 环境准备
-确保您的电脑已安装以下软件：
+[**English**](#english-version) | [**中文版**](#中文版)
+
+*“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
+
+</div>
+
+---
+
+## 📸 界面预览 (UI Showcase)
+
+> **💡 提示**: （稍后请您在这里添加系统的真实截图，或者录制一个 10 秒的 GIF 操作动图，这是留住开发者的最关键一步！）
+
+---
+
+## 中文版
+
+### 🌟 核心特性 (Features)
+
+EduAgent 摒弃了传统的“直接给答案”模式，而是基于大模型（Gemini）与精准向量库（RAG）构建了真正的**引导式智能体**：
+
+- 🧠 **双模态教学引擎**：
+  - **1-3年级（童趣模式）**：语言生动活泼，多鼓励、多比喻，保护孩子学习兴趣。
+  - **4-9年级（逻辑模式）**：侧重思维导图、逻辑推演与错题闭环。
+- 📚 **精准 RAG 知识库**：深度集成人教版教材 PDF，所有 AI 回答强制优先引用课本原话，杜绝大模型“幻觉”。
+- 🗣️ **苏格拉底提问法**：遇到难题不给最终答案，而是通过启发式提问（如“你觉得第一步应该先求什么？”）引导孩子自主解题。
+- 📷 **多模态搜题**：支持直接拍照上传作业题目，AI 自动进行 OCR 解析并分步指导。
+- 📒 **智能错题本**：后台自动追踪孩子反复出错的知识点并收录，支持一键生成“举一反三”变式练习卷。
+
+### 🛠️ 技术架构 (Tech Stack)
+
+```mermaid
+graph TD
+    A[React Client] -->|API Requests| B(Node.js Server)
+    B -->|Query & Context| C{Gemini LLM}
+    B -->|Search| D[(LanceDB Vector DB)]
+    D -->|Ingest| E[Python RAG Scripts]
+    E -->|Parse| F[1-9 Grade Textbooks PDF]
+```
+
+### 🚀 快速开始 (Quick Start)
+
+#### 1. 环境准备
 - **Node.js** (v18 或更高)
 - **Python** (3.8 - 3.11)
 
-### 2. 安装依赖
-在项目根目录下打开终端，运行：
+#### 2. 安装与构建
 ```bash
-# 安装后端依赖
+# 克隆仓库并安装后端依赖
+git clone https://github.com/Zenglian990/AI_Tutor_Release.git
+cd AI_Tutor_Release
 npm install
 
-# 安装 Python 依赖 (用于更新知识库)
+# 安装 Python 依赖 (用于 RAG 知识库更新)
 pip install -r requirements.txt
 
-# 安装前端依赖 (仅需一次)
-cd client
-npm install
-npm run build
-cd ..
+# 构建前端页面
+cd client && npm install && npm run build && cd ..
 ```
 
-### 3. 配置环境 (关键)
-1. 将 `.env.example` 重命名为 `.env`。
-2. 编辑 `.env` 文件：
-   - `GEMINI_API_KEY`: 填入您的 Google API Key (建议配置多个以增加频率上限)。
-   - `PROXY_URL`: 如果您在中国大陆使用，请填入代理地址 (如 `http://127.0.0.1:7897`)。
-
-### 4. 初始化/更新知识库
-**本发行版已内置了约 90MB 的人教版教材向量数据，您可以直接启动使用。**
-若要加载更多教材或更新数据：
-1. 将 PDF 教材放入 `data/textbooks/`。
-2. 运行：
+#### 3. 环境变量配置
+复制配置模板并填写您的密钥：
 ```bash
-# 下载教材 (可选)
-python scripts/download_textbooks.py
+cp .env.example .env
+```
+在 `.env` 中填写：
+- `GEMINI_API_KEY`: 您的 Google Gemini API 密钥
+- `PROXY_URL`: (可选) 代理地址，如 `http://127.0.0.1:7897`
 
-# 导入并建立向量索引
+#### 4. 知识库初始化
+> **🎁 开箱即用**：本发行版已内置约 90MB 的人教版教材向量数据，您可以跳过此步直接启动！
+
+如需加载最新教材：
+```bash
+# 将 PDF 教材放入 data/textbooks/ 后运行：
 python scripts/ingest_2_0.py
 ```
 
-### 5. 启动服务
-- **Windows**: 双击运行 `启动AI辅导.bat`。
-- **macOS/Linux**: 运行 `sh start.sh`。
-- **通用**: 在终端运行 `npm start`。
-
-服务启动后会自动打开浏览器访问 `http://localhost:3001`。
-
-## ⚠️ 重要说明
-    教育平等从来不是一句口号！！！！！！
-我是一个电脑小白，深知教育的重要性，在经济教育的今天，尽了自己最大的努力，希望各路有共识的电脑大神，把这个产品继续
-做下去，让那些为了补课费而烦恼的普通家庭减轻一些困难。。。感谢！
-
-1. **安全性**：切勿将包含真实 API Key 的 `.env` 文件分享给他人。
-2. **额度限制**：免费版 API 每天有 4000 次请求限制。若额度耗尽，请更换 Key 或等待次日刷新。
-3. **跨平台支持**：本系统支持 Windows, macOS 和 Linux。
-
-## 📁 目录结构
-- `server/`: 后端核心逻辑与 API（模块化架构，入口为 `server/index.js`）。
-- `client/`: React 前端源码。
-- `data/`: 存储 SQLite 错题本、LanceDB 向量库及教材文件。
-- `tests/`: 自动化测试脚本。
+#### 5. 一键启动服务
+- **Windows**: 双击运行 `启动AI辅导.bat`
+- **Mac/Linux**: `sh start.sh` 或者直接运行 `npm start`
+服务启动后，系统将自动打开 `http://localhost:3001`。
 
 ---
-*祝孩子们学习进步！*
+
+## English Version
+
+### 🎯 Overview
+**EduAgent** is an open-source, RAG-powered AI tutoring system specifically designed for K-9 students. Utilizing Google's Gemini models and LanceDB, it provides an adaptive, localized, and interactive educational experience.
+
+"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."
+
+### ✨ Highlights
+- **Adaptive Personas**: Switches between "Encouraging/Playful" for Grades 1-3, and "Logical/Rigorous" for Grades 4-9.
+- **RAG-Backed Accuracy**: Answers are grounded in official textbook data (PDFs) to completely eliminate AI hallucinations.
+- **Socratic Method**: The AI never gives away the direct answer; instead, it guides the student step-by-step through heuristic questioning.
+- **Auto-Mistake Tracker**: Automatically identifies weak points and generates variation exercises based on incorrect answers.
+
+### 🤝 Contributing
+We welcome contributions from the community! Whether you are a developer, an educator, or a parent, please feel free to submit Pull Requests or open Issues to make this tool better for everyone.
+
+---
+*Built with ❤️ by Zeng Lian & the Open Source Community.*
