@@ -26,6 +26,11 @@
 
 ## 中文版
 
+### 🎯 项目概述 (Overview)
+**EduAgent** 是一款开源的、基于 RAG（检索增强生成）的 AI 辅导系统，专为 K-9（1-9年级）学生设计。利用大语言模型和 LanceDB 向量数据库，它提供了一种自适应的、本地化的和高度互动的教育体验。
+
+“教育公平从来不是一句口号。我们致力于将顶级的 AI 私人教师带入每一个普通家庭。”
+
 ### 🌟 核心特性 (Features)
 
 EduAgent 摒弃了传统的“直接给答案”模式，而是基于大模型（Gemini）与精准向量库（RAG）构建了真正的**引导式智能体**：
@@ -92,3 +97,8 @@ python scripts/ingest_2_0.py
 - **Mac/Linux**: `sh start.sh` 或者直接运行 `npm start`
 服务启动后，系统将自动打开 `http://localhost:3001`。
 
+## 🤝 参与贡献 (Contributing)
+我们非常欢迎社区成员的参与！无论您是开发者、教育工作者还是家长，都欢迎提交 Pull Request 或提出 Issue。让我们共同把这个工具打磨得更好，惠及更多普通家庭。
+
+---
+*由曾练与开源社区倾情打造 ❤️ (Built with ❤️ by Zeng Lian & the Open Source Community)*
