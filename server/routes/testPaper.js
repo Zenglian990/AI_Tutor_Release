@@ -4,7 +4,9 @@ const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { getSqliteDb } = require('../db/init');
 const logger = require('../services/logger');
 const { NODE_ENV } = require('../config');
-const TEXTBOOK_CHAPTERS = require('../prompts/chapters.json');
+const fs = require('fs');
+const path = require('path');
+const { getChapters } = require('../utils/dataLoader');
 const { GRADE_ALIASES } = require('../prompts/guidelines');
 
 
@@ -30,7 +32,13 @@ function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, sylla
 
   let scopeStr = '';
   if (type === 'custom' && knowledgePoints) {
-    scopeStr = `当前测试范围为用户主动要求的知识点：【${knowledgePoints}】。请紧扣这些自定义知识点出题，确保全面覆盖用户的学习需求。`;
+    // Sanitize knowledge points to prevent prompt injection
+    const sanitizedPoints = String(knowledgePoints)
+      .slice(0, 100) // limit length
+      .replace(/[^\w\u4e00-\u9fa5\s,，.。;；、-]/gi, '') // only allow alphanumeric, CJK, and basic punctuation
+      .replace(/(ignore|prompt|system|instruction|bypass|forget)/gi, ''); // remove injection keywords
+
+    scopeStr = `当前测试范围为用户主动要求的知识点：【${sanitizedPoints}】。请紧扣这些自定义知识点出题，确保全面覆盖用户的学习需求。`;
   } else if (type === 'unit' && chapterName) {
     scopeStr = `当前测试范围为特定单元章节：《${chapterName}》（章节描述：${chapterDesc}）。请紧扣本单元知识点出题，严禁超出本单元范围。`;
   } else if (type === 'midterm') {
@@ -239,7 +247,8 @@ router.post('/test-paper/generate', async (req, res) => {
     // 从 prompts/chapters.json 配置文件中查询章节大纲信息
     try {
       const key = edition ? `${grade}_${edition}` : grade;
-      const gradeChapters = TEXTBOOK_CHAPTERS[key] || TEXTBOOK_CHAPTERS[grade] || {};
+      const chaptersData = await getChapters();
+      const gradeChapters = chaptersData[key] || chaptersData[grade] || {};
       const list = gradeChapters[subject] || [];
       
       if (list.length > 0) {

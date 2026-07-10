@@ -18,17 +18,28 @@ async function runBackup() {
     }
 
     // Prevent backup flood on restart: skip if a backup exists that is less than 12 hours old
-    const folders = await fsPromises.readdir(BACKUP_DIR);
+    let folders = [];
+    try {
+      folders = await fsPromises.readdir(BACKUP_DIR);
+    } catch (e) {
+      logger.warn(`[Backup] Failed to readdir ${BACKUP_DIR}:`, e);
+    }
+    
     const now = Date.now();
-    const recentBackup = folders.find(folder => {
-      if (!folder.startsWith('backup-')) return false;
+    let recentBackup = null;
+    
+    for (const folder of folders) {
+      if (!folder.startsWith('backup-')) continue;
       try {
-        const stat = fs.statSync(path.join(BACKUP_DIR, folder));
-        return (now - stat.mtimeMs) < 12 * 60 * 60 * 1000; // 12 hours
+        const stat = await fsPromises.stat(path.join(BACKUP_DIR, folder));
+        if ((now - stat.mtimeMs) < 12 * 60 * 60 * 1000) {
+          recentBackup = folder;
+          break;
+        }
       } catch (e) {
-        return false;
+        // Ignore stat error
       }
-    });
+    }
 
     if (recentBackup) {
       logger.info(`[Backup] Skipped. A recent backup exists: ${recentBackup}`);

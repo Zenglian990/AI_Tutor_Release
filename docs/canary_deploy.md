@@ -1,5 +1,10 @@
 # Canary Deployment & Traffic Splitting Guide
 
+> [!WARNING]
+> **免责声明 / Disclaimer**
+> 本文档描述的是**高级集群拓扑（Advanced Cluster Topology）**和金丝雀发布机制。
+> 当前代码库中自带的 `docker-compose.yml` 属于**单机标准部署版（Single-Node Standard Deployment）**。若需在生产环境中实践本文档的部署方案，请根据实际需求编写额外的负载均衡配置（如 Nginx/Traefik）和多实例容器编排。
+
 This guide details how to implement gray (canary) releases for the **曾练专属私教** AI Tutor project, allowing you to test updates safely with a subset of users before full rollout.
 
 ---

@@ -67,7 +67,7 @@ undici.fetch = async (url, options) => {
         }),
         headers: new undici.Headers()
       };
-    } else {
+    } else if (promptText.includes('AI 私教')) {
       return {
         ok: true,
         status: 200,
@@ -82,6 +82,8 @@ undici.fetch = async (url, options) => {
         }),
         headers: new undici.Headers()
       };
+    } else {
+      throw new Error(`Mock Error: Unexpected prompt format! The test expected '中小学教研员', '阅卷老师' or 'AI 私教' but got: ${promptText.substring(0, 100)}...`);
     }
   }
 
@@ -89,6 +91,7 @@ undici.fetch = async (url, options) => {
 };
 
 // Import app
+process.env.NODE_ENV = 'development';
 const { createApp } = require('../server/app');
 const { initDB } = require('../server/db/init');
 

@@ -27,7 +27,21 @@ const app = createApp();
 let server;
 
 async function start() {
-  await initDB();
+  try {
+    await initDB();
+  } catch (err) {
+    logger.error(`
+============================================================
+💥 FATAL DATABASE ERROR 💥
+The server failed to start because the database could not be initialized.
+If you see an SQLite module error, it may be due to missing native build tools.
+Try running: npm install --build-from-source sqlite3
+
+Error Details:
+${err.stack || err.message}
+============================================================`);
+    process.exit(1);
+  }
 
   // Start data retention cleanup (auto-cleans old records)
   startDataRetentionCleanup(getSqliteDb);

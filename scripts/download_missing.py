@@ -66,32 +66,14 @@ FILES_TO_DOWNLOAD = [
 ]
 
 
-def download_file(github_path, local_rel_path):
-    # 正确对中文路径做 URL 编码（safe='/' 保留斜杠）
+import download_utils
+
+def download_file_wrapper(github_path, local_rel_path):
     encoded_path = quote(github_path, safe='/')
     url = BASE_URL + encoded_path
     local_path = os.path.join(LOCAL_BASE, local_rel_path.replace("/", os.sep))
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-
-    for attempt in range(3):
-        try:
-            print(f"  下载中 (尝试{attempt+1}/3): {os.path.basename(local_path)}", flush=True)
-            resp = requests.get(url, proxies=PROXY, timeout=90, stream=True)
-            resp.raise_for_status()
-            data = resp.content
-            if len(data) < 1000:
-                print(f"  ⚠️  文件太小({len(data)}字节)，跳过", flush=True)
-                return False
-            with open(local_path, 'wb') as f:
-                f.write(data)
-            size_kb = len(data) / 1024
-            print(f"  ✅ 成功: {os.path.basename(local_path)} ({size_kb:.0f} KB)", flush=True)
-            return True
-        except Exception as e:
-            print(f"  ❌ 失败(尝试{attempt+1}): {e}", flush=True)
-            time.sleep(3)
-    return False
-
+    print(f"  下载中: {os.path.basename(local_path)}", flush=True)
+    return download_utils.download_file(url, local_path)
 
 def remove_from_log(local_rel_path):
     """从 processed_pdfs_v2.log 移除，让 ingest 重新处理"""
@@ -115,7 +97,8 @@ def main():
 
     for i, (gh_path, local_path) in enumerate(FILES_TO_DOWNLOAD, 1):
         print(f"[{i}/{len(FILES_TO_DOWNLOAD)}] {os.path.basename(gh_path)}", flush=True)
-        ok = download_file(gh_path, local_path)
+        ok, msg = download_file_wrapper(gh_path, local_path)
+        print(f"  {msg}", flush=True)
         if ok:
             success += 1
             remove_from_log(local_path)
@@ -131,7 +114,7 @@ def main():
         for f in failed:
             print(f"   {f}", flush=True)
     else:
-        print("🎉 全部成功！可以运行 ingest_all.py 重新入库了", flush=True)
+        print("🎉 全部成功！可以运行 ingest_2_0.py 重新入库了", flush=True)
 
 
 if __name__ == "__main__":

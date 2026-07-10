@@ -71,27 +71,19 @@ def gemini_vision_ocr(img_bytes):
         }
     }
     
-    keys_tried = 0
-    max_retries = len(API_KEYS) * 3
-    
-    while keys_tried < max_retries:
-        current_key = get_next_key()
+    from keypool import with_api_retry
+    def api_call(current_key):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{CHAT_MODEL}:generateContent?key={current_key}"
-        try:
-            response = requests.post(url, headers=headers, json=payload, proxies=PROXIES, timeout=45)
-            if response.status_code == 200:
-                data = response.json()
-                text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                return text.strip()
-            elif response.status_code == 429:
-                keys_tried += 1
-                time.sleep(10)
-            else:
-                time.sleep(3)
-                keys_tried += 1
-        except Exception as e:
-            time.sleep(5)
-            keys_tried += 1
+        return requests.post(url, headers=headers, json=payload, proxies=PROXIES, timeout=45)
+
+    response = with_api_retry(api_call, max_retries_multiplier=3)
+    if response and response.status_code == 200:
+        data = response.json()
+        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        text = text.strip()
+        if not text:
+            print(f"  [Warning] Gemini API returned 200 but empty text (Possible safety filter). Data: {data}")
+        return text
     return ""
 
 def ocr_page_offline(page, page_idx):
@@ -110,7 +102,7 @@ def ocr_page_offline(page, page_idx):
         return ""
 
 # PDFs that produce only noise (image placeholder text, garbled OCR) and should be skipped
-_ATLAS_NOISE_PATTERNS = ['地理图册', '地理图']  # Geography atlases: mostly image maps with no useful text
+_ATLAS_NOISE_PATTERN = re.compile(r'(地理图册|地理图|geo.*atlas|map|atlas)', re.IGNORECASE)
 
 def process_pdf(pdf_path, enable_gemini_ocr=False):
     """Extract and chunk pages from PDF with 2.0 Layout dual-mode strategy."""
@@ -118,8 +110,8 @@ def process_pdf(pdf_path, enable_gemini_ocr=False):
     is_stem = any(sub in pdf_path for sub in ["数学", "物理", "化学", "Math", "Physics", "Chemistry"])
 
     # Skip image-heavy atlases that produce only placeholder noise
-    if any(pat in fname for pat in _ATLAS_NOISE_PATTERNS):
-        print(f"  [Skip] '{fname}' is an image atlas — no extractable text. Skipping.")
+    if _ATLAS_NOISE_PATTERN.search(fname):
+        print(f"  [Skip] '{fname}' is an image atlas (high noise, low text value). Skipping OCR.")
         return []
     
     try:
@@ -221,7 +213,11 @@ def main():
                 print(f"  Progress: embedded {chunk_idx + 1}/{len(chunks)} chunks... ({len(records)} succeeded)")
                 sys.stdout.flush()
             
-            time.sleep(4.2 / len(API_KEYS))
+            # Dynamic rate limiting: Default free tier is 15 RPM per key.
+            # We sleep just enough to stay under the limit to avoid expensive 429 cooldowns.
+            rpm_per_key = int(os.environ.get("GEMINI_RPM_PER_KEY", 14)) # Use 14 for safety margin
+            sleep_time = 60.0 / (rpm_per_key * max(1, len(API_KEYS)))
+            time.sleep(sleep_time)
             
         if records:
             if table is None:
@@ -240,7 +236,7 @@ def main():
         try:
             if table is not None:
                 print("Building Full-Text Search (FTS) index on 'text' column...")
-                table.create_fts_index("text", replace=True)
+                table.create_fts_index("text")
                 print("FTS index built successfully.")
 
             db_tables = db.table_names()
@@ -282,8 +278,15 @@ def main():
                         pass
                 
                 # Step 1: rename live table to old backup
+                # RECOVERY: If a previous swap crashed in the middle
+                if not os.path.exists(table_path) and os.path.exists(backup_path):
+                    print("  ⚠️ Recovering from previous interrupted upgrade...")
+                    os.rename(backup_path, table_path)
+
                 old_exists = os.path.exists(table_path)
                 if old_exists:
+                    if os.path.exists(backup_path):
+                        shutil.rmtree(backup_path) # Clean stale backup
                     os.rename(table_path, backup_path)
                 
                 # Step 2: rename v2 to live table

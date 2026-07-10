@@ -50,17 +50,26 @@ else
     echo "[1/3] Server dependencies OK."
 fi
 
+FORCE_BUILD=0
+for arg in "$@"; do
+    if [ "$arg" == "--build" ]; then
+        FORCE_BUILD=1
+    fi
+done
+
 # Build frontend if needed
-if [ ! -d "client/dist" ]; then
+if [ ! -d "client/dist" ] || [ $FORCE_BUILD -eq 1 ]; then
     echo "[2/3] Building frontend..."
     cd client
     if [ ! -d "node_modules" ]; then
         npm install
     fi
+    # Clean Vite cache to prevent weird build issues
+    rm -rf node_modules/.vite .vite .vite-temp
     npm run build
     cd ..
 else
-    echo "[2/3] Frontend build OK."
+    echo "[2/3] Frontend build OK. (Run with --build to force rebuild)"
 fi
 
 # Start server

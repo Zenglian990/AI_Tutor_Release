@@ -86,14 +86,15 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
         ) : (
           <div className="map-road-wrapper">
             <div className="map-road">
-              <svg className="road-path-svg" xmlns="http://www.w3.org/2000/svg">
+              <svg className="road-path-svg" xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 100 ${chapters.length * 160 + 80}`} preserveAspectRatio="none">
                 {/* Visual connecting line between nodes */}
                 <path 
-                  d={chapters.length > 1 ? `M 100 120 ${chapters.map((_, idx) => `Q ${idx % 2 === 0 ? '180' : '40'} ${120 + idx * 160 + 80}, ${idx % 2 === 0 ? '250' : '80'} ${120 + (idx + 1) * 160}`).slice(0, chapters.length - 1).join(' ')}` : ''}
+                  d={chapters.length > 1 ? `M 27.5 80 ${chapters.map((_, idx) => `Q 50 ${80 + idx * 160 + 80}, ${idx % 2 === 0 ? '72.5' : '27.5'} ${80 + (idx + 1) * 160}`).slice(0, chapters.length - 1).join(' ')}` : ''}
                   fill="none" 
                   stroke="rgba(255, 255, 255, 0.15)" 
                   strokeWidth="6" 
                   strokeDasharray="10, 8"
+                  vectorEffect="non-scaling-stroke"
                 />
               </svg>
 

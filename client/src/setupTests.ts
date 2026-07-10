@@ -30,14 +30,23 @@ if (typeof window !== 'undefined') {
   });
   (window as any).fetch = (global as any).fetch;
 
-  // Stub Worker class
+  // Stub Worker class with basic message echoing capability
   if (!window.Worker) {
-    (window as any).Worker = class {
-      postMessage() {}
+    class MockWorker implements Worker {
+      onmessage: ((this: Worker, ev: MessageEvent) => any) | null = null;
+      onmessageerror: ((this: Worker, ev: MessageEvent) => any) | null = null;
+      onerror: ((this: AbstractWorker, ev: ErrorEvent) => any) | null = null;
+      postMessage(message: any) {
+        if (this.onmessage) {
+          setTimeout(() => this.onmessage!({ data: message } as MessageEvent), 0);
+        }
+      }
       terminate() {}
       addEventListener() {}
       removeEventListener() {}
-    };
+      dispatchEvent() { return true; }
+    }
+    (window as any).Worker = MockWorker;
   }
 
   // Stub Element.prototype.scrollIntoView
@@ -45,17 +54,27 @@ if (typeof window !== 'undefined') {
     Element.prototype.scrollIntoView = function() {};
   }
 
-  // Stub Canvas context (JSDOM defines it, but its implementation throws "Not implemented")
-  HTMLCanvasElement.prototype.getContext = function (contextId: string) {
+  // Safely stub Canvas context (Fallback for JSDOM "Not implemented")
+  const originalGetContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (contextId: string, options?: any): RenderingContext | null {
+    if (originalGetContext) {
+      try {
+        const ctx = originalGetContext.call(this, contextId, options);
+        if (ctx) return ctx;
+      } catch (e) {
+        // Fallback for JSDOM Not implemented
+      }
+    }
     return {
       fillRect: () => {},
       clearRect: () => {},
-      getImageData: () => ({ data: new Uint8ClampedArray() }),
+      getImageData: () => ({ width: 0, height: 0, data: new Uint8ClampedArray(4) }),
       putImageData: () => {},
-      createImageData: () => ({}),
+      createImageData: () => ({ width: 0, height: 0, data: new Uint8ClampedArray(4) }),
       drawImage: () => {},
-    };
-  } as any;
+      getContextAttributes: () => ({}),
+    } as unknown as RenderingContext;
+  } as typeof HTMLCanvasElement.prototype.getContext;
 
   // Stub URL.createObjectURL/revokeObjectURL
   if (typeof URL !== 'undefined') {

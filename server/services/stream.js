@@ -48,11 +48,15 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
     }
     try {
       abortController.abort();
-    } catch (err) {}
+    } catch (err) {
+      logger.warn('Failed to abort controller:', err);
+    }
     if (responseBody && typeof responseBody.destroy === 'function') {
       try {
         responseBody.destroy();
-      } catch (err) {}
+      } catch (err) {
+        logger.warn('Failed to destroy response body:', err);
+      }
     }
   };
 
@@ -167,11 +171,30 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
     } catch (usageErr) {
       logger.error('Failed to log streaming API usage:', usageErr);
     }
-
+  } catch (e) {
+    cleanupTimersAndStream();
+    try {
+      logApiUsage(config.CHAT_MODEL, 'chat', query || '', 0, 'error');
+    } catch (usageErr) {
+      logger.error('Failed to log streaming API usage on error:', usageErr);
+    }
+    if (streamAborted) {
+      logger.info('[Stream] Stream was aborted due to timeout or client disconnect.');
+    } else {
+      logger.error('Streaming Chat Error:', e);
+      if (!res.writableEnded) {
+        let errorMsg = '服务器流式响应出错。';
+        if (e.message === 'QUOTA_EXHAUSTED') {
+          errorMsg = '今日额度已用完。由于使用的是免费版 API，今日的 4000 次查询额度已耗尽。请明天早上 8 点后再试。';
+        }
+        res.write(`data: ${JSON.stringify({ error: errorMsg, details: NODE_ENV === 'development' ? e.message : undefined })}\n\n`);
+        res.end();
+      }
+    }
+  } finally {
     // Save chat history in background with transaction protection
     const sqliteDb = getSqliteDb();
-    if (sqliteDb) {
-
+    if (sqliteDb && (query || fullAnswer)) {
       dbQueue.enqueue(async () => {
         await sqliteDb.run('BEGIN IMMEDIATE TRANSACTION');
         try {
@@ -184,15 +207,17 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
             [r1.lastID, generateFtsIndexText((query || '').slice(0, 2000))]
           );
 
-          const r2 = await sqliteDb.run(
-            'INSERT INTO chat_history (profile_id, grade, subject, role, text) VALUES (?, ?, ?, ?, ?)',
-            // Cap AI answer at 8000 chars to prevent oversized SQLite rows
-            [profile_id || 'default', grade || 'unknown', subject || 'unknown', 'ai', encryptField(fullAnswer.slice(0, 8000))]
-          );
-          await sqliteDb.run(
-            'INSERT INTO chat_history_fts (chat_id, text) VALUES (?, ?)',
-            [r2.lastID, generateFtsIndexText(fullAnswer.slice(0, 8000))]
-          );
+          if (fullAnswer) {
+            const r2 = await sqliteDb.run(
+              'INSERT INTO chat_history (profile_id, grade, subject, role, text) VALUES (?, ?, ?, ?, ?)',
+              // Cap AI answer at 8000 chars to prevent oversized SQLite rows
+              [profile_id || 'default', grade || 'unknown', subject || 'unknown', 'ai', encryptField(fullAnswer.slice(0, 8000))]
+            );
+            await sqliteDb.run(
+              'INSERT INTO chat_history_fts (chat_id, text) VALUES (?, ?)',
+              [r2.lastID, generateFtsIndexText(fullAnswer.slice(0, 8000))]
+            );
+          }
           await sqliteDb.run('COMMIT');
         } catch (err) {
           try {
@@ -205,24 +230,6 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
       }).catch(err => {
         logger.error('Failed to save chat history (transaction rolled back):', err);
       });
-    }
-  } catch (e) {
-    cleanupTimersAndStream();
-    try {
-      logApiUsage(config.CHAT_MODEL, 'chat', query || '', 0, 'error');
-    } catch (usageErr) {}
-    if (streamAborted) {
-      logger.info('[Stream] Stream was aborted due to timeout or client disconnect.');
-      return;
-    }
-    logger.error('Streaming Chat Error:', e);
-    if (!res.writableEnded) {
-      let errorMsg = '服务器流式响应出错。';
-      if (e.message === 'QUOTA_EXHAUSTED') {
-        errorMsg = '今日额度已用完。由于使用的是免费版 API，今日的 4000 次查询额度已耗尽。请明天早上 8 点后再试。';
-      }
-      res.write(`data: ${JSON.stringify({ error: errorMsg, details: NODE_ENV === 'development' ? e.message : undefined })}\n\n`);
-      res.end();
     }
   }
 }

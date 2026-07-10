@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getTranslation } from '../utils/i18n';
 import { encryptData, decryptData } from '../utils/crypto_helper';
+import hmacSHA256 from 'crypto-js/hmac-sha256';
+import Hex from 'crypto-js/enc-hex';
 
 const AppContext = createContext(null);
 
@@ -45,16 +47,23 @@ function getApiToken() {
 
 async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {
   try {
-    const encoder = new TextEncoder();
     const msg = `${method}:${path}:${body || ''}:${timestamp}:${formFieldsStr}:${fileFieldsStr}`;
-    const keyData = encoder.encode(token);
-    const cryptoKey = await window.crypto.subtle.importKey(
-      'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-    );
-    const sigBuffer = await window.crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(msg));
-    return Array.from(new Uint8Array(sigBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    
+    // Use Web Crypto API if available (HTTPS or localhost)
+    if (window.crypto && window.crypto.subtle) {
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(token);
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const sigBuffer = await window.crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(msg));
+      return Array.from(new Uint8Array(sigBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    } else {
+      // Fallback for insecure contexts (HTTP LAN IP like 192.168.x.x)
+      return hmacSHA256(msg, token).toString(Hex);
+    }
   } catch (err) {
     console.error('Failed to generate signature:', err);
     return '';

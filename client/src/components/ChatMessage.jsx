@@ -29,7 +29,7 @@ function MermaidChart({ chart }) {
     if (svgRef.current && chart) {
       try {
         const sanitizedChart = sanitizeMermaid(chart);
-        const id = `mermaid-${Math.random().toString(36).substring(7)}`;
+        const id = `mermaid-${Date.now().toString(36)}${Math.random().toString(36).substring(2)}`;
         mermaid.render(id, sanitizedChart).then((result) => {
           if (svgRef.current) {
             // Fixed S2: Use DOMPurify to sanitize SVG and allow foreignObject for HTML labels

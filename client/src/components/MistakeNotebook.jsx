@@ -170,24 +170,24 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
               {testMode ? '👁️ 显示答案' : '📝 生成复习卷'}
             </button>
             <button className="mistake-btn" onClick={handlePrint}>🖨️ 打印</button>
-            <button onClick={onClose} className="close-btn" title="关闭">×</button>
+            <button onClick={onClose} className="close-btn" title="关闭" aria-label="关闭错题本">×</button>
           </div>
         </div>
 
         <div className="mistake-filters no-print" style={{ padding: '15px 20px 0', display: 'flex', gap: '10px' }}>
-          <select className="grade-selector" value={filterGrade} onChange={e => setFilterGrade(e.target.value)}>
+          <select className="grade-selector" value={filterGrade} onChange={e => setFilterGrade(e.target.value)} aria-label="筛选年级">
             <option value="">全部年级</option>
             {['1_up','1_down','2_up','2_down','3_up','3_down','4_up','4_down','5_up','5_down','6_up','6_down','7_up','7_down','8_up','8_down','9_up','9_down'].map(g =>
               <option key={g} value={g}>{formatGrade(g)}</option>
             )}
           </select>
-          <select className="grade-selector" value={filterSubject} onChange={e => setFilterSubject(e.target.value)}>
+          <select className="grade-selector" value={filterSubject} onChange={e => setFilterSubject(e.target.value)} aria-label="筛选学科">
             <option value="">全部学科</option>
             {['语文','数学','英语','物理','化学','生物','历史','地理','道德与法治'].map(s =>
               <option key={s} value={s}>{s === '道德与法治' ? '道法' : s}</option>
             )}
           </select>
-          <select className="grade-selector" value={filterTag} onChange={e => setFilterTag(e.target.value)}>
+          <select className="grade-selector" value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="筛选标签">
             <option value="">全部标签</option>
             {allTags.map(tag => (
               <option key={tag} value={tag}>{tag}</option>
@@ -195,6 +195,8 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           </select>
           <input
             type="text"
+            className="search-input"
+            aria-label="搜索错题"
             placeholder="搜索题目或知识点关键字..."
             value={searchWord}
             onChange={e => setSearchWord(e.target.value)}
@@ -313,7 +315,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                       </div>
                     )}
                   </div>
-                  <button onClick={() => handleDeleteMistake(m.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="删除错题">🗑️ 删除</button>
+                  <button onClick={() => handleDeleteMistake(m.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="删除错题" aria-label="删除此错题">🗑️ 删除</button>
                 </div>
                 <div className="mistake-query"><strong>问题：</strong>{m.query}</div>
                 {!testMode ? (

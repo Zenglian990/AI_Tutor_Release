@@ -12,6 +12,8 @@ try {
   console.error('Failed to create logs directory:', err);
 }
 
+const fsPromises = fs.promises;
+
 function formatMessage(level, message, meta) {
   const ts = new Date().toISOString();
   let metaStr = '';
@@ -32,32 +34,25 @@ function formatMessage(level, message, meta) {
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_BACKUPS = 5;
 
-function rotateLogFile(logPath) {
+async function rotateLogFile(logPath) {
   try {
-    if (!fs.existsSync(logPath)) return;
-    const stats = fs.statSync(logPath);
-    if (stats.size < MAX_LOG_SIZE) return;
+    const stats = await fsPromises.stat(logPath).catch(() => null);
+    if (!stats || stats.size < MAX_LOG_SIZE) return;
 
     // Delete the oldest backup (e.g. log.5) if it exists
     const maxBackupPath = `${logPath}.${MAX_BACKUPS}`;
-    if (fs.existsSync(maxBackupPath)) {
-      try {
-        fs.unlinkSync(maxBackupPath);
-      } catch (e) {
-        console.error(`Failed to delete oldest log backup ${maxBackupPath}:`, e);
-      }
-    }
+    await fsPromises.unlink(maxBackupPath).catch(() => {});
 
     // Shift backups: from MAX_BACKUPS-1 down to 1
     for (let i = MAX_BACKUPS - 1; i >= 1; i--) {
       const oldPath = `${logPath}.${i}`;
       const newPath = `${logPath}.${i + 1}`;
-      if (fs.existsSync(oldPath)) {
+      
+      const oldStats = await fsPromises.stat(oldPath).catch(() => null);
+      if (oldStats) {
         try {
-          if (fs.existsSync(newPath)) {
-            fs.unlinkSync(newPath);
-          }
-          fs.renameSync(oldPath, newPath);
+          await fsPromises.unlink(newPath).catch(() => {});
+          await fsPromises.rename(oldPath, newPath);
         } catch (e) {
           console.error(`Failed to shift log backup ${oldPath} to ${newPath}:`, e);
         }
@@ -67,10 +62,8 @@ function rotateLogFile(logPath) {
     // Rename active file to backup 1
     const backup1Path = `${logPath}.1`;
     try {
-      if (fs.existsSync(backup1Path)) {
-        fs.unlinkSync(backup1Path);
-      }
-      fs.renameSync(logPath, backup1Path);
+      await fsPromises.unlink(backup1Path).catch(() => {});
+      await fsPromises.rename(logPath, backup1Path);
     } catch (e) {
       console.error(`Failed to rename active log ${logPath} to ${backup1Path}:`, e);
     }
@@ -81,14 +74,11 @@ function rotateLogFile(logPath) {
 
 function writeToLogFile(filename, data) {
   const logPath = path.join(LOGS_DIR, filename);
-  try {
-    rotateLogFile(logPath);
+  rotateLogFile(logPath).finally(() => {
     fs.appendFile(logPath, data, 'utf8', (err) => {
       if (err) console.error(`Failed to async write to log file ${filename}:`, err);
     });
-  } catch (err) {
-    console.error(`Failed to write/rotate log file ${filename}:`, err);
-  }
+  });
 }
 
 const logger = {

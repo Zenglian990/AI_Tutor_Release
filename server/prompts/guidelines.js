@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('../services/logger');
 
 const GRADE_ALIASES = {
+  '1': ['一年级'], '2': ['二年级'], '3': ['三年级'],
+  '4': ['四年级'], '5': ['五年级'], '6': ['六年级'],
   '7': ['初一'], '8': ['初二'], '9': ['初三']
 };
 
@@ -18,7 +21,7 @@ try {
     }
   }
 } catch (err) {
-  console.error('Failed to load system_guidelines.txt, using in-memory fallbacks', err);
+  logger.error('Failed to load system_guidelines.txt, using in-memory fallbacks', err);
 }
 
 const FALLBACK_SYSTEM_GUIDELINES = {
@@ -65,7 +68,7 @@ try {
     chapterIntroTemplate = fs.readFileSync(filePath, 'utf8');
   }
 } catch (err) {
-  console.error('Failed to load chapter_intro.txt, using in-memory fallback', err);
+  logger.error('Failed to load chapter_intro.txt, using in-memory fallback', err);
 }
 
 const FALLBACK_CHAPTER_INTRO = `你是一位富有智慧的 AI 专属私教导师。学生正在点击学习地图中的关卡，准备主动开始学习：
@@ -112,10 +115,12 @@ function getPromptGuidelines(grade, socratic) {
 
   const gradeNum = grade ? parseInt(String(grade).split('_')[0]) : 0;
 
-  if (gradeNum >= 1 && gradeNum <= 2) {
-    base += getTemplateValue('GRADE_1_3'); // 1-2年级保持温柔童趣伴读模式
-  } else if (gradeNum >= 3 && gradeNum <= 9) {
-    base += getTemplateValue('GRADE_7_9'); // 3-9年级升级为极致逻辑与中考学霸导师模式
+  if (gradeNum >= 1 && gradeNum <= 3) {
+    base += getTemplateValue('GRADE_1_3'); // 1-3年级保持温柔童趣伴读模式
+  } else if (gradeNum >= 4 && gradeNum <= 6) {
+    base += getTemplateValue('GRADE_4_6'); // 4-6年级使用启发引导模式
+  } else if (gradeNum >= 7 && gradeNum <= 9) {
+    base += getTemplateValue('GRADE_7_9'); // 7-9年级升级为极致逻辑与中考学霸导师模式
   } else {
     base += getTemplateValue('GRADE_DEFAULT');
   }
@@ -326,7 +331,15 @@ function correctPageOffset(sourceName, pageNum) {
                        sourceLower.includes('g8') ||
                        sourceLower.includes('g9');
 
-  const offset = isJuniorHigh ? 6 : 5;
+  // TODO: Future enhancement - Read offset dynamically from PDF metadata or a mapping config.
+  // For now, use heuristics based on publisher/edition if available in filename.
+  let offset = isJuniorHigh ? 6 : 5;
+  if (sourceLower.includes('人教') || sourceLower.includes('rj')) {
+    offset = isJuniorHigh ? 6 : 5;
+  } else if (sourceLower.includes('西师大') || sourceLower.includes('西南师大')) {
+    offset = 4; // example heuristic
+  }
+
   const physicalPage = page > offset ? page - offset : page;
   
   // 去除 .pdf 后缀名

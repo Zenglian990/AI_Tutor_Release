@@ -20,7 +20,7 @@ if %errorlevel% neq 0 (
 set "has_key=0"
 if exist ".env" (
     findstr /C:"GEMINI_API_KEY=" .env >nul
-    if %errorlevel% equ 0 set "has_key=1"
+    if not errorlevel 1 set "has_key=1"
 )
 
 if "%has_key%"=="0" (
@@ -58,22 +58,34 @@ if not exist "node_modules" (
     echo [1/3] Server dependencies OK.
 )
 
+set "FORCE_BUILD=0"
+for %%A in (%*) do (
+    if "%%A"=="--build" set "FORCE_BUILD=1"
+)
+
 :: Build frontend if needed
-if not exist "client\dist" (
+set "NEED_BUILD=0"
+if not exist "client\dist" set "NEED_BUILD=1"
+if "%FORCE_BUILD%"=="1" set "NEED_BUILD=1"
+
+if "%NEED_BUILD%"=="1" (
     echo [2/3] Building frontend...
     cd client
     if not exist "node_modules" (
         call npm install
     )
+    if exist "node_modules\.vite" rmdir /s /q "node_modules\.vite"
+    if exist ".vite" rmdir /s /q ".vite"
+    if exist ".vite-temp" rmdir /s /q ".vite-temp"
     call npm run build
     cd ..
-    if %errorlevel% neq 0 (
+    if errorlevel 1 (
         echo [ERROR] 前端构建失败！
         pause
         exit /b 1
     )
 ) else (
-    echo [2/3] Frontend build OK.
+    echo [2/3] Frontend build OK. ^(Run with --build to force rebuild^)
 )
 
 :: Start server

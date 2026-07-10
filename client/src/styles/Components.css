@@ -119,7 +119,45 @@
 
 
 
-body.light-mode { --bg-color: #f1f5f9; --text-primary: #0f172a; --text-secondary: #475569; --glass-bg: rgba(255, 255, 255, 0.85); --glass-border: rgba(0, 0, 0, 0.1); --ai-msg-bg: rgba(255, 255, 255, 0.95); --user-msg-bg: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); --input-bg: rgba(255, 255, 255, 0.9); } body.light-mode .chat-message.ai { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); color: #0f172a; } body.light-mode .input-bar { color: #0f172a; } body.light-mode .header { background: rgba(255,255,255,0.8); color: #0f172a; } body.light-mode .mistake-modal { background: #ffffff; color: #0f172a; } body.light-mode .mistake-modal h2 { color: #3b82f6 !important; } body.light-mode .mistake-item { background: #f8fafc; border: 1px solid #e2e8f0; color: #0f172a; }
+body.light-mode {
+  --bg-color: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --ai-msg-bg: rgba(255, 255, 255, 0.95);
+  --user-msg-bg: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  --input-bg: rgba(255, 255, 255, 0.9);
+}
+
+body.light-mode .chat-message.ai {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+
+body.light-mode .input-bar {
+  color: #0f172a;
+}
+
+body.light-mode .header {
+  background: rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+}
+
+body.light-mode .mistake-modal {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+body.light-mode .mistake-modal h2 {
+  color: #3b82f6 !important;
+}
+
+body.light-mode .mistake-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
 
 /* Premium Mermaid Loading Placeholder */
 .mermaid-loading-placeholder {
@@ -307,17 +345,17 @@ body.light-mode .close-map-btn {
 
 .map-node-container {
   position: absolute;
-  width: 280px;
+  width: 45%;
   z-index: 2;
   transition: transform 0.3s;
 }
 
 .node-left {
-  left: 20px;
+  left: 5%;
 }
 
 .node-right {
-  right: 20px;
+  right: 5%;
 }
 
 .map-island-card {
@@ -705,98 +743,5 @@ body.light-mode .numpad-btn.control-btn:hover {
   .map-road > div {
     height: auto !important;
   }
-}
-
-/* 微信周报卡片弹窗 */
-.share-card-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  z-index: 1002;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-.share-card-modal {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  padding: 24px;
-  width: 100%;
-  max-width: 420px;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-  animation: scaleIn 0.3s ease;
-}
-
-body.light-mode .share-card-modal {
-  background: white;
-  border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-}
-
-.share-card-canvas-container {
-  margin: 16px 0;
-  display: flex;
-  justify-content: center;
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.share-card-canvas-container canvas {
-  max-width: 100%;
-  height: auto;
-  border-radius: 12px;
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-}
-
-.share-card-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-  justify-content: center;
-}
-
-.share-card-btn {
-  padding: 10px 20px;
-  border-radius: 99px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.share-card-btn.download {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-}
-
-.share-card-btn.download:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.share-card-btn.cancel {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.share-card-btn.cancel:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-body.light-mode .share-card-btn.cancel {
-  background: rgba(0, 0, 0, 0.05);
-}
-body.light-mode .share-card-btn.cancel:hover {
-  background: rgba(0, 0, 0, 0.1);
 }
 

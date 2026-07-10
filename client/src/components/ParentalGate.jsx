@@ -43,7 +43,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   // Reset flow state
   const [showResetFlow, setShowResetFlow] = useState(false);
   const [resetStep, setResetStep] = useState(0); // 0=choose question, 1=answer, 2=new pin
-  const [selectedQuestion, setSelectedQuestion] = useState('');
+  const [selectedQuestion, setSelectedQuestion] = useState(SECURITY_QUESTIONS[0].id);
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newPinConfirm, setNewPinConfirm] = useState('');
@@ -73,11 +73,26 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   useEffect(() => {
     if (isOpen) {
       setPin('');
-      setError(false);
       setFirstPin('');
+      setError(false);
+      setLockedUntil(0);
+      
+      // Try to fetch from backend to sync cross-device
+      authFetch('/api/admin/pin')
+        .then(res => res.json())
+        .then(data => {
+          if (data.pin_hash && !savedPinHash) {
+            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(data.pin_hash));
+          }
+          if (data.security_answer_hash && !savedSecurityAnswerHash) {
+            localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(data.security_answer_hash));
+          }
+        })
+        .catch(err => console.error('Failed to fetch parent gate settings from backend', err));
+        
       setShowResetFlow(false);
       setResetStep(0);
-      setSelectedQuestion('');
+      setSelectedQuestion(SECURITY_QUESTIONS[0].id);
       setSecurityAnswer('');
       setNewPin('');
       setNewPinConfirm('');
@@ -162,13 +177,14 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
           if (newPinVal === firstPin) {
             const hash = await sha256(newPinVal);
             const ansHash = await sha256(securityAnswer.trim().toLowerCase());
+            const combinedSecurityHash = selectedQuestion + ':' + ansHash;
             localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-            localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(selectedQuestion + ':' + ansHash));
+            localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(combinedSecurityHash));
             sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
             authFetch('/api/admin/pin', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin_hash: hash })
+              body: JSON.stringify({ pin_hash: hash, security_answer_hash: combinedSecurityHash })
             }).catch(err => console.error("Failed to sync PIN hash to backend:", err));
             resetAttempts();
             setTimeout(() => {
@@ -230,7 +246,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       return;
     }
     const answerHash = await sha256(securityAnswer.trim().toLowerCase());
-    if (answerHash === savedSecurityAnswerHash) {
+    const [storedQuestion, storedHash] = (savedSecurityAnswerHash || '').split(':');
+    
+    if (selectedQuestion === storedQuestion && answerHash === storedHash) {
       setResetStep(2);
       setResetError('');
     } else {
@@ -271,7 +289,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   return (
     <div className="parent-gate-overlay">
       <div className="parent-gate-card glass-panel animate-scale-in">
-        <button className="gate-close-btn" onClick={onClose} title="取消验证">✕</button>
+        <button className="gate-close-btn" onClick={onClose} title="取消验证" aria-label="取消家长锁验证">✕</button>
 
         {isTampered ? (
           <>
@@ -371,6 +389,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   key={num}
                   type="button"
                   className="numpad-btn"
+                  aria-label={`数字 ${num}`}
                   onClick={() => handleKeyPress(String(num))}
                   disabled={isLockedOut}
                 >
@@ -380,6 +399,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
               <button
                 type="button"
                 className="numpad-btn control-btn"
+                aria-label="清空输入"
                 onClick={() => setPin('')}
                 title="清空"
               >
@@ -388,6 +408,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
               <button
                 type="button"
                 className="numpad-btn"
+                aria-label="数字 0"
                 onClick={() => handleKeyPress('0')}
                 disabled={isLockedOut}
               >
@@ -396,6 +417,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
               <button
                 type="button"
                 className="numpad-btn control-btn"
+                aria-label="退格"
                 onClick={handleBackspace}
                 title="退格"
               >
@@ -472,6 +494,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   {SECURITY_QUESTIONS.find(q => q.id === selectedQuestion)?.text}
                 </p>
                 <input
+                  aria-label="安全问题答案"
                   type="text"
                   placeholder="请输入答案（拼音小写）"
                   value={securityAnswer}
@@ -496,6 +519,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px 0' }}>
                 <p style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>设置新的 {PIN_LENGTH} 位数字密码</p>
                 <input
+                  aria-label="输入新密码"
                   type="password"
                   placeholder={`输入新密码（${PIN_LENGTH}位数字）`}
                   value={newPin}
@@ -509,6 +533,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   }}
                 />
                 <input
+                  aria-label="确认新密码"
                   type="password"
                   placeholder="再次输入新密码确认"
                   value={newPinConfirm}

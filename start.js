@@ -15,15 +15,49 @@ function openBrowser(url) {
   exec(`${cmd} ${url}`);
 }
 
-// Start the browser after 3 seconds to give server time to initialize
-setTimeout(() => {
-  const url = `http://localhost:${process.env.PORT || 3001}`;
-  console.log(`\n[2/2] Opening browser to ${url}`);
-  console.log("============================================");
-  console.log("  按 Ctrl+C 停止服务");
-  console.log("============================================\n");
-  openBrowser(url);
-}, 3000);
+// Start the browser when server is ready
+const PORT = process.env.PORT || 3001;
+const url = `http://localhost:${PORT}`;
+
+async function waitForServerAndOpenBrowser() {
+  const maxRetries = 20;
+  let retries = 0;
+  
+  const checkHealth = () => {
+    return new Promise((resolve) => {
+      const http = require('http');
+      http.get(`${url}/api/health`, (res) => {
+        if (res.statusCode === 200) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }).on('error', () => {
+        resolve(false);
+      });
+    });
+  };
+
+  const poll = async () => {
+    if (await checkHealth()) {
+      console.log(`\n[2/2] Server is ready! Opening browser to ${url}`);
+      console.log("============================================");
+      console.log("  按 Ctrl+C 停止服务");
+      console.log("============================================\n");
+      openBrowser(url);
+    } else if (retries < maxRetries) {
+      retries++;
+      setTimeout(poll, 500);
+    } else {
+      console.log(`\n[2/2] Server health check timed out. Opening browser to ${url} anyway.`);
+      openBrowser(url);
+    }
+  };
+
+  poll();
+}
+
+waitForServerAndOpenBrowser();
 
 // Start the modular server (replaces monolithic require side-effect)
 try {

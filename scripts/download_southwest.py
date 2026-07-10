@@ -1,13 +1,12 @@
 import os
 import sys
-import json
-import re
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
 # Force utf-8 encoding for Windows console to prevent UnicodeEncodeError
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # Load environment and configure proxy for urllib
 load_dotenv()
@@ -18,6 +17,8 @@ if proxy_url:
     opener = urllib.request.build_opener(proxy_support)
     urllib.request.install_opener(opener)
 
+import download_utils
+
 TARGET_GRADES = [
     "Grade 1 (小学一年级)", "Grade 2 (小学二年级)", "Grade 3 (小学三年级)", 
     "Grade 4 (小学四年级)", "Grade 5 (小学五年级)", "Grade 6 (小学六年级)",
@@ -25,48 +26,12 @@ TARGET_GRADES = [
 ]
 BASE_DIR = "data/textbooks"
 
-def load_db():
-    try:
-        script_path = os.path.abspath(__file__)
-    except NameError:
-        import sys
-        script_path = os.path.abspath(sys.argv[0])
-    script_dir = os.path.dirname(script_path)
-
-    db_path = os.path.join(script_dir, 'data', 'textbooks_db.js')
-    if not os.path.exists(db_path):
-        db_path = os.path.join(script_dir, 'textbooks_db.js')
-    
-    with open(db_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    match = re.search(r'window\.TEXTBOOKS_DB\s*=\s*(\{.*\});?', content, re.DOTALL)
-    if not match:
-        raise ValueError("Could not find window.TEXTBOOKS_DB in textbooks_db.js")
-    
-    json_str = match.group(1)
-    return json.loads(json_str)
-
-def download_file(url, save_path):
-    if os.path.exists(save_path):
-        return f"ALREADY EXISTS: {save_path}"
-    
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=30) as response, open(save_path, 'wb') as out_file:
-            out_file.write(response.read())
-        return f"SUCCESS: {save_path}"
-    except Exception as e:
-        return f"ERROR downloading {url}: {e}"
-
 def main():
     print("==================================================")
     print("  西南版本 (西师大版/西南大学版) 教材下载管线")
     print("==================================================")
     
-    db = load_db()
+    db = download_utils.load_db()
     tasks = []
     
     for grade in TARGET_GRADES:
@@ -101,13 +66,18 @@ def main():
     successful = 0
     errors = 0
     with ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_url = {executor.submit(download_file, url, path): url for url, path in tasks}
+        future_to_url = {executor.submit(download_utils.download_file, url, path): url for url, path in tasks}
         for future in as_completed(future_to_url):
-            res = future.result()
-            print(res)
-            if "SUCCESS" in res or "ALREADY EXISTS" in res:
-                successful += 1
-            else:
+            url = future_to_url[future]
+            try:
+                ok, msg = future.result()
+                print(msg)
+                if ok:
+                    successful += 1
+                else:
+                    errors += 1
+            except Exception as e:
+                print(f"ERROR downloading {url}: {e}")
                 errors += 1
                 
     print(f"\n下载总结: {successful} 成功, {errors} 失败。")

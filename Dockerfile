@@ -31,7 +31,8 @@ RUN npm ci
 COPY . .
 
 # Build the React frontend
-RUN npm run build:client && rm -rf client/node_modules client/src
+RUN npm run build:client && \
+    find client -mindepth 1 -maxdepth 1 ! -name 'dist' -exec rm -rf {} +
 
 # Clean up apt caches
 RUN apt-get clean && rm -rf /var/cache/apt/archives/*

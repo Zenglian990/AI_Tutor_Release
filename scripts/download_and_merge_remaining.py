@@ -6,11 +6,17 @@ import time
 # Reconfigure stdout to use utf-8
 sys.stdout.reconfigure(encoding='utf-8')
 
-# Proxy settings (Clash)
-proxy_url = "http://127.0.0.1:10910"
-proxies = {"http": proxy_url, "https": proxy_url}
+# Proxy settings (use env if available)
+proxy_url = os.environ.get("HTTP_PROXY") or os.environ.get("PROXY_URL")
+if proxy_url:
+    proxies = {"http": proxy_url, "https": proxy_url}
+    print(f"[Proxy] Using proxy: {proxy_url}")
+else:
+    proxies = None
 
-target_dir = "C:/Users/Asus/Desktop/AI_Tutor_Release/data/textbooks/小学/数学/西南大学版"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.dirname(script_dir)
+target_dir = os.path.join(project_dir, "data", "textbooks", "小学", "数学", "西南大学版")
 os.makedirs(target_dir, exist_ok=True)
 
 # Base Raw URL on Github

@@ -1,5 +1,6 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+process.env.NODE_ENV = 'development';
 const undici = require('undici');
 
 // Mutate config cached module to set DEEPSEEK_API_KEY securely for fallback testing
@@ -153,6 +154,13 @@ after(async () => {
   }
   // Restore original fetch
   undici.fetch = originalFetch;
+
+  // Fix A3-3: Clear node require cache to prevent mock bleed (equivalent to jest.resetModules())
+  Object.keys(require.cache).forEach(key => {
+    if (key.includes('server') || key.includes('config')) {
+      delete require.cache[key];
+    }
+  });
 });
 
 // Helper: read SSE stream

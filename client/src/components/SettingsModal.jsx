@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { authFetch, useAppStore } from '../store/useStore';
+import ParentalGate from './ParentalGate';
 
 export default function SettingsModal({
   isOpen,
@@ -21,6 +22,7 @@ export default function SettingsModal({
   const [token, setToken] = useState(apiToken);
   const [showToken, setShowToken] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [showExportGate, setShowExportGate] = useState(false);
 
   if (!isOpen) return null;
 
@@ -89,6 +91,7 @@ export default function SettingsModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>{t('settings.language')}</label>
             <select
+              aria-label="选择语言"
               value={language}
               onChange={e => setLanguage(e.target.value)}
               style={{
@@ -113,6 +116,7 @@ export default function SettingsModal({
               📚 {language === 'zh-CN' ? '教材版本' : 'Textbook Edition'}
             </label>
             <select
+              aria-label="选择教材版本"
               value={currentProfileEdition || '人教版'}
               onChange={e => onEditionChange(e.target.value)}
               style={{
@@ -138,6 +142,7 @@ export default function SettingsModal({
               🤖 {language === 'zh-CN' ? 'AI 辅导模型' : 'AI Model'}
             </label>
             <select
+              aria-label="选择AI辅导模型"
               value={chatModel}
               onChange={e => setChatModel(e.target.value)}
               style={{
@@ -152,11 +157,11 @@ export default function SettingsModal({
               }}
             >
               <option value="default">{language === 'zh-CN' ? '系统默认配置' : 'System Default'}</option>
-              <option value="gemini-3.5-flash">Google Gemini 3.5 Flash (极速推荐)</option>
-              <option value="gemini-2.5-flash">Google Gemini 2.5 Flash (稳定流畅)</option>
-              <option value="gemini-3.1-pro-preview">Google Gemini 3.1 Pro (高推理旗舰)</option>
-              <option value="deepseek-v4-pro">DeepSeek-V4-Pro (深度思考)</option>
-              <option value="deepseek-v4-flash">DeepSeek-V4-Flash (极速备用)</option>
+              <option value="gemini-1.5-flash">Google Gemini 1.5 Flash (极速推荐)</option>
+              <option value="gemini-2.0-flash">Google Gemini 2.0 Flash (稳定流畅)</option>
+              <option value="gemini-1.5-pro">Google Gemini 1.5 Pro (高推理旗舰)</option>
+              <option value="deepseek-chat">DeepSeek-V3-Chat (通用对话)</option>
+              <option value="deepseek-reasoner">DeepSeek-R1-Reasoner (深度思考)</option>
             </select>
           </div>
 
@@ -164,6 +169,7 @@ export default function SettingsModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>{t('settings.backend')}</label>
             <input
+              aria-label="后端API地址"
               type="text"
               placeholder={t('settings.backend_hint')}
               value={url}
@@ -180,13 +186,14 @@ export default function SettingsModal({
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>{t('settings.token')}</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
+                aria-label="系统API密钥"
                 type={showToken ? 'text' : 'password'}
                 placeholder={t('settings.token_hint')}
                 value={token}
                 onChange={e => setToken(e.target.value)}
                 style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', fontSize: '0.9rem' }}
               />
-              <button type="button" onClick={() => setShowToken(!showToken)}
+              <button type="button" aria-label={showToken ? '隐藏密钥' : '显示密钥'} onClick={() => setShowToken(!showToken)}
                 style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '0.85rem' }}>
                 {showToken ? '🙈' : '👁️'}
               </button>
@@ -245,25 +252,29 @@ export default function SettingsModal({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-            <button type="button" onClick={async () => {
-              try {
-                const res = await authFetch(`/api/export/data?profile_id=${currentProfileId}`);
-                if (!res.ok) { alert((language === 'zh-CN' ? '导出失败：' : 'Export failed: ') + res.status); return; }
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `AI_Tutor_Backup_${currentProfileId}_${Date.now()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } catch (e) { alert(language === 'zh-CN' ? '导出失败：网络错误' : 'Export failed: Network error'); }
-            }}
-              style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', cursor: 'pointer', marginRight: 'auto' }}>
-              📥 {language === 'zh-CN' ? '导出全量数据' : 'Export All Data'}
-            </button>
-            <button type="button" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
+            <div style={{ marginRight: 'auto', display: 'flex', gap: '10px' }}>
+              <input type="file" id="import-file-input" style={{ display: 'none' }} accept=".json" onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                  const res = await authFetch('/api/import/data', { method: 'POST', body: formData });
+                  if (res.ok) alert(language === 'zh-CN' ? '导入成功！请刷新页面加载最新数据。' : 'Import successful! Please refresh.');
+                  else alert((language === 'zh-CN' ? '导入失败：' : 'Import failed: ') + res.status);
+                } catch (err) { alert(language === 'zh-CN' ? '导入出错' : 'Import error'); }
+                e.target.value = '';
+              }} />
+              <button type="button" onClick={() => document.getElementById('import-file-input').click()}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', cursor: 'pointer' }}>
+                📤 {language === 'zh-CN' ? '导入数据' : 'Import Data'}
+              </button>
+              <button type="button" onClick={() => setShowExportGate(true)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', cursor: 'pointer' }}>
+                📥 {language === 'zh-CN' ? '导出全量数据' : 'Export All Data'}
+              </button>
+            </div>
+            <button type="button" aria-label="关闭设置" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
               {t('settings.close')}
             </button>
             <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -272,6 +283,27 @@ export default function SettingsModal({
           </div>
         </form>
       </div>
+      
+      <ParentalGate 
+        isOpen={showExportGate} 
+        onClose={() => setShowExportGate(false)} 
+        reason={language === 'zh-CN' ? "导出全量数据" : "Export Data"}
+        onVerify={async () => {
+          try {
+            const res = await authFetch(`/api/export/data?profile_id=${currentProfileId}`);
+            if (!res.ok) { alert((language === 'zh-CN' ? '导出失败：' : 'Export failed: ') + res.status); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `AI_Tutor_Backup_${currentProfileId}_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (e) { alert(language === 'zh-CN' ? '导出失败：网络错误' : 'Export failed: Network error'); }
+        }} 
+      />
     </div>
   );
 }

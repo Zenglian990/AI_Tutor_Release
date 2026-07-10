@@ -43,13 +43,11 @@ function buildEmbedURL() {
 }
 
 function buildChatURL(modelName) {
-  const selectedModel = modelName || CHAT_MODEL;
-  return `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 }
 
 function buildStreamURL(modelName) {
-  const selectedModel = modelName || CHAT_MODEL;
-  return `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse`;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse`;
 }
 
 // Key pool health and cooldown states
@@ -282,7 +280,9 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
     
     try {
       logApiUsage(selectedModel, 'chat', geminiPayload.contents?.[0]?.parts?.[0]?.text || '', text, 'success');
-    } catch (err) {}
+    } catch (err) {
+      logger.error('[API Usage Log Failed]', err);
+    }
 
     const geminiMockData = {
       candidates: [{
@@ -308,7 +308,13 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
  * Tracks per-key rate limit state and falls back to DeepSeek if pool is depleted.
  */
 async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs = 30000, modelName = null) {
-  const selectedModel = modelName && modelName !== 'default' ? modelName : CHAT_MODEL;
+  let rawModel = modelName && modelName !== 'default' ? modelName : CHAT_MODEL;
+  // Security Fix: strictly validate model name to prevent path injection
+  if (!/^[a-zA-Z0-9.-]+$/.test(rawModel)) {
+    logger.warn(`Invalid model name format provided: ${rawModel}, falling back to default`);
+    rawModel = CHAT_MODEL;
+  }
+  const selectedModel = rawModel;
   
   // Check if directly routing to DeepSeek
   const isDeepSeek = selectedModel.toLowerCase().includes('deepseek');
@@ -319,18 +325,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     return await fetchDeepSeek(urlType, options, selectedModel);
   }
 
-  // Rewrite model parameter in body for Gemini requests
-  let modifiedOptions = options;
-  if (options.body && !isDeepSeek) {
-    try {
-      const parsedBody = JSON.parse(options.body);
-      parsedBody.model = `models/${selectedModel}`;
-      modifiedOptions = {
-        ...options,
-        body: JSON.stringify(parsedBody)
-      };
-    } catch (err) {}
-  }
+  const modifiedOptions = options;
 
   // Filter valid keys
   const validKeys = API_KEYS.filter(k => !_invalidKeys.has(k));
@@ -343,9 +338,17 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   }
 
   let lastError = null;
-  const loopLimit = Math.max(maxRetries, validKeys.length * 2);
+  
+  // Security Fix: Added circuit breaker to prevent infinite loops when API is down
+  const loopLimit = Math.min(maxRetries, 3); 
+  let consecutiveErrors = 0;
 
   for (let attempt = 0; attempt < loopLimit; attempt++) {
+    if (consecutiveErrors >= 3) {
+      logger.warn('[KeyPool] Circuit breaker triggered after 3 consecutive network/API failures.');
+      break;
+    }
+
     if (modifiedOptions.signal && modifiedOptions.signal.aborted) {
       throw new DOMException('The operation was aborted.', 'AbortError');
     }
@@ -396,11 +399,11 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      try { controller.abort(); } catch (err) {}
+      try { controller.abort(); } catch (err) { logger.warn('Failed to abort controller on timeout:', err); }
     }, timeoutMs);
 
     const onExternalAbort = () => {
-      try { controller.abort(); } catch (err) {}
+      try { controller.abort(); } catch (err) { logger.warn('Failed to abort controller on external abort:', err); }
     };
 
     if (modifiedOptions.signal) {
@@ -429,6 +432,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       const response = await undiciFetch(url, fetchOptions);
       if (response.ok) {
         cleanup();
+        consecutiveErrors = 0;
         return response;
       }
 
@@ -459,6 +463,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     } catch (e) {
       cleanup();
       lastError = e;
+      consecutiveErrors++;
       logger.warn(`Network error on key ${key.slice(0, 6)}...: ${e.message}, retrying... (Attempt ${attempt + 1}/${loopLimit}).`);
       _keyCooldown.set(key, Date.now() + 10_000);
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -479,7 +484,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 }
 
 // Embedding Cache System (Issue 14)
-const EMBED_CACHE_MAX_SIZE = 5000;
+const EMBED_CACHE_MAX_SIZE = parseInt(process.env.EMBED_CACHE_MAX_SIZE || '1000', 10);
 const _embedCache = new Map();
 
 function getCachedEmbedding(text) {
@@ -496,10 +501,14 @@ function getCachedEmbedding(text) {
 function setCachedEmbedding(text, vector) {
   if (!vector) return;
   const cleaned = String(text).trim().substring(0, 1500);
-  if (_embedCache.size >= EMBED_CACHE_MAX_SIZE) {
+  
+  if (_embedCache.has(cleaned)) {
+    _embedCache.delete(cleaned);
+  } else if (_embedCache.size >= EMBED_CACHE_MAX_SIZE) {
     const oldestKey = _embedCache.keys().next().value;
     _embedCache.delete(oldestKey);
   }
+  
   _embedCache.set(cleaned, vector);
 }
 

@@ -1,3 +1,5 @@
+const logger = require('./services/logger');
+
 class TrieNode {
   constructor() {
     this.children = {};
@@ -152,15 +154,14 @@ const SENSITIVE_WORDS = [
   { word: '强奸', category: 'sexual' }, { word: '猥亵', category: 'sexual' },
   { word: '性交', category: 'sexual' }, { word: 'porn', category: 'sexual' },
   { word: 'naked', category: 'sexual' }, { word: 'nude', category: 'sexual' },
-  { word: 'sex', category: 'sexual' }, { word: 'hentai', category: 'sexual' },
+  { word: 'hentai', category: 'sexual' },
   // Weapons
   { word: '枪支', category: 'violence' }, { word: '手枪', category: 'violence' },
   { word: '刀具', category: 'violence' }, { word: '砍刀', category: 'violence' },
-  { word: 'gun', category: 'violence' }, { word: 'knife', category: 'violence' },
+  { word: 'knife', category: 'violence' },
   { word: 'weapon', category: 'violence' }, { word: 'bomb', category: 'violence' },
   // Substances
-  { word: '喝酒', category: 'violence' }, { word: '抽烟', category: 'violence' },
-  { word: '吸烟', category: 'violence' }, { word: '大麻', category: 'violence' },
+  { word: '大麻', category: 'violence' },
   { word: '海洛因', category: 'violence' }, { word: 'drugs', category: 'violence' },
   { word: 'weed', category: 'violence' }, { word: 'alcohol', category: 'violence' },
   { word: '冰毒', category: 'violence' },
@@ -170,15 +171,9 @@ const SENSITIVE_WORDS = [
   { word: '密码', category: 'personal_info' },
   // Gaming & attitude
   { word: '充值王者荣耀', category: 'game' }, { word: '买皮肤', category: 'game' },
-  { word: '天天打游戏', category: 'game' }, { word: '玩吃鸡', category: 'game' },
-  { word: '玩王者荣耀', category: 'game' }, { word: '和平精英', category: 'game' },
-  { word: '王者荣耀', category: 'game' }, { word: '打游戏', category: 'game' },
-  { word: '玩游戏', category: 'game' }, { word: '我想玩游戏', category: 'game' },
-  { word: '不想写作业', category: 'attitude' }, { word: '不想上学', category: 'attitude' },
-  { word: '不想读书', category: 'attitude' }, { word: '讨厌学习', category: 'attitude' },
-  { word: '不想学习', category: 'attitude' }, { word: '吃鸡', category: 'game' },
-  { word: '原神', category: 'game' }, { word: '蛋仔派对', category: 'game' },
-  { word: '迷你世界', category: 'game' }, { word: '我的世界', category: 'game' },
+  { word: '天天打游戏', category: 'game' }, { word: '不想写作业', category: 'attitude' },
+  { word: '不想上学', category: 'attitude' }, { word: '不想读书', category: 'attitude' },
+  { word: '讨厌学习', category: 'attitude' }, { word: '不想学习', category: 'attitude' },
   { word: '刷抖音', category: 'attitude' }, { word: '看视频', category: 'attitude' },
 ];
 
@@ -202,7 +197,7 @@ function normalizeForSafety(text) {
   let result = text.normalize('NFC');
   result = result.replace(STRIP_CHARS, '');
   result = result.split('').map(ch => HOMOGLYPH_MAP[ch] || ch).join('');
-  result = result.replace(/[^一-鿿㐀-䶿a-zA-Z0-9]/g, '').toLowerCase();
+  result = result.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9]/g, '').toLowerCase();
   return result;
 }
 
@@ -211,7 +206,7 @@ function normalizeKeepSpaces(text) {
   result = result.replace(STRIP_CHARS, '');
   result = result.split('').map(ch => HOMOGLYPH_MAP[ch] || ch).join('');
   // Replace non-alphanumeric and non-Chinese characters with spaces
-  result = result.replace(/[^一-鿿㐀-䶿a-zA-Z0-9\s]/g, ' ').toLowerCase();
+  result = result.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s]/g, ' ').toLowerCase();
   // Collapse consecutive whitespaces into a single space
   return result.replace(/\s+/g, ' ').trim();
 }
@@ -225,14 +220,14 @@ function checkSafetyAndRedirect(query) {
   // 1. Check Trie for exact substring matches (space-stripped)
   const match = trieInstance.search(cleanQuery);
   if (match) {
-    console.log(`[Safety Filter] Blocked sensitive query (category: ${match.category}, word: ${match.word})`);
+    logger.warn(`[Safety Filter] Blocked sensitive query (category: ${match.category}, word: ${match.word})`);
     return REDIRECT_RESPONSES[match.category] || REDIRECT_RESPONSES.default;
   }
 
   // 2. Check pinyin/leet-speak bypass patterns on BOTH space-preserved and space-stripped versions
   for (const { pattern, category } of PINYIN_BYPASS_PATTERNS) {
     if (pattern.test(cleanQueryWithSpaces) || pattern.test(cleanQuery)) {
-      console.log(`[Safety Filter] Blocked pinyin/leet bypass (category: ${category}, matched pattern: ${pattern.source})`);
+      logger.warn(`[Safety Filter] Blocked pinyin/leet bypass (category: ${category}, matched pattern: ${pattern.source})`);
       return REDIRECT_RESPONSES[category] || REDIRECT_RESPONSES.default;
     }
   }

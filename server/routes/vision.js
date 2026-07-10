@@ -125,6 +125,9 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
       return res.status(400).json({ error: '无法识别的图片格式，请上传 JPG/PNG/GIF/WebP/HEIC 格式的图片。' });
     }
 
+    // Security Audit Log (Medium Risk: Unmoderated image content)
+    logger.warn(`[Security Audit] User ${profile_id} uploaded an image for vision processing. Note: Image content is currently NOT scanned by a content moderation API. Monitor for inappropriate content.`);
+
     const base64Image = imageBuffer.toString('base64');
     let sources = [];
     let contextString = '';

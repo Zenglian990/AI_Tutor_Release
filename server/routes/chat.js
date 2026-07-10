@@ -61,6 +61,12 @@ router.post('/chat', async (req, res) => {
         page: 0,
         text_snippet: "⚠️ 警告：AI 教材关联服务（Embedding）额度已耗尽，当前回答将无法结合教材内容，仅使用 AI 本地知识库解答。"
       });
+    } else if (sources.length === 0) {
+      sources.push({
+        source: "系统提示",
+        page: 0,
+        text_snippet: "⚠️ 提示：未能在本地教材库中找到相关内容（数据库为空或无匹配），当前回答基于 AI 通识知识库。"
+      });
     }
 
     const slicedHistory = Array.isArray(history) ? history.slice(-10) : [];
@@ -68,7 +74,7 @@ router.post('/chat', async (req, res) => {
 
     // Intercept Active Chapter Start Action
     if (query.startsWith('[ACTION_START_CHAPTER]')) {
-      const chapterName = query.match(/《([^》]+)》/)?.[1] || query;
+      const chapterName = query.match(/《([^》]+)》/)?.[1] || query.replace('[ACTION_START_CHAPTER]', '').trim() || '未知章节';
       prompt = getChapterStartPrompt(chapterName, correctedResults, grade, subject);
     }
 

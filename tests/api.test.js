@@ -1,9 +1,9 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+process.env.NODE_ENV = 'development';
 const { createApp } = require('../server/app');
 const { initDB, getSqliteDb } = require('../server/db/init');
 const config = require('../server/config');
-
 let app;
 let server;
 let port;

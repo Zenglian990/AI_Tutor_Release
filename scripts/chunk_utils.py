@@ -3,9 +3,15 @@ chunk_utils.py — 共享分块工具模块
 将 chunk_markdown_page 从 ingest_2_0 中提取出来，避免两个脚本互相导入带来的副作用。
 """
 import re
+import os
 
 
-def chunk_markdown_page(text, page_num, max_chunk_size=1200, overlap=150):
+def chunk_markdown_page(text, page_num, max_chunk_size=None, overlap=None):
+    if max_chunk_size is None:
+        max_chunk_size = int(os.environ.get("CHUNK_SIZE", 800))
+    if overlap is None:
+        overlap = int(os.environ.get("CHUNK_OVERLAP", 150))
+
     """Split page markdown into chunks, keeping tables and math formulas intact."""
     text = text.strip()
     if len(text) <= max_chunk_size:
@@ -38,8 +44,23 @@ def chunk_markdown_page(text, page_num, max_chunk_size=1200, overlap=150):
                 if current_sent_len + len(sent) > max_chunk_size:
                     if current_sent_chunk:
                         chunks.append({"page": page_num, "text": " ".join(current_sent_chunk)})
-                    current_sent_chunk = [sent]
-                    current_sent_len = len(sent)
+                        
+                        # Add overlap: keep the last few sentences
+                        overlap_chunk = []
+                        overlap_len = 0
+                        for s in reversed(current_sent_chunk):
+                            if overlap_len + len(s) <= overlap:
+                                overlap_chunk.insert(0, s)
+                                overlap_len += len(s)
+                            else:
+                                break
+                        # If overlap is completely empty (e.g., last sentence was longer than overlap), 
+                        # we can at least keep the last sentence if we want, but let's strictly obey max overlap.
+                        current_sent_chunk = overlap_chunk
+                        current_sent_len = overlap_len
+
+                    current_sent_chunk.append(sent)
+                    current_sent_len += len(sent)
                 else:
                     current_sent_chunk.append(sent)
                     current_sent_len += len(sent)

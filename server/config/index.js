@@ -3,6 +3,7 @@ require('dotenv').config({ override: true });
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../services/logger');
 const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const EMBED_MODEL = process.env.EMBED_MODEL || 'gemini-embedding-2';
@@ -40,22 +41,7 @@ const proxyUrl = (() => {
   // Check the envPort first, then fallback to other common ports
   const portsToCheck = envPort ? [envPort, ...candidatePorts.filter(p => p !== envPort)] : candidatePorts;
 
-  try {
-    if (process.platform === 'win32') {
-      const execSync = require('child_process').execSync;
-      const netstatOut = execSync('netstat -an', { encoding: 'utf8', timeout: 500 });
-      
-      for (const port of portsToCheck) {
-        const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1):${port}\\s+.*LISTENING`, 'i');
-        if (portRegex.test(netstatOut)) {
-          const detectedUrl = `http://127.0.0.1:${port}`;
-          return detectedUrl;
-        }
-      }
-    }
-  } catch (err) {
-    // Fall back to environment variable on error
-  }
+  // Removed automatic proxy port scanning to prevent leaking network state (Security Fix)
 
   return envProxy || null;
 })();
@@ -66,40 +52,26 @@ const API_TOKEN = (() => {
   if (fromEnv && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
     return fromEnv;
   }
-  let tokenBytes;
+  let token;
   try {
-    tokenBytes = crypto.randomBytes(32).toString('hex');
+    // Use randomUUID which does not block on low entropy like randomBytes
+    const tokenBytes = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+    token = tokenBytes;
   } catch (err) {
-    console.error('Failed to generate secure random bytes using crypto.randomBytes:', err);
+    logger.error('Failed to generate secure random bytes. Falling back to insecure random generator.', err);
     // Fallback: mixed timestamp + Math.random + Math.random
     const randPart1 = Math.random().toString(36).substring(2);
     const randPart2 = Math.random().toString(36).substring(2);
     const tsPart = Date.now().toString(36);
-    tokenBytes = `${tsPart}${randPart1}${randPart2}`.slice(0, 64);
+    const tokenBytes = `${tsPart}${randPart1}${randPart2}`.padEnd(64, '0').slice(0, 64);
+    token = 'insecure_' + tokenBytes;
   }
-  const token = 'ait_' + tokenBytes;
-  console.warn('⚠️  WARNING: No secure API_TOKEN configured!');
-  console.warn(`   Auto-generated token: ${token}`);
-  console.warn('   Set API_TOKEN in .env for persistence.');
+  logger.warn('⚠️  WARNING: No secure API_TOKEN configured!');
+  logger.warn(`   Auto-generated token: ${token}`);
+  logger.warn('   Set API_TOKEN in .env for persistence.');
 
-  try {
-
-    const envPath = path.join(__dirname, '..', '..', '.env');
-    let envContent = '';
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
-    if (envContent.includes('API_TOKEN=')) {
-      envContent = envContent.replace(/API_TOKEN\s*=\s*[^\r\n]*/, `API_TOKEN=${token}`);
-    } else {
-      const lineEnding = envContent.endsWith('\n') ? '' : '\n';
-      envContent += `${lineEnding}API_TOKEN=${token}\n`;
-    }
-    fs.writeFileSync(envPath, envContent, 'utf8');
-    console.info(`   Successfully persisted auto-generated API_TOKEN to .env`);
-  } catch (envErr) {
-    console.error('   Failed to persist API_TOKEN to .env:', envErr.message);
-  }
+  // Security Fix: Removed automatic writing of API_TOKEN to .env
+  logger.info(`   [ACTION REQUIRED] Please manually add API_TOKEN=${token} to your .env file`);
 
   return token;
 })();
@@ -117,34 +89,12 @@ const DB_ENCRYPTION_KEY = (() => {
     // Derive from API_TOKEN for backward compatibility
     keyHex = crypto.createHash('sha256').update(apiToken).digest('hex');
   } else {
-    keyHex = crypto.randomBytes(32).toString('hex');
+    // Use randomUUID which does not block on low entropy
+    keyHex = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
   }
 
-  try {
-
-    const envPath = path.join(__dirname, '..', '..', '.env');
-    let envContent = '';
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
-    if (envContent.includes('DB_ENCRYPTION_KEY=')) {
-      envContent = envContent.replace(/DB_ENCRYPTION_KEY\s*=\s*[^\r\n]*/, `DB_ENCRYPTION_KEY=${keyHex}`);
-    } else {
-      const lineEnding = envContent.endsWith('\n') ? '' : '\n';
-      envContent += `${lineEnding}DB_ENCRYPTION_KEY=${keyHex}\n`;
-    }
-    fs.writeFileSync(envPath, envContent, 'utf8');
-    console.info(`   Successfully persisted DB_ENCRYPTION_KEY to .env`);
-
-    // Backup the key
-    const backupPath = path.join(__dirname, '..', '..', 'db_key_backup.txt');
-    if (!fs.existsSync(backupPath)) {
-      fs.writeFileSync(backupPath, `DB_ENCRYPTION_KEY=${keyHex}\n# KEEP THIS FILE SAFE! IF LOST, DATABASE CANNOT BE DECRYPTED.\n`, 'utf8');
-      console.warn(`[WARNING] A new DB_ENCRYPTION_KEY was generated and backed up to ${backupPath}. KEEP THIS FILE SAFE!`);
-    }
-  } catch (envErr) {
-    console.error('   Failed to persist DB_ENCRYPTION_KEY to .env:', envErr.message);
-  }
+  // Security Fix: Removed automatic writing of DB_ENCRYPTION_KEY to .env and db_key_backup.txt
+  console.info(`   [ACTION REQUIRED] Please manually add DB_ENCRYPTION_KEY=${keyHex} to your .env file or a secure password manager.`);
 
   return Buffer.from(keyHex, 'hex');
 })();

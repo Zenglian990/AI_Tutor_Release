@@ -17,26 +17,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── 需要 OCR 的 17 个扫描版文件 ──────────────────────────────────────
-SCANNED_FILES = [
-    r"data\textbooks\初中\化学\人教版-人民教育出版社\九年级\义务教育教科书·化学九年级下册.pdf",
-    r"data\textbooks\初中\地理\人教版-人民教育出版社\七年级\义务教育教科书·地理七年级下册.pdf",
-    r"data\textbooks\初中\地理\人教版-人民教育出版社\八年级\义务教育教科书·地理八年级下册.pdf",
-    r"data\textbooks\初中\数学\人教版-人民教育出版社\七年级\义务教育教科书·数学七年级下册.pdf",
-    r"data\textbooks\初中\数学\人教版-人民教育出版社\八年级\义务教育教科书·数学八年级下册.pdf",
-    r"data\textbooks\初中\数学\人教版-人民教育出版社\九年级\义务教育教科书·数学九年级下册.pdf",
-    r"data\textbooks\初中\物理\人教版-人民教育出版社\八年级\义务教育教科书·物理八年级下册.pdf",
-    r"data\textbooks\初中\生物学\人教版-人民教育出版社\七年级\义务教育教科书·生物学七年级下册.pdf",
-    r"data\textbooks\初中\生物学\人教版-人民教育出版社\八年级\义务教育教科书·生物学八年级下册.pdf",
-    r"data\textbooks\初中\英语\人教版-人民教育出版社\七年级\义务教育教科书·英语七年级下册.pdf",
-    r"data\textbooks\初中\英语\人教版-人民教育出版社\八年级\义务教育教科书·英语八年级下册.pdf",
-    r"data\textbooks\小学\英语\人教版（一年级起点）（主编：吴欣）\义务教育教科书·英语（一年级起点）一年级下册.pdf",
-    r"data\textbooks\小学\英语\人教版（一年级起点）（主编：吴欣）\义务教育教科书·英语（一年级起点）二年级下册.pdf",
-    r"data\textbooks\小学\英语\人教版（一年级起点）（主编：吴欣）\义务教育教科书·英语（一年级起点）三年级下册.pdf",
-    r"data\textbooks\小学\英语\人教版（一年级起点）（主编：吴欣）\义务教育教科书·英语（一年级起点）四年级下册.pdf",
-    r"data\textbooks\小学\英语\人教版（一年级起点）（主编：吴欣）\义务教育教科书·英语（一年级起点）五年级下册.pdf",
-    r"data\textbooks\小学\英语\人教版（一年级起点）（主编：吴欣）\义务教育教科书·英语（一年级起点）六年级下册.pdf",
-]
+import glob
+SCANNED_FILES = glob.glob('data/textbooks/**/*.pdf', recursive=True)
 
 # ── OCR 进度日志 ─────────────────────────────────────────────────────
 OCR_LOG = "data/processed_pdfs_v2.log"
@@ -70,7 +52,7 @@ def get_table():
     print(f"[OCR] Table '{TABLE_NAME}' not found, creating it now...", flush=True)
     import pyarrow as pa
     schema = pa.schema([
-        pa.field("vector",  pa.list_(pa.float32(), 768)),
+        pa.field("vector",  pa.list_(pa.float32(), 3072)),
         pa.field("text",    pa.string()),
         pa.field("source",  pa.string()),
         pa.field("page",    pa.int32()),
@@ -81,16 +63,16 @@ def get_table():
 from chunk_utils import chunk_markdown_page  # shared module — no side effects
 
 # --- Shared API Key Pool + Embedding ---
-from keypool import API_KEYS, get_next_key as _shared_next_key, get_embedding
-import threading
+from keypool import API_KEYS, get_embedding
 
 EMBED_MODEL = os.environ.get("EMBED_MODEL") or "gemini-embedding-2"
-
-_key_lock = threading.Lock()
+_key_index = 0
 
 def next_key():
-    with _key_lock:
-        return _shared_next_key()
+    global _key_index
+    k = API_KEYS[_key_index]
+    _key_index = (_key_index + 1) % len(API_KEYS)
+    return k
 
 def embed_text(text):
     return get_embedding(text, EMBED_MODEL)
@@ -164,7 +146,7 @@ def ingest_ocr_texts(pdf_path, page_texts, table):
 
     if rows:
         table.add(rows)
-        print(f"  ✅ 成功入库 {len(rows)} 个 Chunks ({fname})", flush=True)
+        print(f"  ✅ 成功入库 {len(rows)} 个 Chunks ({os.path.basename(pdf_path)})", flush=True)
     return len(rows)
 
 # ── 主程序 ────────────────────────────────────────────────────────────
@@ -216,7 +198,7 @@ def main():
     # Rebuild FTS index on 'text' column to ensure search matches new pages
     try:
         print("正在为 'text' 列重建全文检索 (FTS) 倒排索引...", flush=True)
-        table.create_fts_index("text", replace=True)
+        table.create_fts_index("text")
         print("✅ 全文检索 (FTS) 索引重建成功！", flush=True)
     except Exception as e:
         print(f"⚠️  警告: 重建 FTS 索引失败: {e}", flush=True)

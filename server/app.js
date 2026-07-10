@@ -39,7 +39,7 @@ function createApp() {
         // unsafe-inline needed for Vite-built SPA inline styles; unsafe-eval removed in production
         scriptSrc: NODE_ENV === 'development'
           ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
-          : ["'self'", "'unsafe-inline'"],
+          : ["'self'"], // Security fix: Removed 'unsafe-inline' for production
         styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
         fontSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
@@ -57,12 +57,15 @@ function createApp() {
   app.use(cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, server-to-server)
-      if (!origin || 
-          allowedOrigins.includes(origin) || 
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else if (NODE_ENV === 'development' && (
           origin.startsWith('http://localhost:') || 
           origin.startsWith('http://127.0.0.1:') || 
           origin.startsWith('https://localhost:') || 
-          origin.startsWith('https://127.0.0.1:')) {
+          origin.startsWith('https://127.0.0.1:')
+      )) {
+        // Security fix: Only allow arbitrary localhost ports in development mode
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

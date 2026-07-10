@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 
 export default function ChapterStepper({
@@ -11,7 +11,7 @@ export default function ChapterStepper({
   authFetch
 }) {
   const confettiTimersRef = useRef([]);
-  const isConfettiActiveRef = useRef(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -51,8 +51,8 @@ export default function ChapterStepper({
               if (step.pct === 75) text = `进入第三关【${step.pct}% 脑图巩固】！请用Markdown代码块给我画个本章的核心思维导图。`;
               if (step.pct === 100) {
                 text = `进入最终关【${step.pct}% 终极通关】！我已经准备好迎接最后的测试了，请出题！`;
-                if (!isConfettiActiveRef.current) {
-                  isConfettiActiveRef.current = true;
+                if (!isAnimating) {
+                  setIsAnimating(true);
                   confetti({
                     particleCount: 150,
                     spread: 70,
@@ -60,16 +60,17 @@ export default function ChapterStepper({
                     zIndex: 9999
                   });
                   setTimeout(() => {
-                    isConfettiActiveRef.current = false;
+                    setIsAnimating(false);
                   }, 3000);
                 }
               }
               onSubmit(null, text);
-            }} style={{
+            }} disabled={isAnimating} style={{
               padding: '6px 12px', borderRadius: '20px', fontSize: '13px',
               background: isActive ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'rgba(255,255,255,0.1)',
-              color: isActive ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
-              boxShadow: isActive ? '0 0 10px rgba(139, 92, 246, 0.5)' : 'none'
+              color: isActive ? '#fff' : '#94a3b8', border: 'none', cursor: isAnimating ? 'not-allowed' : 'pointer',
+              boxShadow: isActive ? '0 0 10px rgba(139, 92, 246, 0.5)' : 'none',
+              opacity: isAnimating ? 0.6 : 1
             }}>{step.label}</button>
           );
         })}

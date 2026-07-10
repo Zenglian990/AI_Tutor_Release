@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const TEXTBOOK_CHAPTERS = require('../prompts/chapters.json');
+const { getChapters } = require('../utils/dataLoader');
 const { getSqliteDb } = require('../db/init');
 const { NODE_ENV } = require('../config');
 const logger = require('../services/logger');
@@ -20,6 +20,7 @@ router.get('/chapters', async (req, res) => {
       return res.json({ chapters: [] });
     }
 
+    const TEXTBOOK_CHAPTERS = await getChapters();
     const key = edition ? `${grade}_${edition}` : grade;
     const gradeChapters = TEXTBOOK_CHAPTERS[key] || TEXTBOOK_CHAPTERS[grade] || {};
     const list = gradeChapters[subject] || [];

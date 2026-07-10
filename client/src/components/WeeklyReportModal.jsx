@@ -16,7 +16,7 @@ export default function WeeklyReportModal({ isOpen, onClose, reportLoading, repo
           {reportLoading ? <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>⏳ 正在分析过去7天的数据并为您起草报告，请稍候...</div>
             : <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{preprocessLatex(reportData)}</ReactMarkdown>}
         </div>
-        <button onClick={onClose} style={{ alignSelf: 'flex-end', padding: '10px 24px', background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>阅毕关闭</button>
+        <button onClick={onClose} aria-label="关闭周报" style={{ alignSelf: 'flex-end', padding: '10px 24px', background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>阅毕关闭</button>
       </div>
     </div>
   );

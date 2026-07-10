@@ -22,28 +22,35 @@ export const compressImage = async (file, maxWidth = 1200, maxHeight = 1200, qua
       throw e;
     }
   }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(imageFile);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width *= ratio; height *= ratio;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          resolve(blob ? new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }) : file);
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = () => resolve(file);
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(imageFile);
+    const img = new Image();
+    img.src = objectUrl;
+    
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio; height *= ratio;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const isPng = imageFile.type === 'image/png';
+      const outputType = isPng ? 'image/webp' : 'image/jpeg';
+      const outputExtension = isPng ? '.webp' : '.jpg';
+      const newName = file.name.replace(/\.[^/.]+$/, "") + outputExtension;
+      
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(blob ? new File([blob], newName, { type: outputType, lastModified: Date.now() }) : file);
+      }, outputType, quality);
     };
-    reader.onerror = () => resolve(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
   });
 };

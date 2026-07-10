@@ -16,9 +16,6 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "devDependencies": {
-    "puppeteer": "^24.43.0"
-  },
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",
     "cors": "^2.8.6",

@@ -4,19 +4,31 @@ import time
 import lancedb
 
 # Reconfigure stdout to use utf-8
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
-# Set proxy just in case
-os.environ["HTTP_PROXY"] = "http://127.0.0.1:10910"
-os.environ["HTTPS_PROXY"] = "http://127.0.0.1:10910"
+# Dynamically resolve project root
+script_path = os.path.abspath(__file__)
+script_dir = os.path.dirname(script_path)
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
-sys.path.append("C:/Users/Asus/Desktop/AI_Tutor_Release")
+import server_utils
 from keypool import API_KEYS, get_embedding
+
+print("================================================================")
+print("⚠️ WARNING: SYNTHETIC TEXTBOOK CONTENT GENERATOR ⚠️")
+print("This script injects hardcoded, artificial textbook chunks containing")
+print("fictional personas (e.g. '曾老师', '元元') into the vector DB.")
+print("This data is for TESTING ONLY and will pollute production RAG results.")
+print("Do not use in production.")
+print("================================================================\n")
 
 print(f"Loaded {len(API_KEYS)} API key(s) for 2024 New Edition generation.")
 
-# Define the database path
-db_path = "C:/Users/Asus/Desktop/AI_Tutor_Release/data/lancedb"
+# Define the database path using server_utils
+db_path = server_utils.LANCEDB_DIR
 
 # Define the custom 2024 edition chunks
 # We design this meticulously for Grade 3 (8-9 years old mental model: needs visual cues, concrete examples, and interactive dialogs)
@@ -282,7 +294,10 @@ if records_to_insert:
     print(f"Inserting {len(records_to_insert)} records into textbooks table...")
     table.add(records_to_insert)
     print("Rebuilding FTS index to index the new 2024 edition text...")
-    table.create_fts_index("text", replace=True)
+    try:
+        table.create_fts_index("text")
+    except Exception as e:
+        print(f"FTS index rebuild skipped or failed: {e}")
     print("✅ Successfully generated and inserted 2024 Southwest University Math Grade 3 Down database entries!")
 else:
     print("Error: No records were generated successfully.")

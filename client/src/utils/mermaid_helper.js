@@ -2,6 +2,15 @@ import mermaid from 'mermaid';
 
 let initialized = false;
 
+export const stringHash = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+};
+
 export const initMermaid = () => {
   if (initialized) return;
   mermaid.initialize({
@@ -87,7 +96,7 @@ export const sanitizeMermaid = (code) => {
       
       if (text.includes('(') || text.includes('"') || text.includes('+') || text.includes('=')) {
         text = text.replace(/"/g, "'");
-        const rnd = Math.random().toString(36).substring(7);
+        const rnd = stringHash(text);
         return `${space}node_${rnd}["${text}"]`;
       }
       return line;

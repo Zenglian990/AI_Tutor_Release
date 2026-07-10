@@ -1,4 +1,5 @@
 const { API_TOKEN, NODE_ENV, AUTH_RATE_LIMIT_WINDOW_MS, AUTH_RATE_LIMIT_MAX } = require('../config');
+const logger = require('../services/logger');
 
 /**
  * In-memory auth failure tracker for brute-force protection.
@@ -17,7 +18,7 @@ setInterval(() => {
       }
     }
   } catch (err) {
-    console.error('[Auth] Error in periodic failures cleanup interval:', err);
+    logger.error('[Auth] Error in periodic failures cleanup interval:', err);
   }
 }, FAILURE_CLEANUP_INTERVAL).unref();
 
@@ -48,18 +49,11 @@ function authMiddleware(req, res, next) {
   if (!failureEntry || now > failureEntry.windowStart + AUTH_RATE_LIMIT_WINDOW_MS) {
     // Prevent memory leaks under DDoS/mass IP spoofing: enforce map capacity limit (2000)
     if (authFailures.size >= 2000) {
-      let oldestIp = null;
-      let oldestTime = Infinity;
-      for (const [ip, entry] of authFailures) {
-        if (now > entry.windowStart + AUTH_RATE_LIMIT_WINDOW_MS) {
-          authFailures.delete(ip);
-        } else if (entry.windowStart < oldestTime) {
-          oldestTime = entry.windowStart;
-          oldestIp = ip;
-        }
-      }
-      if (authFailures.size >= 2000 && oldestIp) {
-        authFailures.delete(oldestIp);
+      // Map iterates in insertion order. Evict the 50 oldest entries in O(1) time.
+      const iterator = authFailures.keys();
+      for (let i = 0; i < 50; i++) {
+        const oldestIp = iterator.next().value;
+        if (oldestIp) authFailures.delete(oldestIp);
       }
     }
     failureEntry = { count: 0, windowStart: now };
@@ -84,7 +78,7 @@ function authMiddleware(req, res, next) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
   if (token !== API_TOKEN) {
     failureEntry.count++;
-    console.warn(`[Auth] Failed attempt from ${clientIp} (${failureEntry.count}/${AUTH_RATE_LIMIT_MAX})`);
+    logger.warn(`[Auth] Failed attempt from ${clientIp} (${failureEntry.count}/${AUTH_RATE_LIMIT_MAX})`);
     return res.status(403).json({ error: '访问令牌无效。' });
   }
 

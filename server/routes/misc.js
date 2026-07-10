@@ -7,12 +7,15 @@ const { NODE_ENV, API_KEYS } = require('../config');
 const logger = require('../services/logger');
 const { encryptField, decryptField, generateFtsIndexText } = require('../utils/crypto');
 const { formatGradeName, GRADE_ALIASES, getPromptGuidelines } = require('../prompts/guidelines');
+const { sanitizeName } = require('../utils/sanitize');
 const { verifyMultipartIntegrity } = require('../middleware/signature');
 const { getTable } = require('../db/init');
 const { API_TOKEN } = require('../config');
-const TEXTBOOK_CHAPTERS = require('../prompts/chapters.json');
 const fs = require('fs');
 const path = require('path');
+const { getChapters } = require('../utils/dataLoader');
+const dbQueue = require('../services/dbQueue');
+const dataUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // Allowed audio MIME types
 const ALLOWED_AUDIO_TYPES = [
@@ -48,13 +51,10 @@ router.get('/health', (req, res) => {
     status: 'ok',
     uptime: process.uptime(),
   };
-  // Only expose sensitive details in development
-  if (NODE_ENV === 'development') {
-    base.db_ready = !!getTable();
-    base.sqlite_ready = !!getSqliteDb();
-    base.keys_available = API_KEYS.length;
-    base.mode = NODE_ENV;
-  }
+  base.db_ready = !!getTable();
+  base.sqlite_ready = !!getSqliteDb();
+  base.keys_available = typeof API_KEYS !== 'undefined' ? API_KEYS.length : 0;
+  base.mode = NODE_ENV;
   res.json(base);
 });
 
@@ -79,7 +79,6 @@ router.get('/chat-history', async (req, res) => {
   }
 });
 
-const dbQueue = require('../services/dbQueue');
 
 router.post('/chat-history', async (req, res) => {
   try {
@@ -268,20 +267,66 @@ router.get('/export/data', async (req, res) => {
   }
 });
 
+// Data import — requires valid API token to protect user data
+router.post('/import/data', dataUpload.single('file'), async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.body.token;
+    if (!token || token !== API_TOKEN) {
+      return res.status(403).json({ error: "导入数据需要有效的访问令牌" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "未上传数据文件" });
+    }
+
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+
+    const importData = JSON.parse(req.file.buffer.toString('utf8'));
+    const { profile_id = 'default', mistakes = [], chat_history = [] } = importData;
+
+    // Process and insert mistakes
+    for (const m of mistakes) {
+      await dbQueue.enqueue(async (db) => {
+        const encryptedQuery = encryptField(m.query);
+        const encryptedAnswer = encryptField(m.answer);
+        const encryptedReason = encryptField(m.reason);
+        const ftsText = generateFtsIndexText(m.query, m.answer, m.reason, m.subject);
+        
+        await db.run(
+          `INSERT OR REPLACE INTO mistakes 
+          (id, profile_id, timestamp, subject, grade, query, answer, reason, solved, difficulty, last_reviewed, fts_text)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [m.id, profile_id, m.timestamp, m.subject, m.grade, encryptedQuery, encryptedAnswer, encryptedReason, m.solved, m.difficulty, m.last_reviewed, ftsText]
+        );
+      });
+    }
+
+    // Process and insert chat history
+    for (const c of chat_history) {
+      await dbQueue.enqueue(async (db) => {
+        const encryptedText = encryptField(c.text);
+        await db.run(
+          `INSERT OR REPLACE INTO chat_history (id, profile_id, role, text, timestamp) VALUES (?, ?, ?, ?, ?)`,
+          [c.id, profile_id, c.role, encryptedText, c.timestamp]
+        );
+      });
+    }
+
+    res.json({ success: true, imported: { mistakes: mistakes.length, chat_history: chat_history.length } });
+  } catch (e) {
+    logger.error("Data import error:", e);
+    res.status(500).json({ error: "Failed to import data" });
+  }
+});
+
 // Weekly report
 router.post('/report/weekly', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id = 'default', grade = 'unknown' } = req.body;
-    // Sanitize free-text user inputs to prevent prompt injection
-    const sanitizeName = (str, fallback) => {
-      let clean = String(str || fallback).replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\-\s]/g, '').trim().slice(0, 15);
-      if (/ignore|prompt|instruction|system|forget|bypass|指令|提示|忽略|忘记|系统/i.test(clean)) {
-        return fallback;
-      }
-      return clean || fallback;
-    };
     const parent_name = sanitizeName(req.body.parent_name, '家长');
     const student_name = sanitizeName(req.body.student_name, '学生');
     const safeGrade = formatGradeName(grade);
@@ -354,7 +399,8 @@ router.post('/active-plan/generate', async (req, res) => {
 
 
     const key = edition ? `${grade}_${edition}` : grade;
-    const gradeChapters = TEXTBOOK_CHAPTERS[key] || TEXTBOOK_CHAPTERS[grade] || {};
+    const chaptersData = await getChapters();
+    const gradeChapters = chaptersData[key] || chaptersData[grade] || {};
     const list = gradeChapters[subject] || [];
 
     // Don't waste API quota when no chapters exist for this grade/subject combination
@@ -365,14 +411,6 @@ router.post('/active-plan/generate', async (req, res) => {
     const chaptersStr = list.map((c, i) => `${i + 1}. ${c.name} (${c.description})`).join('\n');
 
     const gradeStr = formatGradeName(grade);
-    // Sanitize free-text user input to prevent prompt injection
-    const sanitizeName = (str, fallback) => {
-      let clean = String(str || fallback).replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\-\s]/g, '').trim().slice(0, 15);
-      if (/ignore|prompt|instruction|system|forget|bypass|指令|提示|忽略|忘记|系统/i.test(clean)) {
-        return fallback;
-      }
-      return clean || fallback;
-    };
     const name = sanitizeName(req.body.student_name, '孩子');
 
     const prompt = `你是一位极其优秀的 AI 专属伴读私教。现在你要为学生【${name}】（处于【${gradeStr}】【${subject}】阶段）制定一份【全学期主动通关学习规划方案】。
@@ -555,17 +593,42 @@ router.post('/admin/pin', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const { pin_hash } = req.body;
+    const { pin_hash, security_answer_hash } = req.body;
     if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
 
     await sqliteDb.run(
       'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
       ['parent_pin_hash', pin_hash]
     );
+    if (security_answer_hash) {
+      await sqliteDb.run(
+        'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['security_answer_hash', security_answer_hash]
+      );
+    }
     res.json({ success: true });
   } catch (e) {
     logger.error("Failed to save parent PIN hash:", e);
     res.status(500).json({ error: "保存家长密码哈希失败" });
+  }
+});
+
+// GET /api/admin/pin — Get parent PIN hash and security answer from database
+router.get('/admin/pin', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+
+    const pinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
+    const answerRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'security_answer_hash'");
+    
+    res.json({
+      pin_hash: pinRow ? pinRow.value : null,
+      security_answer_hash: answerRow ? answerRow.value : null
+    });
+  } catch (e) {
+    logger.error("Failed to get parent PIN info:", e);
+    res.status(500).json({ error: "获取家长安全设置失败" });
   }
 });
 

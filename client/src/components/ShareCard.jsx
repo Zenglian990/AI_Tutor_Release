@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { formatGrade } from '../store/useStore';
 
-const ShareCard = forwardRef(({ profileName, activeProfile, stats, recentData, subjectData }, ref) => {
+const ShareCard = forwardRef(({ profileName, parentName, activeProfile, stats, recentData, subjectData }, ref) => {
   const profileGradeStr = activeProfile?.grade ? formatGrade(activeProfile.grade) : '通用课本';
   
   const now = new Date();
@@ -46,7 +46,7 @@ const ShareCard = forwardRef(({ profileName, activeProfile, stats, recentData, s
           margin: 0, fontSize: '32px', 
           background: 'linear-gradient(to right, #fbbf24, #f59e0b, #d97706)', 
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' 
-        }}>曾练 AI 专属私教</h1>
+        }}>AI 专属私教</h1>
         <h2 style={{ margin: '15px 0 10px', fontSize: '20px', color: '#67e8f9' }}>✨ 伴读成长周报 ✨</h2>
         <div style={{ color: '#94a3b8', fontSize: '14px' }}>{dateStr}</div>
       </div>
@@ -114,16 +114,16 @@ const ShareCard = forwardRef(({ profileName, activeProfile, stats, recentData, s
       }}>
         <h3 style={{ margin: '0 0 15px 0', color: '#fbbf24', fontSize: '18px' }}>🏆 本周获得荣誉：勤学深思勋章 (Active Thinker)</h3>
         <p style={{ color: '#e2e8f0', fontSize: '14px', fontStyle: 'italic', lineHeight: '1.6', margin: 0 }}>
-          「学而时习之，不亦说乎。」曾小侠/小主本周在AI私教老师的引导下，<br/>
+          「学而时习之，不亦说乎。」{profileName}本周在AI私教老师的引导下，<br/>
           能够积极面对疑惑，探究错题背后的核心逻辑与易错点。<br/>
           苏格拉底式的循循诱导正在帮助孩子养成自主思考的好习惯！<br/>
-          曾先生，让我们继续陪伴孩子在快乐与思辨中一起成长！🚀
+          {parentName}，让我们继续陪伴孩子在快乐与思辨中一起成长！🚀
         </p>
       </div>
 
       {/* Footer */}
       <div style={{ position: 'absolute', bottom: '40px', left: '0', right: '0', textAlign: 'center', zIndex: 1 }}>
-        <div style={{ color: '#4b5563', fontSize: '12px', marginBottom: '8px' }}>—— 由 曾练专属私教 APP 智能成长引擎技术生成 ——</div>
+        <div style={{ color: '#4b5563', fontSize: '12px', marginBottom: '8px' }}>—— 由 AI Tutor 智能成长引擎技术生成 ——</div>
         <div style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 'bold' }}>长按图片保存或分享给家人，见证孩子的每一次成长点滴 🌱</div>
       </div>
     </div>

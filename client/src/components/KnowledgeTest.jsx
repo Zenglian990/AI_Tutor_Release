@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useStore';
 import DOMPurify from 'dompurify';
-import { initMermaid, sanitizeMermaid } from '../utils/mermaid_helper';
+import { initMermaid, sanitizeMermaid, stringHash } from '../utils/mermaid_helper';
 
 initMermaid();
 
@@ -15,7 +15,7 @@ function MermaidRenderer({ chart }) {
   useEffect(() => {
     if (!chart) return;
     try {
-      const id = `mermaid-test-${Math.random().toString(36).substring(7)}`;
+      const id = `mermaid-test-${stringHash(chart)}`;
       const cleaned = sanitizeMermaid(chart);
         
       import('mermaid').then(mermaid => {
@@ -65,7 +65,8 @@ function MermaidRenderer({ chart }) {
 }
 
 export default function KnowledgeTest({ onClose, currentProfileId, currentGrade, selectedSubject, currentEdition, authFetch }) {
-  const { language } = useAppStore();
+  const { language, profiles } = useAppStore();
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || { name: '学生' };
 
   const getExamGuideAndButtonText = () => {
     const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
@@ -244,7 +245,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       const interval = setInterval(() => {
         i = (i + 1) % statuses.length;
         setGeneratingStatus(statuses[i]);
-      }, 2500);
+      }, 800);
       return () => clearInterval(interval);
     }
   }, [stage]);
@@ -264,7 +265,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       const interval = setInterval(() => {
         i = (i + 1) % statuses.length;
         setGradingStatus(statuses[i]);
-      }, 2500);
+      }, 800);
       return () => clearInterval(interval);
     }
   }, [stage]);
@@ -325,7 +326,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          student_name: '曾小侠',
+          student_name: currentProfile.name,
           answers: answers,
           questions: paper.questions,
           grade: currentGrade
@@ -477,6 +478,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
               onClick={onClose} 
               disabled={stage === 'generating' || stage === 'grading'}
               className="no-print"
+              aria-label="关闭测试窗口"
               style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '28px', cursor: 'pointer', lineHeight: 1 }}
             >
               ×
@@ -501,6 +503,8 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                   <button
                     key={type.id}
                     onClick={() => setTestType(type.id)}
+                    aria-label={`选择测试类型：${type.label}`}
+                    aria-pressed={testType === type.id}
                     style={{
                       flex: 1,
                       padding: '12px',
@@ -531,6 +535,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                     </div>
                   ) : (
                     <select
+                      aria-label="选择要测试的单元章节"
                       value={selectedChapterId}
                       onChange={e => setSelectedChapterId(e.target.value)}
                       style={{
@@ -555,10 +560,12 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '13px', color: '#9ca3af' }}>请输入您想测试的具体知识点（可输入多个）：</label>
                   <textarea
+                    aria-label="输入自定义知识点"
                     value={customKnowledgePoints}
                     onChange={e => setCustomKnowledgePoints(e.target.value)}
                     placeholder="例如：一元二次方程、勾股定理的应用..."
                     rows={3}
+                    maxLength={500}
                     style={{
                       padding: '12px',
                       background: '#1f2937',
@@ -589,6 +596,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
 
                   <button
                     onClick={handleGenerate}
+                    aria-label={guideInfo.btnText}
                     disabled={(testType === 'unit' && chapters.length === 0) || (testType === 'custom' && !customKnowledgePoints.trim())}
                     style={{
                       marginTop: 'auto',
@@ -672,6 +680,8 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                                   <button
                                     key={opt}
                                     onClick={() => setAnswers(prev => ({ ...prev, [q.id]: optLetter }))}
+                                    aria-label={`选择 ${optLetter}`}
+                                    aria-pressed={isSelected}
                                     style={{
                                       textAlign: 'left',
                                       padding: '10px 14px',
@@ -724,6 +734,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                           {block.type === 'blank' && (
                             <input
                               type="text"
+                              aria-label={`填空题 ${q.id} 答案`}
                               placeholder="在此处填写填空题最终答案"
                               value={answers[q.id] || ''}
                               onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
@@ -743,6 +754,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
 
                           {block.type === 'essay' && (
                             <textarea
+                              aria-label={`解答题 ${q.id} 答案`}
                               placeholder="在此处写下你的解答过程、分析思路或作文..."
                               value={answers[q.id] || ''}
                               onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
@@ -771,6 +783,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
 
             <button
               onClick={handleSubmitTest}
+              aria-label="提交测试卷"
               className="no-print"
               style={{
                 marginTop: '16px',
@@ -839,7 +852,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#f3f4f6' }}>曾小侠 的 150分制 测评报告</h3>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#f3f4f6' }}>{currentProfile.name} 的 150分制 测评报告</h3>
                     <span style={{ background: getScoreRating(report.score).color, color: 'white', fontSize: '10px', padding: '1px 6px', borderRadius: '6px', fontWeight: 'bold' }}>
                       {getScoreRating(report.score).label}
                     </span>
@@ -888,6 +901,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                             <button
                               onClick={() => handleMarkMistake(r)}
                               className="no-print"
+                              aria-label={markedMistakes[r.id] ? '错题已入本' : '将该错题收入错题本'}
                               disabled={markedMistakes[r.id]}
                               style={{
                                 border: 'none',
@@ -945,6 +959,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
 
             <button
                onClick={() => setStage('setup')}
+               aria-label="重新测评"
                className="no-print"
               style={{
                 marginTop: '16px',

@@ -8,14 +8,32 @@
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+   public *;
+}
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-renamesourcefileattribute SourceFile
+
+# Capacitor specific rules
+-keep class com.getcapacitor.** { *; }
+-keep class androidx.core.splashscreen.** { *; }
+-keep public class * extends com.getcapacitor.Plugin
+
+# Obfuscation basics
+-repackageclasses ''
+-allowaccessmodification
+-dontusemixedcaseclassnames
+
+# Webkit
+-keepclassmembers class * extends android.webkit.WebChromeClient {
+    public *;
+}
+-keepclassmembers class * extends android.webkit.WebViewClient {
+    public *;
+}

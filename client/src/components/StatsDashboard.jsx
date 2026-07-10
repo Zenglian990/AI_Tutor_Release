@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { authFetch, formatGrade } from '../store/useStore';
+import { authFetch, formatGrade, useAppStore } from '../store/useStore';
 import CanvasBarChart from './CanvasBarChart';
 import ShareCard from './ShareCard';
 import html2canvas from 'html2canvas';
@@ -8,6 +8,8 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
   const [stats, setStats] = useState(null);
   const [shareImageUrl, setShareImageUrl] = useState(null);
   const profileName = profiles.find(p => p.id === currentProfileId)?.name || '未知用户';
+  const { settings } = useAppStore();
+  const parentName = settings?.parentName || '家长';
 
   const [error, setError] = useState(null);
 
@@ -56,6 +58,7 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
         <ShareCard 
           ref={shareCardRef} 
           profileName={profileName} 
+          parentName={parentName}
           activeProfile={profiles.find(p => p.id === currentProfileId)}
           stats={stats}
           recentData={recentData}
@@ -75,7 +78,7 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
                 📢 生成微信伴读周报
               </button>
             )}
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '20px' }}>✕</button>
+            <button onClick={onClose} aria-label="关闭数据看板" style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '20px' }}>✕</button>
           </div>
         </div>
 

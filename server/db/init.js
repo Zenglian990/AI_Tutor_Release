@@ -103,125 +103,145 @@ async function initDB() {
 }
 
 async function runMigrations(db) {
-  // Migration v1: Core tables
   await db.exec(`
-    CREATE TABLE IF NOT EXISTS mistakes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      query TEXT,
-      answer TEXT,
-      grade TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-      source_info TEXT,
-      reason TEXT
+    CREATE TABLE IF NOT EXISTS schema_version (
+      version INTEGER PRIMARY KEY,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Migration v2: SM-2 Spaced Repetition columns
-  for (const col of [
-    'ALTER TABLE mistakes ADD COLUMN review_count INTEGER DEFAULT 0',
-    'ALTER TABLE mistakes ADD COLUMN easiness_factor REAL DEFAULT 2.5',
-    'ALTER TABLE mistakes ADD COLUMN next_review_date DATETIME DEFAULT CURRENT_TIMESTAMP',
-    'ALTER TABLE mistakes ADD COLUMN last_interval INTEGER DEFAULT 0',
-  ]) {
-    try { await db.exec(col); } catch (e) { /* column already exists */ }
+  const { version: currentVersion } = (await db.get('SELECT MAX(version) as version FROM schema_version')) || { version: 0 };
+  let v = currentVersion || 0;
+
+  // Handle existing databases that didn't have schema_version
+  if (v === 0) {
+    const row = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='mistakes'");
+    if (row) {
+      // Assume existing DB is at least v11
+      v = 11;
+      await db.exec('INSERT INTO schema_version (version) VALUES (11)');
+    }
   }
 
-  // Migration v3: Chat history
-  await db.exec(`CREATE TABLE IF NOT EXISTS chat_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_id TEXT,
-    subject TEXT,
-    role TEXT,
-    text TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  // Migration v4: Profile progress
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS profile_progress (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      profile_id TEXT NOT NULL,
-      grade TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      chapter_id TEXT NOT NULL,
-      status TEXT DEFAULT 'not_started',
-      progress_pct INTEGER DEFAULT 0,
-      score INTEGER,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(profile_id, grade, subject, chapter_id)
-    )
-  `);
-
-  // Migration v5: Multi-profile support for mistakes
-  for (const col of [
-    "ALTER TABLE mistakes ADD COLUMN profile_id TEXT DEFAULT 'default'",
-    'ALTER TABLE mistakes ADD COLUMN subject TEXT',
-  ]) {
-    try { await db.exec(col); } catch (e) { /* column already exists */ }
-  }
-
-  // Migration v6: Chat history grade column
-  try { await db.exec("ALTER TABLE chat_history ADD COLUMN grade TEXT DEFAULT 'unknown'"); } catch (e) { /* exists */ }
-
-  // Migration v7: Tenancy separation indexes
   try {
-    await db.exec('CREATE INDEX IF NOT EXISTS idx_mistakes_profile_subject ON mistakes(profile_id, subject);');
-    await db.exec('CREATE INDEX IF NOT EXISTS idx_chat_history_profile_grade_subject ON chat_history(profile_id, grade, subject);');
-    await db.exec('CREATE INDEX IF NOT EXISTS idx_profile_progress_profile_grade_subject ON profile_progress(profile_id, grade, subject);');
-  } catch (e) {
-    logger.error('Failed to create migration indexes:', e);
-  }
+    if (v < 1) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS mistakes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          query TEXT,
+          answer TEXT,
+          grade TEXT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          source_info TEXT,
+          reason TEXT
+        )
+      `);
+      await db.exec('INSERT INTO schema_version (version) VALUES (1)');
+    }
 
-  // Migration v8: API usage statistics tracking
-  try {
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS api_usage (
+    if (v < 2) {
+      await db.exec('ALTER TABLE mistakes ADD COLUMN review_count INTEGER DEFAULT 0');
+      await db.exec('ALTER TABLE mistakes ADD COLUMN easiness_factor REAL DEFAULT 2.5');
+      await db.exec('ALTER TABLE mistakes ADD COLUMN next_review_date DATETIME DEFAULT CURRENT_TIMESTAMP');
+      await db.exec('ALTER TABLE mistakes ADD COLUMN last_interval INTEGER DEFAULT 0');
+      await db.exec('INSERT INTO schema_version (version) VALUES (2)');
+    }
+
+    if (v < 3) {
+      await db.exec(`CREATE TABLE IF NOT EXISTS chat_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        model TEXT,
-        type TEXT,
-        prompt_tokens INTEGER,
-        completion_tokens INTEGER,
-        status TEXT
-      )
-    `);
-    await db.exec('CREATE INDEX IF NOT EXISTS idx_api_usage_timestamp ON api_usage(timestamp);');
-  } catch (e) {
-    logger.error('Failed to create api_usage table:', e);
+        profile_id TEXT,
+        subject TEXT,
+        role TEXT,
+        text TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await db.exec('INSERT INTO schema_version (version) VALUES (3)');
+    }
+
+    if (v < 4) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS profile_progress (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          profile_id TEXT NOT NULL,
+          grade TEXT NOT NULL,
+          subject TEXT NOT NULL,
+          chapter_id TEXT NOT NULL,
+          status TEXT DEFAULT 'not_started',
+          progress_pct INTEGER DEFAULT 0,
+          score INTEGER,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(profile_id, grade, subject, chapter_id)
+        )
+      `);
+      await db.exec('INSERT INTO schema_version (version) VALUES (4)');
+    }
+
+    if (v < 5) {
+      await db.exec("ALTER TABLE mistakes ADD COLUMN profile_id TEXT DEFAULT 'default'");
+      await db.exec("ALTER TABLE mistakes ADD COLUMN subject TEXT");
+      await db.exec('INSERT INTO schema_version (version) VALUES (5)');
+    }
+
+    if (v < 6) {
+      await db.exec("ALTER TABLE chat_history ADD COLUMN grade TEXT DEFAULT 'unknown'");
+      await db.exec('INSERT INTO schema_version (version) VALUES (6)');
+    }
+
+    if (v < 7) {
+      await db.exec('CREATE INDEX IF NOT EXISTS idx_mistakes_profile_subject ON mistakes(profile_id, subject);');
+      await db.exec('CREATE INDEX IF NOT EXISTS idx_chat_history_profile_grade_subject ON chat_history(profile_id, grade, subject);');
+      await db.exec('CREATE INDEX IF NOT EXISTS idx_profile_progress_profile_grade_subject ON profile_progress(profile_id, grade, subject);');
+      await db.exec('INSERT INTO schema_version (version) VALUES (7)');
+    }
+
+    if (v < 8) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS api_usage (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          model TEXT,
+          type TEXT,
+          prompt_tokens INTEGER,
+          completion_tokens INTEGER,
+          status TEXT
+        )
+      `);
+      await db.exec('CREATE INDEX IF NOT EXISTS idx_api_usage_timestamp ON api_usage(timestamp);');
+      await db.exec('INSERT INTO schema_version (version) VALUES (8)');
+    }
+
+    if (v < 9) {
+      await db.exec("ALTER TABLE mistakes ADD COLUMN tags TEXT DEFAULT '';");
+      await db.exec('INSERT INTO schema_version (version) VALUES (9)');
+    }
+
+    if (v < 10) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS system_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT
+        )
+      `);
+      await db.exec('INSERT INTO schema_version (version) VALUES (10)');
+    }
+
+    if (v < 11) {
+      await db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS chat_history_fts USING fts5(
+          chat_id UNINDEXED,
+          text
+        );
+      `);
+      await db.exec('INSERT INTO schema_version (version) VALUES (11)');
+    }
+
+  } catch (err) {
+    logger.error('Failed during schema migration: ', err);
+    throw err;
   }
 
-  // Migration v9: Mistakes tags column
-  try {
-    await db.exec("ALTER TABLE mistakes ADD COLUMN tags TEXT DEFAULT '';");
-  } catch (e) {
-    // column already exists
-  }
-
-  // Migration v10: Parental gate / Admin settings table
-  try {
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS system_settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      )
-    `);
-  } catch (e) {
-    logger.error('Failed to create system_settings table:', e);
-  }
-
-  // Migration v11: FTS5 Full text search index for chat history
-  try {
-    await db.exec(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS chat_history_fts USING fts5(
-        chat_id UNINDEXED,
-        text
-      );
-    `);
-  } catch (e) {
-    logger.error('Failed to create chat_history_fts table:', e);
-  }
-
-  // Fixed A3-3: Cleanup api_usage records older than 30 days to prevent unbounded growth
+  // Cleanup api_usage records older than 30 days
   try {
     const result = await db.run("DELETE FROM api_usage WHERE timestamp < datetime('now', '-30 days')");
     if (result.changes > 0) {

@@ -41,15 +41,7 @@
     display: block !important;
   }
   
-  /* 3. 使用双重保险，隐藏任何可能散落在 body 下的其它无关悬浮组件，但保留试卷的可见性 */
-  body * {
-    visibility: hidden;
-  }
-  
-  .mistake-overlay, 
-  .mistake-overlay * {
-    visibility: visible;
-  }
+  /* Removed overly aggressive body * visibility: hidden logic */
   
   .mistake-overlay {
     position: relative !important;

@@ -20,7 +20,7 @@ const req = http.get(checkUrl, (res) => {
         console.log(`  Uptime: ${Math.round(json.uptime)} seconds`);
         if (json.mode) {
           console.log(`  Environment: ${json.mode}`);
-          console.log(`  Database Status: SQLite=${json.sqlite_ready ? 'OK' : 'FAIL'}, LanceDB=${json.db_ready ? 'OK' : 'FAIL'}`);
+          console.log(`  Database Status: SQLite=${json.sqlite_ready !== false ? 'OK' : 'FAIL'}, LanceDB=${json.db_ready !== false ? 'OK' : 'FAIL'}`);
         }
         process.exit(0);
       } catch (err) {

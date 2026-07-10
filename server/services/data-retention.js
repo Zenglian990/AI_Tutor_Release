@@ -13,17 +13,19 @@ async function startDataRetentionCleanup(getSqliteDb) {
     let totalChanges = 0;
 
     try {
+      const cutoffDate = new Date(Date.now() - DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
       await db.run(
         `DELETE FROM chat_history_fts 
          WHERE chat_id IN (
            SELECT id FROM chat_history 
-           WHERE datetime(timestamp) < datetime('now', '-' || ? || ' days')
+           WHERE timestamp < ?
          )`,
-        [DATA_RETENTION_DAYS]
+        [cutoffDate]
       );
       const result = await db.run(
-        `DELETE FROM chat_history WHERE datetime(timestamp) < datetime('now', '-' || ? || ' days')`,
-        [DATA_RETENTION_DAYS]
+        `DELETE FROM chat_history WHERE timestamp < ?`,
+        [cutoffDate]
       );
       if (result.changes > 0) {
         totalChanges += result.changes;
@@ -34,11 +36,12 @@ async function startDataRetentionCleanup(getSqliteDb) {
     }
 
     try {
+      const cutoffDate = new Date(Date.now() - DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
       const result = await db.run(
         `DELETE FROM mistakes 
-         WHERE datetime(timestamp) < datetime('now', '-' || ? || ' days')
-         AND datetime(COALESCE(next_review_date, '1970-01-01')) < datetime('now', '-' || ? || ' days')`,
-        [DATA_RETENTION_DAYS, DATA_RETENTION_DAYS]
+         WHERE timestamp < ?
+         AND COALESCE(next_review_date, '1970-01-01T00:00:00.000Z') < ?`,
+        [cutoffDate, cutoffDate]
       );
       if (result.changes > 0) {
         totalChanges += result.changes;
@@ -50,7 +53,7 @@ async function startDataRetentionCleanup(getSqliteDb) {
 
     // Do not clean up profile_progress records since it represents historical student progress map positions and level states, which should be kept permanently.
 
-    if (totalChanges > 0) {
+    if (totalChanges > 1000) {
       try {
         await db.run('PRAGMA busy_timeout = 5000;');
         await db.run('VACUUM;');

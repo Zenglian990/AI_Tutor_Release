@@ -55,13 +55,13 @@ function matchesGrade(source, grade) {
     if (extractedNum !== null) {
         if (extractedNum !== gradeNum) return false;
         
-        // Filter by upper, lower, or full-volume (全一册 / 全) if specified
-        const isFullVolume = source.includes('全一册') || source.includes('全') || source.includes('全册');
+        // Filter by upper, lower, or full-volume
+        const isFullVolume = /(全一册|全册)/.test(source);
         
         if (volume === 'up') {
-            return isFullVolume || source.includes('上册') || source.includes('上') || (!source.includes('下') && !source.includes('下册'));
+            return isFullVolume || /(上册|上(?!.))/.test(source) || (!/(下册|下(?!.))/.test(source) && !isFullVolume);
         } else if (volume === 'down') {
-            return isFullVolume || source.includes('下册') || source.includes('下');
+            return isFullVolume || /(下册|下(?!.))/.test(source);
         }
         return true;
     }

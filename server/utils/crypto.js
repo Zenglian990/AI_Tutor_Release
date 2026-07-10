@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { DB_ENCRYPTION_KEY } = require('../config');
+const logger = require('../services/logger');
 
 const KEY = DB_ENCRYPTION_KEY;
 
@@ -18,7 +19,7 @@ function encryptField(text) {
     const authTag = cipher.getAuthTag();
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
   } catch (err) {
-    console.error('[Crypto] Encryption failed:', err);
+    logger.error('[Crypto] Encryption failed:', err);
     return text;
   }
 }

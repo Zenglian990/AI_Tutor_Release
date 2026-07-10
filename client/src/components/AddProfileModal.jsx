@@ -48,6 +48,7 @@ export default function AddProfileModal({ isOpen, onClose, onConfirm }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>孩子姓名/昵称</label>
             <input
+              aria-label="孩子姓名或昵称"
               type="text"
               placeholder="例如：妹妹、小练"
               value={name}
@@ -61,6 +62,7 @@ export default function AddProfileModal({ isOpen, onClose, onConfirm }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>选择年级 (可选)</label>
             <select
+              aria-label="选择年级"
               value={grade}
               onChange={e => setGrade(e.target.value)}
               style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none' }}
@@ -73,6 +75,7 @@ export default function AddProfileModal({ isOpen, onClose, onConfirm }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>选择教材版本 (可选)</label>
             <select
+              aria-label="选择教材版本"
               value={edition}
               onChange={e => setEdition(e.target.value)}
               style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none' }}

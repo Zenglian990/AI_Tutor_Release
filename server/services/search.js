@@ -140,6 +140,9 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition) {
       results = reciprocalRankFusion(fallbackVectorRes, fallbackFtsRes);
     }
 
+    // Filter out mock placeholder data
+    results = results.filter(r => r.source !== 'mock.txt');
+
     return results.slice(0, limit);
   } catch (err) {
     logger.error('[SearchService] Hybrid search failed:', err);

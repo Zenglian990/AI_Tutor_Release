@@ -19,7 +19,7 @@ import { compressAudio } from './utils/audio';
 import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
 import OnboardingGuide from './components/OnboardingGuide';
 
-const genMsgId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
 
 // ── Main App ──
 function AppInner() {
