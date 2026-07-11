@@ -188,7 +188,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   const renderQuestionText = (text) => {
     if (!text) return null;
     const parts = text.split(/```mermaid([\s\S]*?)```/g);
-    if (parts.length === 1) return <span>{text}</span>;
+    if (parts.length === 1) return <span style={{ whiteSpace: 'pre-wrap', display: 'block', lineHeight: '1.8' }}>{text}</span>;
 
     return (
       <div>
@@ -196,7 +196,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
           if (index % 2 === 1) {
             return <MermaidRenderer key={index} chart={part.trim()} />;
           }
-          return <span key={index} style={{ whiteSpace: 'pre-wrap' }}>{part}</span>;
+          return <span key={index} style={{ whiteSpace: 'pre-wrap', display: 'block', lineHeight: '1.8', margin: '10px 0' }}>{part}</span>;
         })}
       </div>
     );

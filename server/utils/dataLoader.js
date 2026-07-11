@@ -11,7 +11,7 @@ let TEXTBOOK_CHAPTERS = null;
 async function getChapters() {
   if (!TEXTBOOK_CHAPTERS) {
     try {
-      const dataPath = path.join(__dirname, '..', '..', 'data', 'chapters.json');
+      const dataPath = path.join(__dirname, '..', 'prompts', 'chapters.json');
       const data = await fs.promises.readFile(dataPath, 'utf8');
       TEXTBOOK_CHAPTERS = JSON.parse(data);
     } catch (err) {

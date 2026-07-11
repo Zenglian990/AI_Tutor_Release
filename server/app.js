@@ -54,22 +54,11 @@ function createApp() {
 
   // --- Core middleware ---
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map(s => s.trim());
+  allowedOrigins.push('http://localhost:3001', 'http://127.0.0.1:3001');
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, server-to-server)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else if (NODE_ENV === 'development' && (
-          origin.startsWith('http://localhost:') || 
-          origin.startsWith('http://127.0.0.1:') || 
-          origin.startsWith('https://localhost:') || 
-          origin.startsWith('https://127.0.0.1:')
-      )) {
-        // Security fix: Only allow arbitrary localhost ports in development mode
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      // Allow all origins for local desktop release to prevent CORS issues
+      callback(null, true);
     }
   }));
   app.use(express.json({ limit: MAX_BODY_SIZE }));
