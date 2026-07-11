@@ -404,11 +404,11 @@ router.post('/active-plan/generate', async (req, res) => {
     const list = gradeChapters[subject] || [];
 
     // Don't waste API quota when no chapters exist for this grade/subject combination
-    if (list.length === 0) {
-      return res.status(400).json({ error: `No chapters found for ${grade}/${subject}` });
+    // Actually, let's generate a general plan instead of throwing an error so the feature still works.
+    let chaptersStr = '本学期通用核心大纲（系统暂未录入该科目的具体章节，请按通用学习规划进行指导）。';
+    if (list.length > 0) {
+      chaptersStr = list.map((c, i) => `${i + 1}. ${c.name} (${c.description})`).join('\n');
     }
-
-    const chaptersStr = list.map((c, i) => `${i + 1}. ${c.name} (${c.description})`).join('\n');
 
     const gradeStr = formatGradeName(grade);
     const name = sanitizeName(req.body.student_name, '孩子');

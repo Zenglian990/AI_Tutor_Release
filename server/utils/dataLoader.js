@@ -9,17 +9,14 @@ let TEXTBOOK_CHAPTERS = null;
  * Returns the cached instance if already loaded.
  */
 async function getChapters() {
-  if (!TEXTBOOK_CHAPTERS) {
-    try {
-      const dataPath = path.join(__dirname, '..', 'prompts', 'chapters.json');
-      const data = await fs.promises.readFile(dataPath, 'utf8');
-      TEXTBOOK_CHAPTERS = JSON.parse(data);
-    } catch (err) {
-      logger.error('Failed to load chapters.json. Returning empty array.', err);
-      return [];
-    }
+  try {
+    const dataPath = path.join(__dirname, '..', 'prompts', 'chapters.json');
+    const data = await fs.promises.readFile(dataPath, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    logger.error('Failed to load chapters.json. Returning empty array.', err);
+    return [];
   }
-  return TEXTBOOK_CHAPTERS;
 }
 
 module.exports = {

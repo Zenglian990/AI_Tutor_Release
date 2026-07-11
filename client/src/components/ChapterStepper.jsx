@@ -46,11 +46,12 @@ export default function ChapterStepper({
               }).catch(err => console.error('Failed to sync progress:', err));
               
               let text = '';
-              if (step.pct === 25) text = `我准备好开始第一关【${step.pct}% 新知导读与热身】了！`;
-              if (step.pct === 50) text = `进入第二关【${step.pct}% 概念挑战】！请给我出道相关的互动练习题吧。`;
-              if (step.pct === 75) text = `进入第三关【${step.pct}% 脑图巩固】！请用Markdown代码块给我画个本章的核心思维导图。`;
+              const chapterName = activeChapterData ? activeChapterData.name : '该章节';
+              if (step.pct === 25) text = `针对章节《${chapterName}》，我准备好开始第一关【${step.pct}% 新知导读与热身】了！`;
+              if (step.pct === 50) text = `进入第二关【${step.pct}% 概念挑战】！请给我出道关于《${chapterName}》的互动练习题吧。`;
+              if (step.pct === 75) text = `进入第三关【${step.pct}% 脑图巩固】！请用Markdown代码块给我画个《${chapterName}》的核心思维导图。`;
               if (step.pct === 100) {
-                text = `进入最终关【${step.pct}% 终极通关】！我已经准备好迎接最后的测试了，请出题！`;
+                text = `进入最终关【${step.pct}% 终极通关】！关于《${chapterName}》，我已经准备好迎接最后的测试了，请出题！`;
                 if (!isAnimating) {
                   setIsAnimating(true);
                   confetti({

@@ -211,6 +211,8 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
     }
   };
 
+  const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
+
   return (
     <div className={`message-wrapper ${msg.role} ${animClass}`}>
       {msg.imageUrl && (
@@ -311,9 +313,9 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                 </button>
               )}
             </div>
-          </div>
+            </div>
         ) : (
-          msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)
+          displayMessageText.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)
         )}
       </div>
       {msg.sources?.length > 0 && (
