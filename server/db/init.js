@@ -117,9 +117,31 @@ async function runMigrations(db) {
   if (v === 0) {
     const row = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='mistakes'");
     if (row) {
-      // Assume existing DB is at least v11
-      v = 11;
-      await db.exec('INSERT INTO schema_version (version) VALUES (11)');
+      // Deduce schema version safely
+      const hasFts = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_history_fts'");
+      const hasSysSettings = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'");
+      const hasApiUsage = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='api_usage'");
+      const hasProgress = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='profile_progress'");
+      const hasChat = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_history'");
+      
+      const mistakesCols = await db.all("PRAGMA table_info('mistakes')");
+      const mistakesColNames = mistakesCols.map(c => c.name);
+      const chatCols = hasChat ? await db.all("PRAGMA table_info('chat_history')") : [];
+      const chatColNames = chatCols.map(c => c.name);
+
+      if (hasFts) v = 11;
+      else if (hasSysSettings) v = 10;
+      else if (mistakesColNames.includes('tags')) v = 9;
+      else if (hasApiUsage) v = 8;
+      else if (chatColNames.includes('grade')) v = 7; 
+      else if (mistakesColNames.includes('profile_id')) v = 5;
+      else if (hasProgress) v = 4;
+      else if (hasChat) v = 3;
+      else if (mistakesColNames.includes('review_count')) v = 2;
+      else v = 1;
+      
+      await db.exec(`INSERT INTO schema_version (version) VALUES (${v})`);
+      logger.info(`[Migrations] Deduced legacy schema version: v${v}`);
     }
   }
 

@@ -70,7 +70,7 @@ const ShareCard = forwardRef(({ profileName, parentName, activeProfile, stats, r
       {/* Stat Boxes */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '25px', position: 'relative', zIndex: 1 }}>
         {[
-          { label: '错题归纳总数', value: stats?.total || 0, sub: '道薄弱点收录', color: '#3bf6', rgb: '59,130,246' },
+          { label: '错题归纳总数', value: stats?.total || 0, sub: '道薄弱点收录', color: '#3b82f6', rgb: '59,130,246' },
           { label: '本周活跃探索', value: activeDays, sub: '天深度交互', color: '#10b981', rgb: '16,185,129' },
           { label: '本周主攻科目', value: topSubject, sub: '重点关切方向', color: '#8b5cf6', rgb: '139,92,246' }
         ].map((s, i) => (

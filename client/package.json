@@ -42,7 +42,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
     "jsdom": "^26.0.0",
-    "vite": "^8.0.10",
+    "vite": "^8.1.4",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^3.0.0"
   }

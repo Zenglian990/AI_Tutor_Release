@@ -2,8 +2,15 @@
 
 > [!WARNING]
 > **免责声明 / Disclaimer**
-> 本文档描述的是**高级集群拓扑（Advanced Cluster Topology）**和金丝雀发布机制。
-> 当前代码库中自带的 `docker-compose.yml` 属于**单机标准部署版（Single-Node Standard Deployment）**。若需在生产环境中实践本文档的部署方案，请根据实际需求编写额外的负载均衡配置（如 Nginx/Traefik）和多实例容器编排。
+> 
+> 本文档描述的是**高级集群拓扑（Advanced Cluster Topology）**和金丝雀发布机制。当前代码库中自带的 `docker-compose.yml` 属于**单机标准部署版（Single-Node Standard Deployment）**。若需在生产环境中实践本文档的部署方案，请根据实际需求编写额外的负载均衡配置（如 Nginx/Traefik）和多实例容器编排。
+
+> [!CAUTION]
+> **SQLite 并发写入风险 (Concurrent Write Risk)**
+> 
+> 如果使用 SQLite 数据库，**绝不能让多个容器（如 stable 和 canary）挂载并共享同一个数据库文件。** SQLite 缺乏多进程并发写入的协调机制，会导致 `SQLITE_BUSY` 错误，甚至静默损坏整个数据库文件（Database Corruption）！若需双容器同时运行，必须：
+> 1. 为 `canary` 分配完全独立的数据卷（例如 `./data-canary:/app/data`），但这将导致两套系统的数据相互隔离。
+> 2. 如果需数据一致性，请放弃 SQLite，部署外置的 PostgreSQL 或 MySQL 容器。
 
 This guide details how to implement gray (canary) releases for the **曾练专属私教** AI Tutor project, allowing you to test updates safely with a subset of users before full rollout.
 
@@ -109,5 +116,5 @@ services:
       - PORT=3001
       - IS_CANARY=true
     volumes:
-      - ./data:/app/data
+      - ./data-canary:/app/data
 ```

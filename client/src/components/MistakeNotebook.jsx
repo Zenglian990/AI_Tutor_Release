@@ -10,6 +10,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   const [mistakes, setMistakes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingIds, setDeletingIds] = useState(new Set());
   const [filterGrade, setFilterGrade] = useState(defaultGrade || '');
   const [filterSubject, setFilterSubject] = useState(defaultSubject || '');
   const [searchWord, setSearchWord] = useState('');
@@ -143,7 +144,9 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   };
 
   const handleDeleteMistake = (id) => {
+    if (deletingIds.has(id)) return;
     onGuardAction(async () => {
+      setDeletingIds(prev => new Set(prev).add(id));
       try {
         const res = await authFetch(`/api/mistakes/${id}?profile_id=${currentProfileId}`, { method: 'DELETE' });
         if (res.ok) {
@@ -153,6 +156,12 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
         }
       } catch (e) {
         alert('网络错误');
+      } finally {
+        setDeletingIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
     }, '删除错题记录');
   };
@@ -315,7 +324,13 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                       </div>
                     )}
                   </div>
-                  <button onClick={() => handleDeleteMistake(m.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="删除错题" aria-label="删除此错题">🗑️ 删除</button>
+                  <button 
+                    onClick={() => handleDeleteMistake(m.id)} 
+                    disabled={deletingIds.has(m.id)}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: deletingIds.has(m.id) ? 'not-allowed' : 'pointer', opacity: deletingIds.has(m.id) ? 0.5 : 1 }} 
+                    title="删除错题" aria-label="删除此错题">
+                    {deletingIds.has(m.id) ? '⏳ 删除中' : '🗑️ 删除'}
+                  </button>
                 </div>
                 <div className="mistake-query"><strong>问题：</strong>{m.query}</div>
                 {!testMode ? (

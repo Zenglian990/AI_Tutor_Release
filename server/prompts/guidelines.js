@@ -174,7 +174,7 @@ function buildLanceDBWhereClause(grade, subject, edition) {
     '体育与健康': ['体育与健康', '体育', 'Physical Education', 'PE']
   };
 
-  const escapeSql = (str) => String(str).replace(/'/g, "''");
+  const escapeSql = (str) => String(str).replace(/'/g, "''").replace(/[%_]/g, '');
 
   if (subject && SUBJECT_MAP[subject]) {
     const aliases = SUBJECT_MAP[subject];
@@ -238,17 +238,20 @@ function buildLanceDBWhereClause(grade, subject, edition) {
   // Edition filter — isolate different textbook publishers
   if (edition) {
     if (edition === '西南大学版') {
-      conditions.push(`source LIKE '%西南大学版%'`);
-      if (grade) {
-        const validGrade = validateGradeIdentifier(grade);
-        if (validGrade === '3_down') {
-          conditions.push(`source LIKE '%2024新版%'`);
-        } else {
-          conditions.push(`source NOT LIKE '%2024新版%'`);
-        }
+      const validGrade = grade ? validateGradeIdentifier(grade) : null;
+      if (validGrade !== '3_up') {
+        conditions.push(`source LIKE '%西南大学版%'`);
+      }
+      if (validGrade === '3_down') {
+        conditions.push(`source LIKE '%2024新版%'`);
+      } else if (validGrade !== '3_up') {
+        conditions.push(`source NOT LIKE '%2024新版%'`);
       }
     } else if (edition === '西师大版' || edition === '西南师大版') {
-      conditions.push(`source LIKE '%西南师大版%'`);
+      const validGrade = grade ? validateGradeIdentifier(grade) : null;
+      if (validGrade !== '3_up') {
+        conditions.push(`source LIKE '%西南师大版%'`);
+      }
     } else if (edition === '人教版' || edition === 'PEP') {
       conditions.push(`(source NOT LIKE '%西南%' AND source NOT LIKE '%西师%')`);
     }

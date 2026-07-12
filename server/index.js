@@ -46,8 +46,9 @@ ${err.stack || err.message}
   // Start data retention cleanup (auto-cleans old records)
   startDataRetentionCleanup(getSqliteDb);
 
-  // Start automated backups
-  require('./services/backup');
+  // Start automated backups and health checks
+  require('./services/backup').startBackupSchedule();
+  require('./services/embedding').startEmbeddingCheck();
 
   server = app.listen(PORT, () => {
     logger.info(`曾练专属私教 backend running on http://localhost:${PORT} (${NODE_ENV})`);
@@ -76,7 +77,7 @@ async function shutdown(signal) {
     process.exit(0);
   });
   // Force exit after 5s
-  setTimeout(() => process.exit(1), 5000);
+  setTimeout(() => process.exit(0), 5000);
 }
 
 start();

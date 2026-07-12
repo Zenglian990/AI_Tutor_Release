@@ -9,7 +9,7 @@ function sanitizeName(str, fallback) {
     let clean = String(str).replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\- ]/g, '');
     
     // Check for injection keywords BEFORE truncating
-    if (/ignore|prompt|instruction|system|forget|bypass|override/i.test(clean)) {
+    if (/\b(ignore|prompt|instruction|system|forget|bypass|override)\b/i.test(clean)) {
         return fallback;
     }
     

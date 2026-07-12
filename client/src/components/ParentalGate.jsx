@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { authFetch } from '../store/useStore';
 import { encryptData, decryptData } from '../utils/crypto_helper';
 
@@ -66,9 +66,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = 'æ•æ
   };
 
   const savedPinHashEnc = localStorage.getItem(GATE_PIN_HASH_KEY);
-  const savedPinHash = decryptData(savedPinHashEnc);
+  const savedPinHash = useMemo(() => decryptData(savedPinHashEnc), [savedPinHashEnc]);
   const savedSecurityAnswerHashEnc = localStorage.getItem(GATE_SECURITY_ANSWER_HASH);
-  const savedSecurityAnswerHash = decryptData(savedSecurityAnswerHashEnc);
+  const savedSecurityAnswerHash = useMemo(() => decryptData(savedSecurityAnswerHashEnc), [savedSecurityAnswerHashEnc]);
 
   useEffect(() => {
     if (isOpen) {

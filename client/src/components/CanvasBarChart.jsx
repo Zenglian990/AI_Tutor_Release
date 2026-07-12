@@ -89,7 +89,13 @@ export default function CanvasBarChart({ data, height = 200, horizontal = false 
         ctx.font = `12px system-ui, sans-serif`;
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
-        const labelText = d.label.length > 3 ? d.label.slice(0, 3) + '..' : d.label;
+        let labelText = d.label;
+        if (ctx.measureText(labelText).width > (padLeft - 12)) {
+          while (labelText.length > 0 && ctx.measureText(labelText + '..').width > (padLeft - 12)) {
+            labelText = labelText.slice(0, -1);
+          }
+          labelText += '..';
+        }
         ctx.fillText(labelText, padLeft - 8, y + barH / 2);
 
         ctx.fillStyle = '#f8fafc';

@@ -1,3 +1,7 @@
+import React from 'react';
+import { getTranslation } from '../utils/i18n';
+import { useAppStore } from '../store/useStore';
+
 const GRADES = [
   { value: '', label: '全部年级' },
   { value: '1_up', label: '一年级上册' }, { value: '1_down', label: '一年级下册' },
@@ -79,9 +83,6 @@ const SOCRATIC_LEVELS = [
   { value: 'strict', label: '🦉 苏格拉底', title: 'AI只用提问引导，绝不直接给答案' },
 ];
 
-import { getTranslation } from '../utils/i18n';
-import { useAppStore } from '../store/useStore';
-
 export default function Header({
   profiles, currentProfileId, onProfileChange, onDeleteProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
@@ -133,7 +134,7 @@ export default function Header({
         <select className="grade-selector" value={selectedGrade} onChange={e => onGradeChange(e.target.value)} aria-label="选择年级">
           {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
         </select>
-        <button onClick={handleSocraticClick} title={currentSocratic.title} aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
+        <button onClick={handleSocraticClick} title={getTranslation(language, `mode.${currentSocratic.value}_title`)} aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
           style={{
             background: socraticLevel !== 'direct' ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)',
             color: 'white', border: '1px solid var(--glass-border)', borderRadius: '10px',

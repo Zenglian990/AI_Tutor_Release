@@ -1,4 +1,5 @@
 import os
+import server_utils
 import sys
 import glob
 import time
@@ -10,9 +11,6 @@ import lancedb
 import numpy as np
 from dotenv import load_dotenv
 
-# Force utf-8 encoding for Windows console
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
 
 load_dotenv()
 

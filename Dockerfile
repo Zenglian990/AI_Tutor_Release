@@ -32,7 +32,7 @@ COPY . .
 
 # Build the React frontend
 RUN npm run build:client && \
-    find client -mindepth 1 -maxdepth 1 ! -name 'dist' -exec rm -rf {} +
+    rm -rf client/node_modules client/src client/public
 
 # Clean up apt caches
 RUN apt-get clean && rm -rf /var/cache/apt/archives/*

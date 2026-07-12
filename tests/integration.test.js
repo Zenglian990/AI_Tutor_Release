@@ -30,6 +30,15 @@ undici.fetch = async (url, options) => {
       };
     }
 
+    if (urlStr.includes('models/gemini-embedding-2') || urlStr.includes('embedContent')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ embedding: { values: new Array(768).fill(0.1) } }),
+        headers: new undici.Headers()
+      };
+    }
+
     // A. Mock Gemini TTS
     if (urlStr.includes('gemini-2.5-flash-preview-tts')) {
       return {

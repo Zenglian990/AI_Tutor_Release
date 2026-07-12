@@ -8,6 +8,15 @@ undici.fetch = async (url, options) => {
   const urlStr = String(url);
 
   if (urlStr.includes('generativelanguage.googleapis.com')) {
+    if (urlStr.includes('models/gemini-embedding-2') || urlStr.includes('embedContent')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ embedding: { values: new Array(768).fill(0.1) } }),
+        headers: new undici.Headers()
+      };
+    }
+
     const reqBody = options.body ? JSON.parse(options.body) : {};
     const promptText = reqBody.contents?.[0]?.parts?.[0]?.text || "";
 

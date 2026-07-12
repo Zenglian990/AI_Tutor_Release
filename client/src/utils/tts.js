@@ -1,15 +1,13 @@
 import { authFetch } from '../store/useStore';
 
-let _activeTTSAudio = null;
-let _activeTTSOnEnd = null;
+const activeControllers = new Set();
 
-function fallbackLocalSpeech(cleanText, grade, onStart, onEnd) {
+function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
   if (!window.speechSynthesis) {
     if (onEnd) onEnd();
     return;
   }
   
-  _activeTTSOnEnd = onEnd;
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = 'zh-CN';
   const voices = window.speechSynthesis.getVoices();
@@ -22,69 +20,55 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd) {
   if (selectedVoice) utterance.voice = selectedVoice;
   if (onStart) utterance.onstart = onStart;
   
-  utterance.onend = () => {
-    if (_activeTTSOnEnd === onEnd) _activeTTSOnEnd = null;
-    if (onEnd) onEnd();
+  let didEnd = false;
+  const finish = () => {
+    if (!didEnd) {
+      didEnd = true;
+      activeControllers.delete(ctrl);
+      if (onEnd) onEnd();
+    }
   };
-  utterance.onerror = () => {
-    if (_activeTTSOnEnd === onEnd) _activeTTSOnEnd = null;
-    if (onEnd) onEnd();
-  };
+
+  utterance.onend = finish;
+  utterance.onerror = finish;
   
   window.speechSynthesis.speak(utterance);
+  
+  ctrl.stop = () => {
+    window.speechSynthesis.cancel();
+    finish();
+  };
 }
 
 /**
  * Play text to speech (TTS) using Cloud Edge-TTS, falling back to local synthesis on error.
+ * Returns a controller object { stop: () => void }
  * 
  * @param {string} text 
  * @param {string} grade 
  * @param {function} onStart 
  * @param {function} onEnd 
+ * @returns {object} Controller with .stop() method
  */
 export function playTTS(text, grade, onStart, onEnd) {
-  // Cancel any active SpeechSynthesis speaking
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
-
-  // Cancel any active cloud audio
-  if (_activeTTSAudio) {
-    try {
-      _activeTTSAudio.pause();
-      _activeTTSAudio = null;
-    } catch (err) {}
-  }
-
-  // Cancel/complete any active onEnd callbacks to restore state
-  if (_activeTTSOnEnd) {
-    try {
-      const prevOnEnd = _activeTTSOnEnd;
-      _activeTTSOnEnd = null;
-      prevOnEnd();
-    } catch (err) {}
-  }
-
-  _activeTTSOnEnd = onEnd;
-
   let cleanText = text
-    .replace(/\$\$[\s\S]*?\$\$/g, '（数学公式）')
-    .replace(/\$[^$]+\$/g, '')
-    .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/\[.*?\]\(.*?\)/g, '')
-    .replace(/[`*~_#>-]/g, '')
-    .replace(/[\p{Extended_Pictographic}\u{2600}-\u{27BF}]/gu, '')
-    .replace(/\\/g, '')
-    .trim();
-  
-  if (!cleanText) {
+    .replace(/<[^>]+>/g, '') // html tags
+    .replace(/\!\[.*?\]\(.*?\)/g, '') // images
+    .replace(/\[.*?\]\(.*?\)/g, '') // links
+    .replace(/\*/g, '')
+    .replace(/#/g, '')
+    .replace(/`/g, '')
+    .replace(/\[ACTION_.*?\]/g, '');
+
+  if (!cleanText.trim()) {
     if (onEnd) onEnd();
-    return;
+    return { stop: () => {} };
   }
 
-  const url = '/api/tts';
+  const ctrl = { stop: () => {} };
+  activeControllers.add(ctrl);
 
-  authFetch(url, {
+  authFetch('/api/tts', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -99,58 +83,57 @@ export function playTTS(text, grade, onStart, onEnd) {
       return res.blob();
     })
     .then(blob => {
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      _activeTTSAudio = audio;
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
       
-      if (onStart) onStart();
-      
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (_activeTTSAudio === audio) _activeTTSAudio = null;
-        if (_activeTTSOnEnd === onEnd) _activeTTSOnEnd = null;
-        if (onEnd) onEnd();
+      let didEnd = false;
+      const finish = () => {
+        if (!didEnd) {
+          didEnd = true;
+          activeControllers.delete(ctrl);
+          URL.revokeObjectURL(url);
+          if (onEnd) onEnd();
+        }
+      };
+
+      audio.oncanplay = () => {
+        if (onStart) onStart();
+        audio.play().catch(e => {
+          console.warn("Autoplay prevented:", e);
+          finish();
+        });
       };
       
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (_activeTTSAudio === audio) _activeTTSAudio = null;
-        if (_activeTTSOnEnd === onEnd) _activeTTSOnEnd = null;
-        if (onEnd) onEnd();
-      };
+      audio.onended = finish;
+      audio.onerror = finish;
       
-      audio.play().catch(err => {
-        console.error('Audio play failed:', err);
-        URL.revokeObjectURL(audioUrl);
-        if (_activeTTSAudio === audio) _activeTTSAudio = null;
-        // Fallback to local SpeechSynthesis
-        fallbackLocalSpeech(cleanText, grade, onStart, onEnd);
-      });
+      ctrl.stop = () => {
+        try {
+          audio.pause();
+          audio.src = '';
+        } catch (e) {}
+        finish();
+      };
     })
     .catch(err => {
-      console.warn('Cloud TTS connection failed, falling back to local speech:', err.message);
-      fallbackLocalSpeech(cleanText, grade, onStart, onEnd);
+      console.warn("Cloud TTS failed, falling back to local", err);
+      fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
     });
+
+  return ctrl;
 }
+
 
 /**
  * Stop any active text to speech playback (both local synthesis and cloud audio).
  */
 export function stopTTS() {
+  for (const ctrl of activeControllers) {
+    ctrl.stop();
+  }
+  activeControllers.clear();
+  
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
-  }
-  if (_activeTTSAudio) {
-    try {
-      _activeTTSAudio.pause();
-      _activeTTSAudio = null;
-    } catch (err) {}
-  }
-  if (_activeTTSOnEnd) {
-    try {
-      const prevOnEnd = _activeTTSOnEnd;
-      _activeTTSOnEnd = null;
-      prevOnEnd();
-    } catch (err) {}
   }
 }

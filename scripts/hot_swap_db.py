@@ -4,9 +4,6 @@ import sys
 import server_utils
 import glob
 
-# Reconfigure stdout to use utf-8
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
 
 log_path = os.path.join(server_utils.DATA_DIR, "processed_pdfs_v2.log")
 

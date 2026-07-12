@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-export default function LearningMap({ currentGrade, currentSubject, currentEdition, onSelectChapter, onClose, authFetch }) {
+export default function LearningMap({ currentGrade, currentSubject, currentEdition, currentProfileName, onSelectChapter, onClose, authFetch }) {
   const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,7 +22,7 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
     return maps[grade] || '通用课本';
   };
 
-  useEffect(() => {
+  const fetchChapters = () => {
     setLoading(true);
     setError(null);
     authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
@@ -39,7 +39,28 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
         setError(err.message);
         setLoading(false);
       });
+  };
+
+  const fetchChaptersRef = useRef(fetchChapters);
+  useEffect(() => {
+    fetchChaptersRef.current = fetchChapters;
+  }, [fetchChapters]);
+
+  useEffect(() => {
+    fetchChapters();
   }, [currentGrade, currentSubject, currentEdition]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (fetchChaptersRef.current) {
+        fetchChaptersRef.current();
+      }
+    };
+    window.addEventListener('refreshChapters', handler);
+    return () => {
+      window.removeEventListener('refreshChapters', handler);
+    };
+  }, []);
 
   return (
     <div className="learning-map-overlay">
@@ -48,7 +69,7 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
           <div className="header-info">
             <span className="map-badge">闯关式地图</span>
             <h2>{getGradeName(currentGrade)} · {currentSubject}</h2>
-            <p className="subtitle">曾小侠/小主，点击对应章节小岛开始今日探索吧！🛡️✨</p>
+            <p className="subtitle">{currentProfileName || '曾小侠/小主'}，点击对应章节小岛开始今日探索吧！🛡️✨</p>
           </div>
           <div className="header-actions">
             <button className={`unlock-all-btn ${unlockAll ? 'active' : ''}`} onClick={() => setUnlockAll(!unlockAll)} title="自由探索模式">

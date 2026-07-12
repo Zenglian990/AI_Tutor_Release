@@ -169,42 +169,50 @@ function MermaidChart({ chart }) {
 
 
 
+const animatedIds = new Set();
+
 const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, isStreaming, onMarkMistake, playTTS, stopTTS }) {
-  // Only play slide-in animation once when component first mounts, not on every re-render
-  const animatedRef = useRef(false);
+  // Only play slide-in animation once per message ID
   const [animClass, setAnimClass] = useState('');
   useEffect(() => {
-    if (!animatedRef.current) {
-      animatedRef.current = true;
+    if (msg.id && !animatedIds.has(msg.id)) {
+      animatedIds.add(msg.id);
       setAnimClass('msg-slide-in');
     }
-  }, []);
+  }, [msg.id]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const hasPlayed = useRef(false);
+  const ttsCtrlRef = useRef(null);
 
   useEffect(() => {
     return () => {
-      if (isPlaying) {
-        if (stopTTS) stopTTS();
-        else if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (ttsCtrlRef.current) {
+        ttsCtrlRef.current.stop();
+        ttsCtrlRef.current = null;
       }
     };
-  }, [isPlaying, stopTTS]);
+  }, []);
 
 
 
   const toggleSpeech = () => {
     if (isPlaying) {
-      if (stopTTS) stopTTS();
-      else if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (ttsCtrlRef.current) {
+        ttsCtrlRef.current.stop();
+        ttsCtrlRef.current = null;
+      } else {
+        if (stopTTS) stopTTS();
+        else if (window.speechSynthesis) window.speechSynthesis.cancel();
+      }
       setIsPlaying(false);
     } else {
-      // 开启播放前，先执行一次全局停止，避免多个语音重叠
       if (stopTTS) stopTTS();
       
       setIsPlaying(true);
       if (playTTS) {
-        playTTS(msg.text, () => setIsPlaying(true), () => setIsPlaying(false));
+        ttsCtrlRef.current = playTTS(msg.text, () => setIsPlaying(true), () => {
+          setIsPlaying(false);
+          ttsCtrlRef.current = null;
+        });
       } else {
         setIsPlaying(false);
       }

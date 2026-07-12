@@ -134,8 +134,26 @@ async function authFetch(path, options = {}) {
 
 const migrateGrade = (g) => {
   if (!g) return '';
-  if (!String(g).includes('_')) return g + '_up';
-  return g;
+  const sg = String(g);
+  
+  // Legacy exact matches
+  const legacyMap = {
+    '一年级上册': '1_up', '一年级下册': '1_down',
+    '二年级上册': '2_up', '二年级下册': '2_down',
+    '三年级上册': '3_up', '三年级下册': '3_down',
+    '四年级上册': '4_up', '四年级下册': '4_down',
+    '五年级上册': '5_up', '五年级下册': '5_down',
+    '六年级上册': '6_up', '六年级下册': '6_down',
+    '七年级上册': '7_up', '七年级下册': '7_down',
+    '八年级上册': '8_up', '八年级下册': '8_down',
+    '九年级上册': '9_up', '九年级下册': '9_down',
+  };
+  if (legacyMap[sg]) return legacyMap[sg];
+  
+  // If it's a raw number 1-9 without '_', append '_up'
+  if (/^[1-9]$/.test(sg)) return sg + '_up';
+  
+  return sg;
 };
 
 function loadProfiles() {
@@ -173,6 +191,13 @@ export function AppProvider({ children }) {
     localStorage.getItem('ai_tutor_socratic_level') || 'guided'
   );
   const [autoRead, setAutoRead] = useState(false);
+  const [settings, setSettings] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ai_tutor_settings') || '{"parentName":"家长"}');
+    } catch {
+      return { parentName: '家长' };
+    }
+  });
   const [language, setLanguage] = useState(() => localStorage.getItem('ai_tutor_language') || 'zh-CN');
   const [isLightMode, setIsLightMode] = useState(() =>
     localStorage.getItem('ai_tutor_theme') === 'light'
@@ -245,8 +270,9 @@ export function AppProvider({ children }) {
     setCurrentProfileId, handleProfileChange,
     handleAddProfile, handleDeleteProfile,
     selectedSubject, setSelectedSubject,
-    isSocratic: socraticLevel, setSocraticLevel,
+    socraticLevel, setSocraticLevel,
     autoRead, setAutoRead,
+    settings, setSettings,
     isLightMode, setIsLightMode,
     handleGradeChange,
     handleEditionChange,

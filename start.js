@@ -49,8 +49,8 @@ async function waitForServerAndOpenBrowser() {
       retries++;
       setTimeout(poll, 500);
     } else {
-      console.log(`\n[2/2] Server health check timed out. Opening browser to ${url} anyway.`);
-      openBrowser(url);
+      console.error(`\n[2/2] ❌ 启动超时：未能检测到服务器存活。请检查上方是否有报错信息。`);
+      process.exit(1);
     }
   };
 

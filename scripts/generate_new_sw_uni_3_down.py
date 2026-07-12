@@ -3,9 +3,6 @@ import sys
 import time
 import lancedb
 
-# Reconfigure stdout to use utf-8
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
 
 # Dynamically resolve project root
 script_path = os.path.abspath(__file__)

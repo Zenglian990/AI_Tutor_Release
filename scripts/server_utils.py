@@ -1,6 +1,5 @@
 import os
 import time
-import shutil
 import urllib.request
 import urllib.error
 import psutil
@@ -19,7 +18,7 @@ ENV_PATH = os.path.join(PROJECT_ROOT, '.env')
 LANCEDB_DIR = os.path.join(DATA_DIR, 'lancedb')
 
 def load_api_token():
-    load_dotenv(ENV_PATH)
+    load_dotenv(ENV_PATH, override=False)
     return os.getenv('API_TOKEN')
 
 def stop_server(port=3001):
@@ -78,6 +77,7 @@ def stop_server(port=3001):
         print("Backend server stopped.")
 
 def swap_lancedb_tables(table_name="textbooks.lance", v2_table_name="textbooks_v2.lance"):
+    import shutil
     tbl = os.path.join(LANCEDB_DIR, table_name)
     v2_tbl = os.path.join(LANCEDB_DIR, v2_table_name)
     backup = tbl + "_old"

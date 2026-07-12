@@ -5,41 +5,7 @@ export default function OnboardingGuide({ language, onClose }) {
   const { t } = useAppStore();
   const [step, setStep] = useState(0);
 
-  const steps = language === 'zh-CN' ? [
-    {
-      title: '🎓 欢迎来到曾练专属私教！',
-      content: '这是一个基于人教版 1-9 年级教材构建的 AI 深度教材伴读系统。让我们用 1 分钟了解如何使用它。'
-    },
-    {
-      title: '🗺️ 探索你的「学习地图」',
-      content: '点击下方的「学习地图」按钮。在这里，你可以按章节解锁关卡。AI 会根据你的进度，进行新知导读、核心概念拆解和热身互动！'
-    },
-    {
-      title: '📖 记录并巩固「我的错题本」',
-      content: '点击 AI 消息右下角的「加入错题本」或主菜单的「错题本」。系统会根据艾宾浩斯遗忘曲线（SM-2 算法）自动计算下一次复习时间，并主动发起「变式题复测」挑战！'
-    },
-    {
-      title: '📊 查看「学习报表」与「家长监工」',
-      content: '家长可以通过 Parental Gate 家长验证码安全进入「学习报表」和「运营分析」，查看本周学习统计；还能通过「家长监工」一键生成专业的 Markdown 微信周报。'
-    }
-  ] : [
-    {
-      title: '🎓 Welcome to AI Tutor!',
-      content: 'This is an interactive RAG tutoring system built on standard textbooks for grades 1-9. Let\'s take 1 minute to learn how to use it.'
-    },
-    {
-      title: '🗺️ Explore the "Learning Map"',
-      content: 'Click the "Learning Map" button. You can unlock chapters stage-by-stage. The AI will guide you through core concepts and checkpoints interactively!'
-    },
-    {
-      title: '📖 Consolidate with the "Mistake Book"',
-      content: 'Save errors to your "Mistake Book". The system uses the SM-2 algorithm to schedule memory intervals and generates challenge variations automatically!'
-    },
-    {
-      title: '📊 "Stats Report" & Parental Gate',
-      content: 'Parents can securely enter "Stats Report" and "Ops Stats" via a PIN gate to view detailed graphs, or click "Parent Supervisor" to generate weekly text reports.'
-    }
-  ];
+  const steps = t('onboarding.steps') || [];
 
   const handleNext = () => {
     if (step < steps.length - 1) {

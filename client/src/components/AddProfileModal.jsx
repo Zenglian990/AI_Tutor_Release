@@ -50,12 +50,12 @@ export default function AddProfileModal({ isOpen, onClose, onConfirm }) {
             <input
               aria-label="孩子姓名或昵称"
               type="text"
-              placeholder="例如：妹妹、小练"
+              placeholder="例如：小明、小红"
               value={name}
               onChange={e => setName(e.target.value)}
               required
               autoFocus
-              maxLength={20}
+              maxLength={15}
               style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none' }}
             />
           </div>

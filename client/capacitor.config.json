@@ -3,6 +3,8 @@
   "appName": "曾练专属私教",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowMixedContent": true
   }
 }

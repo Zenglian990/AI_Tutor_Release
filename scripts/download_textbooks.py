@@ -1,13 +1,11 @@
 import os
+import server_utils
 import sys
 import json
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
-# Force utf-8 encoding for Windows console
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
 
 # Load environment and configure proxy for urllib
 load_dotenv()

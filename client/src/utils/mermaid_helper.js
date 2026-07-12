@@ -6,9 +6,8 @@ export const stringHash = (str) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash = hash & hash; // Convert to 32bit integer
   }
-  return Math.abs(hash).toString(36);
+  return (hash >>> 0).toString(36);
 };
 
 export const initMermaid = () => {
@@ -90,7 +89,7 @@ export const sanitizeMermaid = (code) => {
       if (!text || text === 'mindmap' || text.startsWith('"') || text.startsWith('root(')) return line;
       
       // Check if it's a valid shape definition like id("...") or id["..."]
-      if (text.match(/^[a-zA-Z0-9_\-\u4e00-\u9fa5]+(?:\["[^"]*"\]|\("[^"]*"\))$/)) {
+      if (text.match(/^[a-zA-Z0-9_\u4e00-\u9fa5-]+(?:\["[^"]*"\]|\("[^"]*"\))$/)) {
         return line;
       }
       

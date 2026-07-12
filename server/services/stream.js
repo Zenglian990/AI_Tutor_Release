@@ -77,8 +77,14 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
     cleanupTimersAndStream();
   });
 
-  // Send sources immediately
-  res.write(`data: ${JSON.stringify({ sources })}\n\n`);
+  // Send sources immediately (truncate to avoid huge SSE payloads)
+  const safeSources = sources.map(s => ({
+    ...s,
+    text_snippet: s.text_snippet && s.text_snippet.length > 200 
+      ? s.text_snippet.substring(0, 200) + '...' 
+      : s.text_snippet
+  }));
+  res.write(`data: ${JSON.stringify({ sources: safeSources })}\n\n`);
 
   let fullAnswer = '';
 

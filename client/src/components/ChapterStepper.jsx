@@ -15,9 +15,10 @@ export default function ChapterStepper({
 
   useEffect(() => {
     return () => {
-      confettiTimersRef.current.forEach(id => { clearTimeout(id); clearInterval(id); });
+      confettiTimersRef.current.forEach(id => clearTimeout(id));
       confettiTimersRef.current = [];
       document.querySelectorAll('.confetti-particle').forEach(el => el.remove());
+      try { confetti.reset(); } catch (e) { console.debug('confetti.reset() unsupported in this version', e); } // Reset global canvas to prevent accumulation
     };
   }, []);
 
@@ -43,6 +44,8 @@ export default function ChapterStepper({
               authFetch('/api/chapters/update-progress', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ profile_id: currentProfileId, grade: currentGrade, subject: selectedSubject || '数学', chapter_id: activeChapterData.id, status: newStatus, progress_pct: step.pct })
+              }).then(() => {
+                window.dispatchEvent(new Event('refreshChapters')); // Notify LearningMap to refresh
               }).catch(err => console.error('Failed to sync progress:', err));
               
               let text = '';
@@ -60,9 +63,10 @@ export default function ChapterStepper({
                     origin: { y: 0.6 },
                     zIndex: 9999
                   });
-                  setTimeout(() => {
+                  const tid = setTimeout(() => {
                     setIsAnimating(false);
                   }, 3000);
+                  confettiTimersRef.current.push(tid);
                 }
               }
               onSubmit(null, text);

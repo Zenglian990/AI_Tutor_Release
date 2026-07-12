@@ -57,8 +57,12 @@ function createApp() {
   allowedOrigins.push('http://localhost:3001', 'http://127.0.0.1:3001');
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow all origins for local desktop release to prevent CORS issues
-      callback(null, true);
+      // Allow if no origin (e.g. curl) or if origin is in the allowed list
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   }));
   app.use(express.json({ limit: MAX_BODY_SIZE }));
@@ -94,7 +98,7 @@ function createApp() {
   if (fs.existsSync(CLIENT_DIST)) {
     const staticLimiter = rateLimit({
       windowMs: 1 * 60 * 1000, // 1 minute
-      max: 500, // higher limit for static assets
+      max: 2000, // higher limit for static assets
       standardHeaders: true,
       legacyHeaders: false
     });

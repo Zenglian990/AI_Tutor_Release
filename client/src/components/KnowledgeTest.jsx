@@ -67,6 +67,9 @@ function MermaidRenderer({ chart }) {
 export default function KnowledgeTest({ onClose, currentProfileId, currentGrade, selectedSubject, currentEdition, authFetch }) {
   const { language, profiles } = useAppStore();
   const currentProfile = profiles?.find(p => p.id === currentProfileId) || { name: '学生' };
+  
+  const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
+  const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
 
   const getExamGuideAndButtonText = () => {
     const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
@@ -376,10 +379,9 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     }
   };
 
-  // 动态分值评级 (小学满分 100，初中满分 150)
+  // 动态分值评级(小学满分 100，初中满分 150)
   const getScoreRating = (score) => {
-    const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
-    const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+    const isElementary = ['1', '2', '3', '4', '5', '6'].includes(String(currentGrade).split('_')[0]);
     const excellentLimit = isElementary ? 90 : 135;
     const passLimit = isElementary ? 60 : 90;
 
@@ -852,7 +854,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#f3f4f6' }}>{currentProfile.name} 的 150分制 测评报告</h3>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#f3f4f6' }}>{currentProfile.name} 的 {isElementary ? '100分制' : '150分制'} 测评报告</h3>
                     <span style={{ background: getScoreRating(report.score).color, color: 'white', fontSize: '10px', padding: '1px 6px', borderRadius: '6px', fontWeight: 'bold' }}>
                       {getScoreRating(report.score).label}
                     </span>

@@ -81,9 +81,10 @@ cd AI_Tutor_Release
 系统将在 `http://localhost:3001` 自动打开主界面。
 
 #### 3. 关于知识库 (RAG)
-> **🎁 开箱即用**：本发行版已内置约 90MB 的人教版教材向量数据，您可以跳过任何 Python 配置，直接开始提问！
 
-（如果您后续需要用 Python 增量更新其他年级的 PDF，请参考 `scripts/ingest_2_0.py` 及 `requirements.txt`）。
+> **⚠️ 注意**：由于 GitHub 限制，本发行版不包含人教版教材向量数据。您需要自己准备 PDF 并使用 Python 脚本生成向量数据库，才能体验 AI 伴读和错题重测功能。
+
+您可以通过以下命令生成知识库（请参考 `scripts/ingest_2_0.py` 和 `requirements.txt` 进行配置）：
 
 ## 🤝 参与贡献 (Contributing)
 我们非常欢迎社区成员的参与！无论您是开发者、教育工作者还是家长，都欢迎提交 Pull Request 或提出 Issue。让我们共同把这个工具打磨得更好，惠及更多普通家庭。

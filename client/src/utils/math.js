@@ -13,9 +13,9 @@ export const preprocessLatex = (text) => {
       return part; // Skip replacements inside code blocks
     }
     return part
-      .replace(/\\\[/g, '$$$$') // Replace \[ with $$
-      .replace(/\\\]/g, '$$$$') // Replace \] with $$
-      .replace(/\\\(/g, '$$')     // Replace \( with $
-      .replace(/\\\)/g, '$$');    // Replace \) with $
+      .replace(/\\\[/g, () => '$$\n') // Replace \[ with $$\n
+      .replace(/\\\]/g, () => '\n$$') // Replace \] with \n$$
+      .replace(/\\\(/g, () => '$$')   // Replace \( with $
+      .replace(/\\\)/g, () => '$$');  // Replace \) with $
   }).join('');
 };

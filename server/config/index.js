@@ -38,12 +38,22 @@ const proxyUrl = (() => {
   const candidatePorts = [10909, 10910, 7890, 7897, 10809];
   const envPort = envProxy ? getPort(envProxy) : null;
   
-  // Check the envPort first, then fallback to other common ports
-  const portsToCheck = envPort ? [envPort, ...candidatePorts.filter(p => p !== envPort)] : candidatePorts;
+  if (envPort) {
+    try {
+      const execSync = require('child_process').execSync;
+      const netstatOut = execSync('netstat -an', { encoding: 'utf8', timeout: 500 });
+      const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1):${envPort}\\s+.*LISTENING`, 'i');
+      if (portRegex.test(netstatOut)) {
+        return envProxy;
+      } else {
+        return null; // Configured proxy is dead, fallback to direct connection
+      }
+    } catch (e) {
+      // Ignore netstat errors
+    }
+  }
 
-  // Removed automatic proxy port scanning to prevent leaking network state (Security Fix)
-
-  return envProxy || null;
+  return null;
 })();
 
 // API auth token — if not set, generate a random one and log it for the admin
@@ -68,10 +78,23 @@ const API_TOKEN = (() => {
   }
   logger.warn('⚠️  WARNING: No secure API_TOKEN configured!');
   logger.warn(`   Auto-generated token: ${token}`);
-  logger.warn('   Set API_TOKEN in .env for persistence.');
+  logger.warn('   Persisting API_TOKEN to .env automatically.');
 
-  // Security Fix: Removed automatic writing of API_TOKEN to .env
-  logger.info(`   [ACTION REQUIRED] Please manually add API_TOKEN=${token} to your .env file`);
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.join(__dirname, '..', '..', '.env');
+    let envContent = '';
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
+    if (!envContent.includes('API_TOKEN=')) {
+      fs.appendFileSync(envPath, `\nAPI_TOKEN=${token}\n`);
+      logger.info('   [SUCCESS] Automatically wrote API_TOKEN to .env file');
+    }
+  } catch (err) {
+    logger.error('   [ACTION REQUIRED] Failed to write API_TOKEN. Please manually add it to .env');
+  }
 
   return token;
 })();
@@ -84,17 +107,30 @@ const DB_ENCRYPTION_KEY = (() => {
   }
 
   let keyHex;
-  const apiToken = process.env.API_TOKEN || API_TOKEN;
-  if (apiToken && apiToken !== 'change-me-to-a-random-string' && apiToken !== 'ai-tutor-default-token-change-me') {
-    // Derive from API_TOKEN for backward compatibility
-    keyHex = crypto.createHash('sha256').update(apiToken).digest('hex');
+  if (process.env.API_TOKEN && process.env.API_TOKEN !== 'change-me-to-a-random-string' && process.env.API_TOKEN !== 'ai-tutor-default-token-change-me') {
+    // Derive from existing API_TOKEN for backward compatibility (only if it existed BEFORE startup)
+    keyHex = crypto.createHash('sha256').update(process.env.API_TOKEN).digest('hex');
   } else {
-    // Use randomUUID which does not block on low entropy
+    // Fresh install or API_TOKEN was just generated. Use randomUUID to avoid key rotation breakage.
     keyHex = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
   }
 
-  // Security Fix: Removed automatic writing of DB_ENCRYPTION_KEY to .env and db_key_backup.txt
-  console.info(`   [ACTION REQUIRED] Please manually add DB_ENCRYPTION_KEY=${keyHex} to your .env file or a secure password manager.`);
+  // Automatically write DB_ENCRYPTION_KEY to .env for persistence
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.join(__dirname, '..', '..', '.env');
+    let envContent = '';
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
+    if (!envContent.includes('DB_ENCRYPTION_KEY=')) {
+      fs.appendFileSync(envPath, `\nDB_ENCRYPTION_KEY=${keyHex}\n`);
+      logger.info(`   [SUCCESS] Automatically wrote DB_ENCRYPTION_KEY to .env file`);
+    }
+  } catch (err) {
+    logger.error(`   [ACTION REQUIRED] Please manually add DB_ENCRYPTION_KEY=${keyHex} to your .env file or a secure password manager.`);
+  }
 
   return Buffer.from(keyHex, 'hex');
 })();

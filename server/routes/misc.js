@@ -51,7 +51,7 @@ router.get('/health', (req, res) => {
     status: 'ok',
     uptime: process.uptime(),
   };
-  base.db_ready = !!getTable();
+  base.vector_db_ready = !!getTable();
   base.sqlite_ready = !!getSqliteDb();
   base.keys_available = typeof API_KEYS !== 'undefined' ? API_KEYS.length : 0;
   base.mode = NODE_ENV;
@@ -288,28 +288,33 @@ router.post('/import/data', dataUpload.single('file'), async (req, res) => {
 
     // Process and insert mistakes
     for (const m of mistakes) {
-      await dbQueue.enqueue(async (db) => {
+      await dbQueue.enqueue(async () => {
         const encryptedQuery = encryptField(m.query);
         const encryptedAnswer = encryptField(m.answer);
         const encryptedReason = encryptField(m.reason);
-        const ftsText = generateFtsIndexText(m.query, m.answer, m.reason, m.subject);
         
-        await db.run(
+        await sqliteDb.run(
           `INSERT OR REPLACE INTO mistakes 
-          (id, profile_id, timestamp, subject, grade, query, answer, reason, solved, difficulty, last_reviewed, fts_text)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [m.id, profile_id, m.timestamp, m.subject, m.grade, encryptedQuery, encryptedAnswer, encryptedReason, m.solved, m.difficulty, m.last_reviewed, ftsText]
+          (id, profile_id, timestamp, subject, grade, query, answer, reason, review_count, easiness_factor, next_review_date, last_interval, tags, source_info)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            m.id, profile_id, m.timestamp || null, m.subject || null, m.grade || null,
+            encryptedQuery, encryptedAnswer, encryptedReason,
+            m.review_count || 0, m.easiness_factor || 2.5, m.next_review_date || null, m.last_interval || 0, m.tags || '', m.source_info || null
+          ]
         );
       });
     }
 
     // Process and insert chat history
     for (const c of chat_history) {
-      await dbQueue.enqueue(async (db) => {
+      await dbQueue.enqueue(async () => {
         const encryptedText = encryptField(c.text);
-        await db.run(
-          `INSERT OR REPLACE INTO chat_history (id, profile_id, role, text, timestamp) VALUES (?, ?, ?, ?, ?)`,
-          [c.id, profile_id, c.role, encryptedText, c.timestamp]
+        const grade = c.grade || 'unknown';
+        const subject = c.subject || 'unknown';
+        await sqliteDb.run(
+          `INSERT OR REPLACE INTO chat_history (id, profile_id, grade, subject, role, text, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [c.id, profile_id, grade, subject, c.role, encryptedText, c.timestamp]
         );
       });
     }
@@ -333,7 +338,7 @@ router.post('/report/weekly', async (req, res) => {
     const gradeFilter = (grade && grade !== 'unknown') ? ` AND grade = ?` : '';
     const gradeParams = (grade && grade !== 'unknown') ? [grade] : [];
 
-    // chat_history table does not have a grade column, so we count all messages for the profile
+    // Although chat_history has a grade column, we intentionally count all messages for the profile to reflect overall activity in the weekly report.
     const chatCount = await sqliteDb.get(
       `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')`,
       [profile_id]

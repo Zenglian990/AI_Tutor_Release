@@ -159,11 +159,11 @@ const SENSITIVE_WORDS = [
   { word: '枪支', category: 'violence' }, { word: '手枪', category: 'violence' },
   { word: '刀具', category: 'violence' }, { word: '砍刀', category: 'violence' },
   { word: 'knife', category: 'violence' },
-  { word: 'weapon', category: 'violence' }, { word: 'bomb', category: 'violence' },
+  { word: 'bomb', category: 'violence' },
   // Substances
   { word: '大麻', category: 'violence' },
   { word: '海洛因', category: 'violence' }, { word: 'drugs', category: 'violence' },
-  { word: 'weed', category: 'violence' }, { word: 'alcohol', category: 'violence' },
+  { word: 'weed', category: 'violence' },
   { word: '冰毒', category: 'violence' },
   // Personal info
   { word: '家庭住址', category: 'personal_info' }, { word: '身份证号', category: 'personal_info' },

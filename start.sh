@@ -60,7 +60,7 @@ done
 # Build frontend if needed
 if [ ! -d "client/dist" ] || [ $FORCE_BUILD -eq 1 ]; then
     echo "[2/3] Building frontend..."
-    cd client
+    cd client || exit 1
     if [ ! -d "node_modules" ]; then
         npm install
     fi

@@ -78,12 +78,13 @@ if "%NEED_BUILD%"=="1" (
     if exist ".vite" rmdir /s /q ".vite"
     if exist ".vite-temp" rmdir /s /q ".vite-temp"
     call npm run build
-    cd ..
     if errorlevel 1 (
         echo [ERROR] 前端构建失败！
+        cd ..
         pause
         exit /b 1
     )
+    cd ..
 ) else (
     echo [2/3] Frontend build OK. ^(Run with --build to force rebuild^)
 )

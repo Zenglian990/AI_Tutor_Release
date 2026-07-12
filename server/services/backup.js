@@ -119,16 +119,17 @@ async function cleanOldBackups() {
   }
 }
 
-// Start backup scheduler
-// Runs once 10 seconds after server startup, then every 24 hours
-setTimeout(() => {
-  runBackup().catch(err => logger.error('[Backup Scheduler] Startup run failed:', err));
-}, 10000).unref();
+function startBackupSchedule() {
+  setTimeout(() => {
+    runBackup().catch(err => logger.error('[Backup Scheduler] Startup run failed:', err));
+  }, 10000).unref();
 
-setInterval(() => {
-  runBackup().catch(err => logger.error('[Backup Scheduler] Interval run failed:', err));
-}, 24 * 60 * 60 * 1000).unref();
+  setInterval(() => {
+    runBackup().catch(err => logger.error('[Backup Scheduler] Interval run failed:', err));
+  }, 24 * 60 * 60 * 1000).unref();
+}
 
 module.exports = {
-  runBackup
+  runBackup,
+  startBackupSchedule
 };

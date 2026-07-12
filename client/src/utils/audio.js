@@ -47,18 +47,7 @@ function bufferToWav(buffer) {
   const format = 1; // 1 = Uncompressed PCM
   const bitDepth = 16;
   
-  let result;
-  if (numOfChan === 1) {
-    result = buffer.getChannelData(0);
-  } else {
-    // Fallback: merge/interleave channels if stereo (OfflineAudioContext forced mono, so usually unreachable)
-    const chan0 = buffer.getChannelData(0);
-    const chan1 = buffer.getChannelData(1);
-    result = new Float32Array(chan0.length);
-    for (let i = 0; i < chan0.length; i++) {
-      result[i] = (chan0[i] + chan1[i]) / 2;
-    }
-  }
+  const result = buffer.getChannelData(0);
   
   const bufferLength = result.length * 2; // 16-bit = 2 bytes per sample
   const wavBuffer = new ArrayBuffer(44 + bufferLength);

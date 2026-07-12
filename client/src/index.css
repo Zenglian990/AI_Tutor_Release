@@ -12,6 +12,8 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --user-msg-bg: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
   --ai-msg-bg: rgba(30, 41, 59, 0.5);
+  --card-bg: #1e293b;
+  --overlay-bg: rgba(0, 0, 0, 0.8);
 }
 
 * {
@@ -29,6 +31,7 @@ body {
     radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.12), transparent 25%);
   background-attachment: fixed;
   color: var(--text-primary);
+  height: 100vh;
   height: 100dvh;
   display: flex;
   justify-content: center;

@@ -16,6 +16,9 @@ for i in range(1, 100):
 if not API_KEYS:
     raise ValueError("No GEMINI_API_KEY found in environment!")
 
+class RateLimitException(Exception):
+    pass
+
 _key_cooldowns = {}
 _key_last_used = {}
 
@@ -31,7 +34,7 @@ def get_next_key():
         wait_time = _key_cooldowns[selected] - now
         if wait_time > 0:
             print(f"  [Rate Limit] All keys in cooldown. Waiting {wait_time:.1f}s for {selected[:8]}...")
-            time.sleep(wait_time)
+            raise RateLimitException(f"All keys in cooldown. Wait time: {wait_time:.1f}s")
     else:
         # Pick the key that was used the furthest in the past (Least-Recently-Used)
         selected = min(available, key=lambda k: _key_last_used.get(k, 0))

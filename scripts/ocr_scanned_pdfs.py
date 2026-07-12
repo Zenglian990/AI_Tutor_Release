@@ -66,13 +66,6 @@ from chunk_utils import chunk_markdown_page  # shared module — no side effects
 from keypool import API_KEYS, get_embedding
 
 EMBED_MODEL = os.environ.get("EMBED_MODEL") or "gemini-embedding-2"
-_key_index = 0
-
-def next_key():
-    global _key_index
-    k = API_KEYS[_key_index]
-    _key_index = (_key_index + 1) % len(API_KEYS)
-    return k
 
 def embed_text(text):
     return get_embedding(text, EMBED_MODEL)

@@ -6,17 +6,18 @@ const { logApiUsage } = require('./usage');
 const proxyAgent = proxyUrl ? new ProxyAgent(proxyUrl) : null;
 if (proxyAgent) logger.info(`[Proxy] Using ${proxyUrl} for API requests`);
 
-const _keyLastUsed = new Map();
+const maskKey = (key) => process.env.NODE_ENV === 'test' ? 'mock_gemini_key_***' : key.slice(0, 6) + '...';
+const keyLastUsed = new Map();
 
 function getNextKey() {
   // Filter out permanently invalid keys
-  const activeKeys = API_KEYS.filter(k => !_invalidKeys.has(k));
+  const activeKeys = API_KEYS.filter(k => !invalidKeys.has(k));
   if (activeKeys.length === 0) return API_KEYS[0]; // fallback
 
   const now = Date.now();
   // Filter keys not in cooldown
   const available = activeKeys.filter(k => {
-    const cd = _keyCooldown.get(k);
+    const cd = keyCooldown.get(k);
     return !cd || now > cd;
   });
 
@@ -24,17 +25,17 @@ function getNextKey() {
   const candidatePool = available.length > 0 ? available : activeKeys;
 
   let selectedKey = candidatePool[0];
-  let oldestTime = _keyLastUsed.get(selectedKey) || 0;
+  let oldestTime = keyLastUsed.get(selectedKey) || 0;
 
   for (const k of candidatePool) {
-    const lastUsed = _keyLastUsed.get(k) || 0;
+    const lastUsed = keyLastUsed.get(k) || 0;
     if (lastUsed < oldestTime) {
       oldestTime = lastUsed;
       selectedKey = k;
     }
   }
 
-  _keyLastUsed.set(selectedKey, now);
+  keyLastUsed.set(selectedKey, now);
   return selectedKey;
 }
 
@@ -51,8 +52,8 @@ function buildStreamURL(modelName) {
 }
 
 // Key pool health and cooldown states
-const _keyCooldown = new Map(); // key -> timestamp when cooldown ends
-const _invalidKeys = new Set(); // permanently failed keys
+const keyCooldown = new Map(); // key -> timestamp when cooldown ends
+const invalidKeys = new Set(); // permanently failed keys
 
 /**
  * Perform active health check on all Gemini keys
@@ -82,26 +83,28 @@ async function checkKeysHealth() {
       clearTimeout(timeoutId);
 
       if (res.status === 400 || res.status === 403) {
-        logger.error(`[HealthCheck] Key ${key.slice(0, 6)}... is INVALID (status ${res.status}). Marking as disabled.`);
-        _invalidKeys.add(key);
-        _keyLastUsed.delete(key);
-        _keyCooldown.delete(key);
+        logger.error(`[HealthCheck] Key ${maskKey(key)} is INVALID (status ${res.status}). Marking as disabled.`);
+        invalidKeys.add(key);
+        keyLastUsed.delete(key);
+        keyCooldown.delete(key);
       } else {
-        if (_invalidKeys.has(key)) {
-          logger.info(`[HealthCheck] Key ${key.slice(0, 6)}... recovered. Re-enabling.`);
-          _invalidKeys.delete(key);
+        if (invalidKeys.has(key)) {
+          logger.info(`[HealthCheck] Key ${maskKey(key)} recovered. Re-enabling.`);
+          invalidKeys.delete(key);
         }
       }
     } catch (err) {
-      logger.warn(`[HealthCheck] Network check failed for key ${key.slice(0, 6)}...: ${err.message}`);
+      logger.error(`[HealthCheck] Network check failed for key ${maskKey(key)}: ${err.message}`);
     }
   }
-  logger.info(`[HealthCheck] Completed. Active keys: ${API_KEYS.filter(k => !_invalidKeys.has(k)).length}/${API_KEYS.length}`);
+  logger.info(`[HealthCheck] Completed. Active keys: ${API_KEYS.filter(k => !invalidKeys.has(k)).length}/${API_KEYS.length}`);
 }
 
-// Start active validation check every 10 minutes, and once on startup (delayed 5s)
-setInterval(checkKeysHealth, 10 * 60 * 1000).unref();
-setTimeout(checkKeysHealth, 5000).unref();
+function startEmbeddingCheck() {
+  // Start active validation check every 10 minutes, and once on startup (delayed 5s)
+  setInterval(checkKeysHealth, 10 * 60 * 1000).unref();
+  setTimeout(checkKeysHealth, 5000).unref();
+}
 
 /**
  * Convert Gemini payload structure to DeepSeek (OpenAI compatible) payload
@@ -307,7 +310,7 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
  * Fetch with automatic key rotation and retry logic.
  * Tracks per-key rate limit state and falls back to DeepSeek if pool is depleted.
  */
-async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs = 30000, modelName = null) {
+async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs = 30000, modelName = null, skipDeepSeek = false) {
   let rawModel = modelName && modelName !== 'default' ? modelName : CHAT_MODEL;
   // Security Fix: strictly validate model name to prevent path injection
   if (!/^[a-zA-Z0-9.-]+$/.test(rawModel)) {
@@ -328,10 +331,10 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   const modifiedOptions = options;
 
   // Filter valid keys
-  const validKeys = API_KEYS.filter(k => !_invalidKeys.has(k));
+  const validKeys = API_KEYS.filter(k => !invalidKeys.has(k));
 
   if (validKeys.length === 0) {
-    if (urlType === 'chat' || urlType === 'stream') {
+    if ((urlType === 'chat' || urlType === 'stream') && !skipDeepSeek) {
       return await fetchDeepSeek(urlType, modifiedOptions);
     }
     throw new Error('EMBED_QUOTA_EXHAUSTED');
@@ -353,11 +356,11 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       throw new DOMException('The operation was aborted.', 'AbortError');
     }
     let key = getNextKey();
-    if (_invalidKeys.has(key) || (_keyCooldown.get(key) && Date.now() <= _keyCooldown.get(key))) {
+    if (invalidKeys.has(key) || (keyCooldown.get(key) && Date.now() <= keyCooldown.get(key))) {
       key = null;
       for (const candidate of validKeys) {
-        if (!_invalidKeys.has(candidate)) {
-          const cooldownUntil = _keyCooldown.get(candidate);
+        if (!invalidKeys.has(candidate)) {
+          const cooldownUntil = keyCooldown.get(candidate);
           if (!cooldownUntil || Date.now() > cooldownUntil) {
             key = candidate;
             break;
@@ -366,11 +369,11 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       }
     }
     if (!key) {
-      if (urlType === 'chat' || urlType === 'stream') {
+      if ((urlType === 'chat' || urlType === 'stream') && !skipDeepSeek) {
         return await fetchDeepSeek(urlType, modifiedOptions);
       }
       // For embed requests, wait for the earliest cooldown to expire
-      const activeCooldowns = [..._keyCooldown.entries()]
+      const activeCooldowns = [...keyCooldown.entries()]
         .filter(([k, expiry]) => validKeys.includes(k) && expiry && expiry > Date.now())
         .map(([_, expiry]) => expiry);
       
@@ -384,8 +387,8 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       }
       // Try finding a key again after wait
       for (const candidate of validKeys) {
-        if (!_invalidKeys.has(candidate)) {
-          const cooldownUntil = _keyCooldown.get(candidate);
+        if (!invalidKeys.has(candidate)) {
+          const cooldownUntil = keyCooldown.get(candidate);
           if (!cooldownUntil || Date.now() > cooldownUntil) {
             key = candidate;
             break;
@@ -447,31 +450,31 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
       if (response.status === 429 || response.status === 503) {
         if (/quota/i.test(body)) {
-          _keyCooldown.set(key, Date.now() + 60_000);
-          logger.warn(`[KeyPool] Key ${key.slice(0, 6)}... quota exhausted, cooling down.`);
+          keyCooldown.set(key, Date.now() + 60_000);
+          logger.warn(`[KeyPool] Key ${maskKey(key)} quota exhausted, cooling down.`);
           continue;
         }
-        logger.warn(`API ${response.status} on key ${key.slice(0, 6)}..., cooling down and retrying (Attempt ${attempt + 1}/${loopLimit}).`);
-        _keyCooldown.set(key, Date.now() + 5000);
+        logger.warn(`API ${response.status} on key ${maskKey(key)}, cooling down and retrying (Attempt ${attempt + 1}/${loopLimit}).`);
+        keyCooldown.set(key, Date.now() + 5000);
         await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
         // Critical key error (400 key invalid / 403 blocked)
-        _invalidKeys.add(key);
-        logger.error(`[KeyPool] Key ${key.slice(0, 6)}... returned critical error ${response.status}. Key disabled.`);
+        invalidKeys.add(key);
+        logger.error(`[KeyPool] Key ${maskKey(key)} returned critical error ${response.status}. Key disabled.`);
         continue;
       }
     } catch (e) {
       cleanup();
       lastError = e;
       consecutiveErrors++;
-      logger.warn(`Network error on key ${key.slice(0, 6)}...: ${e.message}, retrying... (Attempt ${attempt + 1}/${loopLimit}).`);
-      _keyCooldown.set(key, Date.now() + 10_000);
+      logger.warn(`Network error on key ${maskKey(key)}: ${e.message}, retrying... (Attempt ${attempt + 1}/${loopLimit}).`);
+      keyCooldown.set(key, Date.now() + 10_000);
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }
 
   // All Gemini retries failed. If chat or stream, attempt DeepSeek fallback!
-  if (urlType === 'chat' || urlType === 'stream') {
+  if ((urlType === 'chat' || urlType === 'stream') && !skipDeepSeek) {
     try {
       return await fetchDeepSeek(urlType, modifiedOptions);
     } catch (fallbackErr) {
@@ -546,4 +549,5 @@ module.exports = {
   getEmbedding,
   buildChatURL,
   buildStreamURL,
+  startEmbeddingCheck
 };

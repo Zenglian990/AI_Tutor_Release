@@ -205,7 +205,7 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural') {
           }
         }
       })
-    }, 3, 30000);
+    }, 3, 30000, null, true);
 
     const data = await response.json();
 

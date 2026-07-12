@@ -22,7 +22,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--overlay-bg);
   backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
@@ -35,7 +35,7 @@
   width: 100%;
   max-width: 700px;
   max-height: 80vh;
-  background: #1e293b;
+  background: var(--card-bg);
   border-radius: 20px;
   border: 1px solid var(--glass-border);
   display: flex;
@@ -128,6 +128,8 @@ body.light-mode {
   --ai-msg-bg: rgba(255, 255, 255, 0.95);
   --user-msg-bg: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   --input-bg: rgba(255, 255, 255, 0.9);
+  --card-bg: #ffffff;
+  --overlay-bg: rgba(255, 255, 255, 0.8);
 }
 
 body.light-mode .chat-message.ai {
@@ -141,11 +143,6 @@ body.light-mode .input-bar {
 
 body.light-mode .header {
   background: rgba(255, 255, 255, 0.8);
-  color: #0f172a;
-}
-
-body.light-mode .mistake-modal {
-  background: #ffffff;
   color: #0f172a;
 }
 

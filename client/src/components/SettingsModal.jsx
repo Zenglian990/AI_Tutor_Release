@@ -9,7 +9,7 @@ export default function SettingsModal({
   onSaveBackendUrl,
   apiToken,
   onSaveApiToken,
-  isSocratic,
+  socraticLevel,
   onSocraticToggle,
   autoRead,
   onAutoReadToggle,
@@ -17,9 +17,10 @@ export default function SettingsModal({
   currentProfileEdition,
   onEditionChange
 }) {
-  const { language, setLanguage, t, chatModel, setChatModel } = useAppStore();
+  const { language, setLanguage, t, chatModel, setChatModel, settings, setSettings } = useAppStore();
   const [url, setUrl] = useState(backendUrl);
   const [token, setToken] = useState(apiToken);
+  const [parentName, setParentName] = useState(settings?.parentName || '家长');
   const [showToken, setShowToken] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showExportGate, setShowExportGate] = useState(false);
@@ -36,6 +37,9 @@ export default function SettingsModal({
     e.preventDefault();
     onSaveBackendUrl(url.trim());
     onSaveApiToken(token.trim());
+    const newSettings = { ...settings, parentName: parentName.trim() || '家长' };
+    setSettings(newSettings);
+    localStorage.setItem('ai_tutor_settings', JSON.stringify(newSettings));
     onClose();
   };
 
@@ -108,6 +112,20 @@ export default function SettingsModal({
               <option value="zh-CN">🇨🇳 简体中文 (Simplified Chinese)</option>
               <option value="en-US">🇺🇸 English (US)</option>
             </select>
+          </div>
+
+          {/* Parent Name */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
+              {language === 'zh-CN' ? '家长称呼 (用于报告卡片)' : 'Parent Name (for reports)'}
+            </label>
+            <input
+              type="text"
+              placeholder={language === 'zh-CN' ? '例如: 爸爸, 妈妈' : 'e.g. Dad, Mom'}
+              value={parentName}
+              onChange={e => setParentName(e.target.value)}
+              style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+            />
           </div>
 
           {/* Textbook Edition Selector */}
@@ -236,12 +254,12 @@ export default function SettingsModal({
                     flex: 1,
                     padding: '10px 8px',
                     borderRadius: '10px',
-                    border: isSocratic === opt.value ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
-                    background: isSocratic === opt.value ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)',
+                    border: socraticLevel === opt.value ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
+                    background: socraticLevel === opt.value ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)',
                     color: 'white',
                     cursor: 'pointer',
                     fontSize: '0.85rem',
-                    fontWeight: isSocratic === opt.value ? 'bold' : 'normal',
+                    fontWeight: socraticLevel === opt.value ? 'bold' : 'normal',
                     transition: 'all 0.2s'
                   }}
                 >

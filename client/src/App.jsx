@@ -20,6 +20,7 @@ import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_
 import OnboardingGuide from './components/OnboardingGuide';
 
 const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
+let hasInitializedTTS = false;
 
 // ── Main App ──
 function AppInner() {
@@ -27,7 +28,7 @@ function AppInner() {
   const {
     backendUrl, setBackendUrl, apiToken, setApiToken,
     profiles, currentProfileId, currentProfile,
-    selectedSubject, setSelectedSubject, isSocratic, setSocraticLevel,
+    selectedSubject, setSelectedSubject, socraticLevel, setSocraticLevel,
     autoRead, setAutoRead, isLightMode, setIsLightMode,
     handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile,
     setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
@@ -50,8 +51,9 @@ function AppInner() {
   const [showMap, setShowMap] = useState(false);
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [showAdminStats, setShowAdminStats] = useState(false);
+  const [showKnowledgeTest, setShowKnowledgeTest] = useState(false);
   const [reportData, setReportData] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [activeChapterData, setActiveChapterData] = useState(null);
@@ -74,10 +76,10 @@ function AppInner() {
   const messagesRef = useRef(messages);
   const editionRef = useRef(currentProfile.edition);
 
-  useEffect(() => { gradeRef.current = currentProfile.grade; }, [currentProfile.grade]);
-  useEffect(() => { subjectRef.current = selectedSubject; }, [selectedSubject]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-  useEffect(() => { editionRef.current = currentProfile.edition; }, [currentProfile.edition]);
+  gradeRef.current = currentProfile.grade;
+  subjectRef.current = selectedSubject;
+  messagesRef.current = messages;
+  editionRef.current = currentProfile.edition;
 
   // Validate and auto-reset selectedSubject when grade changes to an incompatible one
   useEffect(() => {
@@ -247,7 +249,8 @@ function AppInner() {
       return;
     }
 
-    if (window.speechSynthesis) {
+    if (window.speechSynthesis && !hasInitializedTTS) {
+      hasInitializedTTS = true;
       const silentUtterance = new SpeechSynthesisUtterance('');
       silentUtterance.volume = 0;
       window.speechSynthesis.speak(silentUtterance);
@@ -266,7 +269,7 @@ function AppInner() {
         formData.append('profile_id', currentProfileId);
         if (gradeRef.current) formData.append('grade', gradeRef.current);
         if (subjectRef.current) formData.append('subject', subjectRef.current);
-        formData.append('socratic', isSocratic);
+        formData.append('socratic', socraticLevel);
         if (editionRef.current) formData.append('edition', editionRef.current);
         formData.append('model', chatModel);
         response = await authFetch('/api/chat-vision', { method: 'POST', body: formData });
@@ -280,7 +283,7 @@ function AppInner() {
             subject: subjectRef.current || undefined,
             history: historyContext,
             profile_id: currentProfileId,
-            socratic: isSocratic,
+            socratic: socraticLevel,
             edition: editionRef.current,
             model: chatModel
           })
@@ -344,21 +347,16 @@ function AppInner() {
         return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg) }];
       });
     } finally { setIsLoading(false); }
-  }, [imageFile, isLoading, previewImage, currentProfileId, isSocratic, syncMessages, isOffline, language]);
+  }, [imageFile, isLoading, previewImage, currentProfileId, socraticLevel, syncMessages, isOffline, language]);
 
   const clearChat = () => {
-    setGateAction(() => () => {
-      if (window.confirm('确定要清空当前对话吗？')) {
-        setMessages([{ id: genMsgId(), role: 'ai', text: '您好！我是您的 AI 助教。对话已清空，开始新的学习旅程吧！' }]);
-        syncMessages([{ id: genMsgId(), role: 'ai', text: '您好！我是您的 AI 助教。对话已清空，开始新的学习旅程吧！' }]);
-      }
-    });
+    setGateAction(() => () => setShowClearConfirm(true));
     setGateReason('清空当前对话历史');
     setGateOpen(true);
   };
 
   const handlePlayTTS = useCallback((text, onStart, onEnd) => {
-    playTTS(text, gradeRef.current, onStart, onEnd);
+    return playTTS(text, gradeRef.current, onStart, onEnd);
   }, []);
 
   const handleStopTTS = useCallback(() => {
@@ -424,7 +422,7 @@ function AppInner() {
         selectedSubject={selectedSubject}
         onSubjectChange={setSelectedSubject}
         onClearChat={clearChat}
-        socraticLevel={isSocratic}
+        socraticLevel={socraticLevel}
         onSocraticCycle={(level) => setSocraticLevel(level)}
         isLightMode={isLightMode}
         onThemeToggle={() => setIsLightMode(!isLightMode)}
@@ -439,7 +437,8 @@ function AppInner() {
           try {
             const res = await authFetch(`/api/mistakes/review-challenge?profile_id=${currentProfileId}&grade=${currentProfile.grade}`);
             const data = await res.json();
-            if (data.challenge) {
+            if (data.error) { alert("复习错题失败: " + data.error); }
+            else if (data.challenge) {
               setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: data.challenge }]);
               setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
             } else { alert("太棒了！今天没有需要紧急复习的错题！"); }
@@ -454,13 +453,14 @@ function AppInner() {
               body: JSON.stringify({ profile_id: currentProfileId, grade: currentProfile.grade, student_name: currentProfile.name })
             });
             const data = await res.json();
+            if (data.error) { alert("生成报告失败: " + data.error); }
             setReportData(data.report || '生成报告失败');
           } catch (e) { setReportData('网络异常'); }
           finally { setReportLoading(false); }
         }} />
         <button onClick={() => { setGateAction(() => () => setShowStats(true)); setGateReason(language === 'zh-CN' ? '查看家长深度分析报表' : 'View parental progress report'); setGateOpen(true); }}
           className="mistake-btn" style={{ borderColor: '#a78bfa', color: '#a78bfa', background: 'rgba(139, 92, 246, 0.1)' }}>📊 {language === 'zh-CN' ? '学习报表' : 'Stats Report'}</button>
-        <button onClick={() => setShowAdminStats(true)}
+        <button onClick={() => setShowKnowledgeTest(true)}
           className="mistake-btn" style={{ borderColor: '#ec4899', color: '#ec4899', background: 'rgba(236, 72, 153, 0.1)' }}>
           📝 {language === 'zh-CN' ? '知识测试' : 'Knowledge Test'}
         </button>
@@ -481,7 +481,8 @@ function AppInner() {
               })
             });
             const data = await res.json();
-            if (data.plan) { setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: data.plan }]); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100); }
+            if (data.error) { alert("生成规划失败: " + data.error); }
+            else if (data.plan) { setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: data.plan }]); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100); }
           } catch (e) { alert("生成规划失败"); }
           finally { btn.innerHTML = originalText; }
         }} />
@@ -524,6 +525,7 @@ function AppInner() {
           currentGrade={currentProfile.grade}
           currentSubject={selectedSubject || '数学'}
           currentEdition={currentProfile.edition}
+          currentProfileName={currentProfile.name}
           onClose={() => setShowMap(false)}
           authFetch={authFetch}
           onSelectChapter={(chapter) => {
@@ -542,11 +544,43 @@ function AppInner() {
       )}
       <ParentalGate isOpen={gateOpen} reason={gateReason} onVerify={async () => { if (gateAction) { try { await gateAction(); } catch (e) { console.error('Gate action failed:', e); } } }} onClose={() => { setGateOpen(false); setGateAction(null); }} />
       <AddProfileModal isOpen={showAddProfile} onClose={() => setShowAddProfile(false)} onConfirm={handleAddProfile} />
+      {showClearConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧹</div>
+            <h2 style={{ marginBottom: '12px' }}>清空对话历史</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
+              确定要清空当前的对话记录吗？此操作无法撤销。
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                className="secondary-btn" 
+                onClick={() => setShowClearConfirm(false)}
+                style={{ flex: 1, padding: '10px' }}
+              >
+                取消
+              </button>
+              <button 
+                className="primary-btn" 
+                style={{ flex: 1, padding: '10px', background: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
+                onClick={() => {
+                  const clearMsg = { id: genMsgId(), role: 'ai', text: '您好！我是您的 AI 助教。对话已清空，开始新的学习旅程吧！' };
+                  setMessages([clearMsg]);
+                  syncMessages([clearMsg]);
+                  setShowClearConfirm(false);
+                }}
+              >
+                确定清空
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <SettingsModal
         isOpen={showSettings} onClose={() => setShowSettings(false)}
         backendUrl={backendUrl} onSaveBackendUrl={setBackendUrl}
         apiToken={apiToken} onSaveApiToken={setApiToken}
-        isSocratic={isSocratic} onSocraticToggle={(level) => setSocraticLevel(level)}
+        socraticLevel={socraticLevel} onSocraticToggle={(level) => setSocraticLevel(level)}
         autoRead={autoRead} onAutoReadToggle={() => setAutoRead(!autoRead)}
         currentProfileId={currentProfileId}
         currentProfileEdition={currentProfile.edition}
@@ -561,9 +595,9 @@ function AppInner() {
         reportData={reportData}
       />
 
-      {showAdminStats && (
+      {showKnowledgeTest && (
         <KnowledgeTest
-          onClose={() => setShowAdminStats(false)}
+          onClose={() => setShowKnowledgeTest(false)}
           currentProfileId={currentProfileId}
           currentGrade={currentProfile.grade}
           selectedSubject={selectedSubject}
