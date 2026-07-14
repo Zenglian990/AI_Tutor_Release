@@ -186,9 +186,9 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural') {
   const geminiVoice = mapVoiceToGemini(voice);
 
   // Gemini TTS endpoint (uses the same base URL as chat but with tts model)
-  const TTS_MODEL = 'gemini-2.5-flash-preview-tts';
-  const buildTtsURL = () =>
-    `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent`;
+  const TTS_MODEL = 'gemini-2.5-flash';
+  const buildTtsURL = (modelName) =>
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
   try {
     const response = await fetchWithKeyRotation(buildTtsURL, {
@@ -205,7 +205,7 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural') {
           }
         }
       })
-    }, 3, 30000, null, true);
+    }, 3, 30000, TTS_MODEL, true);
 
     const data = await response.json();
 
