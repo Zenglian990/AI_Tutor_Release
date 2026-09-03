@@ -9,7 +9,7 @@
     "build:client": "cd client && npm run build",
     "start:prod": "npm run build:client && npm start",
     "test": "npm run test:all",
-    "test:all": "node --test tests/*.test.js",
+    "test:all": "node --test --test-concurrency=1 tests/*.test.js",
     "healthcheck": "node scripts/health-check.js"
   },
   "keywords": [],

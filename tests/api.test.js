@@ -2,7 +2,7 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 process.env.NODE_ENV = 'development';
 const { createApp } = require('../server/app');
-const { initDB, getSqliteDb } = require('../server/db/init');
+const { initDB, getSqliteDb, closeDB } = require('../server/db/init');
 const config = require('../server/config');
 let app;
 let server;
@@ -42,6 +42,7 @@ after(async () => {
     await new Promise((resolve) => server.close(resolve));
     console.log('Test server shut down.');
   }
+  await closeDB();
 });
 
 test('GET /api/health — returns ok status', async () => {

@@ -51,6 +51,10 @@ class TaskQueue {
       });
     });
   }
+
+  async drain() {
+    await this.queue;
+  }
 }
 
 const dbQueue = new TaskQueue();

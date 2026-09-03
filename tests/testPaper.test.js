@@ -102,7 +102,7 @@ undici.fetch = async (url, options) => {
 // Import app
 process.env.NODE_ENV = 'development';
 const { createApp } = require('../server/app');
-const { initDB } = require('../server/db/init');
+const { initDB, closeDB } = require('../server/db/init');
 
 let app;
 let server;
@@ -125,6 +125,7 @@ after(async () => {
   if (server) {
     await new Promise((resolve) => server.close(resolve));
   }
+  await closeDB();
   undici.fetch = originalFetch;
 });
 

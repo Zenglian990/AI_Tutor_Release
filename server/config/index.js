@@ -12,7 +12,7 @@ const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 const DEEPSEEK_CHAT_MODEL = process.env.DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
 const DB_PATH = require('path').join(__dirname, '..', '..', 'data/lancedb');
-const SQLITE_DB_PATH = require('path').join(__dirname, '..', '..', 'data/mistakes.db');
+const SQLITE_DB_PATH = process.env.SQLITE_DB_PATH || require('path').join(__dirname, '..', '..', 'data/mistakes.db');
 
 // API Key pool with rotation
 const API_KEYS = (() => {

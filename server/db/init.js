@@ -279,4 +279,17 @@ async function runMigrations(db) {
 function getTable() { return table; }
 function getSqliteDb() { return sqliteDb; }
 
-module.exports = { initDB, getTable, getSqliteDb };
+async function closeDB() {
+  try {
+    const dbQueue = require('../services/dbQueue');
+    await dbQueue.drain();
+  } catch (e) {}
+  if (sqliteDb) {
+    try {
+      await sqliteDb.close();
+    } catch (e) {}
+    sqliteDb = null;
+  }
+}
+
+module.exports = { initDB, getTable, getSqliteDb, closeDB };
