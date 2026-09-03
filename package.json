@@ -10,6 +10,7 @@
     "start:prod": "npm run build:client && npm start",
     "test": "npm run test:all",
     "test:all": "node --test --test-concurrency=1 tests/*.test.js",
+    "seed:demo": "node scripts/seed_demo_data.js",
     "healthcheck": "node scripts/health-check.js"
   },
   "keywords": [],

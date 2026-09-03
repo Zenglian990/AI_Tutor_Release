@@ -9,6 +9,7 @@
 [![Python](https://img.shields.io/badge/RAG-Python-yellow?style=flat-square&logo=python)](https://python.org/)
 [![Database](https://img.shields.io/badge/Vector_DB-LanceDB-orange?style=flat-square)](https://lancedb.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
+[![CI Pipeline](https://github.com/Zenglian990/AI_Tutor_Release/actions/workflows/ci.yml/badge.svg)](https://github.com/Zenglian990/AI_Tutor_Release/actions)
 
 [**中文版**](README.md) | [**English**](README_en.md)
 
@@ -80,11 +81,29 @@ cd AI_Tutor_Release
 
 系统将在 `http://localhost:3001` 自动打开主界面。
 
-#### 3. 关于知识库 (RAG)
+#### 3. 关于知识库 (RAG 课本数据)
 
-> **⚠️ 注意**：由于 GitHub 限制，本发行版不包含人教版教材向量数据。您需要自己准备 PDF 并使用 Python 脚本生成向量数据库，才能体验 AI 伴读和错题重测功能。
+系统提供**极速体验**与**全量教材入库**两种灵活方式：
 
-您可以通过以下命令生成知识库（请参考 `scripts/ingest_2_0.py` 和 `requirements.txt` 进行配置）：
+- **⚡ 方式一：极速体验（免配置内置 Demo 数据）**
+  无需安装配置 Python 环境，直接在项目根目录终端执行：
+  ```bash
+  npm run seed:demo
+  ```
+  该命令会向本地 LanceDB 自动注入 1-9 年级经典核心章节（人教版一年级数学/语文、三年级加减口算、七年级有理数、八年级勾股定理与声现象、九年级化学等），并完成 768 维向量对齐与全文检索索引构建，瞬间体验精准教材检索！
+
+- **📚 方式二：全量人教版教材入库（批量 PDF 提取）**
+  如果您准备了 1-9 年级完整教材 PDF 文件：
+  1. 安装 Python 提取依赖：
+     ```bash
+     pip install -r requirements.txt
+     ```
+  2. 将课本 PDF 放入 `data/textbooks/` 目录下（文件名格式示例：`人教版_数学_七年级上册.pdf`）。
+  3. 执行多模态智能切片入库脚本：
+     ```bash
+     python scripts/ingest_2_0.py
+     ```
+  脚本支持 EasyOCR / Gemini Vision 对课本插图、复杂数学公式排版的智能识别与切片。
 
 ## 🤝 参与贡献 (Contributing)
 我们非常欢迎社区成员的参与！无论您是开发者、教育工作者还是家长，都欢迎提交 Pull Request 或提出 Issue。让我们共同把这个工具打磨得更好，惠及更多普通家庭。

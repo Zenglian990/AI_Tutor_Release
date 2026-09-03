@@ -9,6 +9,7 @@
 [![Python](https://img.shields.io/badge/RAG-Python-yellow?style=flat-square&logo=python)](https://python.org/)
 [![Database](https://img.shields.io/badge/Vector_DB-LanceDB-orange?style=flat-square)](https://lancedb.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
+[![CI Pipeline](https://github.com/Zenglian990/AI_Tutor_Release/actions/workflows/ci.yml/badge.svg)](https://github.com/Zenglian990/AI_Tutor_Release/actions)
 
 [**中文版**](README.md) | [**English**](README_en.md)
 
@@ -80,10 +81,29 @@ cd AI_Tutor_Release
 
 The system will automatically open the main interface at `http://localhost:3001`.
 
-#### 3. About the Knowledge Base (RAG)
-> **🎁 Out-of-the-box**: This release includes approximately 90MB of pre-built vector data for K-9 textbooks. You can skip any Python configurations and start asking questions immediately!
+#### 3. About the Knowledge Base (RAG Textbook Data)
 
-(If you need to incrementally update PDFs for other grades using Python later, please refer to `scripts/ingest_2_0.py` and `requirements.txt`).
+We support two flexible setup methods:
+
+- **⚡ Option A: Instant Demo (Zero-Config Built-in Data)**
+  No Python setup required! Run directly in your terminal:
+  ```bash
+  npm run seed:demo
+  ```
+  This command seeds core curriculum chapters for Grades 1-9 (elementary math & Chinese, junior high rational numbers, Pythagorean theorem, physics acoustics, chemistry, etc.) into your local LanceDB instance with 768-dim vector alignment and FTS indexing. You can immediately test textbook-grounded RAG!
+
+- **📚 Option B: Full K-9 Textbook Ingestion (Batch PDF Processing)**
+  If you have the full set of K-9 PEP (人教版) textbook PDFs:
+  1. Install Python extraction dependencies:
+     ```bash
+     pip install -r requirements.txt
+     ```
+  2. Place your textbook PDFs into `data/textbooks/` (recommended naming format: `人教版_数学_七年级上册.pdf`).
+  3. Run the multimodal ingestion script:
+     ```bash
+     python scripts/ingest_2_0.py
+     ```
+  The pipeline utilizes EasyOCR / Gemini Vision to intelligently parse diagrams, formulas, and textbook structures into high-density vector chunks.
 
 ## 🤝 Contributing
 We highly welcome contributions from community members! Whether you are a developer, an educator, or a parent, you are welcome to submit Pull Requests or open Issues. Let's work together to polish this tool and benefit more ordinary families.
