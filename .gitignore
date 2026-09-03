@@ -31,6 +31,7 @@ client/.vite-temp/
 # OS
 .DS_Store
 Thumbs.db
+*.lnk
 
 # Logs
 logs/

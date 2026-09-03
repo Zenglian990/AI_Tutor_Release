@@ -40,7 +40,8 @@ undici.fetch = async (url, options) => {
     }
 
     // A. Mock Gemini TTS
-    if (urlStr.includes('gemini-2.5-flash-preview-tts')) {
+    const bodyStr = options && options.body ? String(options.body) : '';
+    if (urlStr.includes('gemini-2.5-flash-preview-tts') || bodyStr.includes('responseModalities') || bodyStr.includes('AUDIO')) {
       return {
         ok: true,
         status: 200,
