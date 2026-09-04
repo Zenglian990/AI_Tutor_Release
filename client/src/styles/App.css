@@ -598,3 +598,323 @@ body.light-mode .chat-textarea::placeholder {
 .scaffold-card-header:hover {
   transform: translateX(2px);
 }
+
+/* ── Welcome Dashboard & Mentor Desk Styles ── */
+.welcome-dashboard {
+  max-width: 860px;
+  margin: 12px auto 24px auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-hero-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 22px 24px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #34d399;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-border 2s infinite;
+}
+
+.welcome-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--text-color, #f8fafc);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.welcome-subtitle {
+  font-size: 0.92rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0 0 12px 0;
+}
+
+.highlight-tag {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.stage-feature-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #bfdbfe;
+}
+
+/* 1-9 Stage Switcher */
+.stage-switch-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage-switch-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  padding-left: 4px;
+}
+
+.stage-switch-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stage-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.83rem;
+  color: var(--text-secondary, #cbd5e1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.stage-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.stage-pill.active {
+  background: var(--accent-color, #3b82f6);
+  color: #ffffff;
+  border-color: var(--accent-color, #3b82f6);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
+}
+
+/* Primary Camera Big Action Card */
+.primary-camera-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(139, 92, 246, 0.22) 100%);
+  border: 1.5px solid rgba(139, 92, 246, 0.45);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-camera-card:hover {
+  transform: translateY(-2px);
+  border-color: #a855f7;
+  box-shadow: 0 8px 30px rgba(168, 85, 247, 0.3);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(139, 92, 246, 0.32) 100%);
+}
+
+.camera-icon-wrapper {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+}
+
+.camera-big-icon {
+  font-size: 26px;
+  position: relative;
+  z-index: 2;
+}
+
+.camera-card-content {
+  flex: 1;
+}
+
+.camera-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rec-badge {
+  background: #f59e0b;
+  color: #000;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+}
+
+.camera-card-desc {
+  font-size: 0.83rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.45;
+}
+
+.camera-card-arrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #c084fc;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.primary-camera-card:hover .camera-card-arrow {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: translateX(3px);
+}
+
+/* Action Cards Grid */
+.welcome-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.action-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.action-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.action-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.action-card-icon {
+  font-size: 1.25rem;
+}
+
+.action-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color, #f8fafc);
+}
+
+.action-card-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.action-card-cta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #60a5fa;
+  align-self: flex-start;
+}
+
+.mist-card:hover { border-color: #f59e0b; }
+.mist-card:hover .action-card-cta { color: #fbbf24; }
+
+.map-card:hover { border-color: #10b981; }
+.map-card:hover .action-card-cta { color: #34d399; }
+
+.exam-card:hover { border-color: #8b5cf6; }
+.exam-card:hover .action-card-cta { color: #a78bfa; }
+
+/* Welcome Footer */
+.welcome-footer-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--glass-border);
+  border-radius: 14px;
+}
+
+.footer-tip-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.footer-tip-item strong {
+  color: var(--text-color, #e2e8f0);
+}
+
+@media (max-width: 640px) {
+  .welcome-dashboard {
+    padding: 0 8px;
+  }
+  .primary-camera-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  .camera-card-title {
+    justify-content: center;
+  }
+  .camera-card-arrow {
+    width: 100%;
+    justify-content: center;
+  }
+}

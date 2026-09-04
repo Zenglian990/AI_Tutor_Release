@@ -15,9 +15,9 @@ import WeeklyReportModal from './components/WeeklyReportModal';
 import KnowledgeTest from './components/KnowledgeTest';
 import { compressImage } from './utils/image';
 import { playTTS, stopTTS } from './utils/tts';
-import { compressAudio } from './utils/audio';
 import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
 import OnboardingGuide from './components/OnboardingGuide';
+import WelcomeDashboard from './components/WelcomeDashboard';
 
 const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
 let hasInitializedTTS = false;
@@ -501,18 +501,32 @@ function AppInner() {
 
       {/* Chat messages */}
       <div className="chat-container">
-        {messages.map((msg, idx) => (
-          <ChatMessage
-            key={msg.id || idx}
-            msg={msg}
-            autoRead={autoRead}
-            isLatest={idx === messages.length - 1}
-            isStreaming={idx === messages.length - 1 && isLoading}
-            playTTS={handlePlayTTS}
-            stopTTS={handleStopTTS}
-            onMarkMistake={msg.role === 'ai' ? handleMarkMistake : undefined}
+        {messages.length === 0 ? (
+          <WelcomeDashboard
+            currentProfile={currentProfile}
+            selectedGrade={currentProfile.grade}
+            selectedSubject={selectedSubject}
+            onGradeChange={handleGradeChange}
+            onSubjectChange={setSelectedSubject}
+            onCameraClick={() => fileInputRef.current?.click()}
+            onReviewMistakes={() => setShowMistakes(true)}
+            onOpenMap={() => setShowMap(true)}
+            onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
-        ))}
+        ) : (
+          messages.map((msg, idx) => (
+            <ChatMessage
+              key={msg.id || idx}
+              msg={msg}
+              autoRead={autoRead}
+              isLatest={idx === messages.length - 1}
+              isStreaming={idx === messages.length - 1 && isLoading}
+              playTTS={handlePlayTTS}
+              stopTTS={handleStopTTS}
+              onMarkMistake={msg.role === 'ai' ? handleMarkMistake : undefined}
+            />
+          ))
+        )}
         {isLoading && <div className="typing-indicator"><div className="dot" /><div className="dot" /><div className="dot" /></div>}
         <div ref={messagesEndRef} />
       </div>

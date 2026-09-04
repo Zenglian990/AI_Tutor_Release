@@ -1,4 +1,4 @@
-﻿const { test, before, after } = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 process.env.NODE_ENV = 'development';
 const { initDB, getSqliteDb, closeDB } = require('../server/db/init');
@@ -78,5 +78,5 @@ test('Student Memory: gracefully handles brand new student with no history', asy
   const mem = await getStudentCognitiveMemory('brand_new_student_xyz', '7_up', '数学');
   assert.equal(mem.hasHistory, false);
   const promptText = formatStudentMemoryForPrompt(mem);
-  assert.ok(promptText.includes('初次学习或基础阶段'), 'Should provide gentle onboarding guidance');
+  assert.ok(promptText.includes('初次学习') || promptText.includes('起步阶段'), 'Should provide gentle onboarding guidance');
 });

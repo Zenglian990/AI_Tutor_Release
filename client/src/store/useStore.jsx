@@ -171,7 +171,7 @@ function loadProfiles() {
     } catch (e) { /* ignore */ }
   }
   const existingGrade = localStorage.getItem('ai_tutor_grade') || '';
-  return [{ id: 'default', name: '默认用户', grade: migrateGrade(existingGrade), edition: '人教版' }];
+  return [{ id: 'default', name: '曾练', grade: migrateGrade(existingGrade) || '7_up', edition: '人教版' }];
 }
 
 export function AppProvider({ children }) {
@@ -185,7 +185,7 @@ export function AppProvider({ children }) {
     localStorage.getItem('ai_tutor_active_profile') || 'default'
   );
   const [selectedSubject, setSelectedSubject] = useState(() =>
-    localStorage.getItem('ai_tutor_subject') || ''
+    localStorage.getItem('ai_tutor_subject') || '数学'
   );
   const [socraticLevel, setSocraticLevel] = useState(() =>
     localStorage.getItem('ai_tutor_socratic_level') || 'guided'
@@ -208,7 +208,7 @@ export function AppProvider({ children }) {
 
   const t = useCallback((key) => getTranslation(language, key), [language]);
 
-  const currentProfile = profiles.find(p => p.id === currentProfileId) || profiles[0] || { id: 'default', name: '默认用户', grade: '' };
+  const currentProfile = profiles.find(p => p.id === currentProfileId) || profiles[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
 
   // Persist to localStorage
   useEffect(() => { localStorage.setItem('ai_tutor_profiles', JSON.stringify(profiles)); }, [profiles]);

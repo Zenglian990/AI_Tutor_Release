@@ -1,4 +1,4 @@
-﻿/**
+/**
  * studentMemory.js
  * 
  * Student Cognitive Memory & Persona Hub
@@ -21,7 +21,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
   if (!db) {
     return {
       profileId,
-      studentName: profileId === 'default' ? '同学' : profileId,
+      studentName: profileId === 'default' ? '曾练' : profileId,
       hasHistory: false,
       summary: ''
     };
@@ -88,7 +88,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
     const inProgressChapters = progressList.filter(p => p.progress_pct > 0 && p.progress_pct < 100).length;
 
     // 4. Derive student name
-    let studentName = '同学';
+    let studentName = '曾练';
     if (profileId && profileId !== 'default') {
       studentName = profileId;
     }
@@ -110,7 +110,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
     logger.warn('[StudentMemory] Failed to read cognitive profile:', err.message);
     return {
       profileId,
-      studentName: profileId === 'default' ? '同学' : profileId,
+      studentName: profileId === 'default' ? '曾练' : profileId,
       hasHistory: false,
       summary: ''
     };
@@ -125,7 +125,8 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
  */
 function formatStudentMemoryForPrompt(mem) {
   if (!mem || !mem.hasHistory) {
-    return `【学生成长记忆】：当前为初次学习或基础阶段。请以极大的热情与鼓励建立初始信任，仔细观察其审题与草稿演算习惯。`;
+    const sName = mem?.studentName || '曾练';
+    return `【学生专属心智画像】：当前学生为【${sName}】。处于初次学习或基础起步阶段。请直接称呼学生为“${sName}”，以极大热情与鼓励建立师生信任，仔细观察其审题与草稿演算习惯。`;
   }
 
   let prompt = `【学生专属心智画像与连续记忆】：\n`;
