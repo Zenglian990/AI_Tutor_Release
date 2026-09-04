@@ -16,12 +16,14 @@ const logger = require('./logger');
  * @param {string} subject - Current subject (e.g. '数学')
  * @returns {Promise<Object>} Memory data object
  */
-async function getStudentCognitiveMemory(profileId = 'default', grade = '', subject = '') {
+async function getStudentCognitiveMemory(profileId = 'default', grade = '', subject = '', studentNameFromClient = '') {
+  const cleanClientName = typeof studentNameFromClient === 'string' ? studentNameFromClient.trim() : '';
+  const fallbackName = cleanClientName || (profileId === 'default' ? '曾练' : (profileId || '同学'));
   const db = getSqliteDb();
   if (!db) {
     return {
       profileId,
-      studentName: profileId === 'default' ? '曾练' : profileId,
+      studentName: fallbackName,
       hasHistory: false,
       summary: ''
     };
@@ -88,10 +90,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
     const inProgressChapters = progressList.filter(p => p.progress_pct > 0 && p.progress_pct < 100).length;
 
     // 4. Derive student name
-    let studentName = '曾练';
-    if (profileId && profileId !== 'default') {
-      studentName = profileId;
-    }
+    const studentName = fallbackName;
 
     const hasHistory = recentMistakes.length > 0 || progressList.length > 0;
 
@@ -110,7 +109,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
     logger.warn('[StudentMemory] Failed to read cognitive profile:', err.message);
     return {
       profileId,
-      studentName: profileId === 'default' ? '曾练' : profileId,
+      studentName: fallbackName,
       hasHistory: false,
       summary: ''
     };

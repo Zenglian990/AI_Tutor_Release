@@ -11,7 +11,7 @@ const logger = require('../services/logger');
 // POST /api/chat — main chat endpoint with SSE streaming
 router.post('/chat', async (req, res) => {
   try {
-    const { query, grade, subject, history, profile_id, socratic, edition, model } = req.body;
+    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name } = req.body;
     if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
     if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
 
@@ -73,7 +73,7 @@ router.post('/chat', async (req, res) => {
     const slicedHistory = Array.isArray(history) ? history.slice(-10) : [];
     let studentMemoryStr = '';
     try {
-      const memory = await getStudentCognitiveMemory(profile_id, grade, subject);
+      const memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
       studentMemoryStr = formatStudentMemoryForPrompt(memory);
     } catch (memErr) {
       logger.warn('[Chat] Could not load student memory:', memErr.message);

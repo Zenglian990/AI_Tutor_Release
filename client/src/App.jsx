@@ -30,7 +30,7 @@ function AppInner() {
     profiles, currentProfileId, currentProfile,
     selectedSubject, setSelectedSubject, socraticLevel, setSocraticLevel,
     autoRead, setAutoRead, isLightMode, setIsLightMode,
-    handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile,
+    handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
     setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
     language, t, chatModel
   } = store;
@@ -267,6 +267,7 @@ function AppInner() {
         formData.append('query', userQuery);
         formData.append('history', JSON.stringify(historyContext));
         formData.append('profile_id', currentProfileId);
+        formData.append('student_name', currentProfile?.name || '');
         if (gradeRef.current) formData.append('grade', gradeRef.current);
         if (subjectRef.current) formData.append('subject', subjectRef.current);
         formData.append('socratic', socraticLevel);
@@ -283,6 +284,7 @@ function AppInner() {
             subject: subjectRef.current || undefined,
             history: historyContext,
             profile_id: currentProfileId,
+            student_name: currentProfile?.name || '',
             socratic: socraticLevel,
             edition: editionRef.current,
             model: chatModel
@@ -405,6 +407,7 @@ function AppInner() {
         profiles={profiles}
         currentProfileId={currentProfileId}
         onProfileChange={onProfileChange}
+        onRenameProfile={handleRenameProfile}
         onDeleteProfile={() => {
           if (currentProfileId === 'default') { alert('默认档案不能删除。'); return; }
           setGateAction(() => () => {

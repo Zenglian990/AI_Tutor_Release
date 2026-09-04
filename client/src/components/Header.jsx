@@ -84,7 +84,7 @@ const SOCRATIC_LEVELS = [
 ];
 
 export default function Header({
-  profiles, currentProfileId, onProfileChange, onDeleteProfile,
+  profiles, currentProfileId, onProfileChange, onDeleteProfile, onRenameProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen
 }) {
@@ -122,6 +122,20 @@ export default function Header({
           {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
           <option value="ADD_NEW">➕ 添加新用户...</option>
         </select>
+        <button
+          onClick={() => {
+            const currentName = currentProfile.name || '曾练';
+            const newName = window.prompt(`修改学生姓名/昵称：`, currentName);
+            if (newName && newName.trim() && newName.trim() !== currentName) {
+              onRenameProfile && onRenameProfile(currentProfileId, newName.trim());
+            }
+          }}
+          title="修改当前学生姓名"
+          aria-label="修改当前学生姓名"
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '0 2px' }}
+        >
+          ✏️
+        </button>
         {currentProfileId !== 'default' && (
           <button onClick={onDeleteProfile} title="删除此档案" aria-label="删除当前学生档案"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>

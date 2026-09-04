@@ -108,6 +108,7 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
     try { const h = JSON.parse(req.body.history || '[]'); if (Array.isArray(h)) history = h; } catch { }
     const grade = req.body.grade;
     const subject = req.body.subject;
+    const student_name = req.body.student_name;
     const profile_id = req.body.profile_id || 'default';
     let socratic = req.body.socratic;
     if (socratic === 'true') socratic = true;
@@ -185,7 +186,7 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
 
     let studentMemoryStr = '';
     try {
-      const memory = await getStudentCognitiveMemory(profile_id, grade, subject);
+      const memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
       studentMemoryStr = formatStudentMemoryForPrompt(memory);
     } catch (memErr) {
       logger.warn('[Vision] Could not load student memory:', memErr.message);

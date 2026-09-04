@@ -255,6 +255,11 @@ export function AppProvider({ children }) {
     setCurrentProfileId('default');
   }, []);
 
+  const handleRenameProfile = useCallback((profileId, newName) => {
+    if (!newName || !newName.trim()) return;
+    setProfiles(prev => prev.map(p => p.id === profileId ? { ...p, name: newName.trim() } : p));
+  }, []);
+
   const handleGradeChange = useCallback((val) => {
     setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, grade: val } : p));
   }, [currentProfileId]);
@@ -268,7 +273,7 @@ export function AppProvider({ children }) {
     apiToken, setApiToken,
     profiles, currentProfileId, currentProfile,
     setCurrentProfileId, handleProfileChange,
-    handleAddProfile, handleDeleteProfile,
+    handleAddProfile, handleDeleteProfile, handleRenameProfile,
     selectedSubject, setSelectedSubject,
     socraticLevel, setSocraticLevel,
     autoRead, setAutoRead,

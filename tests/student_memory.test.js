@@ -80,3 +80,16 @@ test('Student Memory: gracefully handles brand new student with no history', asy
   const promptText = formatStudentMemoryForPrompt(mem);
   assert.ok(promptText.includes('初次学习') || promptText.includes('起步阶段'), 'Should provide gentle onboarding guidance');
 });
+
+test('Student Memory: respects custom student_name from client without cross-contamination', async () => {
+  const memXiaoming = await getStudentCognitiveMemory('p_xiaoming_123', '3_up', '数学', '小明');
+  assert.equal(memXiaoming.studentName, '小明');
+  const promptXiaoming = formatStudentMemoryForPrompt(memXiaoming);
+  assert.ok(promptXiaoming.includes('小明'), 'Should explicitly address 小明');
+  assert.ok(!promptXiaoming.includes('曾练'), 'Should NEVER leak 曾练 to other students');
+
+  const memZengLian = await getStudentCognitiveMemory('default', '7_up', '数学', '曾练');
+  assert.equal(memZengLian.studentName, '曾练');
+  const promptZengLian = formatStudentMemoryForPrompt(memZengLian);
+  assert.ok(promptZengLian.includes('曾练'), 'Should address 曾练');
+});
