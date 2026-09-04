@@ -530,7 +530,8 @@ async function getEmbedding(text) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: `models/${EMBED_MODEL}`,
-      content: { parts: [{ text: cleanedText }] }
+      content: { parts: [{ text: cleanedText }] },
+      outputDimensionality: 768
     })
   });
   const data = await response.json();

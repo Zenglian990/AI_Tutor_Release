@@ -4,6 +4,7 @@ const { checkSafetyAndRedirect } = require('../trie');
 const { streamChatToClient } = require('../services/stream');
 const { getChatPrompt, getChapterStartPrompt, correctPageOffset } = require('../prompts/guidelines');
 const { performHybridSearch } = require('../services/search');
+const { getStudentCognitiveMemory, formatStudentMemoryForPrompt } = require('../services/studentMemory');
 const { NODE_ENV, RAG_TOP_K } = require('../config');
 const logger = require('../services/logger');
 
@@ -70,7 +71,15 @@ router.post('/chat', async (req, res) => {
     }
 
     const slicedHistory = Array.isArray(history) ? history.slice(-10) : [];
-    let prompt = getChatPrompt(query, correctedResults, slicedHistory, grade, subject, socratic);
+    let studentMemoryStr = '';
+    try {
+      const memory = await getStudentCognitiveMemory(profile_id, grade, subject);
+      studentMemoryStr = formatStudentMemoryForPrompt(memory);
+    } catch (memErr) {
+      logger.warn('[Chat] Could not load student memory:', memErr.message);
+    }
+
+    let prompt = getChatPrompt(query, correctedResults, slicedHistory, grade, subject, socratic, studentMemoryStr);
 
     // Intercept Active Chapter Start Action
     if (query.startsWith('[ACTION_START_CHAPTER]')) {

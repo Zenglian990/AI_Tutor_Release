@@ -79,7 +79,8 @@ def get_embedding(text, model_name=None):
     headers = {"Content-Type": "application/json"}
     payload = {
         "model": f"models/{embed_model}",
-        "content": {"parts": [{"text": text[:1500]}]}
+        "content": {"parts": [{"text": text[:1500]}]},
+        "outputDimensionality": 768
     }
 
     proxy_url = os.environ.get("HTTP_PROXY") or os.environ.get("PROXY_URL")

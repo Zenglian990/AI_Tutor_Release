@@ -233,6 +233,51 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
               remarkPlugins={[remarkMath, remarkGfm]} 
               rehypePlugins={[rehypeKatex]}
               components={{
+                h3({node, children, ...props}) {
+                  const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
+                  let icon = '💡';
+                  let borderColor = '#3b82f6';
+                  let bgColor = 'rgba(59, 130, 246, 0.08)';
+
+                  if (text.includes('题眼') || text.includes('陷阱') || text.includes('思路')) {
+                    icon = '🎯';
+                    borderColor = '#f59e0b';
+                    bgColor = 'rgba(245, 158, 11, 0.1)';
+                  } else if (text.includes('动笔') || text.includes('支架') || text.includes('步骤')) {
+                    icon = '✏️';
+                    borderColor = '#3b82f6';
+                    bgColor = 'rgba(59, 130, 246, 0.1)';
+                  } else if (text.includes('母题') || text.includes('举一反三') || text.includes('过关') || text.includes('闯关')) {
+                    icon = '🔥';
+                    borderColor = '#8b5cf6';
+                    bgColor = 'rgba(139, 92, 246, 0.12)';
+                  } else if (text.includes('易错') || text.includes('盲区')) {
+                    icon = '⚠️';
+                    borderColor = '#ef4444';
+                    bgColor = 'rgba(239, 68, 68, 0.1)';
+                  }
+
+                  return (
+                    <div 
+                      className="scaffold-card-header" 
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '0.95rem',
+                        padding: '7px 12px',
+                        margin: '14px 0 8px 0',
+                        borderRadius: '8px',
+                        borderLeft: `4px solid ${borderColor}`,
+                        backgroundColor: bgColor
+                      }}
+                    >
+                      <span>{icon}</span>
+                      <span {...props}>{children}</span>
+                    </div>
+                  );
+                },
                 pre({children, ...props}) {
                   // If the child is a MermaidChart (returned from code override), render without <pre> wrapper
                   const child = Array.isArray(children) ? children[0] : children;

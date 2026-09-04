@@ -5,6 +5,7 @@ const { checkSafetyAndRedirect } = require('../trie');
 const { streamChatToClient } = require('../services/stream');
 const { getPromptGuidelines, GRADE_ALIASES, correctPageOffset } = require('../prompts/guidelines');
 const { performHybridSearch } = require('../services/search');
+const { getStudentCognitiveMemory, formatStudentMemoryForPrompt } = require('../services/studentMemory');
 const { NODE_ENV, RAG_TOP_K } = require('../config');
 const logger = require('../services/logger');
 const { verifyMultipartIntegrity } = require('../middleware/signature');
@@ -182,9 +183,18 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
       ? `参考资料库内容：\n${contextString}\n\n`
       : `【注意：课本资料库中暂未搜索到强相关内容。请基于你的专业通识知识库解答。】\n\n`;
 
-    const prompt = `你是一位耐心且专业的 AI 助教。请分析这张图片中的内容并回答学生的提问。
-当前学生的学习状态：【${gradeStr}】【${subjectStr}】。请直接针对该年级和学科进行专属解答。
+    let studentMemoryStr = '';
+    try {
+      const memory = await getStudentCognitiveMemory(profile_id, grade, subject);
+      studentMemoryStr = formatStudentMemoryForPrompt(memory);
+    } catch (memErr) {
+      logger.warn('[Vision] Could not load student memory:', memErr.message);
+    }
+    const memorySection = studentMemoryStr ? `\n${studentMemoryStr}\n` : '';
 
+    const prompt = `你是一位富有智慧与温度的 AI 专属名师私教。请分析这张图片中的作业题目并为学生提供启发辅导。
+当前学生的学习状态：【${gradeStr}】【${subjectStr}】。
+${memorySection}
 回复准则：
 ${guidelines}
 

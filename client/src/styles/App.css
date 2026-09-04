@@ -552,3 +552,49 @@ body.light-mode .chat-textarea::placeholder {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* ── Socratic Heuristic Shortcut Chips & Scaffold Cards ── */
+.quick-hints-bar {
+  display: flex;
+  gap: 8px;
+  padding: 6px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-hints-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-hint-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  color: var(--text-color, #e2e8f0);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quick-hint-chip:hover {
+  background: var(--accent-color, #3b82f6);
+  color: #fff;
+  border-color: var(--accent-color, #3b82f6);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.scaffold-card-header {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scaffold-card-header:hover {
+  transform: translateX(2px);
+}

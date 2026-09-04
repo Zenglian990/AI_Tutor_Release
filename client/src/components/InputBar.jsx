@@ -48,6 +48,35 @@ const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isLi
           <button className="clear-image-btn" onClick={onClearImage} title="移除图片" aria-label="移除已上传的图片">✕</button>
         </div>
       )}
+      <div className="quick-hints-bar" role="toolbar" aria-label="名师启发快捷支架">
+        <button
+          type="button"
+          className="quick-hint-chip"
+          title="一句话点破出题人在哪里藏了陷阱与核心突破口"
+          disabled={isLoading}
+          onClick={() => onSubmit(null, "老师，请一句话点破这道题的【核心题眼】和出题人套路陷阱！")}
+        >
+          🎯 题眼与陷阱
+        </button>
+        <button
+          type="button"
+          className="quick-hint-chip"
+          title="给草稿纸上的第一步画线或公式支架，不要直接给答案"
+          disabled={isLoading}
+          onClick={() => onSubmit(null, "老师，请给我草稿纸上的【第一步动笔支架】（辅助线画法或公式首步），引导我动手算！")}
+        >
+          ✏️ 动笔支架
+        </button>
+        <button
+          type="button"
+          className="quick-hint-chip"
+          title="出一道同类型母题考考我，检验我是否真正掌握"
+          disabled={isLoading}
+          onClick={() => onSubmit(null, "老师，请出一道同类型的【母题变式微测题】考考我，我算完发给您！")}
+        >
+          🔥 举一反三闯关
+        </button>
+      </div>
       <div className="input-container" role="form" aria-label="消息输入区域">
         <form className="input-form" onSubmit={handleFormSubmit}>
           <input
