@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { authFetch, useAppStore } from '../store/useStore';
 import ParentalGate from './ParentalGate';
 
@@ -25,6 +25,27 @@ export default function SettingsModal({
   const [testResult, setTestResult] = useState(null);
   const [showExportGate, setShowExportGate] = useState(false);
 
+  // DeepSeek & Domestic Provider Keys State
+  const [deepseekKey, setDeepseekKey] = useState('');
+  const [deepseekUrl, setDeepseekUrl] = useState('https://api.deepseek.com/v1');
+  const [showDeepseekKey, setShowDeepseekKey] = useState(false);
+  const [llmTestStatus, setLlmTestStatus] = useState(null); // { testing, success, message, latencyMs }
+  const [serverProviderInfo, setServerProviderInfo] = useState(null);
+
+  // Load existing provider configs
+  useEffect(() => {
+    if (!isOpen) return;
+    authFetch('/api/config/providers')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setServerProviderInfo(data);
+          if (data.deepseek?.apiUrl) setDeepseekUrl(data.deepseek.apiUrl);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const SOCRATIC_OPTIONS = [
@@ -33,11 +54,32 @@ export default function SettingsModal({
     { value: 'strict', label: t('mode.strict'), desc: language === 'zh-CN' ? 'AI只用提问引导，绝不直接给答案' : 'AI only asks questions, never gives direct answers' },
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     onSaveBackendUrl(url.trim());
     onSaveApiToken(token.trim());
-    const newSettings = { ...settings, parentName: parentName.trim() || '家长' };
+
+    // Persist DeepSeek key if entered
+    if (deepseekKey.trim() || deepseekUrl.trim()) {
+      try {
+        await authFetch('/api/config/update-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deepseekApiKey: deepseekKey.trim() || undefined,
+            deepseekApiUrl: deepseekUrl.trim() || undefined
+          })
+        });
+      } catch (err) {
+        console.warn('Failed to persist keys to server:', err);
+      }
+    }
+
+    const newSettings = {
+      ...settings,
+      parentName: parentName.trim() || '家长',
+      deepseekUrl: deepseekUrl.trim()
+    };
     setSettings(newSettings);
     localStorage.setItem('ai_tutor_settings', JSON.stringify(newSettings));
     onClose();
@@ -74,6 +116,46 @@ export default function SettingsModal({
     }
   };
 
+  // Ping test selected AI provider
+  const handleTestLlm = async (providerType) => {
+    setLlmTestStatus({ testing: true });
+    try {
+      const payload = {
+        provider: providerType,
+        apiKey: providerType === 'deepseek' ? deepseekKey.trim() : undefined,
+        apiUrl: providerType === 'deepseek' ? deepseekUrl.trim() : undefined,
+        model: chatModel !== 'default' ? chatModel : undefined
+      };
+
+      const res = await authFetch('/api/config/test-llm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLlmTestStatus({
+          testing: false,
+          success: true,
+          message: `⚡ ${data.message || '连通正常！'}`
+        });
+      } else {
+        setLlmTestStatus({
+          testing: false,
+          success: false,
+          message: `❌ 连通失败: ${data.error || '无法访问'} ${data.details ? '(' + data.details + ')' : ''}`
+        });
+      }
+    } catch (err) {
+      setLlmTestStatus({
+        testing: false,
+        success: false,
+        message: `❌ 测试异常: ${err.message}`
+      });
+    }
+  };
+
   return (
     <div className="modal-overlay no-print" style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -81,7 +163,7 @@ export default function SettingsModal({
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
     }}>
       <div className="glass-panel" style={{
-        width: '95%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto',
+        width: '95%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto',
         padding: '24px', borderRadius: '16px',
         border: '1px solid var(--glass-border)', background: 'var(--card-bg)',
         boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '20px'
@@ -99,14 +181,8 @@ export default function SettingsModal({
               value={language}
               onChange={e => setLanguage(e.target.value)}
               style={{
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid var(--glass-border)',
-                background: '#1e293b',
-                color: 'white',
-                outline: 'none',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
+                padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                background: '#1e293b', color: 'white', outline: 'none', fontSize: '0.9rem', cursor: 'pointer'
               }}
             >
               <option value="zh-CN">🇨🇳 简体中文 (Simplified Chinese)</option>
@@ -138,14 +214,8 @@ export default function SettingsModal({
               value={currentProfileEdition || '人教版'}
               onChange={e => onEditionChange(e.target.value)}
               style={{
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid var(--glass-border)',
-                background: '#1e293b',
-                color: 'white',
-                outline: 'none',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
+                padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                background: '#1e293b', color: 'white', outline: 'none', fontSize: '0.9rem', cursor: 'pointer'
               }}
             >
               <option value="人教版">人教版 (PEP / 全国通用)</option>
@@ -164,23 +234,85 @@ export default function SettingsModal({
               value={chatModel}
               onChange={e => setChatModel(e.target.value)}
               style={{
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid var(--glass-border)',
-                background: '#1e293b',
-                color: 'white',
-                outline: 'none',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
+                padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                background: '#1e293b', color: 'white', outline: 'none', fontSize: '0.9rem', cursor: 'pointer'
               }}
             >
-              <option value="default">{language === 'zh-CN' ? '系统默认配置' : 'System Default'}</option>
-              <option value="gemini-1.5-flash">Google Gemini 1.5 Flash (极速推荐)</option>
-              <option value="gemini-2.0-flash">Google Gemini 2.0 Flash (稳定流畅)</option>
-              <option value="gemini-1.5-pro">Google Gemini 1.5 Pro (高推理旗舰)</option>
-              <option value="deepseek-chat">DeepSeek-V3-Chat (通用对话)</option>
-              <option value="deepseek-reasoner">DeepSeek-R1-Reasoner (深度思考)</option>
+              <option value="default">{language === 'zh-CN' ? '系统智能路由 (Gemini/DeepSeek自动容灾)' : 'System Smart Route'}</option>
+              <option value="deepseek-chat">🇨🇳 DeepSeek-V3 (国内免代理直连·推荐)</option>
+              <option value="deepseek-reasoner">🇨🇳 DeepSeek-R1 (深度推理·慢思考名师)</option>
+              <option value="gemini-2.0-flash">🌐 Google Gemini 2.0 Flash (海外极速)</option>
+              <option value="gemini-1.5-flash">🌐 Google Gemini 1.5 Flash (极速稳定)</option>
+              <option value="gemini-1.5-pro">🌐 Google Gemini 1.5 Pro (全功能高阶)</option>
             </select>
+          </div>
+
+          {/* 🇨🇳 DeepSeek 国内免代理配置卡片 */}
+          <div style={{
+            background: 'rgba(37, 99, 235, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#60a5fa' }}>
+                🇨🇳 中国大陆免代理通道 (DeepSeek / OpenAI兼容)
+              </span>
+              {serverProviderInfo?.deepseek?.configured && (
+                <span style={{ fontSize: '0.75rem', background: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>
+                  已激活
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>DeepSeek API Key (可选)</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type={showDeepseekKey ? 'text' : 'password'}
+                  placeholder={serverProviderInfo?.deepseek?.maskedKey || '输入 sk-... (不填保留服务器现有Key)'}
+                  value={deepseekKey}
+                  onChange={e => setDeepseekKey(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', fontSize: '0.85rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeepseekKey(!showDeepseekKey)}
+                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer' }}
+                >
+                  {showDeepseekKey ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>API Base URL (支持智谱/通义/硅基流动等端点)</label>
+              <input
+                type="text"
+                placeholder="https://api.deepseek.com/v1"
+                value={deepseekUrl}
+                onChange={e => setDeepseekUrl(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', fontSize: '0.85rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => handleTestLlm('deepseek')}
+                disabled={llmTestStatus?.testing}
+                style={{
+                  padding: '6px 12px', borderRadius: '6px', border: 'none',
+                  background: '#2563eb', color: 'white', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer'
+                }}
+              >
+                {llmTestStatus?.testing ? '⏳ 测试连通性中...' : '⚡ 诊断大模型连通性'}
+              </button>
+            </div>
+
+            {llmTestStatus && !llmTestStatus.testing && (
+              <span style={{ fontSize: '0.8rem', color: llmTestStatus.success ? '#34d399' : '#f87171' }}>
+                {llmTestStatus.message}
+              </span>
+            )}
           </div>
 
           {/* Backend URL */}
@@ -239,8 +371,7 @@ export default function SettingsModal({
 
           <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
 
-
-
+          {/* Socratic options */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <span style={{ color: 'white', fontSize: '0.95rem' }}>📖 {language === 'zh-CN' ? '教学风格设置' : 'Tutoring Style'}</span>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -249,97 +380,32 @@ export default function SettingsModal({
                   key={opt.value}
                   type="button"
                   onClick={() => onSocraticToggle(opt.value)}
-                  title={opt.desc}
                   style={{
-                    flex: 1,
-                    padding: '10px 8px',
-                    borderRadius: '10px',
-                    border: socraticLevel === opt.value ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
-                    background: socraticLevel === opt.value ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)',
-                    color: 'white',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: socraticLevel === opt.value ? 'bold' : 'normal',
-                    transition: 'all 0.2s'
+                    flex: 1, padding: '10px 8px', borderRadius: '8px',
+                    border: `1px solid ${socraticLevel === opt.value ? 'var(--accent-color, #3b82f6)' : 'var(--glass-border)'}`,
+                    background: socraticLevel === opt.value ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0,0,0,0.2)',
+                    color: socraticLevel === opt.value ? '#60a5fa' : 'white', cursor: 'pointer', fontSize: '0.8rem', textAlign: 'center'
                   }}
                 >
-                  {opt.label}
+                  <div style={{ fontWeight: 600, marginBottom: '2px' }}>{opt.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.2 }}>{opt.desc}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-            <div style={{ marginRight: 'auto', display: 'flex', gap: '10px' }}>
-              <input type="file" id="import-file-input" style={{ display: 'none' }} accept=".json" onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const formData = new FormData();
-                formData.append('file', file);
-                try {
-                  const res = await authFetch('/api/import/data', { method: 'POST', body: formData });
-                  if (res.ok) alert(language === 'zh-CN' ? '导入成功！请刷新页面加载最新数据。' : 'Import successful! Please refresh.');
-                  else alert((language === 'zh-CN' ? '导入失败：' : 'Import failed: ') + res.status);
-                } catch (err) { alert(language === 'zh-CN' ? '导入出错' : 'Import error'); }
-                e.target.value = '';
-              }} />
-              <button type="button" onClick={() => document.getElementById('import-file-input').click()}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', cursor: 'pointer' }}>
-                📤 {language === 'zh-CN' ? '导入数据' : 'Import Data'}
-              </button>
-              <button type="button" onClick={() => setShowExportGate(true)}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', cursor: 'pointer' }}>
-                📥 {language === 'zh-CN' ? '导出全量数据' : 'Export All Data'}
-              </button>
-            </div>
-            <button type="button" aria-label="关闭设置" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
-              {t('settings.close')}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+            <button type="button" onClick={onClose}
+              style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '0.9rem' }}>
+              {t('settings.cancel')}
             </button>
-            <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>
+            <button type="submit"
+              style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: 'var(--accent-color, #3b82f6)', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
               {t('settings.save')}
             </button>
           </div>
         </form>
       </div>
-      
-      <ParentalGate 
-        isOpen={showExportGate} 
-        onClose={() => setShowExportGate(false)} 
-        reason={language === 'zh-CN' ? "导出全量数据" : "Export Data"}
-        onVerify={async () => {
-          try {
-            const res = await authFetch(`/api/export/data?profile_id=${currentProfileId}`);
-            if (!res.ok) { alert((language === 'zh-CN' ? '导出失败：' : 'Export failed: ') + res.status); return; }
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `AI_Tutor_Backup_${currentProfileId}_${Date.now()}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          } catch (e) { alert(language === 'zh-CN' ? '导出失败：网络错误' : 'Export failed: Network error'); }
-        }} 
-      />
-    </div>
-  );
-}
-
-function ToggleSetting({ label, desc, isOn, onToggle, lang }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        <span style={{ color: 'white', fontSize: '0.95rem' }}>{label}</span>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>{desc}</span>
-      </div>
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{ background: isOn ? '#3b82f6' : 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-      >
-        {isOn ? (lang === 'zh-CN' ? '已开启' : 'On') : (lang === 'zh-CN' ? '已关闭' : 'Off')}
-      </button>
     </div>
   );
 }

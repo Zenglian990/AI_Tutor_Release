@@ -161,10 +161,11 @@ function loadProfiles() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map(p => ({
           ...p,
-          grade: migrateGrade(p.grade),
+          name: (!p.name || p.name === '默认用户') ? '曾练' : p.name,
+          grade: (!p.grade || p.grade === 'unknown') ? '7_up' : (migrateGrade(p.grade) || '7_up'),
           edition: p.edition || '人教版'
         }));
       }
@@ -184,9 +185,10 @@ export function AppProvider({ children }) {
   const [currentProfileId, setCurrentProfileId] = useState(() =>
     localStorage.getItem('ai_tutor_active_profile') || 'default'
   );
-  const [selectedSubject, setSelectedSubject] = useState(() =>
-    localStorage.getItem('ai_tutor_subject') || '数学'
-  );
+  const [selectedSubject, setSelectedSubject] = useState(() => {
+    const s = localStorage.getItem('ai_tutor_subject');
+    return (s && s !== '') ? s : '数学';
+  });
   const [socraticLevel, setSocraticLevel] = useState(() =>
     localStorage.getItem('ai_tutor_socratic_level') || 'guided'
   );

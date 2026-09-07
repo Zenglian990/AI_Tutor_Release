@@ -1,10 +1,34 @@
 import { authFetch } from '../store/useStore';
 
 const activeControllers = new Set();
+const speakingListeners = new Set();
+let isCurrentlySpeaking = false;
+
+function notifySpeakingState(speaking) {
+  isCurrentlySpeaking = speaking;
+  for (const listener of speakingListeners) {
+    try {
+      listener(speaking);
+    } catch (e) {
+      console.warn('Speaking listener error:', e);
+    }
+  }
+}
+
+export function subscribeSpeakingState(callback) {
+  speakingListeners.add(callback);
+  callback(isCurrentlySpeaking);
+  return () => speakingListeners.delete(callback);
+}
+
+export function getIsSpeaking() {
+  return isCurrentlySpeaking;
+}
 
 function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
   if (!window.speechSynthesis) {
     if (onEnd) onEnd();
+    notifySpeakingState(false);
     return;
   }
   
@@ -18,13 +42,20 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
     selectedVoice = voices.find(v => v.lang.includes('zh') && (v.name.includes('Yunxi') || v.name.includes('Yunjian') || v.name.includes('male') || v.name.includes('男')));
   }
   if (selectedVoice) utterance.voice = selectedVoice;
-  if (onStart) utterance.onstart = onStart;
+  
+  utterance.onstart = () => {
+    notifySpeakingState(true);
+    if (onStart) onStart();
+  };
   
   let didEnd = false;
   const finish = () => {
     if (!didEnd) {
       didEnd = true;
       activeControllers.delete(ctrl);
+      if (activeControllers.size === 0) {
+        notifySpeakingState(false);
+      }
       if (onEnd) onEnd();
     }
   };
@@ -35,7 +66,9 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
   window.speechSynthesis.speak(utterance);
   
   ctrl.stop = () => {
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
     finish();
   };
 }
@@ -51,6 +84,9 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
  * @returns {object} Controller with .stop() method
  */
 export function playTTS(text, grade, onStart, onEnd) {
+  // Always stop previous active speech before starting a new one
+  stopTTS();
+
   let cleanText = text
     .replace(/<[^>]+>/g, '') // html tags
     .replace(/\!\[.*?\]\(.*?\)/g, '') // images
@@ -62,6 +98,7 @@ export function playTTS(text, grade, onStart, onEnd) {
 
   if (!cleanText.trim()) {
     if (onEnd) onEnd();
+    notifySpeakingState(false);
     return { stop: () => {} };
   }
 
@@ -91,12 +128,18 @@ export function playTTS(text, grade, onStart, onEnd) {
         if (!didEnd) {
           didEnd = true;
           activeControllers.delete(ctrl);
-          URL.revokeObjectURL(url);
+          if (activeControllers.size === 0) {
+            notifySpeakingState(false);
+          }
+          try {
+            URL.revokeObjectURL(url);
+          } catch (e) {}
           if (onEnd) onEnd();
         }
       };
 
       audio.oncanplay = () => {
+        notifySpeakingState(true);
         if (onStart) onStart();
         audio.play().catch(e => {
           console.warn("Autoplay prevented:", e);
@@ -123,17 +166,24 @@ export function playTTS(text, grade, onStart, onEnd) {
   return ctrl;
 }
 
-
 /**
- * Stop any active text to speech playback (both local synthesis and cloud audio).
+ * Immediate Barge-in / Interrupt: Stop any active speech playback (cloud audio & browser speech).
  */
 export function stopTTS() {
   for (const ctrl of activeControllers) {
-    ctrl.stop();
+    try {
+      ctrl.stop();
+    } catch (e) {}
   }
   activeControllers.clear();
   
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
   }
+  
+  notifySpeakingState(false);
 }
+
+export const interruptSpeech = stopTTS;

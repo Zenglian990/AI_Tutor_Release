@@ -1,6 +1,22 @@
 import React, { useRef, useEffect, useState } from 'react';
 
-const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isListening, previewImage, fileInputRef, onSubmit, onToggleVoice, onImageSelect, onClearImage, autoRead, setAutoRead }) {
+const InputBar = React.memo(function InputBar({
+  input,
+  setInput,
+  isLoading,
+  isListening,
+  previewImage,
+  fileInputRef,
+  onSubmit,
+  onToggleVoice,
+  onImageSelect,
+  onClearImage,
+  autoRead,
+  setAutoRead,
+  isSpeaking,
+  onInterruptSpeech,
+  onOpenScratchpad
+}) {
   const [localVal, setLocalVal] = useState(input);
   const textareaRef = useRef(null);
 
@@ -41,13 +57,53 @@ const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isLi
 
   return (
     <>
+      {/* Barge-in 实时语音打断浮条 */}
+      {isSpeaking && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '6px 12px',
+          marginBottom: '6px',
+          borderRadius: '20px',
+          background: 'rgba(239, 68, 68, 0.15)',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          color: '#f87171',
+          fontSize: '0.85rem',
+          animation: 'pulse 1.5s infinite'
+        }}>
+          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+          <span>AI 专属名师正在为您语音讲解...</span>
+          <button
+            type="button"
+            onClick={onInterruptSpeech}
+            style={{
+              marginLeft: '6px',
+              padding: '3px 10px',
+              borderRadius: '12px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '0.78rem',
+              cursor: 'pointer'
+            }}
+            title="立刻打断AI讲解，插话或提问"
+          >
+            🛑 老师暂停 / 我要插话
+          </button>
+        </div>
+      )}
+
       {previewImage && (
         <div className="image-preview-bar" role="status" aria-label="图片预览">
           <img src={previewImage} alt="上传的题目预览" className="preview-thumb" />
-          <span className="preview-label">图片已选择，可以添加文字说明再发送</span>
+          <span className="preview-label">图片/演算草稿已准备好，点击发送即可开始名师指点</span>
           <button className="clear-image-btn" onClick={onClearImage} title="移除图片" aria-label="移除已上传的图片">✕</button>
         </div>
       )}
+
       <div className="quick-hints-bar" role="toolbar" aria-label="名师启发快捷支架">
         <button
           type="button"
@@ -76,7 +132,19 @@ const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isLi
         >
           🔥 举一反三闯关
         </button>
+        {onOpenScratchpad && (
+          <button
+            type="button"
+            className="quick-hint-chip"
+            style={{ borderColor: '#3b82f6', color: '#60a5fa' }}
+            title="打开白板草稿纸手写演算或画几何辅助线"
+            onClick={onOpenScratchpad}
+          >
+            📝 演练草稿纸
+          </button>
+        )}
       </div>
+
       <div className="input-container" role="form" aria-label="消息输入区域">
         <form className="input-form" onSubmit={handleFormSubmit}>
           <input
@@ -95,7 +163,7 @@ const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isLi
           <label
             htmlFor="image-upload"
             className="icon-btn camera-btn"
-            title="拍照或上传图片"
+            title="拍照或上传题目图片"
             aria-label="拍照或上传题目图片"
             style={isLoading ? { pointerEvents: 'none', opacity: 0.4 } : {}}
           >
@@ -105,13 +173,30 @@ const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isLi
             </svg>
           </label>
 
+          {/* 左侧草稿白板按钮 */}
+          {onOpenScratchpad && (
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={onOpenScratchpad}
+              title="打开演练草稿纸 (手写几何/竖式草稿)"
+              aria-label="打开草稿纸"
+              style={{ color: '#38bdf8' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </button>
+          )}
+
           {/* 中间自适应输入框 */}
           <textarea
             ref={textareaRef}
             value={localVal}
             onChange={e => setLocalVal(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? '🎤 正在聆听...' : '问问课本里的知识，或上传题目… (Enter 发送，Shift+Enter 换行)'}
+            placeholder={isListening ? '🎤 正在聆听您的提问...' : '问问课本里的知识，上传题目或打开草稿纸… (Enter 发送)'}
             disabled={isLoading}
             maxLength={2000}
             rows={1}
@@ -125,8 +210,13 @@ const InputBar = React.memo(function InputBar({ input, setInput, isLoading, isLi
           <button
             type="button"
             className={`icon-btn voice-btn ${isListening ? 'listening' : ''}`}
-            onClick={onToggleVoice}
-            title={isListening ? '点击停止' : '按下说话'}
+            onClick={() => {
+              if (isSpeaking && onInterruptSpeech) {
+                onInterruptSpeech();
+              }
+              onToggleVoice();
+            }}
+            title={isListening ? '点击停止' : (isSpeaking ? '打断讲解并语音提问' : '按下说话')}
             aria-label={isListening ? '停止录音' : '开始语音输入'}
             disabled={isLoading}
           >

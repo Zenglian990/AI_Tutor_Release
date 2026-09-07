@@ -17,6 +17,7 @@ const chaptersRoutes = require('./routes/chapters');
 const miscRoutes = require('./routes/misc');
 const ttsRoutes = require('./routes/tts');
 const testPaperRoutes = require('./routes/testPaper');
+const configRoutes = require('./routes/config');
 
 function createApp() {
   const app = express();
@@ -92,6 +93,7 @@ function createApp() {
   app.use('/api', miscRoutes);
   app.use('/api', ttsRoutes);
   app.use('/api', testPaperRoutes);
+  app.use('/api', configRoutes);
 
   // --- Serve static frontend ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');

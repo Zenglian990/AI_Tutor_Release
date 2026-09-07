@@ -13,8 +13,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ChapterStepper from './components/ChapterStepper';
 import WeeklyReportModal from './components/WeeklyReportModal';
 import KnowledgeTest from './components/KnowledgeTest';
+import ScratchpadModal from './components/ScratchpadModal';
 import { compressImage } from './utils/image';
-import { playTTS, stopTTS } from './utils/tts';
+import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState } from './utils/tts';
 import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
 import OnboardingGuide from './components/OnboardingGuide';
 import WelcomeDashboard from './components/WelcomeDashboard';
@@ -54,12 +55,25 @@ function AppInner() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showKnowledgeTest, setShowKnowledgeTest] = useState(false);
+  const [showScratchpad, setShowScratchpad] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [reportData, setReportData] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [activeChapterData, setActiveChapterData] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(() =>
     localStorage.getItem('ai_tutor_onboarding_completed') !== 'true'
   );
+
+  // Subscribe to real-time TTS speaking state for Barge-in
+  useEffect(() => {
+    return subscribeSpeakingState(setIsSpeaking);
+  }, []);
+
+  const handleSendScratchpad = (blob, dataUrl) => {
+    setImageFile(blob);
+    setPreviewImage(dataUrl);
+    setInput(prev => prev || '老师，这是我在草稿纸上的手写演算过程，请帮我看看做对了没有，哪一步需要调整？');
+  };
 
   // Parental gate
   const [gateOpen, setGateOpen] = useState(false);
@@ -624,6 +638,13 @@ function AppInner() {
       )}
       {showOnboarding && <OnboardingGuide language={language} onClose={() => setShowOnboarding(false)} />}
 
+      {/* 沉浸式演练草稿纸与白板 */}
+      <ScratchpadModal
+        isOpen={showScratchpad}
+        onClose={() => setShowScratchpad(false)}
+        onSendToTutor={handleSendScratchpad}
+      />
+
       <InputBar
         input={input} setInput={setInput}
         isLoading={isLoading} isListening={isListening}
@@ -631,6 +652,9 @@ function AppInner() {
         onSubmit={handleSubmit} onToggleVoice={toggleVoice}
         onImageSelect={handleImageSelect} onClearImage={clearImage}
         autoRead={autoRead} setAutoRead={setAutoRead}
+        isSpeaking={isSpeaking}
+        onInterruptSpeech={interruptSpeech}
+        onOpenScratchpad={() => setShowScratchpad(true)}
       />
     </div>
   );
