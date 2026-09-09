@@ -8,6 +8,12 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const [lineWidth, setLineWidth] = useState(3);
   const [gridMode, setGridMode] = useState('grid'); // 'blank', 'grid', 'coordinate', 'tian'
   
+  // Proactive silence detection states
+  const [showSilenceHint, setShowSilenceHint] = useState(false);
+  const [proactiveHintText, setProactiveHintText] = useState('');
+  const [fetchingHint, setFetchingHint] = useState(false);
+  const silenceTimerRef = useRef(null);
+  
   // History for Undo/Redo
   const [history, setHistory] = useState([]);
   const [historyStep, setHistoryStep] = useState(-1);
@@ -104,17 +110,61 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     ctx.restore();
   }, [gridMode]);
 
+  // Proactive silence detection logic (triggers gentle care hint if inactive for 45s)
+  const resetSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    setShowSilenceHint(false);
+    silenceTimerRef.current = setTimeout(() => {
+      setShowSilenceHint(true);
+    }, 45000);
+  }, []);
+
+  const handleFetchProactiveHint = async () => {
+    setFetchingHint(true);
+    try {
+      const res = await fetch('/api/mentor/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          problemText: '草稿纸演算卡点',
+          student_name: '曾练'
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProactiveHintText(data.hint || '');
+      }
+    } catch (e) {
+      console.warn('Failed to fetch proactive hint:', e);
+    } finally {
+      setFetchingHint(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      resetSilenceTimer();
+    } else {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      setShowSilenceHint(false);
+      setProactiveHintText('');
+    }
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+  }, [isOpen, resetSilenceTimer]);
+
   // Save current canvas state to history stack
   const saveState = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL();
-    setHistory(prev => {
-      const next = prev.slice(0, historyStep + 1);
-      return [...next, dataUrl];
-    });
-    setHistoryStep(prev => prev + 1);
-  }, [historyStep]);
+    const newHistory = history.slice(0, historyStep + 1);
+    newHistory.push(dataUrl);
+    setHistory(newHistory);
+    setHistoryStep(newHistory.length - 1);
+    resetSilenceTimer();
+  }, [history, historyStep, resetSilenceTimer]);
 
   // Init canvas size and background
   useEffect(() => {
@@ -417,6 +467,56 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
 
         {/* Canvas area */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#f8fafc', touchAction: 'none' }}>
+          {/* Proactive Silence Care Bubble */}
+          {showSilenceHint && (
+            <div style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              maxWidth: '320px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid #3b82f6',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              zIndex: 10,
+              animation: 'fadeIn 0.3s ease-out'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#1e40af' }}>
+                  🙋 老师主动关怀：遇到卡点了吗？
+                </span>
+                <button
+                  onClick={() => setShowSilenceHint(false)}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem', padding: 0 }}
+                >
+                  ×
+                </button>
+              </div>
+              <p style={{ margin: '4px 0 8px 0', fontSize: '0.82rem', color: '#475569', lineHeight: '1.4' }}>
+                {proactiveHintText || '在草稿纸上思考超过 45 秒啦，老师给你一个破题支架，帮你理顺思路！'}
+              </p>
+              {!proactiveHintText && (
+                <button
+                  onClick={handleFetchProactiveHint}
+                  disabled={fetchingHint}
+                  style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {fetchingHint ? '思考中...' : '💡 获取名师破题支架'}
+                </button>
+              )}
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             onMouseDown={startDrawing}

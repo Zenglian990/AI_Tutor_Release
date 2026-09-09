@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { formatGrade } from '../store/useStore';
+﻿import React, { useState, useEffect } from 'react';
+import { formatGrade, authFetch, getApiUrl } from '../store/useStore';
 
 export default function WelcomeDashboard({
   currentProfile,
@@ -12,6 +12,9 @@ export default function WelcomeDashboard({
   onOpenMap,
   onQuickPrompt
 }) {
+  const [briefing, setBriefing] = useState(null);
+  const [loadingBriefing, setLoadingBriefing] = useState(false);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return '早上好';
@@ -22,6 +25,28 @@ export default function WelcomeDashboard({
   const studentName = currentProfile?.name || '曾练';
   const gradeLabel = formatGrade(selectedGrade);
   const subjectLabel = selectedSubject || '数学';
+
+  // Fetch daily proactive briefing
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchDailyBriefing() {
+      setLoadingBriefing(true);
+      try {
+        const url = `${getApiUrl()}/api/mentor/daily-briefing?profile_id=${encodeURIComponent(currentProfile?.id || 'default')}&grade=${encodeURIComponent(selectedGrade || '7_up')}&subject=${encodeURIComponent(selectedSubject || '数学')}&student_name=${encodeURIComponent(studentName)}`;
+        const res = await authFetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) setBriefing(data);
+        }
+      } catch (e) {
+        console.warn('Failed to load proactive briefing:', e);
+      } finally {
+        if (isMounted) setLoadingBriefing(false);
+      }
+    }
+    fetchDailyBriefing();
+    return () => { isMounted = false; };
+  }, [currentProfile?.id, selectedGrade, selectedSubject, studentName]);
 
   // Determine stage category
   const gradeStr = String(selectedGrade || '');
@@ -41,11 +66,11 @@ export default function WelcomeDashboard({
 
   return (
     <div className="welcome-dashboard">
-      {/* 1. Mentor Greeting Card */}
+      {/* 1. Mentor Greeting & Proactive Briefing Hero Card */}
       <div className="welcome-hero-card">
         <div className="welcome-badge">
           <span className="live-dot"></span>
-          <span>专属私教已在案头就绪</span>
+          <span>{briefing ? briefing.greetingHeadline : '专属名师已在案头备课完毕'}</span>
         </div>
         <h2 className="welcome-title">
           {studentName}同学，{getGreeting()}！🎓
@@ -53,7 +78,49 @@ export default function WelcomeDashboard({
         <p className="welcome-subtitle">
           当前辅导：<strong className="highlight-tag">{gradeLabel} · {subjectLabel}</strong>（人教版教材同步）
         </p>
-        <div className="stage-feature-pill">
+
+        {/* Proactive Mentor Briefing Memo */}
+        {briefing?.suggestedMission && (
+          <div className="mentor-briefing-banner" style={{
+            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(147, 51, 234, 0.1))',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginTop: '14px',
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontWeight: '600', color: '#2563eb', fontSize: '0.95rem' }}>
+                📋 今日专属突破任务：{briefing.suggestedMission.title}
+              </span>
+              <span style={{ fontSize: '0.8rem', background: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '10px' }}>
+                {briefing.dueMistakeCount > 0 ? `待复盘 ${briefing.dueMistakeCount} 题` : '新知识攻坚'}
+              </span>
+            </div>
+            <p style={{ margin: '4px 0 10px 0', fontSize: '0.88rem', color: '#475569', lineHeight: '1.4' }}>
+              💡 名师指引：{briefing.suggestedMission.reason}
+            </p>
+            <button
+              type="button"
+              className="briefing-action-btn"
+              onClick={() => onQuickPrompt(briefing.suggestedMission.query)}
+              style={{
+                background: '#2563eb',
+                color: '#fff',
+                border: 'none',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.85rem'
+              }}
+            >
+              🚀 {briefing.suggestedMission.actionLabel} →
+            </button>
+          </div>
+        )}
+
+        <div className="stage-feature-pill" style={{ marginTop: '12px' }}>
           <span>{stageIcon}</span>
           <span>{stageName}：{stageDescription}</span>
         </div>
@@ -87,7 +154,7 @@ export default function WelcomeDashboard({
         </div>
       </div>
 
-      {/* 3. Primary Camera Action Card (The absolute core action for homework) */}
+      {/* 3. Primary Camera Action Card */}
       <div className="primary-camera-card" onClick={onCameraClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onCameraClick()}>
         <div className="camera-icon-wrapper">
           <div className="camera-pulse-ring"></div>
@@ -149,11 +216,11 @@ export default function WelcomeDashboard({
       <div className="welcome-footer-banner">
         <div className="footer-tip-item">
           <span>🎯</span>
-          <span><strong>四两拨千斤原则</strong>：不直接报答案，给草稿纸第一步指引，让学生真正独立学会。</span>
+          <span><strong>苏格拉底分步启发</strong>：不直接甩全解，单步设问闯关，答对一步再解锁下一步。</span>
         </div>
         <div className="footer-tip-item">
-          <span>🧠</span>
-          <span><strong>连续记忆守护</strong>：做错的题目会自动进入艾宾浩斯复习流，直到完全掌握。</span>
+          <span>🔄</span>
+          <span><strong>费曼角色互换</strong>：攻克难题后，私教主动请你用一句话把解题玄机讲给老师听！</span>
         </div>
       </div>
     </div>
