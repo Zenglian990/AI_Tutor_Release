@@ -1,26 +1,93 @@
 ﻿const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
+const undici = require('undici');
+const { initDB, closeDB } = require('../server/db/init');
+
+// Mock undici.fetch for Google Gemini Vision response during CI test
+const originalFetch = undici.fetch;
+undici.fetch = async (url, options) => {
+  const urlStr = String(url);
+
+  if (urlStr.includes('generativelanguage.googleapis.com') || urlStr.includes('deepseek')) {
+    const mockVisionResponse = {
+      candidates: [{
+        content: {
+          parts: [{
+            text: JSON.stringify({
+              totalCount: 2,
+              correctCount: 1,
+              wrongCount: 1,
+              accuracyPct: 50,
+              summaryHeadline: "整卷批改完成，第2题需复盘分类讨论",
+              teacherPraise: "手写步骤非常工整！",
+              teacherAdvice: "注意动点射线的双向延伸讨论。",
+              results: [
+                {
+                  questionNumber: 1,
+                  type: "填空题",
+                  questionSnippet: "一元一次方程化简",
+                  studentAnswer: "x = 4",
+                  standardAnswer: "x = 4",
+                  status: "correct",
+                  score: 10,
+                  maxScore: 10,
+                  mistakeReason: "",
+                  keyInsight: "掌握移项合并同类项"
+                },
+                {
+                  questionNumber: 2,
+                  type: "解答大题",
+                  questionSnippet: "动点问题分类讨论",
+                  studentAnswer: "t = 5",
+                  standardAnswer: "t = 5 或 t = 15",
+                  status: "wrong",
+                  score: 4,
+                  maxScore: 10,
+                  mistakeReason: "遗漏射线反向延伸情况",
+                  keyInsight: "题眼在‘射线’关键字"
+                }
+              ]
+            })
+          }]
+        }
+      }]
+    };
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => mockVisionResponse,
+      text: async () => JSON.stringify(mockVisionResponse),
+      headers: new undici.Headers()
+    };
+  }
+
+  return originalFetch(url, options);
+};
+
 const { createApp } = require('../server/app');
 
 let server;
 let baseUrl;
 
-before((_, done) => {
+before(async () => {
+  await initDB();
   const app = createApp();
-  server = http.createServer(app);
-  server.listen(0, '127.0.0.1', () => {
-    const port = server.address().port;
-    baseUrl = `http://127.0.0.1:${port}`;
-    done();
+  await new Promise((resolve) => {
+    server = http.createServer(app);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      baseUrl = `http://127.0.0.1:${port}`;
+      resolve();
+    });
   });
 });
 
-after((_, done) => {
+after(async () => {
+  undici.fetch = originalFetch;
   if (server) {
-    server.close(done);
-  } else {
-    done();
+    await new Promise((resolve) => server.close(resolve));
   }
 });
 
@@ -66,16 +133,11 @@ test('Homework Batch API: handles multipart image and parses structured results 
     body: payload
   });
 
-  // Since in test mode mock key or deepseek fallback produces a response
-  assert.ok(res.status === 200 || res.status === 502);
+  assert.strictEqual(res.status, 200);
   const data = await res.json();
-  if (res.status === 200) {
-    assert.strictEqual(data.success, true);
-    assert.strictEqual(data.studentName, '曾练');
-    assert.ok(typeof data.accuracyPct === 'number');
-    assert.ok(Array.isArray(data.results));
-  } else {
-    // 502 indicates vision API was invoked successfully but network mock returned expected error
-    assert.ok(data.error);
-  }
+  assert.strictEqual(data.success, true);
+  assert.strictEqual(data.studentName, '曾练');
+  assert.strictEqual(data.accuracyPct, 50);
+  assert.strictEqual(data.results.length, 2);
+  assert.strictEqual(data.autoArchivedCount, 1);
 });
