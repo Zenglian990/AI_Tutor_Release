@@ -19,6 +19,8 @@ const ttsRoutes = require('./routes/tts');
 const testPaperRoutes = require('./routes/testPaper');
 const configRoutes = require('./routes/config');
 const mentorRoutes = require('./routes/mentor');
+const campaignRoutes = require('./routes/campaign');
+const parentRoutes = require('./routes/parent');
 
 function createApp() {
   const app = express();
@@ -96,6 +98,8 @@ function createApp() {
   app.use('/api', testPaperRoutes);
   app.use('/api', configRoutes);
   app.use('/api', mentorRoutes);
+  app.use('/api', campaignRoutes);
+  app.use('/api', parentRoutes);
 
   // --- Serve static frontend ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');

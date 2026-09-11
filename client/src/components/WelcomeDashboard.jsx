@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatGrade, authFetch, getApiUrl } from '../store/useStore';
 
 export default function WelcomeDashboard({
@@ -10,7 +10,10 @@ export default function WelcomeDashboard({
   onCameraClick,
   onReviewMistakes,
   onOpenMap,
-  onQuickPrompt
+  onQuickPrompt,
+  onOpenRoadmap,
+  onOpenPrint,
+  onOpenParentMemo
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -210,6 +213,40 @@ export default function WelcomeDashboard({
           <p className="action-card-desc">精选必考母题模型，掌握解题钥匙，举一反三</p>
           <div className="action-card-cta">攻克母题 →</div>
         </div>
+
+        {/* 6. Macro Roadmap & Paper-Screen Loop Super Cards */}
+        {onOpenRoadmap && (
+          <div className="action-card" onClick={onOpenRoadmap} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🏛️</span>
+              <span className="action-card-name" style={{ color: '#38bdf8' }}>长周期战役沙盘</span>
+            </div>
+            <p className="action-card-desc">全局把控中考/期末提分节奏，锁定阶段里程碑核心分</p>
+            <div className="action-card-cta" style={{ color: '#38bdf8' }}>查看看板 →</div>
+          </div>
+        )}
+
+        {onOpenPrint && (
+          <div className="action-card" onClick={onOpenPrint} role="button" tabIndex={0} style={{ borderColor: 'rgba(16, 185, 129, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🖨️</span>
+              <span className="action-card-name" style={{ color: '#34d399' }}>A4 纸质试卷打印</span>
+            </div>
+            <p className="action-card-desc">脱离屏幕保护视力，一键排版高清错题卷，回传秒批</p>
+            <div className="action-card-cta" style={{ color: '#34d399' }}>打印试卷 →</div>
+          </div>
+        )}
+
+        {onOpenParentMemo && (
+          <div className="action-card" onClick={onOpenParentMemo} role="button" tabIndex={0} style={{ borderColor: 'rgba(245, 158, 11, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">💌</span>
+              <span className="action-card-name" style={{ color: '#fbbf24' }}>名师家访便签</span>
+            </div>
+            <p className="action-card-desc">真动脑时长与考点攻克一目了然，家长放心掌上掌控</p>
+            <div className="action-card-cta" style={{ color: '#fbbf24' }}>查看便签 →</div>
+          </div>
+        )}
       </div>
 
       {/* 5. Mastery & Encouragement Footer */}

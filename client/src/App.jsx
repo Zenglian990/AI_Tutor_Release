@@ -15,6 +15,9 @@ import WeeklyReportModal from './components/WeeklyReportModal';
 import KnowledgeTest from './components/KnowledgeTest';
 import ScratchpadModal from './components/ScratchpadModal';
 import VoiceDialogueOverlay from './components/VoiceDialogueOverlay';
+import A4PrintModal from './components/A4PrintModal';
+import CampaignRoadmapModal from './components/CampaignRoadmapModal';
+import ParentMemoModal from './components/ParentMemoModal';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -70,6 +73,11 @@ function AppInner() {
   const [voiceDialogueOpen, setVoiceDialogueOpen] = useState(false);
   const [voiceDialogueMode, setVoiceDialogueMode] = useState('speaking'); // 'speaking' | 'listening' | 'processing'
   const [currentFocusQuestion, setCurrentFocusQuestion] = useState('');
+
+  // Macro Evolution States (Roadmap, A4 Exam, Parent Memo)
+  const [showRoadmap, setShowRoadmap] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showParentMemo, setShowParentMemo] = useState(false);
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -586,6 +594,9 @@ function AppInner() {
             onCameraClick={() => fileInputRef.current?.click()}
             onReviewMistakes={() => setShowMistakes(true)}
             onOpenMap={() => setShowMap(true)}
+            onOpenRoadmap={() => setShowRoadmap(true)}
+            onOpenPrint={() => setShowPrintModal(true)}
+            onOpenParentMemo={() => setShowParentMemo(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -724,6 +735,32 @@ function AppInner() {
           stopVoiceRecording();
           setVoiceDialogueOpen(false);
         }}
+      />
+
+      {/* 宏观高阶进阶模态框：A4 真题密卷、长周期战报与提分测算、家长每日 Insights 简报 */}
+      <A4PrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        studentName={currentProfile?.name || '曾练'}
+        grade={currentProfile?.grade || '八年级'}
+        subject={selectedSubject || '数学'}
+      />
+
+      <CampaignRoadmapModal
+        isOpen={showRoadmap}
+        onClose={() => setShowRoadmap(false)}
+        currentProfileId={currentProfileId}
+        grade={currentProfile?.grade || '八年级'}
+        subject={selectedSubject || '数学'}
+      />
+
+      <ParentMemoModal
+        isOpen={showParentMemo}
+        onClose={() => setShowParentMemo(false)}
+        currentProfileId={currentProfileId}
+        grade={currentProfile?.grade || '八年级'}
+        subject={selectedSubject || '数学'}
+        studentName={currentProfile?.name || '曾练'}
       />
 
       <InputBar
