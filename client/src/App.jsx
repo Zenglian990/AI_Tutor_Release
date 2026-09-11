@@ -18,6 +18,7 @@ import VoiceDialogueOverlay from './components/VoiceDialogueOverlay';
 import A4PrintModal from './components/A4PrintModal';
 import CampaignRoadmapModal from './components/CampaignRoadmapModal';
 import ParentMemoModal from './components/ParentMemoModal';
+import HomeworkBatchModal from './components/HomeworkBatchModal';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -74,10 +75,11 @@ function AppInner() {
   const [voiceDialogueMode, setVoiceDialogueMode] = useState('speaking'); // 'speaking' | 'listening' | 'processing'
   const [currentFocusQuestion, setCurrentFocusQuestion] = useState('');
 
-  // Macro Evolution States (Roadmap, A4 Exam, Parent Memo)
+  // Macro Evolution States (Roadmap, A4 Exam, Parent Memo, Homework Batch Grade)
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showParentMemo, setShowParentMemo] = useState(false);
+  const [showBatchGrade, setShowBatchGrade] = useState(false);
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -597,6 +599,7 @@ function AppInner() {
             onOpenRoadmap={() => setShowRoadmap(true)}
             onOpenPrint={() => setShowPrintModal(true)}
             onOpenParentMemo={() => setShowParentMemo(true)}
+            onOpenBatchGrade={() => setShowBatchGrade(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -763,6 +766,16 @@ function AppInner() {
         studentName={currentProfile?.name || '曾练'}
       />
 
+      <HomeworkBatchModal
+        isOpen={showBatchGrade}
+        onClose={() => setShowBatchGrade(false)}
+        currentProfileId={currentProfileId}
+        grade={currentProfile?.grade || '八年级'}
+        subject={selectedSubject || '数学'}
+        studentName={currentProfile?.name || '曾练'}
+        onReviewMistakes={() => setShowMistakes(true)}
+      />
+
       <InputBar
         input={input} setInput={setInput}
         isLoading={isLoading} isListening={isListening}
@@ -773,6 +786,7 @@ function AppInner() {
         isSpeaking={isSpeaking}
         onInterruptSpeech={interruptSpeech}
         onOpenScratchpad={() => setShowScratchpad(true)}
+        onOpenBatchGrade={() => setShowBatchGrade(true)}
       />
     </div>
   );

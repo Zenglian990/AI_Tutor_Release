@@ -15,7 +15,8 @@ const InputBar = React.memo(function InputBar({
   setAutoRead,
   isSpeaking,
   onInterruptSpeech,
-  onOpenScratchpad
+  onOpenScratchpad,
+  onOpenBatchGrade
 }) {
   const [localVal, setLocalVal] = useState(input);
   const textareaRef = useRef(null);
@@ -141,6 +142,17 @@ const InputBar = React.memo(function InputBar({
             onClick={onOpenScratchpad}
           >
             📝 演练草稿纸
+          </button>
+        )}
+        {onOpenBatchGrade && (
+          <button
+            type="button"
+            className="quick-hint-chip"
+            style={{ borderColor: '#0ea5e9', color: '#38bdf8', background: 'rgba(14, 165, 233, 0.1)' }}
+            title="拍照上传整页作业或试卷，多题秒级识别与批改"
+            onClick={onOpenBatchGrade}
+          >
+            📑 整页秒批
           </button>
         )}
       </div>

@@ -21,6 +21,7 @@ const configRoutes = require('./routes/config');
 const mentorRoutes = require('./routes/mentor');
 const campaignRoutes = require('./routes/campaign');
 const parentRoutes = require('./routes/parent');
+const homeworkRoutes = require('./routes/homework');
 
 function createApp() {
   const app = express();
@@ -100,6 +101,7 @@ function createApp() {
   app.use('/api', mentorRoutes);
   app.use('/api', campaignRoutes);
   app.use('/api', parentRoutes);
+  app.use('/api', homeworkRoutes);
 
   // --- Serve static frontend ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');

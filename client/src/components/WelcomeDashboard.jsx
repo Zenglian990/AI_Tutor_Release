@@ -13,7 +13,8 @@ export default function WelcomeDashboard({
   onQuickPrompt,
   onOpenRoadmap,
   onOpenPrint,
-  onOpenParentMemo
+  onOpenParentMemo,
+  onOpenBatchGrade
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -158,26 +159,52 @@ export default function WelcomeDashboard({
       </div>
 
       {/* 3. Primary Camera Action Card */}
-      <div className="primary-camera-card" onClick={onCameraClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onCameraClick()}>
-        <div className="camera-icon-wrapper">
-          <div className="camera-pulse-ring"></div>
-          <span className="camera-big-icon">📸</span>
-        </div>
-        <div className="camera-card-content">
-          <div className="camera-card-title">
-            <span>拍照讲题 / 上传试卷作业难题</span>
-            <span className="rec-badge">名师推荐</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <div className="primary-camera-card" onClick={onCameraClick} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onCameraClick()} style={{ margin: 0 }}>
+          <div className="camera-icon-wrapper">
+            <div className="camera-pulse-ring"></div>
+            <span className="camera-big-icon">📸</span>
           </div>
-          <div className="camera-card-desc">
-            卡在某一步推导或做不出辅助线？对准题目拍一张，私教一句话点破题眼套路，给草稿纸第一步动笔支架！
+          <div className="camera-card-content">
+            <div className="camera-card-title">
+              <span>单题精讲 / 拍照问难题</span>
+              <span className="rec-badge">名师启发</span>
+            </div>
+            <div className="camera-card-desc">
+              卡在某一步推导？拍单题，私教一句话点破题眼套路，给草稿纸第一步动笔支架！
+            </div>
+          </div>
+          <div className="camera-card-arrow">
+            <span>拍照讲题</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
           </div>
         </div>
-        <div className="camera-card-arrow">
-          <span>立即拍照</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
+
+        {onOpenBatchGrade && (
+          <div className="primary-camera-card" onClick={onOpenBatchGrade} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpenBatchGrade()} style={{ margin: 0, borderColor: 'rgba(56, 189, 248, 0.5)', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15), rgba(37, 99, 235, 0.08))' }}>
+            <div className="camera-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0284c7, #2563eb)' }}>
+              <div className="camera-pulse-ring" style={{ borderColor: '#38bdf8' }}></div>
+              <span className="camera-big-icon">📑</span>
+            </div>
+            <div className="camera-card-content">
+              <div className="camera-card-title">
+                <span style={{ color: '#38bdf8' }}>整页作业 / 试卷秒级批改</span>
+                <span className="rec-badge" style={{ background: '#0284c7' }}>黑科技</span>
+              </div>
+              <div className="camera-card-desc">
+                晚上作业整页拍一张！自动识别卷面所有手写题、判断对错、错题一键归档错题本。
+              </div>
+            </div>
+            <div className="camera-card-arrow" style={{ color: '#38bdf8' }}>
+              <span>整页批改</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 4. Action Cards Grid */}
