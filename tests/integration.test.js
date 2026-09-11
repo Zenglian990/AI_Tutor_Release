@@ -296,7 +296,15 @@ test('Integration: Fallback to DeepSeek when Gemini mock-fails', async () => {
 });
 
 test('Integration: GET /api/admin/stats — returns admin stats structure', async () => {
-  const res = await fetch(`${baseUrl}/api/admin/stats`);
+  const { getSqliteDb } = require('../server/db/init');
+  const sqliteDb = getSqliteDb();
+  const savedPinHashRow = sqliteDb ? await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'") : null;
+  const headers = {};
+  if (savedPinHashRow && savedPinHashRow.value) {
+    headers['x-parent-pin-hash'] = savedPinHashRow.value;
+  }
+
+  const res = await fetch(`${baseUrl}/api/admin/stats`, { headers });
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.ok(data.hasOwnProperty('totalProfiles'));

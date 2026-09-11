@@ -145,3 +145,25 @@ body {
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
+/* Voice Dialogue Sound Wave & Pulse Animations */
+.voice-wave-bar {
+  display: inline-block;
+  width: 3px;
+  height: 16px;
+  background: #38bdf8;
+  border-radius: 2px;
+  animation: waveAnimation 1.2s ease-in-out infinite;
+}
+.wave-delay-1 { animation-delay: 0.2s; height: 22px; }
+.wave-delay-2 { animation-delay: 0.4s; height: 14px; }
+.wave-delay-3 { animation-delay: 0.6s; height: 20px; }
+
+@keyframes waveAnimation {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1.2); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}

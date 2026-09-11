@@ -14,8 +14,10 @@ import ChapterStepper from './components/ChapterStepper';
 import WeeklyReportModal from './components/WeeklyReportModal';
 import KnowledgeTest from './components/KnowledgeTest';
 import ScratchpadModal from './components/ScratchpadModal';
+import VoiceDialogueOverlay from './components/VoiceDialogueOverlay';
 import { compressImage } from './utils/image';
-import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState } from './utils/tts';
+import { compressAudio } from './utils/audio';
+import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
 import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
 import OnboardingGuide from './components/OnboardingGuide';
 import WelcomeDashboard from './components/WelcomeDashboard';
@@ -63,6 +65,11 @@ function AppInner() {
   const [showOnboarding, setShowOnboarding] = useState(() =>
     localStorage.getItem('ai_tutor_onboarding_completed') !== 'true'
   );
+
+  // Proactive Voice Dialogue States
+  const [voiceDialogueOpen, setVoiceDialogueOpen] = useState(false);
+  const [voiceDialogueMode, setVoiceDialogueMode] = useState('speaking'); // 'speaking' | 'listening' | 'processing'
+  const [currentFocusQuestion, setCurrentFocusQuestion] = useState('');
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -177,51 +184,83 @@ function AppInner() {
     if (result === 'ADD_NEW') setShowAddProfile(true);
   }, [handleProfileChange]);
 
-  // Voice recording
-  const toggleVoice = async () => {
-    if (isListening) {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop();
-      setIsListening(false);
-    } else {
-      try {
-        audioChunksRef.current = [];
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        let options = {};
-        if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
-        else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
-        else if (MediaRecorder.isTypeSupported('audio/ogg')) options = { mimeType: 'audio/ogg' };
-        else if (MediaRecorder.isTypeSupported('audio/wav')) options = { mimeType: 'audio/wav' };
+  // Voice recording engine
+  const startVoiceRecording = useCallback(async (isDialogueLoop = false) => {
+    try {
+      audioChunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let options = {};
+      if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
+      else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
+      else if (MediaRecorder.isTypeSupported('audio/ogg')) options = { mimeType: 'audio/ogg' };
+      else if (MediaRecorder.isTypeSupported('audio/wav')) options = { mimeType: 'audio/wav' };
 
-        const recorder = new MediaRecorder(stream, options);
-        mediaRecorderRef.current = recorder;
-        recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data); };
-        recorder.onstop = async () => {
-          stream.getTracks().forEach(track => track.stop());
-          const mime = options.mimeType || 'audio/webm';
-          const audioBlob = new Blob(audioChunksRef.current, { type: mime });
-          if (audioBlob.size === 0) return;
-          setIsLoading(true);
-          setInput('🎙️ 正在压缩并识别您的声音...');
-          try {
-            const compressedBlob = await compressAudio(audioBlob);
-            const formData = new FormData();
-            formData.append('audio', compressedBlob, 'voice.wav');
-            const response = await authFetch('/api/transcribe', { method: 'POST', body: formData });
-            if (response.ok) {
-              const data = await response.json();
-              if (data.text && data.text.trim()) {
-                setInput(prev => (prev.trim() + ' ' + data.text.trim()).trim());
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        const mime = options.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mime });
+        if (audioBlob.size === 0) return;
+        setIsLoading(true);
+        if (isDialogueLoop) setVoiceDialogueMode('processing');
+        setInput('🎙️ 正在压缩并识别您的声音...');
+        try {
+          const compressedBlob = await compressAudio(audioBlob);
+          const formData = new FormData();
+          formData.append('audio', compressedBlob, 'voice.wav');
+          const response = await authFetch('/api/transcribe', { method: 'POST', body: formData });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.text && data.text.trim()) {
+              const spokenText = data.text.trim();
+              if (isDialogueLoop) {
+                setVoiceDialogueOpen(false);
+                handleSubmit(null, spokenText);
               } else {
-                setInput('');
-                alert('没有听清您的说话，请再试一次 🎤');
+                setInput(prev => (prev.trim() + ' ' + spokenText).trim());
               }
-            } else { setInput(''); alert('语音识别失败，请手动输入'); }
-          } catch (err) { setInput(''); alert('语音识别网络错误'); }
-          finally { setIsLoading(false); }
-        };
-        recorder.start();
-        setIsListening(true);
-      } catch (err) { alert('无法启动麦克风录音，请确保已授予麦克风使用权限 🎙️'); setIsListening(false); }
+            } else {
+              setInput('');
+              if (isDialogueLoop) setVoiceDialogueOpen(false);
+              alert('没有听清您的说话，请再试一次 🎤');
+            }
+          } else {
+            setInput('');
+            if (isDialogueLoop) setVoiceDialogueOpen(false);
+            alert('语音识别失败，请手动输入');
+          }
+        } catch (err) {
+          setInput('');
+          if (isDialogueLoop) setVoiceDialogueOpen(false);
+          alert('语音识别网络错误');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      recorder.start();
+      setIsListening(true);
+      if (isDialogueLoop) setVoiceDialogueMode('listening');
+    } catch (err) {
+      alert('无法启动麦克风录音，请确保已授予麦克风使用权限 🎙️');
+      setIsListening(false);
+      setVoiceDialogueOpen(false);
+    }
+  }, []);
+
+  const stopVoiceRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsListening(false);
+  }, []);
+
+  const toggleVoice = () => {
+    if (isListening) {
+      stopVoiceRecording();
+    } else {
+      startVoiceRecording(false);
     }
   };
 
@@ -350,6 +389,25 @@ function AppInner() {
         }
       }
       syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
+
+      // Proactive Spoken Question & Handover Trigger
+      if (answerText && autoRead) {
+        const questionFocus = extractQuestionFocus(answerText);
+        if (questionFocus) {
+          setCurrentFocusQuestion(questionFocus);
+          setVoiceDialogueOpen(true);
+          setVoiceDialogueMode('speaking');
+
+          // Play TTS, and when finished speaking, automatically hand over microphone to student
+          playTTS(answerText, gradeRef.current, () => {
+            setVoiceDialogueMode('speaking');
+          }, () => {
+            // Mentor finishes speaking -> immediately hand over mic to student
+            setVoiceDialogueMode('listening');
+            startVoiceRecording(true);
+          });
+        }
+      }
     } catch (error) {
       console.error(error);
       let errorMsg = error.message || '对不起，系统忙碌中，请稍后再试。';
@@ -363,7 +421,7 @@ function AppInner() {
         return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg) }];
       });
     } finally { setIsLoading(false); }
-  }, [imageFile, isLoading, previewImage, currentProfileId, socraticLevel, syncMessages, isOffline, language]);
+  }, [imageFile, isLoading, previewImage, currentProfileId, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording]);
 
   const clearChat = () => {
     setGateAction(() => () => setShowClearConfirm(true));
@@ -643,6 +701,29 @@ function AppInner() {
         isOpen={showScratchpad}
         onClose={() => setShowScratchpad(false)}
         onSendToTutor={handleSendScratchpad}
+      />
+
+      {/* 名师面对面主动语音设问与递麦光环 */}
+      <VoiceDialogueOverlay
+        isOpen={voiceDialogueOpen}
+        mode={voiceDialogueMode}
+        studentName={currentProfile?.name || '曾练'}
+        currentQuestionText={currentFocusQuestion}
+        countdownSeconds={8}
+        onInterrupt={() => {
+          if (voiceDialogueMode === 'speaking') {
+            interruptSpeech();
+            setVoiceDialogueMode('listening');
+            startVoiceRecording(true);
+          } else if (voiceDialogueMode === 'listening') {
+            stopVoiceRecording();
+          }
+        }}
+        onCancel={() => {
+          interruptSpeech();
+          stopVoiceRecording();
+          setVoiceDialogueOpen(false);
+        }}
       />
 
       <InputBar

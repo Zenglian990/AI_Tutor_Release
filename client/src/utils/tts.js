@@ -1,4 +1,4 @@
-import { authFetch } from '../store/useStore';
+﻿import { authFetch } from '../store/useStore';
 
 const activeControllers = new Set();
 const speakingListeners = new Set();
@@ -23,6 +23,31 @@ export function subscribeSpeakingState(callback) {
 
 export function getIsSpeaking() {
   return isCurrentlySpeaking;
+}
+
+/**
+ * Extracts the most prominent question or final guidance prompt from text
+ * for focused spoken articulation.
+ */
+export function extractQuestionFocus(text) {
+  if (!text) return '';
+  const clean = text
+    .replace(/<[^>]+>/g, '')
+    .replace(/\!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[.*?\]\(.*?\)/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]+`/g, '');
+
+  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  // Search backward for lines with questions or scaffolding requests
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.includes('？') || line.includes('?') || line.includes('你觉得') || line.includes('动笔') || line.includes('请') || line.includes('判断')) {
+      return line.replace(/^[#*>\-\d\.\s]+/, '').slice(0, 100);
+    }
+  }
+  return lines[lines.length - 1]?.replace(/^[#*>\-\d\.\s]+/, '').slice(0, 80) || '';
 }
 
 function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
@@ -84,13 +109,12 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
  * @returns {object} Controller with .stop() method
  */
 export function playTTS(text, grade, onStart, onEnd) {
-  // Always stop previous active speech before starting a new one
   stopTTS();
 
   let cleanText = text
-    .replace(/<[^>]+>/g, '') // html tags
-    .replace(/\!\[.*?\]\(.*?\)/g, '') // images
-    .replace(/\[.*?\]\(.*?\)/g, '') // links
+    .replace(/<[^>]+>/g, '')
+    .replace(/\!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[.*?\]\(.*?\)/g, '')
     .replace(/\*/g, '')
     .replace(/#/g, '')
     .replace(/`/g, '')
@@ -167,7 +191,7 @@ export function playTTS(text, grade, onStart, onEnd) {
 }
 
 /**
- * Immediate Barge-in / Interrupt: Stop any active speech playback (cloud audio & browser speech).
+ * Immediate Barge-in / Interrupt: Stop any active speech playback.
  */
 export function stopTTS() {
   for (const ctrl of activeControllers) {
