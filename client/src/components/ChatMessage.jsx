@@ -194,6 +194,37 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
 
 
 
+/**
+ * Extract thinking/reasoning process from AI response (<think> or legacy > 🧠 [思考过程])
+ */
+function splitThinkingContent(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    return { thinking: null, body: rawText || '' };
+  }
+
+  // 1. Standard <think> ... </think>
+  const thinkMatch = rawText.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  if (thinkMatch) {
+    const thinking = thinkMatch[1].trim();
+    const body = rawText.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, '').trim();
+    return { thinking, body };
+  }
+
+  // 2. Legacy blockquote format: > 🧠 **[思考过程]**
+  const bqMatch = rawText.match(/(?:^|\n)>\s*🧠\s*\**\[思考过程\]\**\s*([\s\S]*?)(?=(?:\n[^\n>]|\n\n[^\n>]|$))/i);
+  if (bqMatch) {
+    const rawThinking = bqMatch[1]
+      .split('\n')
+      .map(line => line.replace(/^>\s?/, ''))
+      .join('\n')
+      .trim();
+    const body = rawText.replace(bqMatch[0], '').trim();
+    return { thinking: rawThinking, body };
+  }
+
+  return { thinking: null, body: rawText };
+}
+
   const toggleSpeech = () => {
     if (isPlaying) {
       if (ttsCtrlRef.current) {
@@ -209,7 +240,9 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
       
       setIsPlaying(true);
       if (playTTS) {
-        ttsCtrlRef.current = playTTS(msg.text, () => setIsPlaying(true), () => {
+        const { body } = splitThinkingContent(msg.text);
+        const textToSpeak = body || msg.text;
+        ttsCtrlRef.current = playTTS(textToSpeak, () => setIsPlaying(true), () => {
           setIsPlaying(false);
           ttsCtrlRef.current = null;
         });
@@ -220,6 +253,7 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
   };
 
   const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
+  const { thinking, body: cleanAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
 
   return (
     <div className={`message-wrapper ${msg.role} ${animClass}`}>
@@ -229,15 +263,62 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
       <div className={`message ${msg.role}`}>
         {msg.role === 'ai' ? (
           <div>
-            <ReactMarkdown 
-              remarkPlugins={[remarkMath, remarkGfm]} 
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                h3({node, children, ...props}) {
-                  const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
-                  let icon = '💡';
-                  let borderColor = '#3b82f6';
-                  let bgColor = 'rgba(59, 130, 246, 0.08)';
+            {thinking && (
+              <details className="ai-thinking-accordion" style={{
+                background: 'rgba(15, 23, 42, 0.45)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                marginBottom: '12px',
+                fontSize: '0.85rem',
+                color: '#94a3b8'
+              }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  color: '#38bdf8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  userSelect: 'none'
+                }}>
+                  <span>🧠</span>
+                  <span>名师深度备考推导过程</span>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'normal' }}>
+                    （已智能折叠，点击展开）
+                  </span>
+                </summary>
+                <div style={{
+                  marginTop: '10px',
+                  paddingTop: '8px',
+                  borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
+                  lineHeight: '1.6',
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  color: '#cbd5e1'
+                }}>
+                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                    {preprocessLatex(thinking)}
+                  </ReactMarkdown>
+                </div>
+              </details>
+            )}
+
+            {!cleanAiBody && thinking ? (
+              <div style={{ color: '#38bdf8', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0' }}>
+                <span className="dot" style={{ animation: 'pulse 1s infinite' }}>⏳</span>
+                <span>AI 特级名师正在结合考点进行深度备课构思...</span>
+              </div>
+            ) : (
+              <ReactMarkdown 
+                remarkPlugins={[remarkMath, remarkGfm]} 
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  h3({node, children, ...props}) {
+                    const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
+                    let icon = '💡';
+                    let borderColor = '#3b82f6';
+                    let bgColor = 'rgba(59, 130, 246, 0.08)';
 
                   if (text.includes('题眼') || text.includes('陷阱') || text.includes('思路')) {
                     icon = '🎯';
@@ -338,8 +419,9 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                 }
               }}
             >
-              {preprocessLatex(msg.text)}
+              {preprocessLatex(cleanAiBody)}
             </ReactMarkdown>
+            )}
             <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>
               {msg.role === 'ai' && onMarkMistake && (
                 <button

@@ -180,13 +180,13 @@ async function* translateDeepSeekStream(originalBody) {
       if (reasoning !== undefined && reasoning !== null && reasoning !== '') {
         if (!isThinking) {
           isThinking = true;
-          outputText += '\n> 🧠 **[思考过程]**\n> ';
+          outputText += '<think>';
         }
-        outputText += reasoning.replace(/\n/g, '\n> ');
+        outputText += reasoning;
       } else if (text !== undefined && text !== null && text !== '') {
         if (isThinking) {
           isThinking = false;
-          outputText += '\n\n';
+          outputText += '</think>\n\n';
         }
         outputText += text;
       }
@@ -232,6 +232,19 @@ async function* translateDeepSeekStream(originalBody) {
     if (processed) {
       yield processed;
     }
+  }
+
+  // Ensure unclosed thinking tag is closed before stream ends
+  if (isThinking) {
+    isThinking = false;
+    const closeTag = {
+      candidates: [{
+        content: {
+          parts: [{ text: '</think>\n\n' }]
+        }
+      }]
+    };
+    yield `data: ${JSON.stringify(closeTag)}\n\n`;
   }
 }
 

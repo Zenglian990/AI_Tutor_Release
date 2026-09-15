@@ -39,20 +39,36 @@ body {
   overflow: hidden;
 }
 
-.app-container {
+#root {
   width: 100%;
-  max-width: 960px;
-  height: 92vh;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-container {
+  width: 95%;
+  max-width: 1080px;
+  height: 94vh;
+  height: 94dvh;
   display: flex;
   flex-direction: column;
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
-  border-radius: 32px;
+  border-radius: 28px;
   box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: hidden;
+  position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 1440px) {
+  .app-container {
+    max-width: 1220px;
+  }
 }
 
 .header {

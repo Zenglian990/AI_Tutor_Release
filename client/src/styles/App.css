@@ -84,6 +84,30 @@
   max-width: 100%;
 }
 
+/* 引用块与名师思考风琴卡片样式 */
+.message blockquote {
+  border-left: 3px solid #38bdf8;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 10px 14px;
+  margin: 10px 0;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.ai-thinking-accordion {
+  transition: all 0.2s ease;
+}
+
+.ai-thinking-accordion summary {
+  list-style: none;
+}
+
+.ai-thinking-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
 /* 优雅的高级表格与自适应横向滚动容器 */
 .table-responsive {
   width: 100%;
