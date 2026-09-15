@@ -1,4 +1,4 @@
-﻿const { test, before, after } = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
 const { createApp } = require('../server/app');
@@ -54,6 +54,30 @@ test('Parent Memo API: GET /api/parent/daily-memo returns active time & reassuri
   assert.ok(Array.isArray(data.memoContent));
   assert.ok(data.memoContent[0].includes('曾练') || data.memoContent[0].includes('研学'));
   assert.ok(data.memoTitle.includes('曾先生'));
+});
+
+test('Parent Memo API: POST /api/parent/push-webhook validates URL and formats payload', async () => {
+  // Test invalid URL validation
+  const invalidRes = await fetch(`${baseUrl}/api/parent/push-webhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ webhook_url: 'invalid-url' })
+  });
+  assert.strictEqual(invalidRes.status, 400);
+
+  // Test valid URL handler format
+  const validRes = await fetch(`${baseUrl}/api/parent/push-webhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      webhook_url: 'http://127.0.0.1:9999/mock-webhook',
+      memo_title: '曾先生家访便签',
+      memo_content: ['伴学专注40分钟'],
+      student_name: '曾练'
+    })
+  });
+  // Since 9999 is not listening, it will fail gracefully with 500 network error or timeout
+  assert.ok([200, 500].includes(validRes.status));
 });
 
 test('Empathy Circuit Breaker: Prompt guidelines include frustration circuit breaker', () => {

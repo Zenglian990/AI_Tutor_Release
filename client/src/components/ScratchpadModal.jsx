@@ -3,10 +3,16 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState('pen'); // 'pen', 'line', 'eraser'
+  const [tool, setTool] = useState('pen'); // 'pen', 'line', 'triangle', 'circle', 'parabola', 'eraser'
   const [color, setColor] = useState('#2563eb'); // default blue pen
   const [lineWidth, setLineWidth] = useState(3);
   const [gridMode, setGridMode] = useState('grid'); // 'blank', 'grid', 'coordinate', 'tian'
+  
+  // Dynamic Geometry & Function Sandbox States
+  const [dynamicSandbox, setDynamicSandbox] = useState(null); // null | 'dynamic_point' | 'parabola_slider'
+  const [pointPosT, setPointPosT] = useState(0.5); // 0 to 1 along line for moving point
+  const [parabolaA, setParabolaA] = useState(1); // a in y = ax^2
+  const [parabolaK, setParabolaK] = useState(0); // vertical shift k
   
   // Proactive silence detection states
   const [showSilenceHint, setShowSilenceHint] = useState(false);
@@ -394,6 +400,35 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
             >
               🧹 橡皮
             </button>
+            <button
+              onClick={() => setDynamicSandbox(prev => prev === 'dynamic_point' ? null : 'dynamic_point')}
+              style={{
+                padding: '6px 12px', borderRadius: '6px',
+                border: dynamicSandbox === 'dynamic_point' ? '1px solid #8b5cf6' : '1px solid #cbd5e1',
+                background: dynamicSandbox === 'dynamic_point' ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : '#ffffff',
+                color: dynamicSandbox === 'dynamic_point' ? '#ffffff' : '#7c3aed',
+                cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              title="开启几何动点探究沙盘（类似几何画板/Khanmigo）"
+            >
+              <span>📍 几何动点沙盘</span>
+            </button>
+            <button
+              onClick={() => {
+                setDynamicSandbox(prev => prev === 'parabola_slider' ? null : 'parabola_slider');
+                setGridMode('coordinate');
+              }}
+              style={{
+                padding: '6px 12px', borderRadius: '6px',
+                border: dynamicSandbox === 'parabola_slider' ? '1px solid #059669' : '1px solid #cbd5e1',
+                background: dynamicSandbox === 'parabola_slider' ? 'linear-gradient(135deg, #10b981, #059669)' : '#ffffff',
+                color: dynamicSandbox === 'parabola_slider' ? '#ffffff' : '#059669',
+                cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              title="开启二次函数抛物线动态沙盘"
+            >
+              <span>📈 抛物线沙盘</span>
+            </button>
 
             {/* Colors */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
@@ -514,6 +549,132 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
                   {fetchingHint ? '思考中...' : '💡 获取名师破题支架'}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Dynamic Geometry / Parabola Interactive Sandbox Overlay */}
+          {dynamicSandbox === 'dynamic_point' && (
+            <div style={{
+              position: 'absolute',
+              top: '16px',
+              left: '16px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '2px solid #8b5cf6',
+              boxShadow: '0 10px 25px rgba(139, 92, 246, 0.2)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              zIndex: 15,
+              width: '320px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 'bold', color: '#6d28d9', fontSize: '0.9rem' }}>
+                  📍 几何动点 P 探究沙盘 (Khanmigo 级)
+                </span>
+                <button onClick={() => setDynamicSandbox(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '8px' }}>
+                拖动滑块观察：动点 P 在线段 AB 上移动时，△ABP 面积变化
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={pointPosT}
+                onChange={e => setPointPosT(parseFloat(e.target.value))}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#6d28d9', marginTop: '4px' }}>
+                <span>点 A (0%)</span>
+                <span>当前位置：{(pointPosT * 100).toFixed(0)}%</span>
+                <span>点 B (100%)</span>
+              </div>
+              <svg width="290" height="120" style={{ background: '#f5f3ff', borderRadius: '8px', marginTop: '10px' }}>
+                {/* Fixed Triangle Base AB */}
+                <line x1="30" y1="90" x2="260" y2="90" stroke="#475569" strokeWidth="2" />
+                <text x="20" y="95" fontSize="12" fill="#1e293b">A</text>
+                <text x="265" y="95" fontSize="12" fill="#1e293b">B</text>
+                {/* Moving Point P and Lines */}
+                {(() => {
+                  const px = 30 + (260 - 30) * pointPosT;
+                  const py = 90 - Math.sin(pointPosT * Math.PI) * 65; // Trajectory curve
+                  return (
+                    <g>
+                      <polygon points={`30,90 260,90 ${px},${py}`} fill="rgba(139, 92, 246, 0.2)" stroke="#8b5cf6" strokeWidth="1.5" strokeDasharray="3 3" />
+                      <circle cx={px} cy={py} r="6" fill="#7c3aed" stroke="#ffffff" strokeWidth="2" />
+                      <text x={px - 5} y={py - 10} fontSize="12" fontWeight="bold" fill="#7c3aed">P</text>
+                      <text x="110" y="60" fontSize="11" fill="#6d28d9">S = {(pointPosT * (1 - pointPosT) * 100).toFixed(1)} cm²</text>
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+          )}
+
+          {dynamicSandbox === 'parabola_slider' && (
+            <div style={{
+              position: 'absolute',
+              top: '16px',
+              left: '16px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '2px solid #10b981',
+              boxShadow: '0 10px 25px rgba(16, 185, 129, 0.2)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              zIndex: 15,
+              width: '320px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 'bold', color: '#047857', fontSize: '0.9rem' }}>
+                  📈 二次函数 y = ax² + k 动态沙盘
+                </span>
+                <button onClick={() => setDynamicSandbox(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '6px' }}>
+                改变系数 a 观察开口方向与胖瘦，改变 k 观察上下平移：
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#047857', minWidth: '40px' }}>a: {parabolaA}</span>
+                <input
+                  type="range" min="-3" max="3" step="0.5" value={parabolaA}
+                  onChange={e => setParabolaA(parseFloat(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#047857', minWidth: '40px' }}>k: {parabolaK}</span>
+                <input
+                  type="range" min="-4" max="4" step="1" value={parabolaK}
+                  onChange={e => setParabolaK(parseFloat(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <svg width="290" height="130" style={{ background: '#ecfdf5', borderRadius: '8px' }}>
+                {/* Axis */}
+                <line x1="0" y1="65" x2="290" y2="65" stroke="#94a3b8" strokeWidth="1" />
+                <line x1="145" y1="0" x2="145" y2="130" stroke="#94a3b8" strokeWidth="1" />
+                {/* Parabola Curve */}
+                {(() => {
+                  let path = '';
+                  for (let x = -70; x <= 70; x += 2) {
+                    const normX = x / 20;
+                    const normY = parabolaA * normX * normX + parabolaK;
+                    const canvasX = 145 + x;
+                    const canvasY = 65 - normY * 12;
+                    if (path === '') path += `M ${canvasX} ${canvasY}`;
+                    else path += ` L ${canvasX} ${canvasY}`;
+                  }
+                  return (
+                    <g>
+                      <path d={path} fill="none" stroke="#059669" strokeWidth="2.5" />
+                      <circle cx="145" cy={65 - parabolaK * 12} r="4" fill="#dc2626" />
+                      <text x="152" y={65 - parabolaK * 12 - 5} fontSize="11" fill="#dc2626" fontWeight="bold">
+                        顶点(0, {parabolaK})
+                      </text>
+                    </g>
+                  );
+                })()}
+              </svg>
             </div>
           )}
 

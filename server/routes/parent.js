@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
 const { getStudentCognitiveMemory } = require('../services/studentMemory');
@@ -60,6 +60,68 @@ router.get('/parent/daily-memo', async (req, res) => {
   } catch (err) {
     logger.error('[ParentMemo] Failed to generate parent memo:', err);
     res.status(500).json({ error: '生成家长家访便签失败', details: err.message });
+  }
+});
+
+// POST /api/parent/push-webhook
+// Pushes daily memo directly to parent's WeChat / Enterprise WeChat / DingTalk Webhook
+router.post('/parent/push-webhook', async (req, res) => {
+  try {
+    const { webhook_url, memo_title, memo_content = [], student_name = '曾练', date_str, comfort_score = '98 (放心特优)' } = req.body;
+
+    if (!webhook_url || !webhook_url.startsWith('http')) {
+      return res.status(400).json({ error: '请提供有效的微信服务号/企微/钉钉 Webhook 机器人链接' });
+    }
+
+    const markdownText = `### ${memo_title || `名师晚间家访便签 💌`}\n**学员**：${student_name} | **日期**：${date_str || new Date().toLocaleDateString('zh-CN')}\n\n${memo_content.join('\n\n')}\n\n> 🛡️ **家长放心指数**：${comfort_score}\n> 💡 *由曾练专属 AI 私教案头自动归纳生成*`;
+
+    let payload = {};
+    if (webhook_url.includes('dingtalk.com')) {
+      // DingTalk bot format
+      payload = {
+        msgtype: 'markdown',
+        markdown: {
+          title: memo_title || '名师学情便签',
+          text: markdownText
+        }
+      };
+    } else if (webhook_url.includes('feishu.cn') || webhook_url.includes('larksuite.com')) {
+      // Feishu bot format
+      payload = {
+        msg_type: 'interactive',
+        card: {
+          header: { title: { tag: 'plain_text', content: memo_title || '名师学情便签 💌' } },
+          elements: [{ tag: 'div', text: { tag: 'lark_md', content: markdownText } }]
+        }
+      };
+    } else {
+      // Standard WeChat Work / Server酱 / Custom Webhook format
+      payload = {
+        msgtype: 'markdown',
+        markdown: {
+          content: markdownText
+        },
+        text: markdownText
+      };
+    }
+
+    const fetchResponse = await fetch(webhook_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const respText = await fetchResponse.text();
+    logger.info('[ParentMemo] Pushed memo to webhook:', webhook_url.slice(0, 35) + '...', respText.slice(0, 50));
+
+    res.json({
+      success: true,
+      message: '便签已成功推送至家长手机！',
+      status: fetchResponse.status
+    });
+  } catch (err) {
+    logger.error('[ParentMemo] Failed to push webhook:', err);
+    res.status(500).json({ error: '推送至家长端失败，请检查 Webhook 链接是否可用' });
   }
 });
 

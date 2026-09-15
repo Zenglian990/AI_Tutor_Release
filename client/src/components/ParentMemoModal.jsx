@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { authFetch, getApiUrl } from '../store/useStore';
 
 /**
@@ -9,6 +9,10 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
   const [memo, setMemo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showWebhookInput, setShowWebhookInput] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('parent_webhook_url') || '');
+  const [pushing, setPushing] = useState(false);
+  const [pushStatus, setPushStatus] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -29,6 +33,41 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
     navigator.clipboard.writeText(fullText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePushWebhook = async () => {
+    if (!webhookUrl || !webhookUrl.trim()) {
+      alert('请先输入微信/企微/钉钉 Webhook 机器人链接');
+      return;
+    }
+    setPushing(true);
+    setPushStatus('');
+    try {
+      localStorage.setItem('parent_webhook_url', webhookUrl.trim());
+      const res = await authFetch(`${getApiUrl()}/api/parent/push-webhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhook_url: webhookUrl.trim(),
+          memo_title: memo?.memoTitle,
+          memo_content: memo?.memoContent,
+          student_name: studentName,
+          date_str: memo?.date,
+          comfort_score: memo?.comfortScore
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPushStatus('✅ 已成功推送到微信机器人！');
+        setTimeout(() => setPushStatus(''), 4000);
+      } else {
+        setPushStatus('❌ ' + (data.error || '推送失败'));
+      }
+    } catch (e) {
+      setPushStatus('❌ 网络异常，推送失败');
+    } finally {
+      setPushing(false);
+    }
   };
 
   return (
@@ -106,8 +145,70 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
               </div>
             </div>
 
+            {/* WeChat / DingTalk Webhook Direct Push Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(16, 185, 129, 0.05))',
+              border: '1px solid #bfdbfe',
+              borderRadius: '12px',
+              padding: '12px 16px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1e40af' }}>
+                  📲 微信服务号 / 企微机器人无感直推
+                </span>
+                <button
+                  onClick={() => setShowWebhookInput(!showWebhookInput)}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  {showWebhookInput ? '收起设置 ▲' : '配置机器人链接 ▼'}
+                </button>
+              </div>
+
+              {showWebhookInput && (
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="输入企微/钉钉/飞书 Webhook 机器人链接..."
+                    value={webhookUrl}
+                    onChange={e => setWebhookUrl(e.target.value)}
+                    style={{
+                      width: '100%', padding: '8px 12px', borderRadius: '8px',
+                      border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box'
+                    }}
+                  />
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    * 配置后，每日研学便签将自动推送到家长微信/钉钉群，实现无感陪伴。
+                  </div>
+                </div>
+              )}
+
+              {pushStatus && (
+                <div style={{ marginTop: '8px', fontSize: '0.85rem', fontWeight: '600', color: pushStatus.startsWith('✅') ? '#059669' : '#dc2626' }}>
+                  {pushStatus}
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={handlePushWebhook}
+                disabled={pushing}
+                style={{
+                  background: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: pushing ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>{pushing ? '⏳ 推送中...' : '🚀 直推家长微信/钉钉'}</span>
+              </button>
               <button
                 onClick={handleCopy}
                 style={{
