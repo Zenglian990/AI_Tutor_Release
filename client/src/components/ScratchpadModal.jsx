@@ -110,13 +110,13 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     ctx.restore();
   }, [gridMode]);
 
-  // Proactive silence detection logic (triggers gentle care hint if inactive for 45s)
+  // Proactive pen-hover & silence detection logic (triggers gentle care hint if student pauses for 20s)
   const resetSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     setShowSilenceHint(false);
     silenceTimerRef.current = setTimeout(() => {
       setShowSilenceHint(true);
-    }, 45000);
+    }, 20000); // 20s pen hover detection (imitating real teacher observing thinking pause)
   }, []);
 
   const handleFetchProactiveHint = async () => {
@@ -126,7 +126,7 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          problemText: '草稿纸演算卡点',
+          problemText: '草稿纸停顿卡点，请给第一步画图或破题支架',
           student_name: '曾练'
         })
       });
@@ -495,7 +495,7 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
                 </button>
               </div>
               <p style={{ margin: '4px 0 8px 0', fontSize: '0.82rem', color: '#475569', lineHeight: '1.4' }}>
-                {proactiveHintText || '在草稿纸上思考超过 45 秒啦，老师给你一个破题支架，帮你理顺思路！'}
+                {proactiveHintText || '笔尖停顿思考超过 20 秒啦，名师捕捉到可能卡在画图或列式上，点击获取微步破题支架！'}
               </p>
               {!proactiveHintText && (
                 <button

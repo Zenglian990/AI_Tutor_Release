@@ -258,6 +258,24 @@ async function runMigrations(db) {
       await db.exec('INSERT INTO schema_version (version) VALUES (11)');
     }
 
+    if (v < 12) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS user_gamification (
+          profile_id TEXT PRIMARY KEY,
+          rank_points INTEGER DEFAULT 120,
+          rank_tier TEXT DEFAULT '青铜求知者',
+          streak_days INTEGER DEFAULT 1,
+          solved_count INTEGER DEFAULT 0,
+          feynman_count INTEGER DEFAULT 0,
+          scratchpad_count INTEGER DEFAULT 0,
+          badges TEXT DEFAULT '[]',
+          last_active_date TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await db.exec('INSERT INTO schema_version (version) VALUES (12)');
+    }
+
   } catch (err) {
     logger.error('Failed during schema migration: ', err);
     throw err;

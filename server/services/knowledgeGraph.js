@@ -55,7 +55,9 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['有理数加减', '负数运算', '乘方', '去括号法则', '符号法则'],
     prerequisites: ['math_negative_numbers'],
     coreRule: '同号相加取相同符号并绝对值相加；异号相加取绝对值较大者的符号并大减小。括号前是负号，去括号后括号内各项必须全变号！',
-    commonMistake: '去括号时漏变某一项的符号（如 -(a - b) 误写成 -a - b），或者乘法负负得正搞混。'
+    commonMistake: '去括号时漏变某一项的符号（如 -(a - b) 误写成 -a - b），或者乘法负负得正搞混。',
+    lifeAnalogy: '把括号前负号想象成“把整件衣服翻了个面”，里面的每一个扣子（项）正反面全部都要跟着翻转！负负得正就像“抵消一个惩罚，等于一次奖励”。',
+    feynmanChallenge: '如果让你给五年级的小朋友讲清楚为什么 -(-3) = +3，你能不能用数轴掉头走或者欠债借钱的例子一次性讲明白？'
   },
   'math_negative_numbers': {
     id: 'math_negative_numbers',
@@ -65,7 +67,9 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['正数', '负数', '绝对值', '相反数', '数轴'],
     prerequisites: ['math_multiplication_division'],
     coreRule: '0既不是正数也不是负数。数轴上左边的数总比右边的数小。负数的绝对值是它的相反数。',
-    commonMistake: '误认为带负号的字母一定是负数（例如认为 -a 一定小于 0）。'
+    commonMistake: '误认为带负号的字母一定是负数（例如认为 -a 一定小于 0）。',
+    lifeAnalogy: '数轴就像是一根笔直的温度计或海拔标尺：0度是冰点，零下是负，零上是正；海平面是0，深海是负，高山是正。绝对值就是离0点的纯物理距离。',
+    feynmanChallenge: '若一个字母 a 本身就是 -5，那 -a 到底是正数还是负数？试着在草稿纸上画一条数轴把 a 和 -a 标出来！'
   },
   'math_linear_equation_one': {
     id: 'math_linear_equation_one',
@@ -324,6 +328,12 @@ function formatGraphRAGPromptSection(diagnosis) {
   section += '- 潜在前置概念断层：【' + rootCauseNode.name + '】(' + rootCauseNode.grade + ')\n';
   section += '- 根因核心法则与口诀：' + rootCauseNode.coreRule + '\n';
   section += '- 典型易错盲区警示：' + rootCauseNode.commonMistake + '\n';
+  if (rootCauseNode.lifeAnalogy) {
+    section += '- 🍎 生活具象隐喻启发：' + rootCauseNode.lifeAnalogy + '\n';
+  }
+  if (rootCauseNode.feynmanChallenge) {
+    section += '- 🔄 费曼反向挑战探针：' + rootCauseNode.feynmanChallenge + '\n';
+  }
   section += '- 教学引导指引：若学生在解题或推导中卡壳，请不要只在当前考点原地打转！请一语道破其底层的【' + rootCauseNode.name + '】概念断层，给出前置小锦囊或草稿纸自测，帮助学生打通因果链条！\n';
 
   return section;

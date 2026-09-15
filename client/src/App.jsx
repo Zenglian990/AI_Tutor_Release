@@ -19,6 +19,7 @@ import A4PrintModal from './components/A4PrintModal';
 import CampaignRoadmapModal from './components/CampaignRoadmapModal';
 import ParentMemoModal from './components/ParentMemoModal';
 import HomeworkBatchModal from './components/HomeworkBatchModal';
+import GamificationBadgeModal from './components/GamificationBadgeModal';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -75,11 +76,12 @@ function AppInner() {
   const [voiceDialogueMode, setVoiceDialogueMode] = useState('speaking'); // 'speaking' | 'listening' | 'processing'
   const [currentFocusQuestion, setCurrentFocusQuestion] = useState('');
 
-  // Macro Evolution States (Roadmap, A4 Exam, Parent Memo, Homework Batch Grade)
+  // Macro Evolution States (Roadmap, A4 Exam, Parent Memo, Homework Batch Grade, Gamification Badges)
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showParentMemo, setShowParentMemo] = useState(false);
   const [showBatchGrade, setShowBatchGrade] = useState(false);
+  const [showGamification, setShowGamification] = useState(false);
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -512,6 +514,7 @@ function AppInner() {
         isLightMode={isLightMode}
         onThemeToggle={() => setIsLightMode(!isLightMode)}
         onSettingsOpen={() => setShowSettings(true)}
+        onOpenGamification={() => setShowGamification(true)}
       />
 
       {/* Action buttons */}
@@ -600,6 +603,7 @@ function AppInner() {
             onOpenPrint={() => setShowPrintModal(true)}
             onOpenParentMemo={() => setShowParentMemo(true)}
             onOpenBatchGrade={() => setShowBatchGrade(true)}
+            onOpenGamification={() => setShowGamification(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -774,6 +778,13 @@ function AppInner() {
         subject={selectedSubject || '数学'}
         studentName={currentProfile?.name || '曾练'}
         onReviewMistakes={() => setShowMistakes(true)}
+      />
+
+      <GamificationBadgeModal
+        isOpen={showGamification}
+        onClose={() => setShowGamification(false)}
+        currentProfileId={currentProfileId}
+        studentName={currentProfile?.name || '曾练'}
       />
 
       <InputBar

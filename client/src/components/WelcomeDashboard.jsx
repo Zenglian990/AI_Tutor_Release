@@ -14,7 +14,8 @@ export default function WelcomeDashboard({
   onOpenRoadmap,
   onOpenPrint,
   onOpenParentMemo,
-  onOpenBatchGrade
+  onOpenBatchGrade,
+  onOpenGamification
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -242,6 +243,17 @@ export default function WelcomeDashboard({
         </div>
 
         {/* 6. Macro Roadmap & Paper-Screen Loop Super Cards */}
+        {onOpenGamification && (
+          <div className="action-card" onClick={onOpenGamification} role="button" tabIndex={0} style={{ borderColor: 'rgba(234, 179, 8, 0.4)', background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(245, 158, 11, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">👑</span>
+              <span className="action-card-name" style={{ color: '#facc15' }}>学霸段位与勋章墙</span>
+            </div>
+            <p className="action-card-desc">多巴胺成长驱动：连胜天数、费曼反讲勋章与数理院士之路</p>
+            <div className="action-card-cta" style={{ color: '#facc15' }}>查看段位勋章 →</div>
+          </div>
+        )}
+
         {onOpenRoadmap && (
           <div className="action-card" onClick={onOpenRoadmap} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
             <div className="action-card-header">

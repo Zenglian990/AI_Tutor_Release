@@ -86,7 +86,8 @@ const SOCRATIC_LEVELS = [
 export default function Header({
   profiles, currentProfileId, onProfileChange, onDeleteProfile, onRenameProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
-  onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen
+  onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
+  onOpenGamification
 }) {
   const { language } = useAppStore();
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
@@ -148,6 +149,30 @@ export default function Header({
         <select className="grade-selector" value={selectedGrade} onChange={e => onGradeChange(e.target.value)} aria-label="选择年级">
           {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
         </select>
+        {onOpenGamification && (
+          <button
+            onClick={onOpenGamification}
+            title="查看学霸成长段位与勋章"
+            aria-label="查看学霸段位勋章"
+            style={{
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.15))',
+              color: '#facc15',
+              border: '1px solid rgba(234, 179, 8, 0.4)',
+              borderRadius: '10px',
+              padding: '6px 12px',
+              fontSize: '0.85rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>👑</span>
+            <span>段位勋章</span>
+          </button>
+        )}
         <button onClick={handleSocraticClick} title={getTranslation(language, `mode.${currentSocratic.value}_title`)} aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
           style={{
             background: socraticLevel !== 'direct' ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)',
