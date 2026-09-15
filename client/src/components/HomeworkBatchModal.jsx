@@ -1,6 +1,75 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch } from '../store/useStore';
 import { compressImage } from '../utils/image';
+import { preprocessLatex } from '../utils/math';
+
+/**
+ * Robust Client-Side JSON Recovery Safeguard
+ * In case network proxy or legacy fallback returns embedded JSON inside standardAnswer
+ */
+function recoverJsonIfEmbedded(data) {
+  if (!data || !Array.isArray(data.results) || data.results.length !== 1) return data;
+  const single = data.results[0];
+  const ans = typeof single.standardAnswer === 'string' ? single.standardAnswer.trim() : '';
+
+  if (ans.includes('"results"') || ans.includes('results:')) {
+    try {
+      const clean = ans.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      const first = clean.indexOf('{');
+      const last = clean.lastIndexOf('}');
+      if (first !== -1 && last !== -1 && last > first) {
+        const jsonStr = clean.substring(first, last + 1);
+        const repaired = jsonStr
+          .replace(/,\s*([\]}])/g, '$1')
+          .replace(/\\(?:([^"\\/bfnrtu])|([bft][a-zA-Z]))/g, (m, p1, p2) => (p1 ? '\\\\' + p1 : '\\\\' + p2));
+        const parsed = JSON.parse(repaired);
+        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
+          const total = parsed.totalCount || parsed.results.length;
+          const correct = parsed.correctCount ?? parsed.results.filter(r => r.status === 'correct').length;
+          const wrong = parsed.wrongCount ?? parsed.results.filter(r => r.status === 'wrong').length;
+          return {
+            ...data,
+            totalCount: total,
+            correctCount: correct,
+            wrongCount: wrong,
+            accuracyPct: parsed.accuracyPct ?? Math.round((correct / Math.max(1, total)) * 100),
+            summaryHeadline: parsed.summaryHeadline || data.summaryHeadline,
+            teacherPraise: parsed.teacherPraise || data.teacherPraise,
+            teacherAdvice: parsed.teacherAdvice || data.teacherAdvice,
+            results: parsed.results
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[HomeworkBatch] Frontend recovery failed:', e);
+    }
+  }
+  return data;
+}
+
+/**
+ * Render Markdown + KaTeX safely without throwing
+ */
+function MathMarkdown({ content }) {
+  if (!content) return <span style={{ color: '#94a3b8' }}>（空）</span>;
+  return (
+    <div className="math-markdown-container" style={{ lineHeight: '1.6', wordBreak: 'break-word' }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkMath, remarkGfm]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          p: ({ children }) => <span style={{ display: 'inline' }}>{children}</span>
+        }}
+      >
+        {preprocessLatex(String(content))}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 /**
  * HomeworkBatchModal
@@ -22,6 +91,7 @@ export default function HomeworkBatchModal({
   const [analyzing, setAnalyzing] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [filterTab, setFilterTab] = useState('all'); // 'all', 'wrong', 'correct'
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -32,6 +102,7 @@ export default function HomeworkBatchModal({
     setPreviewUrl(URL.createObjectURL(file));
     setErrorMsg('');
     setBatchResult(null);
+    setFilterTab('all');
   };
 
   const handleStartBatchGrade = async () => {
@@ -62,7 +133,9 @@ export default function HomeworkBatchModal({
       }
 
       const result = await res.json();
-      setBatchResult(result);
+      const processed = recoverJsonIfEmbedded(result);
+      setBatchResult(processed);
+      setFilterTab('all');
     } catch (err) {
       console.error('Batch grade error:', err);
       setErrorMsg(err.message || '网络连接超时，请重试');
@@ -77,15 +150,22 @@ export default function HomeworkBatchModal({
     setPreviewUrl(null);
     setBatchResult(null);
     setErrorMsg('');
+    setFilterTab('all');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const filteredQuestions = (batchResult?.results || []).filter(q => {
+    if (filterTab === 'wrong') return q.status === 'wrong' || q.status === 'partial';
+    if (filterTab === 'correct') return q.status === 'correct';
+    return true;
+  });
 
   return (
     <div style={{
       position: 'fixed',
       top: 0, left: 0, width: '100vw', height: '100vh',
-      background: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(8px)',
+      background: 'rgba(15, 23, 42, 0.82)',
+      backdropFilter: 'blur(10px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       zIndex: 1000
     }}>
@@ -93,23 +173,23 @@ export default function HomeworkBatchModal({
         background: 'var(--bg-secondary, #1e293b)',
         color: 'var(--text-primary, #f8fafc)',
         width: '92%',
-        maxWidth: '860px',
-        maxHeight: '90vh',
+        maxWidth: '880px',
+        maxHeight: '92vh',
         borderRadius: '20px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
+        border: '1px solid rgba(255, 255, 255, 0.12)'
       }}>
         {/* Header */}
         <div style={{
-          padding: '18px 24px',
+          padding: '16px 24px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(30, 41, 59, 0.8)'
+          background: 'rgba(30, 41, 59, 0.95)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '1.8rem' }}>📑</span>
@@ -117,20 +197,23 @@ export default function HomeworkBatchModal({
               <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>
                 整页作业/试卷多题秒级批改
               </h3>
-              <p style={{ margin: '3px 0 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
-                学生：{studentName} · 学科：{subject} · 自动切片定位 · 错题一键归档艾宾浩斯库
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                学生：<strong>{studentName}</strong> · 学科：<strong>{subject}</strong> · AI 名师逐题审阅 · 公式级 LaTeX 渲染
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="关闭窗口"
             style={{
               background: 'transparent',
               border: 'none',
               color: '#94a3b8',
               fontSize: '1.5rem',
               cursor: 'pointer',
-              padding: '4px 8px'
+              padding: '4px 8px',
+              borderRadius: '6px',
+              transition: 'background 0.2s'
             }}
           >
             ✕
@@ -145,7 +228,7 @@ export default function HomeworkBatchModal({
               border: '1px solid rgba(239, 68, 68, 0.3)',
               color: '#f87171',
               padding: '12px 16px',
-              borderRadius: '10px',
+              borderRadius: '12px',
               marginBottom: '18px',
               fontSize: '0.9rem'
             }}>
@@ -159,11 +242,11 @@ export default function HomeworkBatchModal({
               <div
                 onClick={() => !analyzing && fileInputRef.current?.click()}
                 style={{
-                  border: '2px dashed rgba(56, 189, 248, 0.4)',
+                  border: '2px dashed rgba(56, 189, 248, 0.45)',
                   borderRadius: '16px',
-                  padding: previewUrl ? '16px' : '40px 20px',
+                  padding: previewUrl ? '16px' : '44px 20px',
                   textAlign: 'center',
-                  background: 'rgba(15, 23, 42, 0.5)',
+                  background: 'rgba(15, 23, 42, 0.55)',
                   cursor: analyzing ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
                   position: 'relative'
@@ -186,18 +269,18 @@ export default function HomeworkBatchModal({
                       alt="整页作业待批改"
                       style={{ maxHeight: '360px', maxWidth: '100%', borderRadius: '12px', objectFit: 'contain', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}
                     />
-                    <p style={{ marginTop: '12px', fontSize: '0.85rem', color: '#94a3b8' }}>
-                      点击图片可更换照片
+                    <p style={{ marginTop: '12px', fontSize: '0.85rem', color: '#38bdf8' }}>
+                      📸 已选取图片，点击可重新更换照片
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <div style={{ fontSize: '3rem', marginBottom: '12px' }}>📷</div>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: '#f1f5f9' }}>
-                      点击拍照或上传整页作业/练习册/试卷
+                    <div style={{ fontSize: '3.2rem', marginBottom: '12px' }}>📷</div>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.15rem', color: '#f1f5f9' }}>
+                      点击拍照或上传整页作业 / 练习册 / 试卷
                     </h4>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                      支持竖排、横排手写运算与几何作图，名师将自动识别所有题号并逐题判断
+                      支持清晰演算手迹、选择题、填空题与几何大题，特级名师将自动进行逐题定位判分
                     </p>
                   </div>
                 )}
@@ -243,7 +326,7 @@ export default function HomeworkBatchModal({
                   {analyzing ? (
                     <>
                       <span className="dot" style={{ animation: 'pulse 1s infinite' }}>⏳</span>
-                      <span>名师正在逐题严密审阅批改中...</span>
+                      <span>AI 特级名师正在逐题严密审阅批改中...</span>
                     </>
                   ) : (
                     <>
@@ -259,34 +342,40 @@ export default function HomeworkBatchModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {/* Summary Dashboard Banner */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8))',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85))',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
                 borderRadius: '16px',
                 padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <span style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 600 }}>批改诊断结果</span>
-                    <h4 style={{ margin: '4px 0 0 0', fontSize: '1.2rem', color: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ maxWidth: '60%' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, letterSpacing: '0.5px' }}>
+                      【{subject}】整卷智能诊断报告
+                    </span>
+                    <h4 style={{ margin: '4px 0 0 0', fontSize: '1.2rem', color: '#fff', lineHeight: 1.4 }}>
                       {batchResult.summaryHeadline}
                     </h4>
                   </div>
                   {/* Score Pills */}
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '6px 14px', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#7dd3fc' }}>识别题数</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#38bdf8' }}>{batchResult.totalCount || batchResult.results?.length || 0}</div>
+                    </div>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
                       <div style={{ fontSize: '0.75rem', color: '#6ee7b7' }}>答对题目</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#34d399' }}>{batchResult.correctCount} 道</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#34d399' }}>{batchResult.correctCount} 道</div>
                     </div>
-                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '6px 14px', borderRadius: '12px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>失分错题</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#f87171' }}>{batchResult.wrongCount} 道</div>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>待订正</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f87171' }}>{batchResult.wrongCount} 道</div>
                     </div>
-                    <div style={{ background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '6px 14px', borderRadius: '12px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#bae6fd' }}>正确率</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#38bdf8' }}>{batchResult.accuracyPct}%</div>
+                    <div style={{ background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#d8b4fe' }}>正确率</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#c084fc' }}>{batchResult.accuracyPct}%</div>
                     </div>
                   </div>
                 </div>
@@ -296,14 +385,16 @@ export default function HomeworkBatchModal({
                     background: 'rgba(245, 158, 11, 0.15)',
                     border: '1px solid rgba(245, 158, 11, 0.3)',
                     borderRadius: '10px',
-                    padding: '8px 14px',
-                    fontSize: '0.85rem',
+                    padding: '10px 14px',
+                    fontSize: '0.88rem',
                     color: '#fbbf24',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px'
                   }}>
-                    <span>📥 已自动将本次发现的 <strong>{batchResult.autoArchivedCount}</strong> 道错题录入艾宾浩斯抗遗忘错题本！</span>
+                    <span>📥 已自动将本次发现的 <strong>{batchResult.autoArchivedCount}</strong> 道失分题归档进抗遗忘错题本！</span>
                     {onReviewMistakes && (
                       <button
                         onClick={() => { onClose(); onReviewMistakes(); }}
@@ -311,98 +402,238 @@ export default function HomeworkBatchModal({
                           background: '#d97706',
                           color: '#fff',
                           border: 'none',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
                           cursor: 'pointer',
-                          fontWeight: 600
+                          fontWeight: 600,
+                          boxShadow: '0 2px 6px rgba(217, 119, 6, 0.4)'
                         }}
                       >
-                        去错题本复盘 →
+                        去错题本强化变式 →
                       </button>
                     )}
                   </div>
                 )}
 
-                <div style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                  <div>🌟 <strong>教师寄语</strong>：{batchResult.teacherPraise}</div>
-                  <div style={{ marginTop: '4px' }}>💡 <strong>考点锦囊</strong>：{batchResult.teacherAdvice}</div>
+                <div style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6', background: 'rgba(0, 0, 0, 0.25)', padding: '12px 16px', borderRadius: '10px' }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    <span style={{ color: '#fbbf24', fontWeight: 600 }}>🌟 名师寄语：</span>
+                    {batchResult.teacherPraise}
+                  </div>
+                  <div>
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>💡 考点锦囊：</span>
+                    {batchResult.teacherAdvice}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#f1f5f9', fontWeight: 700 }}>
+                  逐题详析与批注清单：
+                </h4>
+                <div style={{ display: 'flex', gap: '6px', background: 'rgba(15, 23, 42, 0.5)', padding: '3px', borderRadius: '10px' }}>
+                  <button
+                    onClick={() => setFilterTab('all')}
+                    style={{
+                      background: filterTab === 'all' ? '#2563eb' : 'transparent',
+                      color: filterTab === 'all' ? '#fff' : '#94a3b8',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    全部 ({batchResult.results?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('wrong')}
+                    style={{
+                      background: filterTab === 'wrong' ? '#ef4444' : 'transparent',
+                      color: filterTab === 'wrong' ? '#fff' : '#94a3b8',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    需订正 ({batchResult.wrongCount || 0})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('correct')}
+                    style={{
+                      background: filterTab === 'correct' ? '#10b981' : 'transparent',
+                      color: filterTab === 'correct' ? '#fff' : '#94a3b8',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    正确 ({batchResult.correctCount || 0})
+                  </button>
                 </div>
               </div>
 
               {/* Question By Question List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h4 style={{ margin: '8px 0 0 0', fontSize: '1rem', color: '#94a3b8' }}>
-                  逐题判分与批注详情 ({batchResult.results?.length || 0} 题)：
-                </h4>
-
-                {batchResult.results?.map((q, idx) => (
-                  <div key={idx} style={{
-                    background: 'rgba(15, 23, 42, 0.4)',
-                    border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.4)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)')}`,
-                    borderRadius: '14px',
-                    padding: '16px 20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          fontSize: '1.2rem',
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: q.status === 'correct' ? '#10b981' : (q.status === 'wrong' ? '#ef4444' : '#f59e0b'),
-                          color: '#fff',
-                          fontWeight: 'bold'
-                        }}>
-                          {q.status === 'correct' ? '✓' : (q.status === 'wrong' ? '✕' : '~')}
-                        </span>
-                        <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f8fafc' }}>
-                          第 {q.questionNumber || (idx + 1)} 题 ({q.type || '常规题'})
-                        </span>
-                      </div>
-                      <span style={{
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24')
-                      }}>
-                        得分：{q.score} / {q.maxScore || 10} 分
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '0.95rem', color: '#cbd5e1', lineHeight: '1.5' }}>
-                      <strong>题目要点：</strong>{q.questionSnippet}
-                    </div>
-
-                    <div style={{
-                      background: 'rgba(0,0,0,0.2)',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
+                {filteredQuestions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '12px' }}>
+                    当前分类下暂无题目
+                  </div>
+                ) : (
+                  filteredQuestions.map((q, idx) => (
+                    <div key={idx} style={{
+                      background: 'rgba(15, 23, 42, 0.5)',
+                      border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.35)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)')}`,
+                      borderRadius: '14px',
+                      padding: '16px 20px',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '6px'
+                      gap: '12px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
                     }}>
-                      <div><span style={{ color: '#94a3b8' }}>卷面作答：</span><span style={{ color: '#f1f5f9' }}>{q.studentAnswer || '无作答'}</span></div>
-                      <div><span style={{ color: '#94a3b8' }}>标准答案：</span><span style={{ color: '#34d399' }}>{q.standardAnswer}</span></div>
+                      {/* Question Card Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{
+                            fontSize: '0.85rem',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            background: q.status === 'correct' ? 'rgba(16, 185, 129, 0.2)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
+                            color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24'),
+                            border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.4)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)')}`,
+                            fontWeight: 700
+                          }}>
+                            {q.status === 'correct' ? '✓ 正确' : (q.status === 'wrong' ? '✕ 需订正' : '~ 步骤分')}
+                          </span>
+                          <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f8fafc' }}>
+                            第 {q.questionNumber || (idx + 1)} 题
+                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500, marginLeft: '6px' }}>
+                              ({q.type || '试题'})
+                            </span>
+                          </span>
+                        </div>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: '0.92rem',
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.05)',
+                          color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24')
+                        }}>
+                          得分：{q.score ?? (q.status === 'correct' ? 10 : 0)} / {q.maxScore || 10} 分
+                        </span>
+                      </div>
+
+                      {/* Question Stem / Snippet */}
+                      <div style={{
+                        fontSize: '0.95rem',
+                        color: '#f1f5f9',
+                        lineHeight: '1.5',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        borderLeft: '3px solid #38bdf8'
+                      }}>
+                        <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>题目考点：</span>
+                        <MathMarkdown content={q.questionSnippet} />
+                      </div>
+
+                      {/* Side by side / stacked Answer Comparison */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '12px'
+                      }}>
+                        {/* Student Answer */}
+                        <div style={{
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(255,255,255,0.06)'
+                        }}>
+                          <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginBottom: '4px' }}>
+                            ✍️ 学生卷面作答
+                          </div>
+                          <div style={{ color: '#f1f5f9', fontSize: '0.92rem' }}>
+                            <MathMarkdown content={q.studentAnswer || '卷面未作答 / 留白'} />
+                          </div>
+                        </div>
+
+                        {/* Standard Answer */}
+                        <div style={{
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(16, 185, 129, 0.2)'
+                        }}>
+                          <div style={{ fontSize: '0.8rem', color: '#6ee7b7', fontWeight: 600, marginBottom: '4px' }}>
+                            🎯 名师标准答案与推导
+                          </div>
+                          <div style={{ color: '#e2e8f0', fontSize: '0.92rem' }}>
+                            <MathMarkdown content={q.standardAnswer} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mistake Diagnosis */}
                       {q.mistakeReason && (
-                        <div><span style={{ color: '#f87171' }}>错因剖析：</span><span style={{ color: '#fca5a5' }}>{q.mistakeReason}</span></div>
+                        <div style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          borderLeft: '3px solid #ef4444',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          fontSize: '0.9rem'
+                        }}>
+                          <span style={{ color: '#f87171', fontWeight: 600, marginRight: '6px' }}>⚠️ 错因剖析：</span>
+                          <span style={{ color: '#fca5a5' }}><MathMarkdown content={q.mistakeReason} /></span>
+                        </div>
                       )}
+
+                      {/* Key Insight */}
                       {q.keyInsight && (
-                        <div><span style={{ color: '#38bdf8' }}>题眼穿透：</span><span style={{ color: '#bae6fd' }}>{q.keyInsight}</span></div>
+                        <div style={{
+                          background: 'rgba(56, 189, 248, 0.08)',
+                          borderLeft: '3px solid #0284c7',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          fontSize: '0.9rem'
+                        }}>
+                          <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>💡 题眼穿透与心法：</span>
+                          <span style={{ color: '#bae6fd' }}><MathMarkdown content={q.keyInsight} /></span>
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
-              {/* Bottom Finish Button */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+              {/* Bottom Action Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                {batchResult.wrongCount > 0 && onReviewMistakes && (
+                  <button
+                    onClick={() => { onClose(); onReviewMistakes(); }}
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.2)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      color: '#fbbf24',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    前往错题本攻坚 ({batchResult.wrongCount}) →
+                  </button>
+                )}
                 <button
                   onClick={handleReset}
                   style={{
@@ -412,7 +643,8 @@ export default function HomeworkBatchModal({
                     padding: '10px 24px',
                     borderRadius: '10px',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
                   }}
                 >
                   批改下一张作业 📷

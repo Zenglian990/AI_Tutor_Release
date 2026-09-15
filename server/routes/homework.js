@@ -1,10 +1,11 @@
-﻿const express = require('express');
+const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { encryptField } = require('../utils/crypto');
 const logger = require('../services/logger');
+const { extractAndParseJson } = require('../utils/jsonParser');
 
 // Allowed image MIME types
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
@@ -92,7 +93,8 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 8192
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json"
       }
     };
 
@@ -114,39 +116,47 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
     const aiData = await aiRes.json();
     const replyText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Extract JSON block
-    let parsedData = null;
-    try {
-      const jsonMatch = replyText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedData = JSON.parse(jsonMatch[0]);
-      } else {
-        parsedData = JSON.parse(replyText);
-      }
-    } catch (parseErr) {
-      logger.warn('[HomeworkBatch] Failed JSON parse, raw reply:', replyText.substring(0, 300));
-      // Fallback structured data
+    // Extract JSON block with resilient multi-tier parser
+    let parsedData = extractAndParseJson(replyText);
+
+    if (!parsedData || !Array.isArray(parsedData.results) || parsedData.results.length === 0) {
+      logger.warn('[HomeworkBatch] JSON parser returned empty or invalid structure, raw reply sample:', replyText.substring(0, 300));
+      // Fallback clean structured data (clean raw markdown fences from standardAnswer)
+      const cleanReply = replyText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
       parsedData = {
         totalCount: 1,
         correctCount: 0,
         wrongCount: 1,
         accuracyPct: 0,
-        summaryHeadline: '作业已识别，请参考名师详细批注',
+        summaryHeadline: '整卷作业已识别完成，请核对批注解析',
         teacherPraise: '完成作业态度认真！',
-        teacherAdvice: '请核对详细推导步骤。',
+        teacherAdvice: '请对照答案认真订正推导步骤。',
         results: [{
           questionNumber: 1,
           type: '综合题',
-          questionSnippet: '整页批注',
+          questionSnippet: '整页作业识别与解析',
           studentAnswer: '见卷面作答',
-          standardAnswer: replyText,
+          standardAnswer: cleanReply || '请参考教师解析',
           status: 'partial',
           score: 5,
           maxScore: 10,
-          mistakeReason: '需要核对具体计算细节',
-          keyInsight: '保持清晰的演算步骤'
+          mistakeReason: '需要核对具体计算与书写细节',
+          keyInsight: '规范演算步骤，注意符号法则与代数恒等变形'
         }]
       };
+    } else {
+      // Ensure summary statistics are accurate
+      const results = parsedData.results;
+      if (!parsedData.totalCount) parsedData.totalCount = results.length;
+      if (parsedData.correctCount === undefined) {
+        parsedData.correctCount = results.filter(r => r.status === 'correct').length;
+      }
+      if (parsedData.wrongCount === undefined) {
+        parsedData.wrongCount = results.filter(r => r.status === 'wrong').length;
+      }
+      if (parsedData.accuracyPct === undefined) {
+        parsedData.accuracyPct = Math.round((parsedData.correctCount / Math.max(1, results.length)) * 100);
+      }
     }
 
     // Auto-archive wrong questions to mistakes table if SQLite available
