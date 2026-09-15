@@ -99,7 +99,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['整式乘法', '平方差公式', '完全平方公式', '单项式乘多项式'],
     prerequisites: ['math_algebraic_expression'],
     coreRule: '平方差公式：(a+b)(a-b) = a² - b²；完全平方公式：(a±b)² = a² ± 2ab + b²（注意中间有双倍乘积项！）。',
-    commonMistake: '完全平方公式漏掉中间项 2ab（误写成 (a+b)² = a² + b²）。'
+    commonMistake: '完全平方公式漏掉中间项 2ab（误写成 (a+b)² = a² + b²）。',
+    teacherMnemonic: '首平方，尾平方，首尾二倍在中央；符号看前方，同号加异号减！',
+    lifeAnalogy: '就像盖房子：左边一个大房间(a²)，右边一个大房间(b²)，中间连接两个房间的双向走廊(2ab)千万不能忘！',
+    feynmanChallenge: '如果让你在草稿纸上画一个边长为 (a+b) 的大正方形，切成4块，你能把 2ab 对应的两个长方形指给我看吗？'
   },
   'math_factorization': {
     id: 'math_factorization',
@@ -109,7 +112,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['因式分解', '提公因式法', '公式法', '十字相乘'],
     prerequisites: ['math_polynomial_multiplication'],
     coreRule: '因式分解必须进行到每一个因式都不能再分解为止。提公因式要提彻底，提负号后各项全变号。',
-    commonMistake: '分解不彻底（如将 x⁴ - 16 仅分解为 (x²+4)(x²-4)，漏分第二项），或公因式包含负号时符号混淆。'
+    commonMistake: '分解不彻底（如将 x⁴ - 16 仅分解为 (x²+4)(x²-4)，漏分第二项），或公因式包含负号时符号混淆。',
+    teacherMnemonic: '一提（提公因式）二套（套公式）三分组（分组分解）四十字；查到底，绝不留尾巴！',
+    lifeAnalogy: '因式分解就像“把一辆组装好的乐高车拆成最小的标准零件块”，只要其中一个零件块还能再拆，工序就没做完。',
+    feynmanChallenge: '为什么 x² - 4 可以分解，但 x² + 4 在实数范围内就不能分解了？用图形或根的意义给我上一课！'
   },
   'math_square_root': {
     id: 'math_square_root',
@@ -119,7 +125,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['平方根', '算术平方根', '立方根', '二次根式', '根号'],
     prerequisites: ['math_rational_operations'],
     coreRule: '正数有两个互为相反数的平方根；0的平方根是0；负数在实数范围内没有平方根。算术平方根具有双重非负性：√a ≥ 0 (a ≥ 0)。',
-    commonMistake: '混淆“平方根”（两个值 ±√a）与“算术平方根”（非负值 √a）。'
+    commonMistake: '混淆“平方根”（两个值 ±√a）与“算术平方根”（非负值 √a）。',
+    teacherMnemonic: '平方根找双胞胎（正负俩兄弟），算术根只要大哥（非负正能量）！',
+    lifeAnalogy: '求算术平方根就像已知正方形地砖的面积，量它单边边长是多少。边长绝不可能是负数。',
+    feynmanChallenge: '如果题目问你“4的平方根是谁”和“根号4等于多少”，这两个问题的答案一样吗？为什么？'
   },
   'math_pythagorean': {
     id: 'math_pythagorean',
@@ -129,7 +138,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['勾股定理', '勾股数', '直角三角形', '斜边'],
     prerequisites: ['math_square_root', 'math_congruent_triangles'],
     coreRule: '直角三角形两直角边的平方和等于斜边的平方：a² + b² = c²。已知两边求第三边必须分清哪个是斜边，防止漏解分类讨论！',
-    commonMistake: '没有明确指明直角边和斜边就直接套用公式（若题中未说c是斜边，漏掉c是直角边的情况）。'
+    commonMistake: '没有明确指明直角边和斜边就直接套用公式（若题中未说c是斜边，漏掉c是直角边的情况）。',
+    teacherMnemonic: '勾三股四弦五，求第三边先看斜；题干未点谁是斜，必分两种分类答！',
+    lifeAnalogy: '就像两个人从同一个路口一个向东走3米、一个向北走4米，他们之间的直线空中距离就是那条斜边（5米）。',
+    feynmanChallenge: '直角三角形两边长是 3 和 4，第三边是 5 对不对？错在哪里？'
   },
   'math_quadratic_equation': {
     id: 'math_quadratic_equation',
@@ -139,7 +151,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['一元二次方程', '求根公式', '配方法', '判别式', '韦达定理'],
     prerequisites: ['math_factorization', 'math_square_root', 'math_linear_equation_one'],
     coreRule: '标准形式 ax² + bx + c = 0 (a≠0)。判别式 Δ = b² - 4ac。求根公式 x = [-b ± √(b²-4ac)] / (2a)。优先考虑因式分解法！',
-    commonMistake: '方程两边同除以含有未知数的式子导致失根（如 x² = 2x 误直接除以 x 得到 x=2，丢失了 x=0 的解）。'
+    commonMistake: '方程两边同除以含有未知数的式子导致失根（如 x² = 2x 误直接除以 x 得到 x=2，丢失了 x=0 的解）。',
+    teacherMnemonic: '判别式大于零两根分，等于零两根同，小于零无实根；等式两边绝不除未知数防失根！',
+    lifeAnalogy: '方程就像一家人：一元一次方程是小弟，一元二次方程是大哥，二元一次方程组是双胞胎。解方程本质就是把不认识的复杂关系拆解降维到我们熟悉的一元一次！',
+    feynmanChallenge: '解方程 x(x-3) = 2(x-3)，有同学直接两边约去 (x-3) 得到 x=2，你觉得这位同学犯了什么致命错误？怎么反驳他？'
   },
   'math_quadratic_function': {
     id: 'math_quadratic_function',
@@ -149,7 +164,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['二次函数', '抛物线', '顶点坐标', '对称轴', '最大值最小值', '压轴题'],
     prerequisites: ['math_quadratic_equation', 'math_linear_function'],
     coreRule: '顶点式 y = a(x-h)² + k，顶点坐标 (h, k)，对称轴 x = h。开口方向由 a 决定。与x轴交点由判别式 Δ 决定。',
-    commonMistake: '配方求顶点时提取 a 后，一次项未除以 a；对称轴公式 x = -b/(2a) 符号记错。'
+    commonMistake: '配方求顶点时提取 a 后，一次项未除以 a；对称轴公式 x = -b/(2a) 符号记错。',
+    teacherMnemonic: '左加右减括号内（自变量移动反直觉），上加下减常数后；a定胖瘦与朝向，对称轴看-b/2a！',
+    lifeAnalogy: '二次函数图像就像向空中投掷一枚篮球或喷泉水柱：到达最高点（顶点）前向上冲，过了对称轴就匀速下落，左右完全对称。',
+    feynmanChallenge: '为什么 y = (x-2)² 的图像不是往左移2个单位，而是往右移2个单位？请用表格带入几个数值解释为什么会“反直觉”！'
   },
   'math_linear_function': {
     id: 'math_linear_function',
@@ -159,7 +177,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['一次函数', '正比例函数', '斜率k', '截距b', '坐标系'],
     prerequisites: ['math_linear_equation_one'],
     coreRule: 'y = kx + b (k≠0)。k决定函数图像的增减性和倾斜方向，b决定与y轴交点坐标(0, b)。',
-    commonMistake: '混淆k与b的几何意义；待定系数法求解析式时两点坐标代入计算错误。'
+    commonMistake: '混淆k与b的几何意义；待定系数法求解析式时两点坐标代入计算错误。',
+    teacherMnemonic: 'k正往上爬，k负往下滑；b就是你站在y轴上的起跑点！',
+    lifeAnalogy: '一次函数是懒人走路——永远朝一个方向匀速前进，绝不拐弯。出租车起步价就是b，每公里加价就是斜率k。',
+    feynmanChallenge: '如果两条直线的k相同但b不同，这两条直线在坐标系里的位置关系是什么？为什么？'
   },
   'math_congruent_triangles': {
     id: 'math_congruent_triangles',
@@ -169,7 +190,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['全等三角形', 'SSS', 'SAS', 'ASA', 'AAS', 'HL'],
     prerequisites: ['math_angle_parallel'],
     coreRule: '判定定理：SSS、SAS、ASA、AAS；直角三角形特有 HL。注意：SSA（两边及一边的对角）不能证明全等！',
-    commonMistake: '误用 SSA 判定全等，或找角平分线、高线对应关系时推导断链。'
+    commonMistake: '误用 SSA 判定全等，或找角平分线、高线对应关系时推导断链。',
+    teacherMnemonic: '先找两个已知量，第三个量自然现；两边夹角才叫角(SAS)，边边对角(SSA)不能算！',
+    lifeAnalogy: '全等就是影分身（克隆体，完全重合）；相似就是放大缩小。先在图中用红笔把已经相等的边和角打勾标记，就像拼图找匹配凹凸口。',
+    feynmanChallenge: '为什么两边以及其中一边的对角相等(SSA)不能保证两个三角形全等？试着用圆规在纸上画一画为什么会出现两种不同形状！'
   },
   'math_angle_parallel': {
     id: 'math_angle_parallel',
@@ -179,7 +203,10 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['平行线性质', '同位角', '内错角', '同旁内角', '对顶角'],
     prerequisites: [],
     coreRule: '两直线平行，同位角相等，内错角相等，同旁内角互补。',
-    commonMistake: '不能在复杂图形中准确找出同位角或内错角的“截线”与“被截线”。'
+    commonMistake: '不能在复杂图形中准确找出同位角或内错角的“截线”与“被截线”。',
+    teacherMnemonic: '找F看同位，找Z看内错，找U同旁内角凑一百八！',
+    lifeAnalogy: '铁轨两条平行线被一条马路斜穿切过，路口左右两边对应的视角就是同位角。',
+    feynmanChallenge: '在黑板上画一个字母Z，你能指出哪两个角是内错角吗？如果把Z的两横拉得不平行，这两个角还相等吗？'
   },
   'math_multiplication_division': {
     id: 'math_multiplication_division',
@@ -328,6 +355,9 @@ function formatGraphRAGPromptSection(diagnosis) {
   section += '- 潜在前置概念断层：【' + rootCauseNode.name + '】(' + rootCauseNode.grade + ')\n';
   section += '- 根因核心法则与口诀：' + rootCauseNode.coreRule + '\n';
   section += '- 典型易错盲区警示：' + rootCauseNode.commonMistake + '\n';
+  if (rootCauseNode.teacherMnemonic) {
+    section += '- 📜 真实名师独门口诀：' + rootCauseNode.teacherMnemonic + '\n';
+  }
   if (rootCauseNode.lifeAnalogy) {
     section += '- 🍎 生活具象隐喻启发：' + rootCauseNode.lifeAnalogy + '\n';
   }

@@ -1,4 +1,4 @@
-﻿const { test, before, after } = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
 const { createApp } = require('../server/app');
@@ -37,34 +37,37 @@ after(async () => {
   }
 });
 
-test('Real Skills: System guidelines include Feynman reverse probe, Life analogies, and Tri-level error analysis', () => {
+test('Real Skills: System guidelines include Feynman reverse probe, Life analogies, and Deliberate practice', () => {
   const guidelines = getPromptGuidelines('7_up', 'strict');
   assert.ok(guidelines.includes('费曼反向挑战与防假懂探针'), 'Missing Feynman reverse probe');
   assert.ok(guidelines.includes('具象生活隐喻支架'), 'Missing life analogies');
   assert.ok(guidelines.includes('三层错因精准归因'), 'Missing tri-level error analysis');
-  assert.ok(guidelines.includes('逆向抽查探针'), 'Should mention reverse probe');
+  assert.ok(guidelines.includes('心智演练与做题前闭眼预演'), 'Missing mental rehearsal');
+  assert.ok(guidelines.includes('Ericsson 刻意练习跨场景变式循环'), 'Missing deliberate practice');
 });
 
-test('Real Skills: KnowledgeGraph formatGraphRAGPromptSection includes lifeAnalogy and feynmanChallenge', () => {
+test('Real Skills: KnowledgeGraph formatGraphRAGPromptSection includes lifeAnalogy, teacherMnemonic and feynmanChallenge', () => {
   const mockDiagnosis = {
     hasPrerequisites: true,
     currentTopic: {
-      name: '有理数四则运算与去括号',
-      grade: '7_up'
+      name: '整式的乘法与乘法公式',
+      grade: '7_down'
     },
     rootCauseNode: {
-      name: '正数和负数及数轴概念',
-      grade: '7_up',
-      coreRule: '0既不是正数也不是负数。数轴上左边的数总比右边的数小。负数的绝对值是它的相反数。',
-      commonMistake: '误认为带负号的字母一定是负数。',
-      lifeAnalogy: '数轴就像是一根笔直的温度计：0度是冰点，零下是负，零上是正。',
-      feynmanChallenge: '若一个字母 a 本身就是 -5，那 -a 到底是正数还是负数？'
+      name: '整式的乘法与乘法公式',
+      grade: '7_down',
+      coreRule: '完全平方公式：(a±b)² = a² ± 2ab + b²。',
+      commonMistake: '完全平方公式漏掉中间项 2ab。',
+      teacherMnemonic: '首平方，尾平方，首尾二倍在中央；符号看前方，同号加异号减！',
+      lifeAnalogy: '就像盖房子：左边一个大房间(a²)，右边一个大房间(b²)，走廊(2ab)千万不能忘！',
+      feynmanChallenge: '在草稿纸上画一个边长为 (a+b) 的大正方形，切成4块指出 2ab 对应的长方形！'
     }
   };
   const section = formatGraphRAGPromptSection(mockDiagnosis);
+  assert.ok(section.includes('真实名师独门口诀'), 'GraphRAG prompt should include teacher mnemonic section');
+  assert.ok(section.includes('首平方，尾平方'), 'Should have teacher mnemonic content');
   assert.ok(section.includes('生活具象隐喻'), 'GraphRAG prompt should include life analogy section');
   assert.ok(section.includes('费曼反向挑战'), 'GraphRAG prompt should include feynman challenge section');
-  assert.ok(section.includes('温度计'), 'Should have negative numbers analogy text');
 });
 
 test('Gamification API: GET /api/gamification/profile returns tier, streak, and badges', async () => {
