@@ -34,13 +34,14 @@ function authMiddleware(req, res, next) {
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // In development, optionally skip auth
-  if ((NODE_ENV === 'development' || NODE_ENV === 'test') && !process.env.REQUIRE_AUTH) return next();
+  const currentEnv = process.env.NODE_ENV || NODE_ENV;
+  if ((currentEnv === 'development' || currentEnv === 'test') && !process.env.REQUIRE_AUTH) return next();
 
   // Brute-force check per IP
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
   // Allow local requests without token ONLY if explicitly enabled for development
-  if ((clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
+  if (currentEnv === 'development' && (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
     return next();
   }
   const now = Date.now();

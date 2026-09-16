@@ -85,14 +85,43 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition) {
   }
 
   try {
-    const queryVector = await getEmbedding(query);
-    if (!queryVector) {
-      logger.warn('[SearchService] Failed to generate query embedding. Skipping vector search.');
-      return [];
+    let queryVector = null;
+    let isQuotaExhausted = false;
+    try {
+      queryVector = await getEmbedding(query);
+    } catch (embedErr) {
+      if (embedErr.code === 'EMBED_QUOTA_EXHAUSTED' || embedErr.message === 'EMBED_QUOTA_EXHAUSTED') {
+        isQuotaExhausted = true;
+        logger.warn('[SearchService] Embedding quota exhausted (429), attempting FTS text fallback.');
+      } else {
+        logger.warn('[SearchService] Failed to generate query embedding:', embedErr.message);
+      }
     }
 
     const whereClause = buildLanceDBWhereClause(grade, subject, edition);
     const ftsQuery = cleanQueryForFTS(query);
+
+    // Fallback: If no queryVector available (quota exhausted or offline), execute FTS text search only
+    if (!queryVector) {
+      let ftsResults = [];
+      try {
+        let builder = table.search(ftsQuery, "fts");
+        if (whereClause) builder = builder.where(whereClause);
+        ftsResults = await builder.limit(limit).toArray();
+        if (ftsResults.length === 0 && whereClause) {
+          ftsResults = await table.search(ftsQuery, "fts").limit(limit).toArray();
+        }
+      } catch (ftsErr) {
+        logger.warn('[SearchService] FTS text search failed in fallback:', ftsErr.message);
+      }
+      ftsResults = ftsResults.filter(r => r.source !== 'mock.txt');
+      if (isQuotaExhausted) {
+        const quotaExhaustedErr = new Error('EMBED_QUOTA_EXHAUSTED');
+        quotaExhaustedErr.partialResults = ftsResults.slice(0, limit);
+        throw quotaExhaustedErr;
+      }
+      return ftsResults.slice(0, limit);
+    }
     
     // Execute searches in parallel
     const [vectorRes, ftsRes] = await Promise.all([
@@ -145,9 +174,8 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition) {
 
     return results.slice(0, limit);
   } catch (err) {
-    logger.error('[SearchService] Hybrid search failed:', err);
-    // Propagate quota exhaustion so routes can return a user-friendly message
     if (err.message === 'EMBED_QUOTA_EXHAUSTED') throw err;
+    logger.error('[SearchService] Hybrid search failed:', err);
     return [];
   }
 }

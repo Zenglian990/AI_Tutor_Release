@@ -1,6 +1,9 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { authFetch, useAppStore } from '../store/useStore';
 
 export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
+  const { currentProfile } = useAppStore();
+  const studentName = currentProfile?.name || '曾练';
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState('pen'); // 'pen', 'line', 'triangle', 'circle', 'parabola', 'eraser'
@@ -128,12 +131,12 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const handleFetchProactiveHint = async () => {
     setFetchingHint(true);
     try {
-      const res = await fetch('/api/mentor/hint', {
+      const res = await authFetch('/api/mentor/hint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           problemText: '草稿纸停顿卡点，请给第一步画图或破题支架',
-          student_name: '曾练'
+          student_name: studentName
         })
       });
       if (res.ok) {
@@ -305,6 +308,16 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const handleSendToTutor = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    // Record gamification scratchpad action
+    authFetch('/api/gamification/record-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile_id: currentProfile?.id || 'default',
+        action_type: 'scratchpad_draw'
+      })
+    }).catch(err => console.warn('Failed to record scratchpad gamification action:', err));
 
     canvas.toBlob((blob) => {
       if (!blob) return;

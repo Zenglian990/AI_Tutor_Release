@@ -593,7 +593,7 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
   }
 });
 
-// POST /api/admin/pin — Store parent PIN hash in database
+// POST /api/admin/pin — Store parent PIN hash and security question in database
 router.post('/admin/pin', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
@@ -618,8 +618,8 @@ router.post('/admin/pin', async (req, res) => {
   }
 });
 
-// GET /api/admin/pin — Get parent PIN hash and security answer from database
-router.get('/admin/pin', async (req, res) => {
+// GET /api/admin/pin & /api/admin/pin-status — Get PIN status without leaking hashes
+const getPinStatusHandler = async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
@@ -627,13 +627,79 @@ router.get('/admin/pin', async (req, res) => {
     const pinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
     const answerRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'security_answer_hash'");
     
+    let questionId = null;
+    if (answerRow && answerRow.value) {
+      const parts = answerRow.value.split(':');
+      if (parts.length >= 2) questionId = parts[0];
+    }
+
     res.json({
-      pin_hash: pinRow ? pinRow.value : null,
-      security_answer_hash: answerRow ? answerRow.value : null
+      has_pin: Boolean(pinRow && pinRow.value),
+      has_security_question: Boolean(answerRow && answerRow.value),
+      question_id: questionId
     });
   } catch (e) {
     logger.error("Failed to get parent PIN info:", e);
     res.status(500).json({ error: "获取家长安全设置失败" });
+  }
+};
+
+router.get('/admin/pin', getPinStatusHandler);
+router.get('/admin/pin-status', getPinStatusHandler);
+
+// POST /api/admin/verify-pin — Verify parent PIN hash server-side
+router.post('/admin/verify-pin', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { pin_hash } = req.body;
+    if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
+
+    const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
+    if (!savedPinRow || !savedPinRow.value) {
+      return res.json({ valid: true, unconfigured: true });
+    }
+
+    if (savedPinRow.value === pin_hash) {
+      return res.json({ valid: true });
+    } else {
+      return res.status(401).json({ valid: false, error: "密码不正确" });
+    }
+  } catch (e) {
+    logger.error("Failed to verify parent PIN:", e);
+    res.status(500).json({ error: "验证家长密码失败" });
+  }
+});
+
+// POST /api/admin/reset-pin — Reset PIN via verified security question
+router.post('/admin/reset-pin', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { question_id, answer_hash, new_pin_hash } = req.body;
+    if (!question_id || !answer_hash || !new_pin_hash) {
+      return res.status(400).json({ error: "缺少重置密码必要参数" });
+    }
+
+    const answerRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'security_answer_hash'");
+    if (!answerRow || !answerRow.value) {
+      return res.status(400).json({ error: "系统尚未设置密保问题" });
+    }
+
+    const expected = `${question_id}:${answer_hash}`;
+    if (answerRow.value !== expected) {
+      return res.status(401).json({ error: "密保答案不正确，无法重置密码" });
+    }
+
+    await sqliteDb.run(
+      'UPDATE system_settings SET value = ? WHERE key = \'parent_pin_hash\'',
+      [new_pin_hash]
+    );
+
+    res.json({ success: true });
+  } catch (e) {
+    logger.error("Failed to reset parent PIN:", e);
+    res.status(500).json({ error: "重置家长密码失败" });
   }
 });
 

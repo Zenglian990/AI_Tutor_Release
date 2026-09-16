@@ -1,6 +1,7 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
+const { decryptField } = require('../utils/crypto');
 const { getStudentCognitiveMemory } = require('../services/studentMemory');
 const { diagnosePrerequisiteKnowledge } = require('../services/knowledgeGraph');
 const { formatGradeName } = require('../prompts/guidelines');
@@ -57,11 +58,14 @@ router.get('/mentor/daily-briefing', async (req, res) => {
 
     if (dueMistakes.length > 0) {
       const topMistake = dueMistakes[0];
+      const decTags = decryptField(topMistake.tags);
+      const decReason = decryptField(topMistake.reason);
+      const decQuery = decryptField(topMistake.query);
       suggestedMission = {
         type: 'mistake_sniper',
-        title: `今日靶向狙击：${topMistake.tags || topMistake.reason || '巩固易错题'}`,
-        query: topMistake.query,
-        reason: topMistake.reason || '曾在该题型存在思维卡点，今天花 3 分钟彻底攻克它！',
+        title: `今日靶向狙击：${decTags || decReason || '巩固易错题'}`,
+        query: decQuery,
+        reason: decReason || '曾在该题型存在思维卡点，今天花 3 分钟彻底攻克它！',
         mistakeId: topMistake.id,
         actionLabel: '立即开启靶向微测'
       };

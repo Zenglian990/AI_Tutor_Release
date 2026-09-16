@@ -44,7 +44,7 @@ async function batchIngestQuestions(questions, options = {}) {
     return { total: 0, inserted: 0, skipped: 0 };
   }
 
-  const db = await getDb();
+  const db = options.db || await getDb();
   let insertedCount = 0;
   let skippedCount = 0;
 
@@ -114,7 +114,9 @@ async function batchIngestQuestions(questions, options = {}) {
   console.log(`  库内总量: ${row ? row.total : 0} 道权威真题母题`);
   console.log('----------------------------------------------------');
 
-  await db.close();
+  if (!options.db) {
+    await db.close();
+  }
   return { total: questions.length, inserted: insertedCount, skipped: skippedCount };
 }
 

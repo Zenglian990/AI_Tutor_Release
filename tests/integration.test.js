@@ -313,3 +313,119 @@ test('Integration: GET /api/admin/stats — returns admin stats structure', asyn
   assert.ok(Array.isArray(data.mistakesBySubject));
   assert.ok(Array.isArray(data.profiles));
 });
+
+test('Remediation S1: SSRF validator blocks loopback, private subnets, and cloud metadata', () => {
+  const { isSafeExternalUrl } = require('../server/utils/urlValidator');
+  assert.strictEqual(isSafeExternalUrl('http://127.0.0.1:3001/admin').safe, false);
+  assert.strictEqual(isSafeExternalUrl('http://localhost:3001').safe, false);
+  assert.strictEqual(isSafeExternalUrl('http://[::1]:3001').safe, false);
+  assert.strictEqual(isSafeExternalUrl('http://10.0.0.1/status').safe, false);
+  assert.strictEqual(isSafeExternalUrl('http://172.16.0.1:8080').safe, false);
+  assert.strictEqual(isSafeExternalUrl('http://192.168.1.1/router').safe, false);
+  assert.strictEqual(isSafeExternalUrl('http://169.254.169.254/latest/meta-data').safe, false);
+  assert.strictEqual(isSafeExternalUrl('https://oapi.dingtalk.com/robot/send').safe, true);
+});
+
+test('Remediation S3: PIN hash is not leaked and verify/reset endpoints work securely', async () => {
+  // Status does not leak hashes
+  const statusRes = await fetch(`${baseUrl}/api/admin/pin-status`);
+  assert.strictEqual(statusRes.status, 200);
+  const statusData = await statusRes.json();
+  assert.ok('has_pin' in statusData);
+  assert.strictEqual(statusData.pin_hash, undefined);
+  assert.strictEqual(statusData.security_answer_hash, undefined);
+
+  // Set pin and question
+  const setRes = await fetch(`${baseUrl}/api/admin/pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      pin_hash: 'hash_test_pin_999999',
+      security_answer_hash: 'mother_name:hash_test_answer_999'
+    })
+  });
+  assert.strictEqual(setRes.status, 200);
+
+  // Verify PIN correctly
+  const verifyRes = await fetch(`${baseUrl}/api/admin/verify-pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin_hash: 'hash_test_pin_999999' })
+  });
+  assert.strictEqual(verifyRes.status, 200);
+  const verifyData = await verifyRes.json();
+  assert.strictEqual(verifyData.valid, true);
+
+  // Reset PIN
+  const resetRes = await fetch(`${baseUrl}/api/admin/reset-pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      question_id: 'mother_name',
+      answer_hash: 'hash_test_answer_999',
+      new_pin_hash: 'hash_new_test_pin_888888'
+    })
+  });
+  assert.strictEqual(resetRes.status, 200);
+});
+
+test('Remediation S5: Student Cognitive Memory decrypts encrypted fields for prompt', async () => {
+  const { getSqliteDb } = require('../server/db/init');
+  const { encryptField } = require('../server/utils/crypto');
+  const { getStudentCognitiveMemory } = require('../server/services/studentMemory');
+  const db = getSqliteDb();
+
+  const testProfile = 'test_remediation_profile';
+  const encQuery = encryptField('已知三角形内角和为180度，求角A');
+  const encReason = encryptField('直角三角形判定遗漏');
+  const encTags = encryptField('三角形,内角和');
+
+  await db.run(
+    `INSERT INTO mistakes (profile_id, query, reason, tags, subject, grade)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [testProfile, encQuery, encReason, encTags, '数学', '7_up']
+  );
+
+  const mem = await getStudentCognitiveMemory(testProfile, '7_up', '数学', '曾练');
+  assert.strictEqual(mem.hasHistory, true);
+  assert.ok(mem.topWeakTags.includes('三角形') || mem.topWeakTags.includes('内角和'));
+  assert.ok(mem.recentWeakPoints.includes('直角三角形判定遗漏'));
+  assert.ok(mem.rawMistakesSnippet.includes('已知三角形内角和'));
+  assert.ok(!mem.rawMistakesSnippet.includes(':'), 'Should not expose ciphertext');
+});
+
+test('Remediation G1: Gamification action counters distinguish feynman and scratchpad', async () => {
+  const profileId = `test_game_${Date.now()}`;
+  await fetch(`${baseUrl}/api/gamification/record-action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profile_id: profileId, action_type: 'feynman_challenge' })
+  });
+  await fetch(`${baseUrl}/api/gamification/record-action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profile_id: profileId, action_type: 'scratchpad_draw' })
+  });
+
+  const profileRes = await fetch(`${baseUrl}/api/gamification/profile?profile_id=${profileId}`);
+  const profileData = await profileRes.json();
+  assert.ok(profileData.feynmanCount >= 1);
+  assert.ok(profileData.scratchpadCount >= 1);
+});
+
+test('Remediation G2: Knowledge graph roadmap filters nodes by subject', async () => {
+  const { computeCampaignRoadmap } = require('../server/services/campaignRoadmap');
+  const mathRoadmap = await computeCampaignRoadmap('default', '7_up', '数学');
+  assert.ok(mathRoadmap.totalNodesCount >= 5);
+  const physicsRoadmap = await computeCampaignRoadmap('default', '8_up', '物理');
+  assert.ok(physicsRoadmap.totalNodesCount >= 2);
+});
+
+test('Remediation M6: LaTeX math delimiters replace \\( with $ and \\) with $', () => {
+  const { preprocessLatex } = require('../client/src/utils/math');
+  const input = '已知 \\( x = 1 \\) 和 \\[ y = 2 \\]';
+  const res = preprocessLatex(input);
+  assert.ok(res.includes('$ x = 1 $'));
+  assert.ok(!res.includes('$$ x = 1 $$'));
+});
+

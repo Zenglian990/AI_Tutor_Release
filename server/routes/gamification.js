@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
 const logger = require('../services/logger');
@@ -93,19 +93,37 @@ router.post('/gamification/record-action', async (req, res) => {
     if (!db) return res.json({ success: true, gainedPoints: 10 });
 
     let gain = 10;
-    let badgeGained = null;
+    let colToIncrement = 'solved_count';
 
-    if (action_type === 'feynman_challenge') gain = 25;
-    if (action_type === 'scratchpad_draw') gain = 15;
-    if (action_type === 'batch_homework') gain = 30;
+    if (action_type === 'feynman_challenge') {
+      gain = 25;
+      colToIncrement = 'feynman_count';
+    } else if (action_type === 'scratchpad_draw') {
+      gain = 15;
+      colToIncrement = 'scratchpad_count';
+    } else if (action_type === 'batch_homework') {
+      gain = 30;
+      colToIncrement = 'solved_count';
+    }
+
+    // Atomic update of rank_points and respective counter
+    await db.run(
+      `UPDATE user_gamification
+       SET rank_points = rank_points + ?,
+           ${colToIncrement} = ${colToIncrement} + 1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE profile_id = ?`,
+      [gain, profile_id]
+    );
 
     const row = await db.get('SELECT * FROM user_gamification WHERE profile_id = ?', [profile_id]);
     if (row) {
-      const newPoints = row.rank_points + gain;
-      const newTier = getRankTier(newPoints).name;
+      const newPoints = row.rank_points;
+      const newTierObj = getRankTier(newPoints);
       let badges = [];
       try { badges = JSON.parse(row.badges || '[]'); } catch {}
 
+      let badgeGained = null;
       if (action_type === 'feynman_challenge' && !badges.includes('费曼小导师')) {
         badges.push('费曼小导师');
         badgeGained = '费曼小导师';
@@ -121,17 +139,16 @@ router.post('/gamification/record-action', async (req, res) => {
 
       await db.run(
         `UPDATE user_gamification
-         SET rank_points = ?, rank_tier = ?, solved_count = solved_count + 1,
-             badges = ?, updated_at = CURRENT_TIMESTAMP
+         SET rank_tier = ?, badges = ?
          WHERE profile_id = ?`,
-        [newPoints, newTier, JSON.stringify(badges), profile_id]
+        [newTierObj.name, JSON.stringify(badges), profile_id]
       );
 
       return res.json({
         success: true,
         gainedPoints: gain,
         newPoints,
-        newTier: getRankTier(newPoints),
+        newTier: newTierObj,
         badgeGained
       });
     }

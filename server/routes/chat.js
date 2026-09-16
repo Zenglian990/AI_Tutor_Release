@@ -35,9 +35,12 @@ router.post('/chat', async (req, res) => {
     try {
       results = await performHybridSearch(query, grade, subject, RAG_TOP_K, edition);
     } catch (err) {
-      logger.error("[RAG Error] Hybrid search failed, falling back to empty results:", err);
+      logger.error("[RAG Error] Hybrid search failed:", err);
       if (err.message === 'EMBED_QUOTA_EXHAUSTED' || err.message === 'QUOTA_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'))) {
         isQuotaExhausted = true;
+        if (err.partialResults && Array.isArray(err.partialResults)) {
+          results = err.partialResults;
+        }
       }
     }
 

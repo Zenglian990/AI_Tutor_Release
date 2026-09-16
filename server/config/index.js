@@ -5,7 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../services/logger');
 const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'production';
+const isTestEnv = process.env.NODE_ENV === 'test' ||
+  process.execArgv.some(arg => arg.includes('--test')) ||
+  process.argv.some(arg => arg.includes('test'));
+const NODE_ENV = process.env.NODE_ENV || (isTestEnv ? 'test' : 'production');
 const EMBED_MODEL = process.env.EMBED_MODEL || 'gemini-embedding-2';
 const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-flash-lite-latest';
 const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();

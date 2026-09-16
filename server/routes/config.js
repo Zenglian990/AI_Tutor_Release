@@ -5,6 +5,7 @@ const path = require('path');
 const { fetch: undiciFetch, ProxyAgent } = require('undici');
 const config = require('../config');
 const logger = require('../services/logger');
+const { isSafeExternalUrl } = require('../utils/urlValidator');
 
 const proxyAgent = config.proxyUrl ? new ProxyAgent(config.proxyUrl) : null;
 
@@ -113,6 +114,11 @@ router.post('/config/test-llm', async (req, res) => {
       }
 
       const baseUrl = (apiUrl || process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+      const urlCheck = isSafeExternalUrl(baseUrl);
+      if (!urlCheck.safe) {
+        return res.status(400).json({ success: false, error: `不安全的 API URL 地址: ${urlCheck.error}` });
+      }
+
       const testModel = model || 'deepseek-chat';
 
       const response = await undiciFetch(`${baseUrl}/chat/completions`, {
@@ -132,11 +138,11 @@ router.post('/config/test-llm', async (req, res) => {
       const latencyMs = Date.now() - start;
 
       if (!response.ok) {
-        const errText = await response.text();
-        return res.status(response.status).json({
+        const status = response.status;
+        return res.status(status).json({
           success: false,
-          error: `DeepSeek 响应错误 (${response.status})`,
-          details: errText.slice(0, 200)
+          error: `DeepSeek 响应异常 (${status})`,
+          details: status === 401 ? 'API Key 无效或未授权' : (status === 429 ? '超出请求配额限制' : '上游接口请求失败')
         });
       }
 

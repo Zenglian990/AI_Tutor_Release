@@ -7,11 +7,12 @@ function signatureMiddleware(req, res, next) {
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // In development, optionally skip signature if REQUIRE_AUTH is not set
-  if ((NODE_ENV === 'development' || NODE_ENV === 'test') && !process.env.REQUIRE_AUTH) return next();
+  const currentEnv = process.env.NODE_ENV || NODE_ENV;
+  if ((currentEnv === 'development' || currentEnv === 'test') && !process.env.REQUIRE_AUTH) return next();
 
-  // For localhost connections we bypass ONLY if explicitly enabled
+  // For localhost connections we bypass ONLY if explicitly enabled in development
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-  if ((clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
+  if (currentEnv === 'development' && (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
     return next();
   }
 

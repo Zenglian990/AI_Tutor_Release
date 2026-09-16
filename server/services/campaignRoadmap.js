@@ -1,4 +1,4 @@
-﻿const { getSqliteDb } = require('../db/init');
+const { getSqliteDb } = require('../db/init');
 const { KNOWLEDGE_GRAPH } = require('./knowledgeGraph');
 const logger = require('./logger');
 
@@ -7,9 +7,8 @@ const logger = require('./logger');
  */
 async function computeCampaignRoadmap(profileId = 'default', grade = '7_up', subject = '数学') {
   const db = getSqliteDb();
-  const subjectGraph = KNOWLEDGE_GRAPH[subject] || {};
-  const allNodes = Object.keys(subjectGraph);
-  const totalNodesCount = Math.max(allNodes.length, 1);
+  const subjectNodes = Object.values(KNOWLEDGE_GRAPH).filter(n => !subject || n.subject === subject);
+  const totalNodesCount = Math.max(subjectNodes.length, 1);
 
   let masteredCount = 0;
   let inProgressCount = 0;

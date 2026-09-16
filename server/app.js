@@ -27,6 +27,9 @@ const gamificationRoutes = require('./routes/gamification');
 function createApp() {
   const app = express();
 
+  // Trust proxy for reverse proxy environments (e.g. Nginx, Docker)
+  app.set('trust proxy', 'loopback');
+
   // Request logging middleware
   app.use((req, res, next) => {
     const start = Date.now();

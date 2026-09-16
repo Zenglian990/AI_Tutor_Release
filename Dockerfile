@@ -19,19 +19,20 @@ WORKDIR /app
 
 # Copy dependency definitions
 COPY package*.json ./
+COPY client/package*.json ./client/
 COPY requirements.txt ./
 
 # Install Python packages globally using system packages flag (safe in container)
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
-# Install Node.js packages
-RUN npm ci
+# Install Node.js packages for both backend and frontend
+RUN npm ci && (cd client && npm ci)
 
 # Copy the entire release package
 COPY . .
 
 # Build the React frontend
-RUN npm run build:client && \
+RUN npm --prefix client run build && \
     rm -rf client/node_modules client/src client/public
 
 # Clean up apt caches

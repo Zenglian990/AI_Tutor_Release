@@ -6,6 +6,7 @@
  * to turn the AI from a generic chatbot into a living, personalized mentor.
  */
 const { getSqliteDb } = require('../db/init');
+const { decryptField } = require('../utils/crypto');
 const logger = require('./logger');
 
 /**
@@ -51,16 +52,18 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
     const weakPoints = [];
 
     recentMistakes.forEach(m => {
-      if (m.tags) {
-        m.tags.split(',').forEach(t => {
+      const decTags = decryptField(m.tags);
+      const decReason = decryptField(m.reason);
+      if (decTags) {
+        decTags.split(',').forEach(t => {
           const cleanTag = t.trim();
           if (cleanTag) {
             tagCountMap[cleanTag] = (tagCountMap[cleanTag] || 0) + 1;
           }
         });
       }
-      if (m.reason && m.reason.length < 50 && !weakPoints.includes(m.reason)) {
-        weakPoints.push(m.reason);
+      if (decReason && decReason.length < 50 && !weakPoints.includes(decReason)) {
+        weakPoints.push(decReason);
       }
     });
 
@@ -103,7 +106,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
       recentWeakPoints: weakPoints.slice(0, 3),
       completedChapters,
       inProgressChapters,
-      rawMistakesSnippet: recentMistakes.map(m => m.query.slice(0, 40)).join('; ')
+      rawMistakesSnippet: recentMistakes.map(m => (decryptField(m.query) || '').slice(0, 40)).join('; ')
     };
   } catch (err) {
     logger.warn('[StudentMemory] Failed to read cognitive profile:', err.message);

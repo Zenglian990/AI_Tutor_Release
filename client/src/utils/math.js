@@ -15,7 +15,7 @@ export const preprocessLatex = (text) => {
     return part
       .replace(/\\\[/g, () => '$$\n') // Replace \[ with $$\n
       .replace(/\\\]/g, () => '\n$$') // Replace \] with \n$$
-      .replace(/\\\(/g, () => '$$')   // Replace \( with $
-      .replace(/\\\)/g, () => '$$');  // Replace \) with $
+      .replace(/\\\(/g, () => '$')    // Replace \( with $
+      .replace(/\\\)/g, () => '$');   // Replace \) with $
   }).join('');
 };

@@ -19,8 +19,8 @@ router.post('/tts', async (req, res) => {
     // Teen/Adult: zh-CN-YunxiNeural (4-9 grade) → mapped to Puck inside tts-service
     let selectedVoice = voice || 'zh-CN-XiaoxiaoNeural';
     if (!voice && grade) {
-      const rawGradeNum = parseInt(String(grade).split('_')[0]);
-      const isLowerGrade = rawGradeNum >= 1 && rawGradeNum <= 2;
+      const rawGradeNum = parseInt(String(grade).split('_')[0], 10);
+      const isLowerGrade = !isNaN(rawGradeNum) && rawGradeNum >= 1 && rawGradeNum <= 3;
       if (!isLowerGrade) {
         selectedVoice = 'zh-CN-YunxiNeural'; // Teen/Adult male mentor
       }

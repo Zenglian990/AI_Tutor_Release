@@ -446,7 +446,7 @@ function AppInner() {
         return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg) }];
       });
     } finally { setIsLoading(false); }
-  }, [imageFile, isLoading, previewImage, currentProfileId, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording]);
+  }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel]);
 
   const clearChat = () => {
     setGateAction(() => () => setShowClearConfirm(true));

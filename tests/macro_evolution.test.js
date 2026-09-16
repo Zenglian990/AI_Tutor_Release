@@ -65,8 +65,8 @@ test('Parent Memo API: POST /api/parent/push-webhook validates URL and formats p
   });
   assert.strictEqual(invalidRes.status, 400);
 
-  // Test valid URL handler format
-  const validRes = await fetch(`${baseUrl}/api/parent/push-webhook`, {
+  // Test SSRF URL validation (loopback address blocked)
+  const ssrfRes = await fetch(`${baseUrl}/api/parent/push-webhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -76,7 +76,20 @@ test('Parent Memo API: POST /api/parent/push-webhook validates URL and formats p
       student_name: '曾练'
     })
   });
-  // Since 9999 is not listening, it will fail gracefully with 500 network error or timeout
+  assert.strictEqual(ssrfRes.status, 400);
+
+  // Test valid external URL handler format
+  const validRes = await fetch(`${baseUrl}/api/parent/push-webhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      webhook_url: 'https://oapi.dingtalk.com/robot/send?access_token=mock_test_token',
+      memo_title: '曾先生家访便签',
+      memo_content: ['伴学专注40分钟'],
+      student_name: '曾练'
+    })
+  });
+  // Mock external URL may fail network resolution or remote error gracefully
   assert.ok([200, 500].includes(validRes.status));
 });
 

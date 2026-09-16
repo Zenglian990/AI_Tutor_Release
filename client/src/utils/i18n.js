@@ -35,6 +35,7 @@ export const translations = {
     'settings.profile': '当前档案',
     'settings.socratic': '苏格拉底模式',
     'settings.save': '保存设置',
+    'settings.cancel': '取消',
     'settings.close': '关闭',
     // Onboarding
     'onboarding.steps': [
@@ -101,6 +102,7 @@ export const translations = {
     'settings.profile': 'Current Profile',
     'settings.socratic': 'Socratic Mode',
     'settings.save': 'Save Settings',
+    'settings.cancel': 'Cancel',
     'settings.close': 'Close',
     // Onboarding
     'onboarding.steps': [

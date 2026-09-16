@@ -11,7 +11,7 @@
  */
 
 const { PORT, NODE_ENV, API_KEYS } = require('./config');
-const { initDB, getSqliteDb } = require('./db/init');
+const { initDB, getSqliteDb, closeDB } = require('./db/init');
 const { startDataRetentionCleanup } = require('./services/data-retention');
 const { createApp } = require('./app');
 const logger = require('./services/logger');
@@ -62,17 +62,17 @@ process.on('SIGINT', shutdown);
 
 async function shutdown(signal) {
   logger.info(`Received ${signal}, shutting down gracefully...`);
-  if (!server) { process.exit(0); }
+  if (!server) {
+    try { await closeDB(); } catch (e) {}
+    process.exit(0);
+  }
   server.close(async () => {
     logger.info('HTTP server closed.');
-    const sqliteDb = getSqliteDb();
-    if (sqliteDb) {
-      try {
-        await sqliteDb.close();
-        logger.info('SQLite closed.');
-      } catch (e) {
-        logger.error('Failed to close SQLite:', e);
-      }
+    try {
+      await closeDB();
+      logger.info('Database closed gracefully.');
+    } catch (e) {
+      logger.error('Failed to close database:', e);
     }
     process.exit(0);
   });

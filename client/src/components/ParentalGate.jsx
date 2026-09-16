@@ -36,7 +36,10 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [isSettingUp, setIsSettingUp] = useState(false);
+  const [setupStep, setSetupStep] = useState('pin'); // 'pin' | 'security_question'
   const [firstPin, setFirstPin] = useState('');
+  const [confirmedPin, setConfirmedPin] = useState('');
+  const [setupError, setSetupError] = useState('');
   const [lockedUntil, setLockedUntil] = useState(0);
   const [remainingTime, setRemainingTime] = useState(0);
 
@@ -58,6 +61,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
     if (tamperedToken.trim() === activeToken && activeToken !== '') {
       setIsTampered(false);
       setIsSettingUp(true);
+      setSetupStep('pin');
       setTamperedError('');
       setTamperedToken('');
     } else {
@@ -74,25 +78,32 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
     if (isOpen) {
       setPin('');
       setFirstPin('');
+      setConfirmedPin('');
       setError(false);
       setLockedUntil(0);
+      setSetupStep('pin');
+      setSetupError('');
       
-      // Try to fetch from backend to sync cross-device
-      authFetch('/api/admin/pin')
+      // Check backend status
+      authFetch('/api/admin/pin-status')
         .then(res => res.json())
         .then(data => {
-          if (data.pin_hash && !savedPinHash) {
-            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(data.pin_hash));
+          if (data && data.has_pin === false) {
+            setIsSettingUp(true);
+            setIsTampered(false);
+          } else if (data && data.has_pin && !savedPinHash) {
+            // Backend has pin configured
+            setIsSettingUp(false);
+            setIsTampered(false);
           }
-          if (data.security_answer_hash && !savedSecurityAnswerHash) {
-            localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(data.security_answer_hash));
+          if (data && data.question_id) {
+            setSelectedQuestion(data.question_id);
           }
         })
-        .catch(err => console.error('Failed to fetch parent gate settings from backend', err));
+        .catch(err => console.error('Failed to fetch parent gate status from backend', err));
         
       setShowResetFlow(false);
       setResetStep(0);
-      setSelectedQuestion(SECURITY_QUESTIONS[0].id);
       setSecurityAnswer('');
       setNewPin('');
       setNewPinConfirm('');
@@ -110,8 +121,8 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       const pinHashMissing = !savedPinHash;
 
       if (pinHashMissing && hasExistingData) {
-        setIsTampered(true);
-        setIsSettingUp(false);
+        setIsTampered(false);
+        setIsSettingUp(true);
       } else if (pinHashMissing) {
         setIsTampered(false);
         setIsSettingUp(true);
@@ -175,22 +186,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
           }, 200);
         } else {
           if (newPinVal === firstPin) {
-            const hash = await sha256(newPinVal);
-            const ansHash = await sha256(securityAnswer.trim().toLowerCase());
-            const combinedSecurityHash = selectedQuestion + ':' + ansHash;
-            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-            localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(combinedSecurityHash));
-            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-            authFetch('/api/admin/pin', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin_hash: hash, security_answer_hash: combinedSecurityHash })
-            }).catch(err => console.error("Failed to sync PIN hash to backend:", err));
-            resetAttempts();
-            setTimeout(() => {
-              onVerify();
-              onClose();
-            }, 300);
+            setConfirmedPin(newPinVal);
+            setPin('');
+            setSetupStep('security_question');
           } else {
             setTimeout(() => {
               setError(true);
@@ -201,20 +199,39 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
         }
       } else {
         const hash = await sha256(newPinVal);
-        if (hash === savedPinHash) {
-          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-          resetAttempts();
-          setTimeout(() => {
-            onVerify();
-            onClose();
-          }, 300);
-        } else {
-          recordFailedAttempt();
-          setTimeout(() => {
-            setError(true);
-            setPin('');
-          }, 300);
+        try {
+          const verifyRes = await authFetch('/api/admin/verify-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin_hash: hash })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.valid) {
+            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+            resetAttempts();
+            setTimeout(() => {
+              onVerify();
+              onClose();
+            }, 300);
+            return;
+          }
+        } catch (e) {
+          if (savedPinHash && hash === savedPinHash) {
+            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+            resetAttempts();
+            setTimeout(() => {
+              onVerify();
+              onClose();
+            }, 300);
+            return;
+          }
         }
+        recordFailedAttempt();
+        setTimeout(() => {
+          setError(true);
+          setPin('');
+        }, 300);
       }
     }
   };
@@ -224,14 +241,37 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
     setError(false);
   };
 
-  // ── Reset Flow Handlers ──
-  const handleStartReset = () => {
-    if (!savedSecurityAnswerHash) {
-      setResetError('尚未设置安全问题，无法重置密码。请清除浏览器数据后重新设置。');
+  const handleCompleteSetup = async () => {
+    if (!securityAnswer.trim()) {
+      setSetupError('请输入安全密保答案');
       return;
     }
+    const hash = await sha256(confirmedPin);
+    const ansHash = await sha256(securityAnswer.trim().toLowerCase());
+    const combinedSecurityHash = selectedQuestion + ':' + ansHash;
+    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+    localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(combinedSecurityHash));
+    sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+    try {
+      await authFetch('/api/admin/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin_hash: hash, security_answer_hash: combinedSecurityHash })
+      });
+    } catch (err) {
+      console.error("Failed to sync PIN hash to backend:", err);
+    }
+    resetAttempts();
+    setIsSettingUp(false);
+    onVerify();
+    onClose();
+  };
+
+  // ── Reset Flow Handlers ──
+  const handleStartReset = () => {
     setShowResetFlow(true);
     setResetStep(0);
+    setResetError('');
   };
 
   const handleSelectQuestion = (qId) => {
@@ -245,16 +285,17 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       setResetError('请输入答案');
       return;
     }
-    const answerHash = await sha256(securityAnswer.trim().toLowerCase());
-    const [storedQuestion, storedHash] = (savedSecurityAnswerHash || '').split(':');
-    
-    if (selectedQuestion === storedQuestion && answerHash === storedHash) {
-      setResetStep(2);
-      setResetError('');
-    } else {
-      setResetError('答案不正确，请重试。');
-      setSecurityAnswer('');
+    if (savedSecurityAnswerHash) {
+      const answerHash = await sha256(securityAnswer.trim().toLowerCase());
+      const [storedQuestion, storedHash] = savedSecurityAnswerHash.split(':');
+      if (selectedQuestion !== storedQuestion || answerHash !== storedHash) {
+        setResetError('答案不正确，请重试。');
+        setSecurityAnswer('');
+        return;
+      }
     }
+    setResetStep(2);
+    setResetError('');
   };
 
   const handleSetNewPin = async () => {
@@ -269,19 +310,35 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       return;
     }
     const hash = await sha256(newPin);
-    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-    sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-    authFetch('/api/admin/pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin_hash: hash })
-    }).catch(err => console.error("Failed to sync PIN hash to backend:", err));
-    resetAttempts();
-    setShowResetFlow(false);
-    setIsSettingUp(false);
-    setPin('');
-    setFirstPin('');
-    alert('✅ 密码已成功重置！请输入新密码进行验证。');
+    const ansHash = await sha256(securityAnswer.trim().toLowerCase());
+    try {
+      const res = await authFetch('/api/admin/reset-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_id: selectedQuestion,
+          answer_hash: ansHash,
+          new_pin_hash: hash
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetError(data.error || '重置密码失败，请重试');
+        return;
+      }
+      localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+      sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+      resetAttempts();
+      setShowResetFlow(false);
+      setIsSettingUp(false);
+      setPin('');
+      setFirstPin('');
+      alert('✅ 密码已成功重置！');
+      onVerify();
+      onClose();
+    } catch (err) {
+      setResetError('网络请求失败，请稍后重试');
+    }
   };
 
   const isLockedOut = lockedUntil > Date.now();
@@ -349,100 +406,176 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
             </div>
           </>
         ) : !showResetFlow ? (
-          <>
-            <div className="gate-header">
-              <span className="gate-shield-icon">🛡️</span>
-              <h3>家长安全锁</h3>
-              <p className="reason-text">正在进行：{reason}</p>
-              {isLockedOut ? (
-                <p className="sub-text" style={{ color: '#ef4444' }}>
-                  ⏱️ 密码错误次数过多，请在 {remainingTime} 秒后重试
-                </p>
-              ) : (
-                <p className="sub-text">
-                  {isSettingUp
-                    ? (!firstPin ? `首次使用，请设置您的 ${PIN_LENGTH} 位家长安全密码` : '请再次输入密码以确认')
-                    : `请输入 ${PIN_LENGTH} 位家长安全密码验证身份`}
-                </p>
-              )}
-            </div>
-
-            <div className="pin-display-container">
-              <div className={`pin-dots ${error ? 'shake-error' : ''}`}>
-                {Array.from({ length: PIN_LENGTH }, (_, idx) => (
-                  <span
-                    key={idx}
-                    className={`pin-dot ${pin.length > idx ? 'filled' : ''} ${error ? 'error' : ''}`}
-                  />
-                ))}
+          isSettingUp && setupStep === 'security_question' ? (
+            <>
+              <div className="gate-header">
+                <span className="gate-shield-icon">🔐</span>
+                <h3>设置安全密保</h3>
+                <p className="reason-text">第 2/2 步：密保问题设置</p>
+                <p className="sub-text">请设置密保问题，以便日后遗忘密码时进行安全重置</p>
               </div>
-              {error && (
-                <span className="error-message-text">
-                  {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新设置' : '⚠️ 密码不正确，请重新输入'}
-                </span>
-              )}
-            </div>
 
-            <div className="numpad-grid">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px 0' }}>
+                <label style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>选择安全问题：</label>
+                <select
+                  value={selectedQuestion}
+                  onChange={e => setSelectedQuestion(e.target.value)}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '8px',
+                    background: 'rgba(0,0,0,0.5)',
+                    color: 'white',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {SECURITY_QUESTIONS.map(q => (
+                    <option key={q.id} value={q.id} style={{ background: '#1e293b', color: 'white' }}>
+                      {q.text}
+                    </option>
+                  ))}
+                </select>
+
+                <label style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>安全答案（全小写拼音或文字）：</label>
+                <input
+                  type="text"
+                  placeholder="请输入答案..."
+                  value={securityAnswer}
+                  onChange={e => setSecurityAnswer(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCompleteSetup()}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(0,0,0,0.3)',
+                    color: 'white',
+                    outline: 'none',
+                    fontSize: '0.95rem'
+                  }}
+                  autoFocus
+                />
+
+                {setupError && (
+                  <div style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center' }}>
+                    {setupError}
+                  </div>
+                )}
+
                 <button
-                  key={num}
+                  type="button"
+                  onClick={handleCompleteSetup}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: '#10b981',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '0.95rem',
+                    marginTop: '6px'
+                  }}
+                >
+                  ✅ 完成设置并进入
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="gate-header">
+                <span className="gate-shield-icon">🛡️</span>
+                <h3>家长安全锁</h3>
+                <p className="reason-text">正在进行：{reason}</p>
+                {isLockedOut ? (
+                  <p className="sub-text" style={{ color: '#ef4444' }}>
+                    ⏱️ 密码错误次数过多，请在 {remainingTime} 秒后重试
+                  </p>
+                ) : (
+                  <p className="sub-text">
+                    {isSettingUp
+                      ? (!firstPin ? `首次使用，请设置您的 ${PIN_LENGTH} 位家长安全密码` : '请再次输入密码以确认')
+                      : `请输入 ${PIN_LENGTH} 位家长安全密码验证身份`}
+                  </p>
+                )}
+              </div>
+
+              <div className="pin-display-container">
+                <div className={`pin-dots ${error ? 'shake-error' : ''}`}>
+                  {Array.from({ length: PIN_LENGTH }, (_, idx) => (
+                    <span
+                      key={idx}
+                      className={`pin-dot ${pin.length > idx ? 'filled' : ''} ${error ? 'error' : ''}`}
+                    />
+                  ))}
+                </div>
+                {error && (
+                  <span className="error-message-text">
+                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新设置' : '⚠️ 密码不正确，请重新输入'}
+                  </span>
+                )}
+              </div>
+
+              <div className="numpad-grid">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    className="numpad-btn"
+                    aria-label={`数字 ${num}`}
+                    onClick={() => handleKeyPress(String(num))}
+                    disabled={isLockedOut}
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="numpad-btn control-btn"
+                  aria-label="清空输入"
+                  onClick={() => setPin('')}
+                  title="清空"
+                >
+                  C
+                </button>
+                <button
                   type="button"
                   className="numpad-btn"
-                  aria-label={`数字 ${num}`}
-                  onClick={() => handleKeyPress(String(num))}
+                  aria-label="数字 0"
+                  onClick={() => handleKeyPress('0')}
                   disabled={isLockedOut}
                 >
-                  {num}
+                  0
                 </button>
-              ))}
-              <button
-                type="button"
-                className="numpad-btn control-btn"
-                aria-label="清空输入"
-                onClick={() => setPin('')}
-                title="清空"
-              >
-                C
-              </button>
-              <button
-                type="button"
-                className="numpad-btn"
-                aria-label="数字 0"
-                onClick={() => handleKeyPress('0')}
-                disabled={isLockedOut}
-              >
-                0
-              </button>
-              <button
-                type="button"
-                className="numpad-btn control-btn"
-                aria-label="退格"
-                onClick={handleBackspace}
-                title="退格"
-              >
-                ⌫
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="numpad-btn control-btn"
+                  aria-label="退格"
+                  onClick={handleBackspace}
+                  title="退格"
+                >
+                  ⌫
+                </button>
+              </div>
 
-            <div className="gate-footer">
-              {!isSettingUp && (
-                <p className="tip-text" style={{ marginBottom: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={handleStartReset}
-                    style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}
-                  >
-                    🔄 忘记密码？重置
-                  </button>
+              <div className="gate-footer">
+                {!isSettingUp && (
+                  <p className="tip-text" style={{ marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleStartReset}
+                      style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}
+                    >
+                      🔄 忘记密码？重置
+                    </button>
+                  </p>
+                )}
+                <p className="tip-text">
+                  💡 提示：安全锁使用加密存储，保护孩子的错题本数据及防沉迷设置。
+                  连续{MAX_ATTEMPTS}次错误将锁定{LOCKOUT_DURATION_MS / 1000}秒。
                 </p>
-              )}
-              <p className="tip-text">
-                💡 提示：安全锁使用加密存储，保护孩子的错题本数据及防沉迷设置。
-                连续{MAX_ATTEMPTS}次错误将锁定{LOCKOUT_DURATION_MS / 1000}秒。
-              </p>
-            </div>
-          </>
+              </div>
+            </>
+          )
         ) : (
           <>
             <div className="gate-header">

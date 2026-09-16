@@ -12,16 +12,24 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
   const parentName = settings?.parentName || '家长';
 
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+    setError(null);
     authFetch(`/api/stats?profile_id=${currentProfileId}`)
       .then(r => {
         if (!r.ok) throw new Error('Failed to load stats');
         return r.json();
       })
-      .then(data => setStats(data))
-      .catch(e => setError(e.message));
-  }, [currentProfileId]);
+      .then(data => {
+        if (isMounted) setStats(data);
+      })
+      .catch(e => {
+        if (isMounted) setError(e.message);
+      });
+    return () => { isMounted = false; };
+  }, [currentProfileId, retryCount]);
 
   const subjectData = stats?.bySubject?.map(s => ({ label: s.subject, value: s.count })) || [];
 
@@ -86,7 +94,7 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
           <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px' }}>
             <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚠️</div>
             <div>无法加载报表数据: {error}</div>
-            <button onClick={() => { setError(null); setStats(null); }} style={{ marginTop: '15px', padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>重试</button>
+            <button onClick={() => setRetryCount(c => c + 1)} style={{ marginTop: '15px', padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>重试</button>
           </div>
         ) : !stats ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>加载中...</div>

@@ -252,23 +252,25 @@ async function* translateDeepSeekStream(originalBody) {
  * Direct request to DeepSeek API when Gemini is unavailable or explicitly requested
  */
 async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
-  if (!DEEPSEEK_API_KEY) {
+  const currentKey = (process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
+  if (!currentKey) {
     throw new Error('All Gemini keys failed and no DEEPSEEK_API_KEY is configured for fallback.');
   }
 
-  const selectedModel = modelName && modelName !== 'default' ? modelName : DEEPSEEK_CHAT_MODEL;
+  const currentUrl = (process.env.DEEPSEEK_API_URL || DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+  const selectedModel = modelName && modelName !== 'default' ? modelName : (process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat');
   logger.warn(`[Gateway] Routing request to DeepSeek (${selectedModel})...`);
 
   const geminiPayload = JSON.parse(originalOptions.body);
   const isStream = urlType === 'stream';
   const deepseekPayload = convertGeminiToDeepSeekPayload(geminiPayload, isStream, selectedModel);
 
-  const url = `${DEEPSEEK_API_URL}/chat/completions`;
+  const url = `${currentUrl}/chat/completions`;
   const fetchOptions = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      'Authorization': `Bearer ${currentKey}`
     },
     body: JSON.stringify(deepseekPayload)
   };
@@ -538,24 +540,35 @@ async function getEmbedding(text) {
     return cached;
   }
 
-  const response = await fetchWithKeyRotation(buildEmbedURL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: `models/${EMBED_MODEL}`,
-      content: { parts: [{ text: cleanedText }] },
-      outputDimensionality: 768
-    })
-  });
-  const data = await response.json();
-  const vector = data.embedding?.values || null;
-  if (vector) {
-    setCachedEmbedding(cleanedText, vector);
-    logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'success');
-  } else {
+  try {
+    const response = await fetchWithKeyRotation(buildEmbedURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: `models/${EMBED_MODEL}`,
+        content: { parts: [{ text: cleanedText }] },
+        outputDimensionality: 768
+      })
+    });
+    const data = await response.json();
+    const vector = data.embedding?.values || null;
+    if (vector) {
+      setCachedEmbedding(cleanedText, vector);
+      logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'success');
+    } else {
+      logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'error');
+    }
+    return vector;
+  } catch (err) {
     logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'error');
+    const msg = String(err?.message || '');
+    if (msg.includes('429') || /quota/i.test(msg) || msg.includes('QUOTA_EXHAUSTED')) {
+      const quotaErr = new Error('EMBED_QUOTA_EXHAUSTED');
+      quotaErr.code = 'EMBED_QUOTA_EXHAUSTED';
+      throw quotaErr;
+    }
+    throw err;
   }
-  return vector;
 }
 
 module.exports = {

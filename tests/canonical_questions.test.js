@@ -128,7 +128,7 @@ test('CanonicalQuestions: batchIngestQuestions handles duplicates and new items 
     }
   ];
 
-  const result = await batchIngestQuestions(sampleBatch);
+  const result = await batchIngestQuestions(sampleBatch, { db });
   assert.strictEqual(result.total, 2);
   assert.strictEqual(result.inserted, 1, 'Should insert 1 brand new question');
   assert.strictEqual(result.skipped, 1, 'Should skip 1 duplicate question');
