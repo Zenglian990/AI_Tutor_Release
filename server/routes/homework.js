@@ -42,6 +42,18 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
 请仔细识别并批改图片中包含的【所有作业/试卷题目】（支持手写演算、填空、选择、解答大题）。
 学生姓名：【${student_name}】，学段年级：【${grade}】，学科：【${subject}】。
 
+【极其重要的核心批改准则】：
+1. 【原卷红笔批阅标记最高优先级】：
+   仔细观察卷面上是否有老师原批的红笔标记：
+   - 凡是有老师打红勾（✓）、满分标记、或得分勾选的题目，说明在实际教学中已被老师判定为完全正确，必须输出 "status": "correct"，绝对严禁误判为错误！
+   - 凡是有老师打红叉（✕）、扣分折线或圈出失分的题目，判定为 "wrong" 或 "partial"。
+2. 【理科与几何数学严谨验算，杜绝幻觉】：
+   - 对于几何图形拼接计算（如多个正方形拼成长方形）：必须严格先算出拼成后长方形的长与宽（如3个边长2cm的正方形排成一排，长=3×2=6cm，宽=2cm，周长=(6+2)×2=16cm），严禁凭直觉简单减边长导致计算错误！
+3. 【选择题选项与数值必须一致】：
+   - 选择题学生所选选项（如 "B" 或 "B. 16"）若对应正确答案数值，学生完全做对，必须判定为 "correct"，严禁把正确选项判定为 wrong！
+4. 【status 与 mistakeReason 必须绝对自洽】：
+   - 严禁在 mistakeReason 中写“学生选B实际正确/打勾表示正确/修正为正确”却在 status 中仍输出 "wrong"！只要判定学生做对了，status 必须且只能是 "correct"！
+
 请逐题进行严格审阅批改，并必须严格输出如下 JSON 格式（不要有任何额外的开场白或解释代码块外的文字）：
 {
   "totalCount": 3,
@@ -145,18 +157,39 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
         }]
       };
     } else {
+      // Auto-correct false "wrong" tags: verify consistency against teacher marks and student correctness
+      for (const item of parsedData.results) {
+        const studentAns = String(item.studentAnswer || '').trim();
+        const standardAns = String(item.standardAnswer || '').trim();
+        const reason = String(item.mistakeReason || '').trim();
+
+        // Check if reason or mark explicitly indicates student is actually correct
+        const textIndicatesCorrect = /修正为正确|判定为正确|实际上正确|实际是正确|实际正确|学生是对的|学生做对|打勾.*正确|红勾.*正确|无需订正|选[a-dA-D].*正确/i.test(reason);
+
+        // Check multiple choice option letter match (e.g. "B" and "B" or "B. 16" and "B")
+        const studentOptMatch = studentAns.match(/^[A-Da-d](?=[\s.、，:：\)]|$)/);
+        const standardOptMatch = standardAns.match(/^[A-Da-d](?=[\s.、，:：\)]|$)/);
+        const studentOpt = studentOptMatch ? studentOptMatch[0].toUpperCase() : null;
+        const standardOpt = standardOptMatch ? standardOptMatch[0].toUpperCase() : null;
+        const optMatches = Boolean(studentOpt && standardOpt && studentOpt === standardOpt);
+
+        // Exact clean string match (ignoring case & whitespaces)
+        const exactMatch = Boolean(studentAns && standardAns && studentAns.toLowerCase() === standardAns.toLowerCase());
+
+        if (item.status === 'wrong' && (textIndicatesCorrect || optMatches || exactMatch)) {
+          logger.info(`[HomeworkBatch] Auto-correcting false wrong status for Q${item.questionNumber} to correct (reasonHint=${textIndicatesCorrect}, optMatches=${optMatches}, exactMatch=${exactMatch})`);
+          item.status = 'correct';
+          item.score = item.maxScore || 10;
+          item.mistakeReason = '';
+        }
+      }
+
       // Ensure summary statistics are accurate
       const results = parsedData.results;
-      if (!parsedData.totalCount) parsedData.totalCount = results.length;
-      if (parsedData.correctCount === undefined) {
-        parsedData.correctCount = results.filter(r => r.status === 'correct').length;
-      }
-      if (parsedData.wrongCount === undefined) {
-        parsedData.wrongCount = results.filter(r => r.status === 'wrong').length;
-      }
-      if (parsedData.accuracyPct === undefined) {
-        parsedData.accuracyPct = Math.round((parsedData.correctCount / Math.max(1, results.length)) * 100);
-      }
+      parsedData.totalCount = results.length;
+      parsedData.correctCount = results.filter(r => r.status === 'correct').length;
+      parsedData.wrongCount = results.filter(r => r.status === 'wrong').length;
+      parsedData.accuracyPct = Math.round((parsedData.correctCount / Math.max(1, results.length)) * 100);
     }
 
     // Auto-archive wrong questions to mistakes table if SQLite available

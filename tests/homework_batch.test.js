@@ -1,4 +1,4 @@
-﻿const { test, before, after } = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
 const undici = require('undici');
@@ -6,10 +6,20 @@ const { initDB, closeDB } = require('../server/db/init');
 
 // Mock undici.fetch for Google Gemini Vision response during CI test
 const originalFetch = undici.fetch;
+let currentMockVisionResponse = null;
 undici.fetch = async (url, options) => {
   const urlStr = String(url);
 
   if (urlStr.includes('generativelanguage.googleapis.com') || urlStr.includes('deepseek')) {
+    if (currentMockVisionResponse) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => currentMockVisionResponse,
+        text: async () => JSON.stringify(currentMockVisionResponse),
+        headers: new undici.Headers()
+      };
+    }
     const mockVisionResponse = {
       candidates: [{
         content: {
@@ -141,3 +151,64 @@ test('Homework Batch API: handles multipart image and parses structured results 
   assert.strictEqual(data.results.length, 2);
   assert.strictEqual(data.autoArchivedCount, 1);
 });
+
+test('Homework Batch API: auto-corrects false wrong status when reason indicates correct or answer matches', async () => {
+  currentMockVisionResponse = {
+    candidates: [{
+      content: {
+        parts: [{
+          text: JSON.stringify({
+            totalCount: 1,
+            correctCount: 0,
+            wrongCount: 1,
+            accuracyPct: 0,
+            summaryHeadline: "识别完成",
+            results: [
+              {
+                questionNumber: 1,
+                type: "选择题",
+                questionSnippet: "用3个边长2厘米的正方形拼成一个长方形，该长方形的周长是（ ）厘米。",
+                studentAnswer: "B. 16",
+                standardAnswer: "C. 20",
+                status: "wrong",
+                score: 0,
+                maxScore: 10,
+                mistakeReason: "实际上学生选B就是16，红勾表示正确，此处修正为正确",
+                keyInsight: "拼成长方形长为6宽为2，周长为16"
+              }
+            ]
+          })
+        }]
+      }
+    }]
+  };
+
+  try {
+    const png1x1 = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082', 'hex');
+    const boundary = '----WebKitFormBoundaryBatchTest2' + Math.random().toString(36).substring(2);
+    let body = `--${boundary}\r\nContent-Disposition: form-data; name="student_name"\r\n\r\n曾练\r\n--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="hw.png"\r\nContent-Type: image/png\r\n\r\n`;
+
+    const payload = Buffer.concat([
+      Buffer.from(body, 'utf-8'),
+      png1x1,
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8')
+    ]);
+
+    const res = await fetch(`${baseUrl}/api/homework/batch-grade`, {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+      body: payload
+    });
+
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.results[0].status, 'correct', 'Status should be auto-corrected to correct');
+    assert.strictEqual(data.wrongCount, 0);
+    assert.strictEqual(data.correctCount, 1);
+    assert.strictEqual(data.accuracyPct, 100);
+    assert.strictEqual(data.autoArchivedCount, 0, 'Correct items should not be archived to mistakes table');
+  } finally {
+    currentMockVisionResponse = null;
+  }
+});
+
