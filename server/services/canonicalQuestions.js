@@ -243,6 +243,39 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     source: '人教版八年级上册物理期末真题'
   },
   {
+    question: '声音在 15℃ 的空气中的传播速度约为（ ）m/s。',
+    options: 'A. 340 B. 300 C. 1500',
+    standard_answer: 'A',
+    analysis: '在 15℃ 的空气中，声音的传播速度约为 340 m/s；在水中约为 1500 m/s；在钢铁等固体中传播更快。选A。',
+    key_insight: '声速常识与介质状态关系',
+    grade: '8_up',
+    subject: '物理',
+    chapter: '声现象',
+    source: '人教版八年级物理上册考点'
+  },
+  {
+    question: '浸在液体中的物体受到的浮力大小等于（ ）。',
+    options: 'A. 物体排开液体所受的重力 B. 物体自身的重力 C. 物体的体积',
+    standard_answer: 'A',
+    analysis: '根据阿基米德原理：浸在液体中的物体受到的浮力大小等于物体排开液体所受的重力，即 F_浮 = G_排 = ρ_液 · g · V_排。选A。',
+    key_insight: '阿基米德原理核心定义公式 F浮=ρ液gV排',
+    grade: '8_down',
+    subject: '物理',
+    chapter: '浮力',
+    source: '人教版八年级物理下册期末必考题'
+  },
+  {
+    question: '一个放在水平桌面上的木块重 20N，与桌面的接触面积为 0.02m²，该木块对桌面的压强为（ ）Pa。',
+    options: 'A. 1000 B. 400 C. 2000',
+    standard_answer: 'A',
+    analysis: '在水平桌面上，压力大小等于物体重力，即 F = G = 20N。受力面积 S = 0.02 m²。根据压强公式 p = F / S = 20N ÷ 0.02m² = 1000 Pa。选A。',
+    key_insight: '固体压强公式 p=F/S 计算',
+    grade: '8_down',
+    subject: '物理',
+    chapter: '压强',
+    source: '人教版八年级物理下册期中真题'
+  },
+  {
     question: '在空气中氧气约占其总体积的（ ），氮气约占其总体积的（ ）。',
     options: 'A. 21%，78% B. 78%，21% C. 20%，80%',
     standard_answer: 'A',
@@ -252,40 +285,83 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     subject: '化学',
     chapter: '我们周围的空气',
     source: '人教版九年级化学上册期中真题'
+  },
+  {
+    question: '电解水实验中，连接电源负极的试管产生的气体是（ ），正极与负极产生气体的体积比约为（ ）。',
+    options: 'A. 氢气，1:2 B. 氧气，2:1 C. 氢气，2:1',
+    standard_answer: 'A',
+    analysis: '电解水实验口诀“正氧负氢，氢二氧一”。负极产生氢气 (H₂)，正极产生氧气 (O₂)，正极与负极气体的体积比约为 1:2。选A。',
+    key_insight: '电解水实验“正氧负氢、体积比1比2”速记口诀',
+    grade: '9_up',
+    subject: '化学',
+    chapter: '自然界的水',
+    source: '人教版九年级化学上册期末真题'
+  },
+  {
+    question: '将一枚光洁的铁钉放入硫酸铜 (CuSO₄) 溶液中，观察到的现象是（ ）。',
+    options: 'A. 铁钉表面析出红色物质，溶液由蓝色变浅绿色 B. 产生大量气泡，溶液变无色 C. 铁钉表面析出黑色固体',
+    standard_answer: 'A',
+    analysis: '铁的金属活动性强于铜，发生置换反应：Fe + CuSO₄ = FeSO₄ + Cu。析出的铜单质附着在铁钉表面呈红色，生成的 Fe²⁺ 硫酸亚铁溶液呈浅绿色，原有的蓝色硫酸铜逐渐消耗。选A。',
+    key_insight: '金属活动性顺序置换反应与溶液特征颜色',
+    grade: '9_down',
+    subject: '化学',
+    chapter: '金属和金属材料',
+    source: '人教版九年级化学下册经典探究题'
+  },
+  {
+    question: '两个相似三角形的相似比为 2:3，则这两个相似三角形的面积比为（ ）。',
+    options: 'A. 4:9 B. 2:3 C. 8:27',
+    standard_answer: 'A',
+    analysis: '相似三角形的周长比等于相似比，而面积比等于相似比的平方。已知相似比为 2:3，则面积比为 (2/3)² = 4:9。选A。',
+    key_insight: '相似图形面积比等于相似比的平方定理',
+    grade: '9_down',
+    subject: '数学',
+    chapter: '相似',
+    source: '中考数学高频必考几何定理'
+  },
+  {
+    question: '某导体两端电压为 6V 时，通过的电流为 0.6A，则该导体的电阻为（ ）Ω。',
+    options: 'A. 10 B. 3.6 C. 0.1',
+    standard_answer: 'A',
+    analysis: '根据欧姆定律公式 I = U / R 变形得 R = U / I = 6V ÷ 0.6A = 10 Ω。选A。',
+    key_insight: '欧姆定律变形公式 R=U/I 计算',
+    grade: '9_up',
+    subject: '物理',
+    chapter: '欧姆定律',
+    source: '人教版九年级物理全一册期中真题'
   }
 ];
 
 /**
- * 预热并自动注入权威真题基准库
+ * 预热并自动同步权威真题基准库
  */
 async function seedCanonicalQuestionsIfEmpty(db) {
   if (!db) return;
   try {
-    const row = await db.get('SELECT COUNT(*) as cnt FROM canonical_questions');
-    if (row && row.cnt === 0) {
-      logger.info('[CanonicalQuestions] Seeding benchmark K-12 canonical questions...');
-      for (const item of BENCHMARK_CANONICAL_QUESTIONS) {
-        const fp = computeQuestionFingerprint(item.question);
-        await db.run(
-          `INSERT OR IGNORE INTO canonical_questions 
-          (question, options, standard_answer, analysis, key_insight, grade, subject, chapter, source, fingerprint)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            item.question,
-            item.options,
-            item.standard_answer,
-            item.analysis,
-            item.key_insight,
-            item.grade,
-            item.subject,
-            item.chapter,
-            item.source,
-            fp
-          ]
-        );
-      }
-      logger.info(`[CanonicalQuestions] Seeded ${BENCHMARK_CANONICAL_QUESTIONS.length} benchmark questions.`);
+    let newlyInserted = 0;
+    for (const item of BENCHMARK_CANONICAL_QUESTIONS) {
+      const fp = computeQuestionFingerprint(item.question);
+      const res = await db.run(
+        `INSERT OR IGNORE INTO canonical_questions 
+        (question, options, standard_answer, analysis, key_insight, grade, subject, chapter, source, fingerprint)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          item.question,
+          item.options,
+          item.standard_answer,
+          item.analysis,
+          item.key_insight,
+          item.grade,
+          item.subject,
+          item.chapter,
+          item.source,
+          fp
+        ]
+      );
+      if (res && res.changes > 0) newlyInserted++;
     }
+    const row = await db.get('SELECT COUNT(*) as cnt FROM canonical_questions');
+    logger.info(`[CanonicalQuestions] Grounding bank synchronized. Total canonical questions: ${row ? row.cnt : 0} (newly added: ${newlyInserted}).`);
   } catch (err) {
     logger.warn('[CanonicalQuestions] Seeding warning:', err.message);
   }

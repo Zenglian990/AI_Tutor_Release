@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
+import html2canvas from 'html2canvas';
 import { preprocessLatex } from '../utils/math';
 import { formatGrade } from '../store/useStore';
+import ParentalGate from './ParentalGate';
 
 /**
  * Safe LaTeX & Markdown renderer for A4 Paper
@@ -48,6 +50,10 @@ export default function A4PrintModal({
   const [printMode, setPrintMode] = useState(initialMode); // 'blank_student' | 'with_answers'
   const [filterType, setFilterType] = useState(initialFilter); // 'all' | 'wrong_only'
   const [twoColumn, setTwoColumn] = useState(false); // standard single column or dual column exam format
+  const [exportingImage, setExportingImage] = useState(false);
+  const [exportSuccessMsg, setExportSuccessMsg] = useState('');
+  const [showGate, setShowGate] = useState(false);
+  const sheetRef = useRef(null);
 
   if (!isOpen) return null;
 
@@ -111,6 +117,42 @@ export default function A4PrintModal({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSwitchToAnswers = () => {
+    const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
+    if (isAntiCheatLocked && printMode === 'blank_student') {
+      setShowGate(true);
+    } else {
+      setPrintMode('with_answers');
+    }
+  };
+
+  const handleExportImage = async () => {
+    if (!sheetRef.current || exportingImage) return;
+    setExportingImage(true);
+    setExportSuccessMsg('');
+    try {
+      const canvas = await html2canvas(sheetRef.current, {
+        scale: 2, // 2x resolution for crisp 300dpi printing
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      const filename = `曾练专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+      setExportSuccessMsg('🎉 高清试卷长图已成功生成并下载！可直接发送给微信好友或“爱普生/惠普/小白智慧打印”小程序快速出纸。');
+      setTimeout(() => setExportSuccessMsg(''), 7000);
+    } catch (err) {
+      console.error('Export image failed:', err);
+      alert('导出长图失败，请直接使用快捷打印');
+    } finally {
+      setExportingImage(false);
+    }
   };
 
   const gradeDisplay = formatGrade(grade) || grade || '初一上册';
@@ -246,7 +288,7 @@ export default function A4PrintModal({
                 📝 空白重测卷 (学生真练)
               </button>
               <button
-                onClick={() => setPrintMode('with_answers')}
+                onClick={handleSwitchToAnswers}
                 style={{
                   background: printMode === 'with_answers' ? '#059669' : 'transparent',
                   color: printMode === 'with_answers' ? '#fff' : '#475569',
@@ -337,6 +379,39 @@ export default function A4PrintModal({
               🖨️ 打印 / 导出 PDF
             </button>
 
+            {/* Export High-Res Image for WeChat Printing */}
+            <button
+              onClick={handleExportImage}
+              disabled={exportingImage}
+              title="生成高清 300DPI 试卷长图，直接发微信或微信打印机小程序"
+              style={{
+                background: exportingImage ? '#059669' : 'linear-gradient(135deg, #059669, #10b981)',
+                color: '#fff',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                cursor: exportingImage ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.9rem',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)'
+              }}
+            >
+              {exportingImage ? (
+                <>
+                  <span className="dot">⏳</span>
+                  <span>渲染长图中...</span>
+                </>
+              ) : (
+                <>
+                  <span>🖼️</span>
+                  <span>导出长图 (发微信打印)</span>
+                </>
+              )}
+            </button>
+
             {/* Close Button */}
             <button
               onClick={onClose}
@@ -356,6 +431,32 @@ export default function A4PrintModal({
           </div>
         </div>
 
+        {/* Success Alert Banner for Image Export */}
+        {exportSuccessMsg && (
+          <div className="a4-no-print" style={{
+            background: '#ecfdf5',
+            borderBottom: '1px solid #a7f3d0',
+            color: '#065f46',
+            padding: '10px 24px',
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontWeight: 500
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✅</span>
+              <span>{exportSuccessMsg}</span>
+            </div>
+            <button
+              onClick={() => setExportSuccessMsg('')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', fontWeight: 'bold' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Printable A4 Paper Preview Container */}
         <div className="a4-preview-scroll-area" style={{
           flex: 1,
@@ -365,7 +466,7 @@ export default function A4PrintModal({
           display: 'flex',
           justifyContent: 'center'
         }}>
-          <div className="printable-a4-sheet" style={{
+          <div className="printable-a4-sheet" ref={sheetRef} style={{
             background: '#fff',
             width: '100%',
             maxWidth: '820px',
@@ -606,6 +707,17 @@ export default function A4PrintModal({
           </div>
         </div>
       </div>
+
+      {/* Parental Gate for Answer Key Anti-Cheat Lock */}
+      <ParentalGate
+        isOpen={showGate}
+        reason="解锁查看标准答案与名师解析（防孩子偷看）"
+        onVerify={() => {
+          setShowGate(false);
+          setPrintMode('with_answers');
+        }}
+        onClose={() => setShowGate(false)}
+      />
     </div>
   );
 }

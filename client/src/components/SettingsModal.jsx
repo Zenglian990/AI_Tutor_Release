@@ -21,6 +21,7 @@ export default function SettingsModal({
   const [url, setUrl] = useState(backendUrl);
   const [token, setToken] = useState(apiToken);
   const [parentName, setParentName] = useState(settings?.parentName || '家长');
+  const [antiCheatLocked, setAntiCheatLocked] = useState(() => localStorage.getItem('parent_anti_cheat_locked') !== 'false');
   const [showToken, setShowToken] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showExportGate, setShowExportGate] = useState(false);
@@ -58,6 +59,7 @@ export default function SettingsModal({
     e.preventDefault();
     onSaveBackendUrl(url.trim());
     onSaveApiToken(token.trim());
+    localStorage.setItem('parent_anti_cheat_locked', antiCheatLocked ? 'true' : 'false');
 
     // Persist DeepSeek key if entered
     if (deepseekKey.trim() || deepseekUrl.trim()) {
@@ -202,6 +204,33 @@ export default function SettingsModal({
               onChange={e => setParentName(e.target.value)}
               style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', fontSize: '0.9rem' }}
             />
+          </div>
+
+          {/* Parent Anti-Cheat Strict Lock */}
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '10px',
+            padding: '12px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 600, color: '#fca5a5', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🛡️</span>
+                <span>家长防抄题监督锁</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={antiCheatLocked}
+                onChange={e => setAntiCheatLocked(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#ef4444' }}
+              />
+            </div>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              开启后，学生端强制使用苏格拉底启发引导；若要切换至【直接解答】或查看 A4 试卷答案，必须输入家长密码，彻底杜绝应付作业偷抄答案。
+            </p>
           </div>
 
           {/* Textbook Edition Selector */}

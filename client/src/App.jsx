@@ -510,7 +510,16 @@ function AppInner() {
         onSubjectChange={setSelectedSubject}
         onClearChat={clearChat}
         socraticLevel={socraticLevel}
-        onSocraticCycle={(level) => setSocraticLevel(level)}
+        onSocraticCycle={(level) => {
+          const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
+          if (level === 'direct' && isAntiCheatLocked) {
+            setGateAction(() => () => setSocraticLevel('direct'));
+            setGateReason('切换至【直接解答】模式（家长防抄题监督锁已生效）');
+            setGateOpen(true);
+          } else {
+            setSocraticLevel(level);
+          }
+        }}
         isLightMode={isLightMode}
         onThemeToggle={() => setIsLightMode(!isLightMode)}
         onSettingsOpen={() => setShowSettings(true)}
