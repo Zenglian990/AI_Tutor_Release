@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { preprocessLatex } from '../utils/math'
 import DOMPurify from 'dompurify';
 import { initMermaid, sanitizeMermaid, mermaid } from '../utils/mermaid_helper';
+import { splitThinkingContent } from '../utils/thinking';
 
 initMermaid();
 
@@ -70,14 +71,22 @@ function MermaidChart({ chart }) {
             setRendered(true);
           }
         }).catch(e => {
-          if (svgRef.current) svgRef.current.innerHTML = `<pre style="color:red;font-size:12px;">图表渲染错误: ${e.message}</pre>`;
+          if (svgRef.current) {
+            svgRef.current.textContent = `图表渲染错误: ${e.message}`;
+            svgRef.current.style.color = 'red';
+            svgRef.current.style.fontSize = '12px';
+          }
           const danglingSvg = document.getElementById(id);
           if (danglingSvg) danglingSvg.remove();
           const dDanglingSvg = document.getElementById('d' + id);
           if (dDanglingSvg) dDanglingSvg.remove();
         });
       } catch (error) {
-        if (svgRef.current) svgRef.current.innerHTML = `<pre style="color:red;font-size:12px;">图表渲染错误: ${error.message}</pre>`;
+        if (svgRef.current) {
+          svgRef.current.textContent = `图表渲染错误: ${error.message}`;
+          svgRef.current.style.color = 'red';
+          svgRef.current.style.fontSize = '12px';
+        }
       }
     }
   }, [chart]);
@@ -194,36 +203,7 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
 
 
 
-/**
- * Extract thinking/reasoning process from AI response (<think> or legacy > 🧠 [思考过程])
- */
-function splitThinkingContent(rawText) {
-  if (!rawText || typeof rawText !== 'string') {
-    return { thinking: null, body: rawText || '' };
-  }
 
-  // 1. Standard <think> ... </think>
-  const thinkMatch = rawText.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
-  if (thinkMatch) {
-    const thinking = thinkMatch[1].trim();
-    const body = rawText.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, '').trim();
-    return { thinking, body };
-  }
-
-  // 2. Legacy blockquote format: > 🧠 **[思考过程]**
-  const bqMatch = rawText.match(/(?:^|\n)>\s*🧠\s*\**\[思考过程\]\**\s*([\s\S]*?)(?=(?:\n[^\n>]|\n\n[^\n>]|$))/i);
-  if (bqMatch) {
-    const rawThinking = bqMatch[1]
-      .split('\n')
-      .map(line => line.replace(/^>\s?/, ''))
-      .join('\n')
-      .trim();
-    const body = rawText.replace(bqMatch[0], '').trim();
-    return { thinking: rawThinking, body };
-  }
-
-  return { thinking: null, body: rawText };
-}
 
   const toggleSpeech = () => {
     if (isPlaying) {

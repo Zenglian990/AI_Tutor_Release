@@ -80,7 +80,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
       const mTags = m.tags ? m.tags.split(',').map(t => t.trim().toLowerCase()) : [];
       if (!mTags.includes(filterTag.toLowerCase())) return false;
     }
-    if (searchWord && !m.query.includes(searchWord) && (!m.answer || !m.answer.includes(searchWord))) return false;
+    if (searchWord && (!m.query || !m.query.includes(searchWord)) && (!m.answer || !m.answer.includes(searchWord))) return false;
     if (showReviewOnly) {
       if (!m.next_review_date) return false;
       if (new Date(m.next_review_date) > new Date()) return false;

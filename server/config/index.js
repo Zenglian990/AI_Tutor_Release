@@ -109,6 +109,19 @@ const DB_ENCRYPTION_KEY = (() => {
     return Buffer.from(fromEnv, 'hex');
   }
 
+  // Check persistent volume file (e.g. Docker ./data mount)
+  const keyFilePath = path.join(__dirname, '..', '..', 'data', 'db_key');
+  try {
+    if (fs.existsSync(keyFilePath)) {
+      const savedKeyHex = fs.readFileSync(keyFilePath, 'utf8').trim();
+      if (savedKeyHex.length === 64) {
+        return Buffer.from(savedKeyHex, 'hex');
+      }
+    }
+  } catch (e) {
+    // Ignore file read error
+  }
+
   let keyHex;
   if (process.env.API_TOKEN && process.env.API_TOKEN !== 'change-me-to-a-random-string' && process.env.API_TOKEN !== 'ai-tutor-default-token-change-me') {
     // Derive from existing API_TOKEN for backward compatibility (only if it existed BEFORE startup)
@@ -118,10 +131,18 @@ const DB_ENCRYPTION_KEY = (() => {
     keyHex = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
   }
 
-  // Automatically write DB_ENCRYPTION_KEY to .env for persistence
+  // 1. Automatically write DB_ENCRYPTION_KEY to data/db_key (Docker persistent volume)
   try {
-    const fs = require('fs');
-    const path = require('path');
+    const dataDir = path.join(__dirname, '..', '..', 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(keyFilePath, keyHex, { mode: 0o600 });
+    logger.info('   [SUCCESS] Persisted DB_ENCRYPTION_KEY to data/db_key');
+  } catch (err) {
+    logger.warn('   Failed to persist DB_ENCRYPTION_KEY to data/db_key:', err.message);
+  }
+
+  // 2. Automatically write DB_ENCRYPTION_KEY to .env for local persistence
+  try {
     const envPath = path.join(__dirname, '..', '..', '.env');
     let envContent = '';
     if (fs.existsSync(envPath)) {

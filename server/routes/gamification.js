@@ -106,52 +106,62 @@ router.post('/gamification/record-action', async (req, res) => {
       colToIncrement = 'solved_count';
     }
 
-    // Atomic update of rank_points and respective counter
-    await db.run(
-      `UPDATE user_gamification
-       SET rank_points = rank_points + ?,
-           ${colToIncrement} = ${colToIncrement} + 1,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE profile_id = ?`,
-      [gain, profile_id]
-    );
-
-    const row = await db.get('SELECT * FROM user_gamification WHERE profile_id = ?', [profile_id]);
-    if (row) {
-      const newPoints = row.rank_points;
-      const newTierObj = getRankTier(newPoints);
-      let badges = [];
-      try { badges = JSON.parse(row.badges || '[]'); } catch {}
-
-      let badgeGained = null;
-      if (action_type === 'feynman_challenge' && !badges.includes('费曼小导师')) {
-        badges.push('费曼小导师');
-        badgeGained = '费曼小导师';
-      }
-      if (action_type === 'scratchpad_draw' && !badges.includes('草稿大师')) {
-        badges.push('草稿大师');
-        badgeGained = '草稿大师';
-      }
-      if (newPoints >= 600 && !badges.includes('黄金学者')) {
-        badges.push('黄金学者');
-        badgeGained = '黄金学者';
-      }
-
+    // Atomic transaction for point increment and badge evaluation
+    let resultPayload = { success: true, gainedPoints: gain };
+    await db.run('BEGIN IMMEDIATE TRANSACTION');
+    try {
       await db.run(
         `UPDATE user_gamification
-         SET rank_tier = ?, badges = ?
+         SET rank_points = rank_points + ?,
+             ${colToIncrement} = ${colToIncrement} + 1,
+             updated_at = CURRENT_TIMESTAMP
          WHERE profile_id = ?`,
-        [newTierObj.name, JSON.stringify(badges), profile_id]
+        [gain, profile_id]
       );
 
-      return res.json({
-        success: true,
-        gainedPoints: gain,
-        newPoints,
-        newTier: newTierObj,
-        badgeGained
-      });
+      const row = await db.get('SELECT * FROM user_gamification WHERE profile_id = ?', [profile_id]);
+      if (row) {
+        const newPoints = row.rank_points;
+        const newTierObj = getRankTier(newPoints);
+        let badges = [];
+        try { badges = JSON.parse(row.badges || '[]'); } catch {}
+
+        let badgeGained = null;
+        if (action_type === 'feynman_challenge' && !badges.includes('费曼小导师')) {
+          badges.push('费曼小导师');
+          badgeGained = '费曼小导师';
+        }
+        if (action_type === 'scratchpad_draw' && !badges.includes('草稿大师')) {
+          badges.push('草稿大师');
+          badgeGained = '草稿大师';
+        }
+        if (newPoints >= 600 && !badges.includes('黄金学者')) {
+          badges.push('黄金学者');
+          badgeGained = '黄金学者';
+        }
+
+        await db.run(
+          `UPDATE user_gamification
+           SET rank_tier = ?, badges = ?
+           WHERE profile_id = ?`,
+          [newTierObj.name, JSON.stringify(badges), profile_id]
+        );
+
+        resultPayload = {
+          success: true,
+          gainedPoints: gain,
+          newPoints,
+          newTier: newTierObj,
+          badgeGained
+        };
+      }
+      await db.run('COMMIT');
+    } catch (txErr) {
+      await db.run('ROLLBACK').catch(() => {});
+      throw txErr;
     }
+
+    return res.json(resultPayload);
 
     res.json({ success: true, gainedPoints: gain });
   } catch (err) {

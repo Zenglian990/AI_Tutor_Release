@@ -543,7 +543,7 @@ export default function A4PrintModal({
               </div>
               <div style={{ flex: 1, display: 'flex' }}>
                 {displayQuestions.map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < displayQuestions.length - 1 ? '1px solid #374151' : 'none', textAlign: 'center' }}>
+                  <div key={`score-cell-${i}`} style={{ flex: 1, borderRight: i < displayQuestions.length - 1 ? '1px solid #374151' : 'none', textAlign: 'center' }}>
                     <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f9fafb' }}>{i + 1}</div>
                     <div style={{ padding: '6px', color: '#9ca3af' }}>&nbsp;</div>
                   </div>

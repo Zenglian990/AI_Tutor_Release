@@ -143,28 +143,20 @@ router.post('/mistakes/review-feedback', async (req, res) => {
     const mistake = await sqliteDb.get(`SELECT review_count, easiness_factor, last_interval FROM mistakes WHERE id = ?`, [mistake_id]);
     if (!mistake) return res.status(404).json({ error: "Mistake not found" });
 
-    let { review_count = 0, easiness_factor = 2.5, last_interval = 0 } = mistake;
-    let interval = 1;
-
-    if (quality >= 3) {
-      if (review_count === 0) interval = 1;
-      else if (review_count === 1) interval = 6;
-      else interval = Math.round(last_interval * easiness_factor);
-      review_count += 1;
-    } else {
-      review_count = 0;
-      interval = 1;
-    }
-
-    // SM-2: EF is updated regardless of quality score
-    easiness_factor = Math.max(1.3, easiness_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+    const { calculateSM2 } = require('../utils/sm2');
+    const sm2Result = calculateSM2(
+      quality,
+      mistake.review_count || 0,
+      mistake.easiness_factor || 2.5,
+      mistake.last_interval || 0
+    );
 
     await sqliteDb.run(
       `UPDATE mistakes SET review_count = ?, easiness_factor = ?, next_review_date = datetime('now', '+' || ? || ' days'), last_interval = ? WHERE id = ?`,
-      [review_count, easiness_factor, interval, interval, mistake_id]
+      [sm2Result.review_count, sm2Result.easiness_factor, sm2Result.interval, sm2Result.interval, mistake_id]
     );
 
-    res.json({ success: true, next_interval_days: interval });
+    res.json({ success: true, next_interval_days: sm2Result.interval });
   } catch (e) {
     logger.error("Review feedback error:", e);
     res.status(500).json({ error: "提交反馈失败" });

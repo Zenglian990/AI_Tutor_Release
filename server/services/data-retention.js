@@ -13,19 +13,19 @@ async function startDataRetentionCleanup(getSqliteDb) {
     let totalChanges = 0;
 
     try {
-      const cutoffDate = new Date(Date.now() - DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const daysArg = `-${DATA_RETENTION_DAYS} days`;
 
       await db.run(
         `DELETE FROM chat_history_fts 
          WHERE chat_id IN (
            SELECT id FROM chat_history 
-           WHERE timestamp < ?
+           WHERE datetime(timestamp) < datetime('now', ?)
          )`,
-        [cutoffDate]
+        [daysArg]
       );
       const result = await db.run(
-        `DELETE FROM chat_history WHERE timestamp < ?`,
-        [cutoffDate]
+        `DELETE FROM chat_history WHERE datetime(timestamp) < datetime('now', ?)`,
+        [daysArg]
       );
       if (result.changes > 0) {
         totalChanges += result.changes;
@@ -36,12 +36,12 @@ async function startDataRetentionCleanup(getSqliteDb) {
     }
 
     try {
-      const cutoffDate = new Date(Date.now() - DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const daysArg = `-${DATA_RETENTION_DAYS} days`;
       const result = await db.run(
         `DELETE FROM mistakes 
-         WHERE timestamp < ?
-         AND COALESCE(next_review_date, '1970-01-01T00:00:00.000Z') < ?`,
-        [cutoffDate, cutoffDate]
+         WHERE datetime(timestamp) < datetime('now', ?)
+         AND datetime(COALESCE(next_review_date, '1970-01-01 00:00:00')) < datetime('now', ?)`,
+        [daysArg, daysArg]
       );
       if (result.changes > 0) {
         totalChanges += result.changes;

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const multer = require('multer');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
@@ -647,8 +648,29 @@ const getPinStatusHandler = async (req, res) => {
 router.get('/admin/pin', getPinStatusHandler);
 router.get('/admin/pin-status', getPinStatusHandler);
 
+// In-memory brute force rate limiter for PIN verification
+const pinAttempts = new Map();
+
+function checkPinRateLimit(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = pinAttempts.get(ip) || { count: 0, resetTime: now + 5 * 60 * 1000 };
+
+  if (now > entry.resetTime) {
+    entry.count = 0;
+    entry.resetTime = now + 5 * 60 * 1000;
+  }
+
+  if (entry.count >= 10) {
+    return res.status(429).json({ error: "PIN 验证尝试过于频繁，已被锁定 5 分钟" });
+  }
+
+  req._pinAttemptEntry = entry;
+  next();
+}
+
 // POST /api/admin/verify-pin — Verify parent PIN hash server-side
-router.post('/admin/verify-pin', async (req, res) => {
+router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
@@ -660,9 +682,15 @@ router.post('/admin/verify-pin', async (req, res) => {
       return res.json({ valid: true, unconfigured: true });
     }
 
-    if (savedPinRow.value === pin_hash) {
+    const savedBuf = Buffer.from(String(savedPinRow.value));
+    const inputBuf = Buffer.from(String(pin_hash));
+    const isValid = savedBuf.length === inputBuf.length && crypto.timingSafeEqual(savedBuf, inputBuf);
+
+    if (isValid) {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
       return res.json({ valid: true });
     } else {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
       return res.status(401).json({ valid: false, error: "密码不正确" });
     }
   } catch (e) {
@@ -672,7 +700,7 @@ router.post('/admin/verify-pin', async (req, res) => {
 });
 
 // POST /api/admin/reset-pin — Reset PIN via verified security question
-router.post('/admin/reset-pin', async (req, res) => {
+router.post('/admin/reset-pin', checkPinRateLimit, async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });

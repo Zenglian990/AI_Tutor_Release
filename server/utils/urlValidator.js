@@ -111,7 +111,7 @@ function isSafeExternalUrl(urlString) {
 
   const hostname = parsed.hostname.toLowerCase();
 
-  // 3. 常见内网名称与回环拦截
+  // 3. 常见内网名称与回环/DNS重绑定域名拦截
   if (
     hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
@@ -120,9 +120,13 @@ function isSafeExternalUrl(urlString) {
     hostname === '[::1]' ||
     hostname.endsWith('.local') ||
     hostname.endsWith('.internal') ||
-    hostname.endsWith('.lan')
+    hostname.endsWith('.lan') ||
+    hostname.endsWith('.nip.io') ||
+    hostname.endsWith('.sslip.io') ||
+    hostname.endsWith('.xip.io') ||
+    hostname.endsWith('.localtest.me')
   ) {
-    return { safe: false, error: '禁止访问回环或内部主机' };
+    return { safe: false, error: '禁止访问回环、内部主机或DNS重绑定域名' };
   }
 
   // 4. IP 直接访问检查

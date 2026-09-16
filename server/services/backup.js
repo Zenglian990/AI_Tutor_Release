@@ -69,21 +69,14 @@ async function runBackup() {
     const destFolder = path.join(BACKUP_DIR, `backup-${timestamp}`);
     await fsPromises.mkdir(destFolder, { recursive: true });
 
-    // 1. Backup SQLite db and its transaction log (WAL) files
-    if (fs.existsSync(SQLITE_DB)) {
+    // 1. Atomic Backup of SQLite database using VACUUM INTO
+    const backupDbPath = path.join(destFolder, 'mistakes.db').replace(/\\/g, '/');
+    if (sqliteDb) {
+      await sqliteDb.run(`VACUUM INTO ?`, [backupDbPath]);
+      logger.info(`[Backup] SQLite database atomically backed up via VACUUM INTO to ${destFolder}`);
+    } else if (fs.existsSync(SQLITE_DB)) {
       await fsPromises.copyFile(SQLITE_DB, path.join(destFolder, 'mistakes.db'));
-      
-      const walFile = `${SQLITE_DB}-wal`;
-      if (fs.existsSync(walFile)) {
-        await fsPromises.copyFile(walFile, path.join(destFolder, 'mistakes.db-wal'));
-      }
-      
-      const shmFile = `${SQLITE_DB}-shm`;
-      if (fs.existsSync(shmFile)) {
-        await fsPromises.copyFile(shmFile, path.join(destFolder, 'mistakes.db-shm'));
-      }
-      
-      logger.info(`[Backup] SQLite database and WAL files backed up to ${destFolder}`);
+      logger.info(`[Backup] SQLite database file copied to ${destFolder}`);
     }
 
     // 2. LanceDB contains static textbook vector databases (1.89GB) which does not need regular backup.

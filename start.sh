@@ -28,8 +28,8 @@ if [ "$has_key" -eq 0 ]; then
     echo "  First-time setup requires your Gemini API Key."
     echo "  You can get one for free at Google AI Studio (https://aistudio.google.com/)."
     echo "============================================================"
-    echo ""
-    read -p "Please enter your Gemini API Key: " user_key
+    printf "Please enter your Gemini API Key: "
+    read user_key
     
     # Write to .env
     if ! grep -q "GEMINI_API_KEY=" .env 2>/dev/null; then
@@ -52,7 +52,7 @@ fi
 
 FORCE_BUILD=0
 for arg in "$@"; do
-    if [ "$arg" == "--build" ]; then
+    if [ "$arg" = "--build" ]; then
         FORCE_BUILD=1
     fi
 done
