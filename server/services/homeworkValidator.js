@@ -5,6 +5,7 @@
 
 const logger = require('./logger');
 const { extractAndVerifyDeterministicMath } = require('./mathSolver');
+const { lookupCanonicalQuestion } = require('./canonicalQuestions');
 
 /**
  * 提取选项字母 (A, B, C, D)
@@ -27,12 +28,12 @@ function extractNumbers(str) {
 /**
  * 校验并自动修复作业批改结果，杜绝幻觉
  */
-function sanitizeAndArbitrateHomeworkResults(parsedData, context = {}) {
+async function sanitizeAndArbitrateHomeworkResults(parsedData, context = {}, db = null) {
   if (!parsedData || !Array.isArray(parsedData.results)) {
     return parsedData;
   }
 
-  const { subject = '数学' } = context;
+  const { subject = '数学', grade = 'all' } = context;
 
   for (const item of parsedData.results) {
     const studentAns = String(item.studentAnswer || '').trim();
@@ -40,8 +41,43 @@ function sanitizeAndArbitrateHomeworkResults(parsedData, context = {}) {
     const reason = String(item.mistakeReason || '').trim();
     const snippet = String(item.questionSnippet || '').trim();
 
-    // ---- 1. 确定性理科/几何代数沙盒求解校验 ----
-    if (subject === '数学' || !subject) {
+    let canonicalMatched = false;
+
+    // ---- 0. 权威真题题库硬锚定 (Grounding RAG / Canonical Bank) ----
+    if (db) {
+      try {
+        const canonicalMatch = await lookupCanonicalQuestion(snippet, grade, subject, db);
+        if (canonicalMatch && canonicalMatch.matched) {
+          canonicalMatched = true;
+          const canonical = canonicalMatch.canonical;
+          logger.info(`[HomeworkValidator] Grounding hit canonical question ID ${canonical.id} (${canonicalMatch.matchType}) for Q${item.questionNumber}`);
+          
+          item.standardAnswer = `【权威教材标答】：${canonical.standard_answer}\n【名师解析】：${canonical.analysis}`;
+          if (canonical.key_insight) item.keyInsight = canonical.key_insight;
+
+          const studentOpt = extractOptionLetter(studentAns);
+          const canonicalOpt = extractOptionLetter(canonical.standard_answer);
+
+          const studentMatchesCanonical = Boolean(
+            (studentOpt && canonicalOpt && studentOpt === canonicalOpt) ||
+            studentAns.toLowerCase().includes(canonical.standard_answer.toLowerCase()) ||
+            (extractNumbers(canonical.standard_answer).length > 0 && extractNumbers(studentAns).includes(extractNumbers(canonical.standard_answer)[0]))
+          );
+
+          if (studentMatchesCanonical) {
+            item.status = 'correct';
+            item.score = item.maxScore || 10;
+            item.mistakeReason = '';
+            logger.info(`[HomeworkValidator] Q${item.questionNumber}: Student answer matched canonical answer, forced correct`);
+          }
+        }
+      } catch (bankErr) {
+        logger.warn('[HomeworkValidator] Canonical lookup warning:', bankErr.message);
+      }
+    }
+
+    // ---- 1. 确定性理科/几何代数沙盒求解校验 (未命中权威真题库时启用动态参数求解) ----
+    if (!canonicalMatched && (subject === '数学' || !subject)) {
       const mathVerification = extractAndVerifyDeterministicMath(snippet);
       if (mathVerification && mathVerification.matched) {
         logger.info(`[HomeworkValidator] Math deterministic rule matched for Q${item.questionNumber}: ${mathVerification.category}`);
@@ -54,7 +90,6 @@ function sanitizeAndArbitrateHomeworkResults(parsedData, context = {}) {
         if (expectedPerimeter !== undefined) {
           const studentNums = extractNumbers(studentAns);
           const studentHasCorrectPerimeter = studentNums.includes(expectedPerimeter);
-          const studentOpt = extractOptionLetter(studentAns);
 
           // 检查标准答案是否包含正确周长
           const standardNums = extractNumbers(standardAns);

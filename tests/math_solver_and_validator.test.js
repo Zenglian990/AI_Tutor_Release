@@ -67,7 +67,7 @@ test('HomeworkValidator: extractOptionLetter and extractNumbers extract accurate
   assert.deepStrictEqual(extractNumbers('周长是16厘米，面积是12平方厘米'), [16, 12]);
 });
 
-test('HomeworkValidator: auto-corrects LLM geometric hallucination and validates student answer', () => {
+test('HomeworkValidator: auto-corrects LLM geometric hallucination and validates student answer', async () => {
   const mockParsedData = {
     totalCount: 1,
     correctCount: 0,
@@ -88,7 +88,7 @@ test('HomeworkValidator: auto-corrects LLM geometric hallucination and validates
     ]
   };
 
-  const validated = sanitizeAndArbitrateHomeworkResults(mockParsedData, { subject: '数学' });
+  const validated = await sanitizeAndArbitrateHomeworkResults(mockParsedData, { subject: '数学' });
   assert.strictEqual(validated.correctCount, 1);
   assert.strictEqual(validated.wrongCount, 0);
   assert.strictEqual(validated.accuracyPct, 100);
@@ -100,7 +100,7 @@ test('HomeworkValidator: auto-corrects LLM geometric hallucination and validates
   assert.ok(item.standardAnswer.includes('正确答案应为：16厘米'));
 });
 
-test('HomeworkValidator: respects teacher checkmark and self-contradicting reasons', () => {
+test('HomeworkValidator: respects teacher checkmark and self-contradicting reasons', async () => {
   const mockParsedData = {
     results: [
       {
@@ -115,7 +115,7 @@ test('HomeworkValidator: respects teacher checkmark and self-contradicting reaso
     ]
   };
 
-  const validated = sanitizeAndArbitrateHomeworkResults(mockParsedData, { subject: '数学' });
+  const validated = await sanitizeAndArbitrateHomeworkResults(mockParsedData, { subject: '数学' });
   assert.strictEqual(validated.results[0].status, 'correct');
   assert.strictEqual(validated.correctCount, 1);
 });

@@ -158,8 +158,9 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
         }]
       };
     } else {
+      const db = getSqliteDb();
       // Delegate to multi-tier deterministic arbitrator and anti-hallucination validator
-      parsedData = sanitizeAndArbitrateHomeworkResults(parsedData, { subject, grade, student_name });
+      parsedData = await sanitizeAndArbitrateHomeworkResults(parsedData, { subject, grade, student_name }, db);
     }
 
     // Auto-archive wrong questions to mistakes table if SQLite available

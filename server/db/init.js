@@ -3,6 +3,7 @@ const { open } = require('sqlite');
 const sqlite3 = require('sqlite3');
 const { RAG_TOP_K, EMBED_MODEL, SQLITE_DB_PATH, DB_PATH } = require('../config');
 const logger = require('../services/logger');
+const { initCanonicalQuestionsTable, seedCanonicalQuestionsIfEmpty } = require('../services/canonicalQuestions');
 
 let table = null;
 let sqliteDb = null;
@@ -94,6 +95,10 @@ async function initDB() {
 
     // Run migrations
     await runMigrations(sqliteDb);
+
+    // Initialize & seed canonical K-12 benchmark question bank
+    await initCanonicalQuestionsTable(sqliteDb);
+    await seedCanonicalQuestionsIfEmpty(sqliteDb);
 
     logger.info("Mistake Notebook (SQLite) initialized with multi-profile and subject support.");
   } catch (e) {

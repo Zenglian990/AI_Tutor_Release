@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch } from '../store/useStore';
 import { compressImage } from '../utils/image';
+import { enhanceDocumentFile } from '../utils/documentEnhancer';
 import { preprocessLatex } from '../utils/math';
 
 /**
@@ -92,6 +93,7 @@ export default function HomeworkBatchModal({
   const [batchResult, setBatchResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'wrong', 'correct'
+  const [enableEnhancer, setEnableEnhancer] = useState(true);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -114,7 +116,15 @@ export default function HomeworkBatchModal({
     setAnalyzing(true);
     setErrorMsg('');
     try {
-      const compressed = await compressImage(selectedFile);
+      let fileToUpload = selectedFile;
+      if (enableEnhancer) {
+        try {
+          fileToUpload = await enhanceDocumentFile(selectedFile);
+        } catch (enhErr) {
+          console.warn('[HomeworkBatch] Document enhancer warning:', enhErr);
+        }
+      }
+      const compressed = await compressImage(fileToUpload);
       const formData = new FormData();
       formData.append('image', compressed);
       formData.append('profile_id', currentProfileId || 'default');
@@ -284,6 +294,59 @@ export default function HomeworkBatchModal({
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Document Enhancer Switch */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: 'rgba(15, 23, 42, 0.55)',
+                borderRadius: '12px',
+                border: '1px solid rgba(56, 189, 248, 0.2)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '1.2rem' }}>✨</span>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
+                      智能文档去阴影增强 (媲美作业帮/扫描全能王)
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                      自动消除手机拍照阴影、提高字迹对比度、100%保留老师红笔批阅勾叉标记
+                    </div>
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={enableEnhancer}
+                    onChange={(e) => setEnableEnhancer(e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    cursor: 'pointer',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: enableEnhancer ? '#0284c7' : '#334155',
+                    transition: '.3s',
+                    borderRadius: '24px'
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      height: '18px',
+                      width: '18px',
+                      left: enableEnhancer ? '23px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: 'white',
+                      transition: '.3s',
+                      borderRadius: '50%'
+                    }} />
+                  </span>
+                </label>
               </div>
 
               {/* Action Buttons */}
