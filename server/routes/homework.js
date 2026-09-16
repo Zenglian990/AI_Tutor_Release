@@ -6,6 +6,7 @@ const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { encryptField } = require('../utils/crypto');
 const logger = require('../services/logger');
 const { extractAndParseJson } = require('../utils/jsonParser');
+const { sanitizeAndArbitrateHomeworkResults } = require('../services/homeworkValidator');
 
 // Allowed image MIME types
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
@@ -157,39 +158,8 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
         }]
       };
     } else {
-      // Auto-correct false "wrong" tags: verify consistency against teacher marks and student correctness
-      for (const item of parsedData.results) {
-        const studentAns = String(item.studentAnswer || '').trim();
-        const standardAns = String(item.standardAnswer || '').trim();
-        const reason = String(item.mistakeReason || '').trim();
-
-        // Check if reason or mark explicitly indicates student is actually correct
-        const textIndicatesCorrect = /修正为正确|判定为正确|实际上正确|实际是正确|实际正确|学生是对的|学生做对|打勾.*正确|红勾.*正确|无需订正|选[a-dA-D].*正确/i.test(reason);
-
-        // Check multiple choice option letter match (e.g. "B" and "B" or "B. 16" and "B")
-        const studentOptMatch = studentAns.match(/^[A-Da-d](?=[\s.、，:：\)]|$)/);
-        const standardOptMatch = standardAns.match(/^[A-Da-d](?=[\s.、，:：\)]|$)/);
-        const studentOpt = studentOptMatch ? studentOptMatch[0].toUpperCase() : null;
-        const standardOpt = standardOptMatch ? standardOptMatch[0].toUpperCase() : null;
-        const optMatches = Boolean(studentOpt && standardOpt && studentOpt === standardOpt);
-
-        // Exact clean string match (ignoring case & whitespaces)
-        const exactMatch = Boolean(studentAns && standardAns && studentAns.toLowerCase() === standardAns.toLowerCase());
-
-        if (item.status === 'wrong' && (textIndicatesCorrect || optMatches || exactMatch)) {
-          logger.info(`[HomeworkBatch] Auto-correcting false wrong status for Q${item.questionNumber} to correct (reasonHint=${textIndicatesCorrect}, optMatches=${optMatches}, exactMatch=${exactMatch})`);
-          item.status = 'correct';
-          item.score = item.maxScore || 10;
-          item.mistakeReason = '';
-        }
-      }
-
-      // Ensure summary statistics are accurate
-      const results = parsedData.results;
-      parsedData.totalCount = results.length;
-      parsedData.correctCount = results.filter(r => r.status === 'correct').length;
-      parsedData.wrongCount = results.filter(r => r.status === 'wrong').length;
-      parsedData.accuracyPct = Math.round((parsedData.correctCount / Math.max(1, results.length)) * 100);
+      // Delegate to multi-tier deterministic arbitrator and anti-hallucination validator
+      parsedData = sanitizeAndArbitrateHomeworkResults(parsedData, { subject, grade, student_name });
     }
 
     // Auto-archive wrong questions to mistakes table if SQLite available
