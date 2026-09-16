@@ -648,12 +648,28 @@ const getPinStatusHandler = async (req, res) => {
 router.get('/admin/pin', getPinStatusHandler);
 router.get('/admin/pin-status', getPinStatusHandler);
 
-// In-memory brute force rate limiter for PIN verification
+// In-memory brute force rate limiter for PIN verification with periodic garbage collection
 const pinAttempts = new Map();
+
+// Periodic sweep every 10 minutes to evict expired IP rate-limit records
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of pinAttempts.entries()) {
+    if (now > entry.resetTime) {
+      pinAttempts.delete(ip);
+    }
+  }
+}, 10 * 60 * 1000).unref();
 
 function checkPinRateLimit(req, res, next) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
   const now = Date.now();
+
+  // Guard against unbound Map expansion
+  if (pinAttempts.size > 10000) {
+    pinAttempts.clear();
+  }
+
   const entry = pinAttempts.get(ip) || { count: 0, resetTime: now + 5 * 60 * 1000 };
 
   if (now > entry.resetTime) {
@@ -665,6 +681,7 @@ function checkPinRateLimit(req, res, next) {
     return res.status(429).json({ error: "PIN 验证尝试过于频繁，已被锁定 5 分钟" });
   }
 
+  pinAttempts.set(ip, entry);
   req._pinAttemptEntry = entry;
   next();
 }

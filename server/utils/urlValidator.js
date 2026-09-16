@@ -7,6 +7,7 @@
 
 const { URL } = require('url');
 const net = require('net');
+const dns = require('dns');
 
 /**
  * 判断 IP 地址是否属于私有、回环、链路本地或保留网段
@@ -47,8 +48,9 @@ function isPrivateOrReservedIp(ip) {
     // 192.0.0.0/24, 192.0.2.0/24 (保留/文档)
     if (parts[0] === 192 && parts[1] === 0 && (parts[2] === 0 || parts[2] === 2)) return true;
 
-    // 198.18.0.0/15 (基准测试)
-    if (parts[0] === 198 && (parts[1] === 18 || parts[1] === 19)) return true;
+    // Note: 198.18.0.0/15 is used by RFC 2544 benchmark, but also widely used by local proxy TUN/fake-ip (e.g. Clash).
+    // Blocking 198.18.0.0/15 in user environments with TUN proxy causes legit domains to be blocked.
+    // Cloud metadata (169.254.169.254), loopback (127.0.0.0/8), RFC 1918 (10/8, 172.16/12, 192.168/16) are strictly blocked.
 
     // 198.51.100.0/24, 203.0.113.0/24 (文档保留)
     if (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) return true;
@@ -140,7 +142,43 @@ function isSafeExternalUrl(urlString) {
   return { safe: true };
 }
 
+/**
+ * 异步深度解析 DNS，防止 DNS-Rebinding（攻击者将域名 A 记录动态改为内网 IP）
+ * @param {string} urlString 
+ * @returns {Promise<{ safe: boolean, error?: string, ip?: string }>}
+ */
+async function validateSafeUrlAsync(urlString) {
+  const syncCheck = isSafeExternalUrl(urlString);
+  if (!syncCheck.safe) return syncCheck;
+
+  try {
+    const parsed = new URL(urlString.trim());
+    const hostname = parsed.hostname.toLowerCase();
+    const cleanIp = hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
+
+    // 如果已经是直接 IP，无需额外 lookup
+    if (net.isIP(cleanIp)) {
+      if (isPrivateOrReservedIp(cleanIp)) {
+        return { safe: false, error: `禁止向私有或保留 IP [${cleanIp}] 发起请求` };
+      }
+      return { safe: true, ip: cleanIp };
+    }
+
+    // 针对域名做一次 DNS A/AAAA 解析校验
+    const addresses = await dns.promises.lookup(hostname, { all: true, verbatim: true });
+    for (const addr of addresses) {
+      if (isPrivateOrReservedIp(addr.address)) {
+        return { safe: false, error: `域名 [${hostname}] 解析到受限内网 IP [${addr.address}]，已被拦截` };
+      }
+    }
+    return { safe: true, ip: addresses[0]?.address };
+  } catch (err) {
+    return { safe: false, error: `DNS 解析失败: ${err.message}` };
+  }
+}
+
 module.exports = {
   isPrivateOrReservedIp,
-  isSafeExternalUrl
+  isSafeExternalUrl,
+  validateSafeUrlAsync
 };

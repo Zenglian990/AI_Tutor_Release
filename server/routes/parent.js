@@ -3,7 +3,7 @@ const router = express.Router();
 const { getSqliteDb } = require('../db/init');
 const { getStudentCognitiveMemory } = require('../services/studentMemory');
 const { formatGradeName } = require('../prompts/guidelines');
-const { isSafeExternalUrl } = require('../utils/urlValidator');
+const { isSafeExternalUrl, validateSafeUrlAsync } = require('../utils/urlValidator');
 const logger = require('../services/logger');
 
 // GET /api/parent/daily-memo
@@ -72,7 +72,7 @@ router.post('/parent/push-webhook', async (req, res) => {
   try {
     const { webhook_url, memo_title, memo_content = [], student_name = '曾练', date_str, comfort_score = '98 (放心特优)' } = req.body;
 
-    const urlCheck = isSafeExternalUrl(webhook_url);
+    const urlCheck = await validateSafeUrlAsync(webhook_url);
     if (!urlCheck.safe) {
       return res.status(400).json({ error: `非法或不安全的 Webhook 链接: ${urlCheck.error}` });
     }

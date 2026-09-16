@@ -5,7 +5,7 @@ const path = require('path');
 const { fetch: undiciFetch, ProxyAgent } = require('undici');
 const config = require('../config');
 const logger = require('../services/logger');
-const { isSafeExternalUrl } = require('../utils/urlValidator');
+const { isSafeExternalUrl, validateSafeUrlAsync } = require('../utils/urlValidator');
 
 const proxyAgent = config.proxyUrl ? new ProxyAgent(config.proxyUrl) : null;
 
@@ -114,7 +114,7 @@ router.post('/config/test-llm', async (req, res) => {
       }
 
       const baseUrl = (apiUrl || process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
-      const urlCheck = isSafeExternalUrl(baseUrl);
+      const urlCheck = await validateSafeUrlAsync(baseUrl);
       if (!urlCheck.safe) {
         return res.status(400).json({ success: false, error: `不安全的 API URL 地址: ${urlCheck.error}` });
       }
