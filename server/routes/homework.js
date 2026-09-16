@@ -71,6 +71,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       "questionSnippet": "题目简要题干与考点",
       "studentAnswer": "学生写在卷面上的答案或推导",
       "standardAnswer": "标准正确答案与解析",
+      "box_2d": [120, 45, 290, 955],
       "status": "correct",
       "score": 10,
       "maxScore": 10,
@@ -83,6 +84,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       "questionSnippet": "求动点P运动时间t的值",
       "studentAnswer": "学生写 t=5",
       "standardAnswer": "t=5 或 t=15（漏掉了射线反向延伸的第二种情况）",
+      "box_2d": [310, 45, 680, 955],
       "status": "wrong",
       "score": 4,
       "maxScore": 10,
@@ -94,8 +96,9 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
 
 注意：
 1. status 只能是 "correct"（正确）、"wrong"（错误）或 "partial"（部分对/步骤分）。
-2. 如果图片中没有找到题目或模糊无法看清，请在 summaryHeadline 中说明，并返回 results 为空数组。
-3. 严格输出合法的 JSON 对象，便于机器解析。`;
+2. box_2d: 必须准确识别该题在原图中的外接矩形定位坐标 [ymin, xmin, ymax, xmax]，取值在 0 到 1000 整数之间，用于多题交互切片与画框。
+3. 如果图片中没有找到题目或模糊无法看清，请在 summaryHeadline 中说明，并返回 results 为空数组。
+4. 严格输出合法的 JSON 对象，便于机器解析。`;
 
     const contentsPayload = {
       contents: [{

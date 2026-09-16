@@ -329,6 +329,72 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     subject: '物理',
     chapter: '欧姆定律',
     source: '人教版九年级物理全一册期中真题'
+  },
+  {
+    question: '鸡兔同笼，共有35个头，94只脚。笼中有鸡（ ）只，兔（ ）只。',
+    options: 'A. 23, 12 B. 20, 15 C. 25, 10',
+    standard_answer: 'A',
+    analysis: '假设全是鸡，共有 35×2 = 70 只脚，比实际少了 94 - 70 = 24 只脚。每只兔比鸡多 4 - 2 = 2 只脚，所以兔有 24 ÷ 2 = 12 只，鸡有 35 - 12 = 23 只。选A。',
+    key_insight: '鸡兔同笼假设计算法：兔数=(总脚数-总头数×2)÷2',
+    grade: '4_down',
+    subject: '数学',
+    chapter: '数学广角——鸡兔同笼',
+    source: '人教版四年级数学下册课本例题'
+  },
+  {
+    question: '在一条全长 100 米的林荫道两旁植树（两端都栽），每隔 5 米栽一棵，一共需要栽（ ）棵树。',
+    options: 'A. 42 B. 40 C. 21',
+    standard_answer: 'A',
+    analysis: '单侧栽树：全长100米，间隔5米，间隔数为 100 ÷ 5 = 20 个。两端都栽，单侧棵数 = 间隔数 + 1 = 20 + 1 = 21 棵。题目要求“两旁植树”，所以总棵数 = 21 × 2 = 42 棵。选A。',
+    key_insight: '两旁植树双倍计算与两端都栽公式：棵数=(总长÷间距+1)×2',
+    grade: '5_up',
+    subject: '数学',
+    chapter: '数学广角——植树问题',
+    source: '人教版五年级数学上册第七单元真题'
+  },
+  {
+    question: '直角三角形的两条直角边长分别为 3 cm 和 4 cm，则斜边的长度为（ ）cm。',
+    options: 'A. 5 B. 7 C. 25',
+    standard_answer: 'A',
+    analysis: '由勾股定理 a² + b² = c²，得斜边长 c = √(3² + 4²) = √(9 + 16) = √25 = 5 cm。选A。',
+    key_insight: '勾股数 3-4-5 定理应用与斜边计算',
+    grade: '8_down',
+    subject: '数学',
+    chapter: '勾股定理',
+    source: '人教版八年级数学下册第十七章必考题'
+  },
+  {
+    question: '二次函数 y = (x - 2)² + 3 的图象顶点坐标是（ ）。',
+    options: 'A. (2, 3) B. (-2, 3) C. (2, -3)',
+    standard_answer: 'A',
+    analysis: '根据二次函数顶点式 y = a(x - h)² + k，顶点坐标为 (h, k)。在 y = (x - 2)² + 3 中，h = 2, k = 3，因此顶点坐标为 (2, 3)。选A。',
+    key_insight: '二次函数顶点式 y=a(x-h)²+k 坐标判定',
+    grade: '9_up',
+    subject: '数学',
+    chapter: '二次函数',
+    source: '人教版九年级数学上册第二十二章课后习题'
+  },
+  {
+    question: '在杠杆平衡实验中，动力臂为 0.4 m，阻力为 20 N，阻力臂为 0.1 m，若杠杆水平平衡，则所需施加的动力为（ ）N。',
+    options: 'A. 5 B. 10 C. 50',
+    standard_answer: 'A',
+    analysis: '根据杠杆平衡条件：F₁ × L₁ = F₂ × L₂，代入数据得：F₁ × 0.4 m = 20 N × 0.1 m = 2 N·m，解得动力 F₁ = 2 ÷ 0.4 = 5 N。选A。',
+    key_insight: '杠杆平衡条件 F1×L1=F2×L2 计算公式',
+    grade: '8_down',
+    subject: '物理',
+    chapter: '简单机械',
+    source: '人教版八年级物理下册第十二章核心考点'
+  },
+  {
+    question: '12 克碳在足量氧气中完全燃烧，生成二氧化碳的质量为（ ）g。（相对原子质量：C-12，O-16）',
+    options: 'A. 44 B. 32 C. 28',
+    standard_answer: 'A',
+    analysis: '化学方程式：C + O₂ 点燃= CO₂。碳与二氧化碳的质量比为 12 : (12 + 16×2) = 12 : 44。因此 12g 碳完全燃烧生成 44g 二氧化碳。选A。',
+    key_insight: '化学方程式根据质量比计算产物质量',
+    grade: '9_up',
+    subject: '化学',
+    chapter: '利用化学方程式的简单计算',
+    source: '人教版九年级化学上册第五单元真题'
   }
 ];
 

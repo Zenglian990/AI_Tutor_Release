@@ -288,6 +288,19 @@ function AppInner() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleStartSocraticTutoring = useCallback(({ file, snippet, questionNumber }) => {
+    setShowBatchGrade(false);
+    setSocraticLevel('socratic');
+    if (file) {
+      if (previewImage) URL.revokeObjectURL(previewImage);
+      setImageFile(file);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+    const cleanSnippet = snippet ? `【考点/题干】：${snippet}` : '';
+    const tutorPrompt = `老师，请帮我启发辅导这道第 ${questionNumber} 题。${cleanSnippet} 请一步步引导我推导，先不要直接告诉我最终答案。`;
+    setInput(tutorPrompt);
+  }, [previewImage]);
+
   // Chat submit
   const handleSubmit = useCallback(async (e, customText) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -787,6 +800,7 @@ function AppInner() {
         subject={selectedSubject || '数学'}
         studentName={currentProfile?.name || '曾练'}
         onReviewMistakes={() => setShowMistakes(true)}
+        onStartSocraticTutoring={handleStartSocraticTutoring}
       />
 
       <GamificationBadgeModal

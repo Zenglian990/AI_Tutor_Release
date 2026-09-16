@@ -74,6 +74,69 @@ function MathMarkdown({ content }) {
 }
 
 /**
+ * 试卷多题局部选框精确切片工具函数
+ * 将 0..1000 归一化坐标转换并基于离屏 Canvas 裁切高清单题图片
+ */
+export async function cropQuestionBox(imageFile, box2d) {
+  if (!imageFile || !box2d || !Array.isArray(box2d) || box2d.length !== 4) return imageFile;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objUrl = URL.createObjectURL(imageFile);
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const [ymin, xmin, ymax, xmax] = box2d;
+        const nw = img.naturalWidth || img.width;
+        const nh = img.naturalHeight || img.height;
+        if (!nw || !nh) {
+          URL.revokeObjectURL(objUrl);
+          return resolve(imageFile);
+        }
+
+        // 归一化 0..1000 转实际物理像素
+        let x = (Math.max(0, xmin) / 1000) * nw;
+        let y = (Math.max(0, ymin) / 1000) * nh;
+        let w = ((Math.min(1000, xmax) - Math.max(0, xmin)) / 1000) * nw;
+        let h = ((Math.min(1000, ymax) - Math.max(0, ymin)) / 1000) * nh;
+
+        // 边缘各扩展 4% 缓冲边距，避免压字
+        const padX = Math.max(10, w * 0.04);
+        const padY = Math.max(10, h * 0.04);
+        x = Math.max(0, x - padX);
+        y = Math.max(0, y - padY);
+        w = Math.min(nw - x, w + padX * 2);
+        h = Math.min(nh - y, h + padY * 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w);
+        canvas.height = Math.round(h);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objUrl);
+          if (blob) {
+            const croppedFile = new File([blob], `cropped_q_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            resolve(croppedFile);
+          } else {
+            resolve(imageFile);
+          }
+        }, 'image/jpeg', 0.92);
+      } catch (err) {
+        console.warn('[HomeworkBatch] Canvas crop error:', err);
+        URL.revokeObjectURL(objUrl);
+        resolve(imageFile);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objUrl);
+      resolve(imageFile);
+    };
+    img.src = objUrl;
+  });
+}
+
+/**
  * HomeworkBatchModal
  * 整页作业/整张试卷智能秒批与错题一键自动归档模态框
  */
@@ -84,7 +147,8 @@ export default function HomeworkBatchModal({
   grade = '7_up',
   subject = '数学',
   studentName = '曾练',
-  onReviewMistakes
+  onReviewMistakes,
+  onStartSocraticTutoring
 }) {
   if (!isOpen) return null;
 
@@ -96,6 +160,8 @@ export default function HomeworkBatchModal({
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'wrong', 'correct'
   const [enableEnhancer, setEnableEnhancer] = useState(true);
   const [showA4Print, setShowA4Print] = useState(false);
+  const [showVisualMap, setShowVisualMap] = useState(true);
+  const [highlightedQNum, setHighlightedQNum] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -163,7 +229,26 @@ export default function HomeworkBatchModal({
     setBatchResult(null);
     setErrorMsg('');
     setFilterTab('all');
+    setHighlightedQNum(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleTutorQuestion = async (q) => {
+    if (!onStartSocraticTutoring) return;
+    let targetImage = selectedFile;
+    if (selectedFile && q.box_2d && Array.isArray(q.box_2d) && q.box_2d.length === 4) {
+      try {
+        targetImage = await cropQuestionBox(selectedFile, q.box_2d);
+      } catch (e) {
+        console.warn('[HomeworkBatch] Failed to crop question box:', e);
+      }
+    }
+    onClose();
+    onStartSocraticTutoring({
+      file: targetImage,
+      snippet: q.questionSnippet,
+      questionNumber: q.questionNumber || 1
+    });
   };
 
   const filteredQuestions = (batchResult?.results || []).filter(q => {
@@ -537,6 +622,131 @@ export default function HomeworkBatchModal({
                 </div>
               </div>
 
+              {/* Interactive Bounding Box Worksheet Visualizer */}
+              {previewUrl && batchResult && (
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.2rem' }}>🎯</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#f8fafc' }}>
+                        卷面多题视觉定位对照 (对标作业帮原卷切片)
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                        点击下方题框或详析卡片，可一键将该题切片送入苏格拉底深度启发
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowVisualMap(!showVisualMap)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#38bdf8',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
+                    >
+                      {showVisualMap ? '收起卷面原图' : '展开卷面原图'}
+                    </button>
+                  </div>
+
+                  {showVisualMap && (
+                    <div style={{
+                      position: 'relative',
+                      display: 'inline-block',
+                      maxWidth: '100%',
+                      margin: '0 auto',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <img
+                        src={previewUrl}
+                        alt="批改原图"
+                        style={{
+                          display: 'block',
+                          maxWidth: '100%',
+                          maxHeight: '440px',
+                          objectFit: 'contain'
+                        }}
+                      />
+
+                      {/* Overlay Bounding Boxes */}
+                      {(batchResult.results || []).map((q, idx) => {
+                        const box = q.box_2d;
+                        if (!box || !Array.isArray(box) || box.length !== 4) return null;
+                        const [ymin, xmin, ymax, xmax] = box;
+                        const top = `${ymin / 10}%`;
+                        const left = `${xmin / 10}%`;
+                        const height = `${(ymax - ymin) / 10}%`;
+                        const width = `${(xmax - xmin) / 10}%`;
+                        const isCorrect = q.status === 'correct';
+                        const isWrong = q.status === 'wrong';
+                        const isHighlighted = highlightedQNum === q.questionNumber;
+
+                        const borderColor = isHighlighted
+                          ? '#38bdf8'
+                          : (isCorrect ? '#10b981' : (isWrong ? '#ef4444' : '#f59e0b'));
+                        const bgColor = isHighlighted
+                          ? 'rgba(56, 189, 248, 0.28)'
+                          : (isCorrect ? 'rgba(16, 185, 129, 0.16)' : (isWrong ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.18)'));
+
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setHighlightedQNum(q.questionNumber);
+                              const el = document.getElementById(`q-card-${q.questionNumber}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                            onMouseEnter={() => setHighlightedQNum(q.questionNumber)}
+                            title={`第${q.questionNumber || (idx + 1)}题 (${isCorrect ? '正确' : '需订正'}) - 点击定位详析`}
+                            style={{
+                              position: 'absolute',
+                              top, left, width, height,
+                              border: `2px ${isHighlighted ? 'solid' : 'dashed'} ${borderColor}`,
+                              background: bgColor,
+                              boxShadow: isHighlighted ? '0 0 16px rgba(56, 189, 248, 0.85)' : 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              zIndex: isHighlighted ? 10 : 2
+                            }}
+                          >
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              transform: 'translateY(-100%)',
+                              background: borderColor,
+                              color: '#fff',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: '4px 4px 0 0',
+                              whiteSpace: 'nowrap',
+                              pointerEvents: 'none'
+                            }}>
+                              第{q.questionNumber || (idx + 1)}题 {isCorrect ? '✓' : '✕'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Filter Tabs */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#f1f5f9', fontWeight: 700 }}>
@@ -598,130 +808,172 @@ export default function HomeworkBatchModal({
                     当前分类下暂无题目
                   </div>
                 ) : (
-                  filteredQuestions.map((q, idx) => (
-                    <div key={idx} style={{
-                      background: 'rgba(15, 23, 42, 0.5)',
-                      border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.35)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)')}`,
-                      borderRadius: '14px',
-                      padding: '16px 20px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '12px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }}>
-                      {/* Question Card Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{
-                            fontSize: '0.85rem',
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            background: q.status === 'correct' ? 'rgba(16, 185, 129, 0.2)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
-                            color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24'),
-                            border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.4)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)')}`,
-                            fontWeight: 700
-                          }}>
-                            {q.status === 'correct' ? '✓ 正确' : (q.status === 'wrong' ? '✕ 需订正' : '~ 步骤分')}
-                          </span>
-                          <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f8fafc' }}>
-                            第 {q.questionNumber || (idx + 1)} 题
-                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500, marginLeft: '6px' }}>
-                              ({q.type || '试题'})
+                  filteredQuestions.map((q, idx) => {
+                    const qNum = q.questionNumber || (idx + 1);
+                    const isCardHighlighted = highlightedQNum === qNum;
+                    const statusBorderColor = q.status === 'correct'
+                      ? 'rgba(16, 185, 129, 0.35)'
+                      : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)');
+
+                    return (
+                      <div
+                        key={idx}
+                        id={`q-card-${qNum}`}
+                        onMouseEnter={() => setHighlightedQNum(qNum)}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.5)',
+                          border: isCardHighlighted ? '2px solid #38bdf8' : `1px solid ${statusBorderColor}`,
+                          borderRadius: '14px',
+                          padding: '16px 20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          boxShadow: isCardHighlighted ? '0 0 18px rgba(56, 189, 248, 0.35)' : '0 4px 12px rgba(0,0,0,0.2)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                      >
+                        {/* Question Card Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              background: q.status === 'correct' ? 'rgba(16, 185, 129, 0.2)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
+                              color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24'),
+                              border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.4)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)')}`,
+                              fontWeight: 700
+                            }}>
+                              {q.status === 'correct' ? '✓ 正确' : (q.status === 'wrong' ? '✕ 需订正' : '~ 步骤分')}
                             </span>
+                            <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f8fafc' }}>
+                              第 {qNum} 题
+                              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500, marginLeft: '6px' }}>
+                                ({q.type || '试题'})
+                              </span>
+                            </span>
+                          </div>
+                          <span style={{
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24')
+                          }}>
+                            得分：{q.score ?? (q.status === 'correct' ? 10 : 0)} / {q.maxScore || 10} 分
                           </span>
                         </div>
-                        <span style={{
-                          fontWeight: 700,
-                          fontSize: '0.92rem',
-                          padding: '4px 10px',
-                          borderRadius: '8px',
-                          background: 'rgba(255,255,255,0.05)',
-                          color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24')
-                        }}>
-                          得分：{q.score ?? (q.status === 'correct' ? 10 : 0)} / {q.maxScore || 10} 分
-                        </span>
-                      </div>
 
-                      {/* Question Stem / Snippet */}
-                      <div style={{
-                        fontSize: '0.95rem',
-                        color: '#f1f5f9',
-                        lineHeight: '1.5',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        borderLeft: '3px solid #38bdf8'
-                      }}>
-                        <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>题目考点：</span>
-                        <MathMarkdown content={q.questionSnippet} />
-                      </div>
-
-                      {/* Side by side / stacked Answer Comparison */}
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                        gap: '12px'
-                      }}>
-                        {/* Student Answer */}
+                        {/* Question Stem / Snippet */}
                         <div style={{
-                          background: 'rgba(0, 0, 0, 0.25)',
-                          padding: '12px 14px',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(255,255,255,0.06)'
-                        }}>
-                          <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginBottom: '4px' }}>
-                            ✍️ 学生卷面作答
-                          </div>
-                          <div style={{ color: '#f1f5f9', fontSize: '0.92rem' }}>
-                            <MathMarkdown content={q.studentAnswer || '卷面未作答 / 留白'} />
-                          </div>
-                        </div>
-
-                        {/* Standard Answer */}
-                        <div style={{
-                          background: 'rgba(16, 185, 129, 0.08)',
-                          padding: '12px 14px',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(16, 185, 129, 0.2)'
-                        }}>
-                          <div style={{ fontSize: '0.8rem', color: '#6ee7b7', fontWeight: 600, marginBottom: '4px' }}>
-                            🎯 名师标准答案与推导
-                          </div>
-                          <div style={{ color: '#e2e8f0', fontSize: '0.92rem' }}>
-                            <MathMarkdown content={q.standardAnswer} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Mistake Diagnosis */}
-                      {q.mistakeReason && (
-                        <div style={{
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          borderLeft: '3px solid #ef4444',
+                          fontSize: '0.95rem',
+                          color: '#f1f5f9',
+                          lineHeight: '1.5',
+                          background: 'rgba(255, 255, 255, 0.03)',
                           padding: '10px 14px',
-                          borderRadius: '8px',
-                          fontSize: '0.9rem'
+                          borderRadius: '10px',
+                          borderLeft: '3px solid #38bdf8'
                         }}>
-                          <span style={{ color: '#f87171', fontWeight: 600, marginRight: '6px' }}>⚠️ 错因剖析：</span>
-                          <span style={{ color: '#fca5a5' }}><MathMarkdown content={q.mistakeReason} /></span>
+                          <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>题目考点：</span>
+                          <MathMarkdown content={q.questionSnippet} />
                         </div>
-                      )}
 
-                      {/* Key Insight */}
-                      {q.keyInsight && (
+                        {/* Side by side / stacked Answer Comparison */}
                         <div style={{
-                          background: 'rgba(56, 189, 248, 0.08)',
-                          borderLeft: '3px solid #0284c7',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          fontSize: '0.9rem'
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                          gap: '12px'
                         }}>
-                          <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>💡 题眼穿透与心法：</span>
-                          <span style={{ color: '#bae6fd' }}><MathMarkdown content={q.keyInsight} /></span>
+                          {/* Student Answer */}
+                          <div style={{
+                            background: 'rgba(0, 0, 0, 0.25)',
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255,255,255,0.06)'
+                          }}>
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginBottom: '4px' }}>
+                              ✍️ 学生卷面作答
+                            </div>
+                            <div style={{ color: '#f1f5f9', fontSize: '0.92rem' }}>
+                              <MathMarkdown content={q.studentAnswer || '卷面未作答 / 留白'} />
+                            </div>
+                          </div>
+
+                          {/* Standard Answer */}
+                          <div style={{
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(16, 185, 129, 0.2)'
+                          }}>
+                            <div style={{ fontSize: '0.8rem', color: '#6ee7b7', fontWeight: 600, marginBottom: '4px' }}>
+                              🎯 名师标准答案与推导
+                            </div>
+                            <div style={{ color: '#e2e8f0', fontSize: '0.92rem' }}>
+                              <MathMarkdown content={q.standardAnswer} />
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))
+
+                        {/* Mistake Diagnosis */}
+                        {q.mistakeReason && (
+                          <div style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            borderLeft: '3px solid #ef4444',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <span style={{ color: '#f87171', fontWeight: 600, marginRight: '6px' }}>⚠️ 错因剖析：</span>
+                            <span style={{ color: '#fca5a5' }}><MathMarkdown content={q.mistakeReason} /></span>
+                          </div>
+                        )}
+
+                        {/* Key Insight */}
+                        {q.keyInsight && (
+                          <div style={{
+                            background: 'rgba(56, 189, 248, 0.08)',
+                            borderLeft: '3px solid #0284c7',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>💡 题眼穿透与心法：</span>
+                            <span style={{ color: '#bae6fd' }}><MathMarkdown content={q.keyInsight} /></span>
+                          </div>
+                        )}
+
+                        {/* Socratic Tutoring Direct Action */}
+                        {onStartSocraticTutoring && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                            <button
+                              onClick={() => handleTutorQuestion(q)}
+                              title="自动切出本题在卷面上的原图，并无缝进入苏格拉底名师启发"
+                              style={{
+                                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '8px 18px',
+                                borderRadius: '8px',
+                                fontSize: '0.86rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 2px 10px rgba(37, 99, 235, 0.35)',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              <span>⚡</span>
+                              <span>苏格拉底单题精讲 (原卷切片直达)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
 

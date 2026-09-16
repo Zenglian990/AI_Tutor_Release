@@ -93,3 +93,44 @@ test('CanonicalQuestions: Grounding overrides LLM hallucinated answer and protec
   assert.strictEqual(item.mistakeReason, '');
   assert.ok(item.standardAnswer.includes('【权威教材标答】：B'));
 });
+
+test('CanonicalQuestions: Extended benchmark includes 1-9 grade milestone questions (>= 30)', async () => {
+  const row = await db.get('SELECT COUNT(*) as count FROM canonical_questions');
+  assert.ok(row.count >= 30, `Canonical bank should have >= 30 questions, got ${row.count}`);
+
+  // Test 鸡兔同笼 grounding
+  const chickenMatch = await lookupCanonicalQuestion('鸡兔同笼，共有35个头，94只脚。笼中有鸡（ ）只，兔（ ）只。', '4_down', '数学', db);
+  assert.ok(chickenMatch && chickenMatch.matched);
+  assert.strictEqual(chickenMatch.canonical.standard_answer, 'A');
+  assert.ok(chickenMatch.canonical.analysis.includes('23 只'));
+
+  // Test 勾股定理 grounding
+  const pythagorasMatch = await lookupCanonicalQuestion('直角三角形的两条直角边长分别为 3 cm 和 4 cm，则斜边的长度为（ ）cm。', '8_down', '数学', db);
+  assert.ok(pythagorasMatch && pythagorasMatch.matched);
+  assert.strictEqual(pythagorasMatch.canonical.standard_answer, 'A');
+  assert.ok(pythagorasMatch.canonical.analysis.includes('5 cm'));
+});
+
+test('CanonicalQuestions: batchIngestQuestions handles duplicates and new items gracefully', async () => {
+  const { batchIngestQuestions } = require('../scripts/ingest_canonical_questions');
+  const sampleBatch = [
+    {
+      question: '测试新题：圆的半径为 2 cm，其面积是（ ）cm²。',
+      standard_answer: '4π',
+      analysis: '圆面积公式 S = πr² = 4π',
+      grade: '6_up',
+      subject: '数学'
+    },
+    // Duplicate of existing benchmark question
+    {
+      question: '小明有1张10元和2张5元纸币，他买了一本12元的课外书，还剩下（ ）元。',
+      standard_answer: 'A'
+    }
+  ];
+
+  const result = await batchIngestQuestions(sampleBatch);
+  assert.strictEqual(result.total, 2);
+  assert.strictEqual(result.inserted, 1, 'Should insert 1 brand new question');
+  assert.strictEqual(result.skipped, 1, 'Should skip 1 duplicate question');
+});
+
