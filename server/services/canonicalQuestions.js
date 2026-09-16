@@ -59,6 +59,30 @@ async function initCanonicalQuestionsTable(db) {
  * 人教版 1-9 年级高频核心考点基准题库种子数据
  */
 const BENCHMARK_CANONICAL_QUESTIONS = [
+  // === 小学 1-2 年级 ===
+  {
+    question: '小明有1张10元和2张5元纸币，他买了一本12元的课外书，还剩下（ ）元。',
+    options: 'A. 8 B. 10 C. 6',
+    standard_answer: 'A',
+    analysis: '总共有 10 + 5×2 = 20 元。买书花去12元，还剩下 20 - 12 = 8 元。选A。',
+    key_insight: '人民币面值换算与多步减法',
+    grade: '1_down',
+    subject: '数学',
+    chapter: '认识人民币',
+    source: '人教版一年级下册期末真题'
+  },
+  {
+    question: '二年级同学排队做操，从前数小红排第8，从后数小红排第9，这一队一共有（ ）人。',
+    options: 'A. 17 B. 16 C. 18',
+    standard_answer: 'B',
+    analysis: '从前数包含小红，从后数也包含小红，小红被重复计算了1次。总人数 = 8 + 9 - 1 = 16 人。选B。',
+    key_insight: '排队重叠容斥计数问题',
+    grade: '2_up',
+    subject: '数学',
+    chapter: '排队与实际问题',
+    source: '人教版二年级上册核心易错题'
+  },
+  // === 小学 3-4 年级 ===
   {
     question: '用3个边长2厘米的正方形拼成一个长方形，该长方形的周长是（ ）厘米。',
     options: 'A. 24 B. 16 C. 20',
@@ -103,6 +127,7 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     chapter: '数学广角——鸡兔同笼',
     source: '人教版四年级下册教材重点'
   },
+  // === 小学 5-6 年级 ===
   {
     question: '一条马路长100米，在马路两旁每隔5米栽一棵树（两端都栽），一共要栽（ ）棵树。',
     options: 'A. 21 B. 42 C. 40',
@@ -115,6 +140,29 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     source: '人教版五年级上册经典真题'
   },
   {
+    question: '一个三角形的底是12厘米，高是8厘米，与它等底等高的平行四边形的面积是（ ）平方厘米。',
+    options: 'A. 48 B. 96 C. 24',
+    standard_answer: 'B',
+    analysis: '三角形面积是等底等高平行四边形面积的一半。平行四边形面积 = 底 × 高 = 12 × 8 = 96 平方厘米。选B。',
+    key_insight: '等底等高三角形与平行四边形面积2倍关系',
+    grade: '5_up',
+    subject: '数学',
+    chapter: '多边形的面积',
+    source: '人教版五年级上册期末统考题'
+  },
+  {
+    question: '一个圆的半径扩大到原来的2倍，它的周长扩大到原来的（ ）倍，面积扩大到原来的（ ）倍。',
+    options: 'A. 2倍，4倍 B. 4倍，4倍 C. 2倍，2倍',
+    standard_answer: 'A',
+    analysis: '圆的周长公式 C = 2πr，半径变为2r，周长变为 2π(2r) = 2C（扩大2倍）；面积公式 S = πr²，半径变为2r，面积变为 π(2r)² = 4πr² = 4S（扩大4倍）。选A。',
+    key_insight: '半径、周长与面积的平方倍率关系',
+    grade: '6_up',
+    subject: '数学',
+    chapter: '圆的认识与面积',
+    source: '人教版六年级上册期末必考题'
+  },
+  // === 初中 7 年级 ===
+  {
     question: '已知关于x的一元一次方程 2x + a = 7 的解是 x = 2，则 a 的值是（ ）。',
     options: 'A. 3 B. -3 C. 11',
     standard_answer: 'A',
@@ -126,6 +174,18 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     source: '人教版七年级上册期末真题'
   },
   {
+    question: '若 |a| = 5，b² = 16，且 ab < 0，则 a + b 的值是（ ）。',
+    options: 'A. ±1 B. ±9 C. 1 或 9',
+    standard_answer: 'A',
+    analysis: '因为 |a| = 5，所以 a = ±5；b² = 16，所以 b = ±4。又因为 ab < 0，说明 a、b 异号：当 a=5 时 b=-4，a+b=1；当 a=-5 时 b=4，a+b=-1。综合得 a+b = ±1。选A。',
+    key_insight: '绝对值与平方根的分类讨论及符号法则',
+    grade: '7_up',
+    subject: '数学',
+    chapter: '有理数',
+    source: '人教版七年级上册月考压轴题'
+  },
+  // === 初中 8 年级 ===
+  {
     question: '在直角三角形ABC中，∠C=90°，AC=6，BC=8，则斜边AB的长是（ ）。',
     options: 'A. 10 B. 14 C. 28',
     standard_answer: 'A',
@@ -135,6 +195,63 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
     subject: '数学',
     chapter: '勾股定理',
     source: '人教版八年级下册核心真题'
+  },
+  {
+    question: '一次函数 y = kx + b 的图象经过点 (0, 3) 和 (2, 7)，则该函数的解析式为（ ）。',
+    options: 'A. y = 2x + 3 B. y = -2x + 3 C. y = 3x + 2',
+    standard_answer: 'A',
+    analysis: '将 (0, 3) 代入得 b = 3；将 (2, 7) 代入得 2k + 3 = 7，解得 2k = 4，k = 2。所以解析式为 y = 2x + 3。选A。',
+    key_insight: '待定系数法求一次函数解析式',
+    grade: '8_down',
+    subject: '数学',
+    chapter: '一次函数',
+    source: '人教版八年级下册期末真题'
+  },
+  // === 初中 9 年级 ===
+  {
+    question: '关于x的一元二次方程 x² - 4x + k = 0 有两个不相等的实数根，则实数k的取值范围是（ ）。',
+    options: 'A. k < 4 B. k ≤ 4 C. k > 4',
+    standard_answer: 'A',
+    analysis: '有两个不相等的实数根，则根的判别式 Δ = b² - 4ac > 0。Δ = (-4)² - 4×1×k = 16 - 4k > 0，解得 4k < 16，即 k < 4。选A。',
+    key_insight: '一元二次方程根的判别式 Δ>0 条件',
+    grade: '9_up',
+    subject: '数学',
+    chapter: '一元二次方程',
+    source: '中考数学高频必考真题'
+  },
+  {
+    question: '抛物线 y = 2(x - 3)² + 5 的顶点坐标是（ ）。',
+    options: 'A. (3, 5) B. (-3, 5) C. (3, -5)',
+    standard_answer: 'A',
+    analysis: '抛物线顶点式方程为 y = a(x - h)² + k，顶点坐标直接读取为 (h, k)。在此方程中 h=3，k=5，因此顶点坐标为 (3, 5)。选A。',
+    key_insight: '二次函数顶点式直接读点法',
+    grade: '9_up',
+    subject: '数学',
+    chapter: '二次函数',
+    source: '人教版九年级上册期末真题'
+  },
+  // === 初中物理与化学 ===
+  {
+    question: '一个质量为 54g 的铝块，体积为 20cm³，该铝块的密度是（ ）g/cm³。',
+    options: 'A. 2.7 B. 0.37 C. 2.5',
+    standard_answer: 'A',
+    analysis: '根据密度公式 ρ = m / V = 54g ÷ 20cm³ = 2.7 g/cm³（即 2.7×10³ kg/m³）。选A。',
+    key_insight: '密度公式直接代入与物理量单位核验',
+    grade: '8_up',
+    subject: '物理',
+    chapter: '质量与密度',
+    source: '人教版八年级上册物理期末真题'
+  },
+  {
+    question: '在空气中氧气约占其总体积的（ ），氮气约占其总体积的（ ）。',
+    options: 'A. 21%，78% B. 78%，21% C. 20%，80%',
+    standard_answer: 'A',
+    analysis: '按体积分数计算，空气中氮气约占 78%，氧气约占 21%，稀有气体占 0.94%，二氧化碳占 0.03%。选A。',
+    key_insight: '空气成分体积分数记忆法则',
+    grade: '9_up',
+    subject: '化学',
+    chapter: '我们周围的空气',
+    source: '人教版九年级化学上册期中真题'
   }
 ];
 

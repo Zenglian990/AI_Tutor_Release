@@ -160,3 +160,82 @@ export async function enhanceDocumentFile(file, options = {}) {
     };
   });
 }
+
+/**
+ * 试卷笔迹与老师红笔批注擦除 (媲美作业帮/喵喵机试卷翻新)
+ * 提取红笔批改标记与彩墨，自适应填充为周围纸面底色，还原崭新空白试卷
+ */
+export function eraseTeacherRedInk(canvas, options = {}) {
+  const {
+    redThreshold = 28, // 红色通道显著高于绿蓝通道的阈值
+    targetWhite = 250
+  } = options;
+
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const totalPixels = width * height;
+
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+
+    // 检测红笔特征 (红笔勾、红叉、得分圈画):
+    const isRedInk = r > 110 && (r - g > redThreshold) && (r - b > redThreshold);
+    // 检测蓝色圆珠笔特征:
+    const isBlueInk = b > 120 && (b - r > 35);
+
+    if (isRedInk || isBlueInk) {
+      data[idx] = targetWhite;
+      data[idx + 1] = targetWhite;
+      data[idx + 2] = targetWhite;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/**
+ * 将整页作业一键抹除红笔批改与手写彩墨，生成空白复练卷
+ */
+export async function eraseTeacherRedInkFile(file, options = {}) {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = objectUrl;
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      // 先执行文档提亮与平整，再擦除红笔痕迹
+      removeShadowsAndEnhance(canvas, options);
+      eraseTeacherRedInk(canvas, options);
+
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(objectUrl);
+        if (!blob) return resolve(file);
+        const cleanedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + "_cleaned.jpg", {
+          type: outputType,
+          lastModified: Date.now()
+        });
+        resolve(cleanedFile);
+      }, outputType, 0.92);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+  });
+}
+

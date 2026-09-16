@@ -7,6 +7,7 @@ import { getApiUrl, authFetch } from '../store/useStore';
 import { compressImage } from '../utils/image';
 import { enhanceDocumentFile } from '../utils/documentEnhancer';
 import { preprocessLatex } from '../utils/math';
+import A4PrintModal from './A4PrintModal';
 
 /**
  * Robust Client-Side JSON Recovery Safeguard
@@ -94,6 +95,7 @@ export default function HomeworkBatchModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'wrong', 'correct'
   const [enableEnhancer, setEnableEnhancer] = useState(true);
+  const [showA4Print, setShowA4Print] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -479,6 +481,50 @@ export default function HomeworkBatchModal({
                   </div>
                 )}
 
+                {/* A4 Paper Generation Quick Banner */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.15), rgba(16, 185, 129, 0.08))',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '0.88rem',
+                  color: '#6ee7b7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🖨️</span>
+                    <span>
+                      {batchResult.wrongCount > 0
+                        ? <>推荐生成 <strong>A4 空白复测卷</strong>，隐藏答案与老师红笔痕迹，让孩子在纸上真实动笔彻底搞懂！</>
+                        : <>恭喜全对！可一键生成 <strong>A4 纸质留存/巩固微测卷</strong> 备战期末。</>}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowA4Print(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #059669, #10b981)',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '7px 16px',
+                      borderRadius: '8px',
+                      fontSize: '0.84rem',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🖨️</span>
+                    <span>生成 A4 空白复测卷 ({batchResult.wrongCount > 0 ? `重点练错题 ${batchResult.wrongCount} 道` : '全卷重练'})</span>
+                  </button>
+                </div>
+
                 <div style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6', background: 'rgba(0, 0, 0, 0.25)', padding: '12px 16px', borderRadius: '10px' }}>
                   <div style={{ marginBottom: '4px' }}>
                     <span style={{ color: '#fbbf24', fontWeight: 600 }}>🌟 名师寄语：</span>
@@ -680,7 +726,25 @@ export default function HomeworkBatchModal({
               </div>
 
               {/* Bottom Action Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setShowA4Print(true)}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.18)',
+                    border: '1px solid rgba(16, 185, 129, 0.45)',
+                    color: '#34d399',
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>🖨️</span>
+                  <span>A4 纸质复测卷 ({batchResult.wrongCount > 0 ? `错题 ${batchResult.wrongCount} 道` : '全卷'})</span>
+                </button>
                 {batchResult.wrongCount > 0 && onReviewMistakes && (
                   <button
                     onClick={() => { onClose(); onReviewMistakes(); }}
@@ -717,6 +781,31 @@ export default function HomeworkBatchModal({
           )}
         </div>
       </div>
+
+      {/* A4 Clean Paper & Answer Key Generator Modal */}
+      {showA4Print && (
+        <A4PrintModal
+          isOpen={showA4Print}
+          onClose={() => setShowA4Print(false)}
+          studentName={studentName}
+          grade={grade}
+          subject={subject}
+          questions={(batchResult?.results || []).map((r, idx) => ({
+            id: idx + 1,
+            questionNumber: r.questionNumber || (idx + 1),
+            title: `第 ${r.questionNumber || (idx + 1)} 题 (${r.type || '试题'})`,
+            body: r.questionSnippet || `题目 #${r.questionNumber || (idx + 1)}`,
+            score: r.maxScore || 10,
+            status: r.status,
+            standardAnswer: r.standardAnswer,
+            keyInsight: r.keyInsight,
+            mistakeReason: r.mistakeReason,
+            studentAnswer: r.studentAnswer
+          }))}
+          initialMode="blank_student"
+          initialFilter={batchResult?.wrongCount > 0 ? 'wrong_only' : 'all'}
+        />
+      )}
     </div>
   );
 }

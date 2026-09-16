@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch, formatGrade } from '../store/useStore';
 import { preprocessLatex } from '../utils/math';
+import A4PrintModal from './A4PrintModal';
 
 export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject }) {
   const [mistakes, setMistakes] = useState([]);
@@ -25,6 +26,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   const [filterTag, setFilterTag] = useState('');
   const [editingTagsId, setEditingTagsId] = useState(null);
   const [tempTags, setTempTags] = useState('');
+  const [showA4Modal, setShowA4Modal] = useState(false);
 
   const handleSaveTags = async (mistakeId) => {
     try {
@@ -178,7 +180,10 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
             <button className="mistake-btn" onClick={() => setTestMode(!testMode)}>
               {testMode ? '👁️ 显示答案' : '📝 生成复习卷'}
             </button>
-            <button className="mistake-btn" onClick={handlePrint}>🖨️ 打印</button>
+            <button className="mistake-btn" onClick={() => setShowA4Modal(true)} style={{ borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>
+              📄 A4 试卷排版
+            </button>
+            <button className="mistake-btn" onClick={handlePrint}>🖨️ 快速打印</button>
             <button onClick={onClose} className="close-btn" title="关闭" aria-label="关闭错题本">×</button>
           </div>
         </div>
@@ -392,6 +397,30 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           )}
         </div>
       </div>
+
+      {/* A4 Clean Paper & Answer Key Modal */}
+      {showA4Modal && (
+        <A4PrintModal
+          isOpen={showA4Modal}
+          onClose={() => setShowA4Modal(false)}
+          studentName="曾练"
+          grade={filterGrade || defaultGrade || '7_up'}
+          subject={filterSubject || defaultSubject || '数学'}
+          questions={filtered.map((m, idx) => ({
+            id: m.id,
+            questionNumber: idx + 1,
+            title: `第 ${idx + 1} 题 (${m.subject || '错题'})`,
+            body: m.query,
+            score: 10,
+            standardAnswer: m.answer,
+            keyInsight: '考点巩固：注意题干关键字提取、审题防坑与规范书写。',
+            mistakeReason: m.mistake_reason || '',
+            status: 'wrong'
+          }))}
+          initialMode="blank_student"
+          initialFilter="all"
+        />
+      )}
     </div>
   );
 }
