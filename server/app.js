@@ -120,13 +120,27 @@ function createApp() {
       legacyHeaders: false
     });
     app.use(staticLimiter);
-    app.use(express.static(CLIENT_DIST, { maxAge: '1d' }));
+    app.use(express.static(CLIENT_DIST, {
+      setHeaders: (res, filePath) => {
+        const norm = filePath.replace(/\\/g, '/');
+        if (norm.endsWith('.html') || norm.endsWith('.json') || norm.endsWith('sw.js') || norm.includes('workbox')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        } else if (norm.includes('/assets/')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    }));
     // SPA fallback: return index.html for all non-API, non-static routes
     app.use((req, res, next) => {
       if (req.path.startsWith('/api/')) return next();
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(path.join(CLIENT_DIST, 'index.html'));
     });
-    logger.info('[Static] Serving frontend from client/dist');
+    logger.info('[Static] Serving frontend from client/dist (with no-cache for HTML/SW)');
   }
 
   // --- Global error handler ---
