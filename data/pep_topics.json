@@ -1,0 +1,1252 @@
+{
+  "version": "pep-math-7up-v1",
+  "topicCount": 64,
+  "topics": [
+    {
+      "id": "mt_ch1_001",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "正数和负数的概念",
+      "description": "理解正数和负数的定义：大于0的数是正数，在正数前加上符号“−”的数是负数。0既不是正数也不是负数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能正确区分正数和负数",
+        "能说明0既不是正数也不是负数",
+        "能读出一个数并指出其符号"
+      ],
+      "assessmentPrompt": "如果给出一组数如 3, -5, 0, 2.7, -1/3，{{name}} 能否指出哪些是正数、哪些是负数、0属于哪一类？",
+      "standards": [
+        "pep-math-2022:7上.1.1"
+      ]
+    },
+    {
+      "id": "mt_ch1_002",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "用正负数表示相反意义的量",
+      "description": "学会用正数和负数表示具有相反意义的实际量，如温度零上/零下、收入/支出、高于/低于海平面等。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.7,
+      "evidence": [
+        "能用正负数表示温度、海拔、收支等实际情境中的量",
+        "能解释实际问题中正负数的含义"
+      ],
+      "assessmentPrompt": "如果北京某天气温是 -3℃～3℃，{{name}} 能否解释 -3 和 3 各表示什么，并算出温差？",
+      "standards": [
+        "pep-math-2022:7上.1.1"
+      ]
+    },
+    {
+      "id": "mt_ch1_003",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数的概念",
+      "description": "理解有理数的定义：整数和分数统称为有理数。有理数包括正整数、0、负整数、正分数和负分数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出有理数的定义",
+        "能区分整数和分数",
+        "理解有理数是在正数和负数基础上的扩展"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释什么是有理数，并说明为什么 0 也是有理数？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_004",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数的分类",
+      "description": "掌握有理数的两种分类方式：按定义分为整数和分数；按性质分为正有理数、0和负有理数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.75,
+      "evidence": [
+        "能按两种标准对有理数进行分类",
+        "能将给定的数正确归类"
+      ],
+      "assessmentPrompt": "给出一组数如 -7, 0, 3/4, -2.5, 100，{{name}} 能否分别按整数/分数和正/零/负两种方式分类？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_005",
+      "type": "REPRESENTATIONAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "数轴的概念与画法",
+      "description": "理解数轴的三个要素：原点、正方向、单位长度。能在纸上画出规范的数轴。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出数轴的三个要素",
+        "能画出规范的数轴",
+        "理解数轴是用直线上的点表示数的工具"
+      ],
+      "assessmentPrompt": "{{name}} 能否画出一条数轴，并标出原点、正方向和单位长度？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_006",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "在数轴上表示有理数",
+      "description": "学会在数轴上用点表示有理数，以及根据数轴上的点读出对应的有理数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能在数轴上标出给定的有理数",
+        "能根据数轴上的点写出对应的数"
+      ],
+      "assessmentPrompt": "给出一条数轴，{{name}} 能否标出 -3, 0, 2.5, -1/2 的位置？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_007",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "相反数",
+      "description": "理解相反数的定义：只有符号不同的两个数互为相反数。0的相反数是0。互为相反数的两个数之和为0。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出一个数的相反数",
+        "理解 -(-a) = a",
+        "能借助数轴说明相反数"
+      ],
+      "assessmentPrompt": "{{name}} 能否说出 -5 和 5 的关系，并解释为什么 -(-3) = 3？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_008",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "绝对值的概念",
+      "description": "理解绝对值的定义：数轴上表示一个数的点与原点的距离叫做这个数的绝对值。正数的绝对值是它本身，负数的绝对值是它的相反数，0的绝对值是0。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能用数轴解释绝对值的含义",
+        "能说出正数、负数、0的绝对值规律",
+        "理解绝对值的非负性"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释 |−7| = 7 和 |0| = 0 的原因？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_009",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "求一个数的绝对值",
+      "description": "熟练求任意有理数的绝对值，包括含字母的绝对值化简。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.75,
+      "evidence": [
+        "能快速求出给定有理数的绝对值",
+        "能化简含绝对值符号的表达式"
+      ],
+      "assessmentPrompt": "{{name}} 能否快速求出 |-3.5|, |0|, |7| 的值？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_010",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数大小比较",
+      "description": "掌握有理数大小比较的规则：正数大于0，0大于负数，正数大于负数；两个负数比较，绝对值大的反而小。能在数轴上直观比较。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能比较任意两个有理数的大小",
+        "能用数轴说明有理数的大小顺序",
+        "能比较两个负数的大小"
+      ],
+      "assessmentPrompt": "{{name}} 能否比较 -4 和 -7 哪个大，并用绝对值解释原因？",
+      "standards": [
+        "pep-math-2022:7上.1.2"
+      ]
+    },
+    {
+      "id": "mt_ch1_011",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数加法法则",
+      "description": "理解有理数加法法则：同号两数相加取相同符号并把绝对值相加；异号两数相加取绝对值较大数的符号并用较大绝对值减较小绝对值；互为相反数的两数相加得0；一个数加0仍得这个数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出同号和异号加法法则",
+        "能用数轴验证加法结果"
+      ],
+      "assessmentPrompt": "{{name}} 能否说出 (-3) + (-5) 和 (-3) + 5 的计算方法？",
+      "standards": [
+        "pep-math-2022:7上.1.3"
+      ]
+    },
+    {
+      "id": "mt_ch1_012",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数加法运算",
+      "description": "熟练进行有理数的加法运算，包括同号加法、异号加法、与0相加等各种情况。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能正确计算各种有理数加法",
+        "运算速度和准确率较高"
+      ],
+      "assessmentPrompt": "{{name}} 能否快速计算 (-7) + 3, 5 + (-8), (-4) + (-6), 0 + (-2)？",
+      "standards": [
+        "pep-math-2022:7上.1.3"
+      ]
+    },
+    {
+      "id": "mt_ch1_013",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数减法法则",
+      "description": "理解有理数减法法则：减去一个数等于加上这个数的相反数。即 a - b = a + (-b)。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能说出减法转化加法的法则",
+        "理解减法是加法的逆运算"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释为什么 3 - (-5) = 3 + 5 = 8？",
+      "standards": [
+        "pep-math-2022:7上.1.3"
+      ]
+    },
+    {
+      "id": "mt_ch1_014",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数减法运算",
+      "description": "熟练进行有理数的减法运算，能将减法转化为加法进行计算。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能正确进行各种有理数减法",
+        "能将减法转化为加法进行简便运算"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 7 - (-3), (-5) - 8, 0 - (-2)？",
+      "standards": [
+        "pep-math-2022:7上.1.3"
+      ]
+    },
+    {
+      "id": "mt_ch1_015",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "加减混合运算与运算律",
+      "description": "能进行有理数的加减混合运算，掌握加法交换律和结合律，能用运算律进行简便计算。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能正确进行加减混合运算",
+        "能运用交换律和结合律简化计算"
+      ],
+      "assessmentPrompt": "{{name}} 能否用简便方法计算 (-3) + 5 + (-7) + 2？",
+      "standards": [
+        "pep-math-2022:7上.1.3"
+      ]
+    },
+    {
+      "id": "mt_ch1_016",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数乘法法则",
+      "description": "理解有理数乘法法则：两数相乘同号得正异号得负并把绝对值相乘；任何数与0相乘得0。多个有理数相乘时，负因数个数为偶数积为正，为奇数积为负。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出有理数乘法的符号法则",
+        "能正确判断多个有理数相乘的符号"
+      ],
+      "assessmentPrompt": "{{name}} 能否说明 (-3) x (-4) 和 (-3) x 4 的结果为什么符号不同？",
+      "standards": [
+        "pep-math-2022:7上.1.4"
+      ]
+    },
+    {
+      "id": "mt_ch1_017",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数乘法运算",
+      "description": "熟练进行有理数的乘法运算，包括两个数相乘和多个数相乘。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能正确计算各种有理数乘法",
+        "能进行多个有理数的连乘"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 (-2) x 3 x (-5)？",
+      "standards": [
+        "pep-math-2022:7上.1.4"
+      ]
+    },
+    {
+      "id": "mt_ch1_018",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "倒数",
+      "description": "理解倒数的定义：乘积为1的两个数互为倒数。0没有倒数。a的倒数是1/a（a≠0）。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.75,
+      "evidence": [
+        "能说出一个数的倒数",
+        "理解0没有倒数的原因"
+      ],
+      "assessmentPrompt": "{{name}} 能否说出 -3 和 2/5 的倒数，并解释为什么0没有倒数？",
+      "standards": [
+        "pep-math-2022:7上.1.4"
+      ]
+    },
+    {
+      "id": "mt_ch1_019",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数除法法则",
+      "description": "理解有理数除法法则：除以一个不为0的数等于乘这个数的倒数。即 a÷b = a × (1/b)，b≠0。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能说出除法转化乘法的法则",
+        "理解0不能作为除数"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释为什么 (-12) ÷ (-3) = (-12) × (-1/3) = 4？",
+      "standards": [
+        "pep-math-2022:7上.1.4"
+      ]
+    },
+    {
+      "id": "mt_ch1_020",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数除法与乘除混合运算",
+      "description": "熟练进行有理数的除法运算和乘除混合运算。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能正确进行有理数除法运算",
+        "能进行乘除混合运算并判断结果符号"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 (-24) ÷ 6 × (-2)？",
+      "standards": [
+        "pep-math-2022:7上.1.4"
+      ]
+    },
+    {
+      "id": "mt_ch1_021",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数乘方的概念",
+      "description": "理解乘方的意义：n个相同因数a的乘积记作a^n，其中a是底数，n是指数，a^n是幂。乘方是特殊的乘法。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能说出乘方、底数、指数、幂的定义",
+        "能区分 (-2)^4 和 -2^4"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释 (-3)^2 和 -3^2 的区别？",
+      "standards": [
+        "pep-math-2022:7上.1.5"
+      ]
+    },
+    {
+      "id": "mt_ch1_022",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "幂的计算",
+      "description": "熟练计算有理数的乘方，包括正数的幂、负数的幂、0的幂等。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能正确计算 (-2)^3, (-1)^10, 0^5 等",
+        "能判断负数的偶次幂和奇次幂的符号"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 (-2)^4 和 (-2)^5？",
+      "standards": [
+        "pep-math-2022:7上.1.5"
+      ]
+    },
+    {
+      "id": "mt_ch1_023",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "有理数混合运算",
+      "description": "掌握有理数混合运算的顺序：先乘方，再乘除，最后加减；有括号先算括号里的。能正确进行含加减乘除乘方的综合运算。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能按正确顺序进行混合运算",
+        "能处理含多层括号的运算"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 2 + 3 x (-2)^2 - 8 ÷ 4？",
+      "standards": [
+        "pep-math-2022:7上.1.5"
+      ]
+    },
+    {
+      "id": "mt_ch1_024",
+      "type": "REPRESENTATIONAL",
+      "subject": "Mathematics",
+      "domain": "有理数",
+      "name": "科学记数法",
+      "description": "学会用科学记数法表示较大的数：将一个数写成 a x 10^n 的形式，其中 1 ≤ |a| < 10，n为正整数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.7,
+      "evidence": [
+        "能将较大的数用科学记数法表示",
+        "能将科学记数法还原为原数"
+      ],
+      "assessmentPrompt": "{{name}} 能否将 150000 用科学记数法表示？",
+      "standards": [
+        "pep-math-2022:7上.1.5"
+      ]
+    },
+    {
+      "id": "mt_ch2_001",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "用字母表示数",
+      "description": "理解用字母表示数的意义：字母可以表示任意的数，用字母表示数可以使数量关系的表达更简洁、更具一般性。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能用字母表示实际问题中的数量关系",
+        "理解字母可以表示任意数"
+      ],
+      "assessmentPrompt": "如果铅笔每支 a 元，{{name}} 能否用含 a 的式子表示买 5 支铅笔的总价？",
+      "standards": [
+        "pep-math-2022:7上.2.1"
+      ]
+    },
+    {
+      "id": "mt_ch2_002",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "单项式的概念",
+      "description": "理解单项式的定义：数与字母的乘积组成的代数式叫做单项式。单独的一个数或一个字母也是单项式。单项式的数字因数是系数，所有字母指数的和是次数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能识别单项式并指出其系数和次数",
+        "理解单独的数或字母也是单项式"
+      ],
+      "assessmentPrompt": "{{name}} 能否指出 -3x²y 的系数和次数？",
+      "standards": [
+        "pep-math-2022:7上.2.1"
+      ]
+    },
+    {
+      "id": "mt_ch2_003",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "多项式的概念",
+      "description": "理解多项式的定义：几个单项式的和叫做多项式。多项式中每个单项式叫做项，不含字母的项叫常数项。多项式里次数最高项的次数就是多项式的次数。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能识别多项式的项和常数项",
+        "能确定多项式的次数"
+      ],
+      "assessmentPrompt": "{{name}} 能否说出 3x² - 2x + 1 有几项、常数项是什么、次数是多少？",
+      "standards": [
+        "pep-math-2022:7上.2.1"
+      ]
+    },
+    {
+      "id": "mt_ch2_004",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "整式的概念与分类",
+      "description": "理解整式的定义：单项式和多项式统称为整式。能区分单项式和多项式。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出整式的定义",
+        "能将给定的代数式分类为单项式或多项式"
+      ],
+      "assessmentPrompt": "{{name}} 能否判断 5, x, 2x+1, -3a²b 哪些是单项式、哪些是多项式？",
+      "standards": [
+        "pep-math-2022:7上.2.1"
+      ]
+    },
+    {
+      "id": "mt_ch2_005",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "列代数式表示数量关系",
+      "description": "学会根据实际问题中的数量关系列出代数式，包括和差积商的各种表达。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.75,
+      "evidence": [
+        "能根据文字描述列出正确的代数式",
+        "能正确使用括号表示运算顺序"
+      ],
+      "assessmentPrompt": "{{name}} 能否用代数式表示x的3倍与y的差的一半？",
+      "standards": [
+        "pep-math-2022:7上.2.1"
+      ]
+    },
+    {
+      "id": "mt_ch2_006",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "同类项的概念",
+      "description": "理解同类项的定义：所含字母相同，并且相同字母的指数也相同的项叫做同类项。几个常数项也是同类项。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能判断两个单项式是否是同类项",
+        "理解同类项的两个条件"
+      ],
+      "assessmentPrompt": "{{name}} 能否判断 3x²y 和 -5x²y 是否是同类项？3x²y 和 3xy² 呢？",
+      "standards": [
+        "pep-math-2022:7上.2.2"
+      ]
+    },
+    {
+      "id": "mt_ch2_007",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "合并同类项",
+      "description": "掌握合并同类项的法则：把同类项的系数相加，所得结果作为系数，字母和字母的指数不变。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能正确合并同类项",
+        "能在多项式中识别并合并所有同类项"
+      ],
+      "assessmentPrompt": "{{name}} 能否化简 3x² - 2x + 5x² + x？",
+      "standards": [
+        "pep-math-2022:7上.2.2"
+      ]
+    },
+    {
+      "id": "mt_ch2_008",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "去括号法则",
+      "description": "理解去括号法则：括号前是+号，去掉括号和它前面的+号，括号里各项不变号；括号前是-号，去掉括号和它前面的-号，括号里各项变号。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能正确去掉括号前是正号的括号",
+        "能正确去掉括号前是负号的括号"
+      ],
+      "assessmentPrompt": "{{name}} 能否化简 a + (b - c) 和 a - (b - c)？",
+      "standards": [
+        "pep-math-2022:7上.2.2"
+      ]
+    },
+    {
+      "id": "mt_ch2_009",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "整式的加减运算",
+      "description": "掌握整式加减的步骤：先去括号，再合并同类项。能进行多项式的加减运算。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能正确进行整式的加减运算",
+        "能先去括号再合并同类项"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 (3x² - 2x + 1) + (x² + 4x - 3)？",
+      "standards": [
+        "pep-math-2022:7上.2.2"
+      ]
+    },
+    {
+      "id": "mt_ch2_010",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "整式",
+      "name": "化简求值",
+      "description": "学会先化简整式再代入求值的方法。能将整式的加减运算应用于求值问题。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能先化简整式再代入数值求值",
+        "理解化简后再求值更简便"
+      ],
+      "assessmentPrompt": "已知 x = 2，{{name}} 能否先化简 (3x - 1) - (x - 5) 再求值？",
+      "standards": [
+        "pep-math-2022:7上.2.2"
+      ]
+    },
+    {
+      "id": "mt_ch3_001",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "方程的概念",
+      "description": "理解方程的定义：含有未知数的等式叫做方程。能区分方程与非方程。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能说出方程的定义",
+        "能判断一个式子是否是方程",
+        "理解方程是含有未知数的等式"
+      ],
+      "assessmentPrompt": "{{name}} 能否判断 2x+3=7 和 2x+3 哪个是方程，为什么？",
+      "standards": [
+        "pep-math-2022:7上.3.1"
+      ]
+    },
+    {
+      "id": "mt_ch3_002",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "一元一次方程的概念",
+      "description": "理解一元一次方程的定义：只含有一个未知数（元），未知数的次数是1，等号两边都是整式的方程。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出一元一次方程的三个条件",
+        "能判断一个方程是否是一元一次方程"
+      ],
+      "assessmentPrompt": "{{name}} 能否判断 x²+1=5 和 3x+2=8 哪个是一元一次方程？",
+      "standards": [
+        "pep-math-2022:7上.3.1"
+      ]
+    },
+    {
+      "id": "mt_ch3_003",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "根据实际问题列方程",
+      "description": "学会分析实际问题中的数量关系，设未知数，利用相等关系列出一元一次方程。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能根据文字描述设未知数",
+        "能找出问题中的相等关系",
+        "能列出正确的方程"
+      ],
+      "assessmentPrompt": "{{name}} 能否为'一个数的3倍加5等于20'列出方程？",
+      "standards": [
+        "pep-math-2022:7上.3.1"
+      ]
+    },
+    {
+      "id": "mt_ch3_004",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "方程的解与解方程",
+      "description": "理解方程的解是使方程等号左右两边相等的未知数的值。解方程就是求方程的解的过程。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出方程的解的定义",
+        "能验证一个值是否是方程的解",
+        "理解解方程的含义"
+      ],
+      "assessmentPrompt": "{{name}} 能否验证 x=3 是否是方程 2x+1=7 的解？",
+      "standards": [
+        "pep-math-2022:7上.3.1"
+      ]
+    },
+    {
+      "id": "mt_ch3_005",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "等式的性质",
+      "description": "掌握等式的两条基本性质：性质1——等式两边加（或减）同一个数，结果仍相等；性质2——等式两边乘同一个数，或除以同一个不为0的数，结果仍相等。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出等式的两条性质",
+        "理解等式性质是解方程的依据"
+      ],
+      "assessmentPrompt": "如果 a=b，{{name}} 能否说明 a+c=b+c 和 ac=bc 为什么成立？",
+      "standards": [
+        "pep-math-2022:7上.3.1"
+      ]
+    },
+    {
+      "id": "mt_ch3_006",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "利用等式性质解简单方程",
+      "description": "学会直接利用等式的基本性质解简单的方程，如 x+7=26, -5x=20 等。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能用等式性质1解加减型方程",
+        "能用等式性质2解乘除型方程"
+      ],
+      "assessmentPrompt": "{{name}} 能否用等式的性质解方程 x+5=12？",
+      "standards": [
+        "pep-math-2022:7上.3.1"
+      ]
+    },
+    {
+      "id": "mt_ch3_007",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "移项法则",
+      "description": "理解移项的概念：把等式一边的某项变号后移到另一边。移项的依据是等式的性质1。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出移项的定义",
+        "理解移项必须变号",
+        "知道移项的依据是等式性质1"
+      ],
+      "assessmentPrompt": "{{name}} 能否将方程 3x+5=14 中的+5移到右边并解释为什么要变号？",
+      "standards": [
+        "pep-math-2022:7上.3.2"
+      ]
+    },
+    {
+      "id": "mt_ch3_008",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "用合并同类项和移项解方程",
+      "description": "掌握通过合并同类项和移项解一元一次方程的步骤：移项、合并同类项、系数化为1。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能正确移项",
+        "能合并同类项",
+        "能将系数化为1",
+        "能按步骤解方程"
+      ],
+      "assessmentPrompt": "{{name}} 能否解方程 4x - 3 = 2x + 7？",
+      "standards": [
+        "pep-math-2022:7上.3.2"
+      ]
+    },
+    {
+      "id": "mt_ch3_009",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "用去括号解方程",
+      "description": "学会解含括号的一元一次方程，先去括号（注意变号），再移项、合并同类项、系数化为1。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能正确去掉括号",
+        "知道括号前是负号时各项变号",
+        "能完成完整解题过程"
+      ],
+      "assessmentPrompt": "{{name}} 能否解方程 2(x+3) = 10？",
+      "standards": [
+        "pep-math-2022:7上.3.3"
+      ]
+    },
+    {
+      "id": "mt_ch3_010",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "用去分母解方程",
+      "description": "学会解含分数系数的一元一次方程，先去分母（方程两边乘各分母的最小公倍数），再去括号、移项、合并同类项、系数化为1。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能找出分母的最小公倍数",
+        "能正确去分母",
+        "注意每一项都要乘最小公倍数"
+      ],
+      "assessmentPrompt": "{{name}} 能否解方程 (x+1)/2 = (2x-1)/3？",
+      "standards": [
+        "pep-math-2022:7上.3.3"
+      ]
+    },
+    {
+      "id": "mt_ch3_011",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "解一元一次方程的完整步骤",
+      "description": "综合运用去分母、去括号、移项、合并同类项、系数化为1五个步骤解较复杂的一元一次方程。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能按正确顺序完成全部五个步骤",
+        "能解含分数和括号的复杂方程",
+        "能检验解的正确性"
+      ],
+      "assessmentPrompt": "{{name}} 能否解方程 (2x-1)/3 - (x+2)/2 = 1？",
+      "standards": [
+        "pep-math-2022:7上.3.3"
+      ]
+    },
+    {
+      "id": "mt_ch3_012",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "列一元一次方程解应用题",
+      "description": "学会分析实际问题中的数量关系，设未知数，列一元一次方程并求解。包括和差倍分问题、行程问题等基本类型。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能分析问题中的已知量和未知量",
+        "能找出相等关系",
+        "能列方程并求解",
+        "能检验答案的合理性"
+      ],
+      "assessmentPrompt": "{{name}} 能否解决'甲乙两人相距100km，相向而行，甲速6km/h，乙速4km/h，几小时后相遇？'",
+      "standards": [
+        "pep-math-2022:7上.3.4"
+      ]
+    },
+    {
+      "id": "mt_ch3_013",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "一元一次方程",
+      "name": "列方程解应用题（综合类型）",
+      "description": "能解决较复杂的实际问题，包括打折销售、利率、比例分配、方案选择等问题，体会方程建模的思想。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能处理含百分比的实际问题",
+        "能进行方案比较",
+        "能验证答案的合理性"
+      ],
+      "assessmentPrompt": "某商品打8折后售价为160元，{{name}} 能否用方程求原价？",
+      "standards": [
+        "pep-math-2022:7上.3.4"
+      ]
+    },
+    {
+      "id": "mt_ch4_001",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "几何图形",
+      "name": "几何图形的概念",
+      "description": "理解几何图形是从物体外形中抽象出来的数学对象。几何图形包括立体图形和平面图形。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能从实物中抽象出几何图形",
+        "理解几何图形是数学研究的对象"
+      ],
+      "assessmentPrompt": "{{name}} 能否从一个足球中抽象出'球'这个几何图形？",
+      "standards": [
+        "pep-math-2022:7上.4.1"
+      ]
+    },
+    {
+      "id": "mt_ch4_002",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "几何图形",
+      "name": "立体图形与平面图形",
+      "description": "理解立体图形（各部分不都在同一平面内，如长方体、圆柱、球）和平面图形（各部分在同一平面内，如线段、角、三角形、圆）的区别。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能区分立体图形和平面图形",
+        "能举出常见的立体和平面图形",
+        "理解两者的关系"
+      ],
+      "assessmentPrompt": "{{name}} 能否判断圆柱和圆分别是立体图形还是平面图形？",
+      "standards": [
+        "pep-math-2022:7上.4.1"
+      ]
+    },
+    {
+      "id": "mt_ch4_003",
+      "type": "REPRESENTATIONAL",
+      "subject": "Mathematics",
+      "domain": "几何图形",
+      "name": "从不同方向看立体图形",
+      "description": "学会从正面、左面、上面三个方向观察立体图形，得到不同形状的平面图形。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能从三个方向观察立体图形",
+        "能画出简单的三视图",
+        "能根据视图想象立体图形"
+      ],
+      "assessmentPrompt": "{{name}} 能否画出一个正方体从正面、左面、上面看到的图形？",
+      "standards": [
+        "pep-math-2022:7上.4.1"
+      ]
+    },
+    {
+      "id": "mt_ch4_004",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "几何图形",
+      "name": "立体图形的展开图",
+      "description": "理解展开图的概念：将立体图形的表面适当剪开，展开成平面图形。能识别正方体、长方体、圆柱等的展开图。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出展开图的定义",
+        "能识别正方体的展开图",
+        "能将展开图折叠成立体图形"
+      ],
+      "assessmentPrompt": "{{name}} 能否判断一个给定的平面图形能否折叠成正方体？",
+      "standards": [
+        "pep-math-2022:7上.4.1"
+      ]
+    },
+    {
+      "id": "mt_ch4_005",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "几何图形",
+      "name": "点线面体的关系",
+      "description": "理解几何图形由点、线、面、体组成。点动成线、线动成面、面动成体。点是构成图形的基本元素。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出点线面体的关系",
+        "能举例说明点动成线、线动成面、面动成体"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释'面动成体'并举一个例子？",
+      "standards": [
+        "pep-math-2022:7上.4.1"
+      ]
+    },
+    {
+      "id": "mt_ch4_006",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "直线射线线段",
+      "name": "直线、射线、线段的概念",
+      "description": "理解直线、射线、线段的定义和区别：线段有两个端点，射线有一个端点，直线没有端点。射线和线段都是直线的一部分。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能说出三者的定义和区别",
+        "能正确表示直线、射线、线段",
+        "理解它们之间的包含关系"
+      ],
+      "assessmentPrompt": "{{name}} 能否说明直线AB和射线AB的区别？",
+      "standards": [
+        "pep-math-2022:7上.4.2"
+      ]
+    },
+    {
+      "id": "mt_ch4_007",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "直线射线线段",
+      "name": "直线的基本性质",
+      "description": "掌握直线的基本事实：两点确定一条直线。理解直线相交的概念。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出两点确定一条直线",
+        "能在实际问题中应用这个性质",
+        "理解直线相交和交点"
+      ],
+      "assessmentPrompt": "{{name}} 能否解释为什么建筑工人砌墙时要拉一条直线？",
+      "standards": [
+        "pep-math-2022:7上.4.2"
+      ]
+    },
+    {
+      "id": "mt_ch4_008",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "直线射线线段",
+      "name": "线段的度量与比较",
+      "description": "学会用刻度尺度量线段长度，用叠合法或度量法比较线段的长短。理解两点之间线段最短。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能正确度量线段长度",
+        "能用两种方法比较线段长短",
+        "理解两点之间线段最短"
+      ],
+      "assessmentPrompt": "{{name}} 能否用圆规比较两条线段的长短？",
+      "standards": [
+        "pep-math-2022:7上.4.2"
+      ]
+    },
+    {
+      "id": "mt_ch4_009",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "直线射线线段",
+      "name": "线段的中点",
+      "description": "理解线段中点的定义：把线段分成相等的两条线段的点。若M是AB的中点，则AM=MB=AB/2。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能说出中点的定义",
+        "能用中点性质进行计算",
+        "能用折纸或尺规找中点"
+      ],
+      "assessmentPrompt": "如果AB=10cm，M是AB的中点，{{name}} 能否求出AM的长度？",
+      "standards": [
+        "pep-math-2022:7上.4.2"
+      ]
+    },
+    {
+      "id": "mt_ch4_010",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "直线射线线段",
+      "name": "线段的尺规作图",
+      "description": "学会用无刻度的直尺和圆规作一条线段等于已知线段。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.7,
+      "evidence": [
+        "能用圆规在射线上截取等长线段",
+        "理解尺规作图的规范"
+      ],
+      "assessmentPrompt": "{{name}} 能否用尺规作一条线段等于已知线段a？",
+      "standards": [
+        "pep-math-2022:7上.4.2"
+      ]
+    },
+    {
+      "id": "mt_ch4_011",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "角的概念与表示",
+      "description": "理解角的两种定义：有公共端点的两条射线组成的图形；一条射线绕端点旋转形成的图形。掌握角的表示方法。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.9,
+      "evidence": [
+        "能用两种方式定义角",
+        "能用三种方法表示角",
+        "能识别角的顶点和边"
+      ],
+      "assessmentPrompt": "{{name}} 能否用三种方法表示同一个角？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    },
+    {
+      "id": "mt_ch4_012",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "角的度量与角度制",
+      "description": "掌握角的度量单位：度、分、秒。1周角=360度，1平角=180度，1度=60分，1分=60秒。角度制是60进制。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能说出度分秒的换算关系",
+        "能用量角器量角",
+        "能进行度分秒的换算"
+      ],
+      "assessmentPrompt": "{{name}} 能否将 35度 等于多少分、多少秒？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    },
+    {
+      "id": "mt_ch4_013",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "角的度量运算",
+      "description": "熟练进行度、分、秒之间的换算和加减运算。能将度的小数形式与度分秒形式互化。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能进行度分秒的加减运算",
+        "能将小数度化为度分秒",
+        "注意60进制的借位和进位"
+      ],
+      "assessmentPrompt": "{{name}} 能否计算 180度 - 53度17分？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    },
+    {
+      "id": "mt_ch4_014",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "角的大小比较",
+      "description": "学会用量角器度量法和叠合法比较两个角的大小。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.7,
+      "evidence": [
+        "能用量角器比较角的大小",
+        "能用叠合法比较角的大小"
+      ],
+      "assessmentPrompt": "{{name}} 能否比较 45度30分 和 46度 哪个大？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    },
+    {
+      "id": "mt_ch4_015",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "角的和差运算",
+      "description": "理解角的和差运算：两个角可以相加或相减。若角AOC = 角AOB + 角BOC，则角AOB = 角AOC - 角BOC。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.8,
+      "evidence": [
+        "能进行角的加法和减法",
+        "能根据图形写出角的和差关系"
+      ],
+      "assessmentPrompt": "如果角AOB=30度，角BOC=50度，{{name}} 能否求角AOC？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    },
+    {
+      "id": "mt_ch4_016",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "角平分线",
+      "description": "理解角平分线的定义：从角的顶点出发，把这个角分成两个相等的角的射线。若OB是角AOC的平分线，则角AOB=角BOC=角AOC/2。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能说出角平分线的定义",
+        "能用角平分线性质进行计算",
+        "能用折纸作角平分线"
+      ],
+      "assessmentPrompt": "OC是角AOB的平分线，角AOB=80度，{{name}} 能否求角AOC？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    },
+    {
+      "id": "mt_ch4_017",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "角",
+      "name": "余角和补角",
+      "description": "理解余角（两角之和为90度）和补角（两角之和为180度）的概念。掌握性质：同角（等角）的余角相等，同角（等角）的补角相等。",
+      "ageRangeStart": 12,
+      "ageRangeEnd": 13,
+      "centrality": 0.85,
+      "evidence": [
+        "能判断两个角是否互余或互补",
+        "能说出余角和补角的性质",
+        "能用余角补角性质进行计算"
+      ],
+      "assessmentPrompt": "角A=30度，{{name}} 能否求角A的余角和补角？",
+      "standards": [
+        "pep-math-2022:7上.4.3"
+      ]
+    }
+  ]
+}

@@ -9,7 +9,7 @@ const {
 } = require('../server/services/knowledgeGraph');
 
 test('Knowledge Graph — topology integrity & no self-cycles', () => {
-  assert.ok(Object.keys(KNOWLEDGE_GRAPH).length >= 15, 'Should define comprehensive K-9 topics');
+  assert.ok(Object.keys(KNOWLEDGE_GRAPH).length >= 80, 'Should define comprehensive K-9 topics including PEP taxonomy');
 
   for (const [nodeId, node] of Object.entries(KNOWLEDGE_GRAPH)) {
     assert.strictEqual(node.id, nodeId);
@@ -23,6 +23,14 @@ test('Knowledge Graph — topology integrity & no self-cycles', () => {
       assert.ok(KNOWLEDGE_GRAPH[preId], `Prerequisite ${preId} must exist in KNOWLEDGE_GRAPH`);
     }
   }
+});
+
+test('Knowledge Graph — PEP math taxonomy deep prerequisite tracing', () => {
+  // mt_ch1_004 (有理数的分类) -> mt_ch1_003 (有理数的概念) -> mt_ch1_001 (正数和负数的概念)
+  const prereqs = getPrerequisites('mt_ch1_004', 2);
+  assert.ok(prereqs.length >= 1, 'Should find prerequisites for rational number classification');
+  assert.strictEqual(prereqs[0].id, 'mt_ch1_003');
+  assert.strictEqual(prereqs[1].id, 'mt_ch1_001');
 });
 
 test('Knowledge Graph — getPrerequisites recursive tracing', () => {

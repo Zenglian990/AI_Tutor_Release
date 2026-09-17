@@ -5,6 +5,9 @@
  * Provides prerequisite tracing for mathematics, physics, chemistry, and language arts.
  */
 
+const fs = require('fs');
+const path = require('path');
+
 const KNOWLEDGE_GRAPH = {
   // === 数学学科 (小学到初中核心知识链) ===
   'math_fraction_add_sub': {
@@ -271,6 +274,42 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '分析滑动变阻器滑片移动时，没先画出等效电路图，电表所测对象搞错。'
   }
 };
+
+// 自动融合外部权威 PEP 初中数学知识拓扑（64核心节点 + 87条拓扑依赖链）
+try {
+  const topicsFile = path.join(__dirname, '..', '..', 'data', 'pep_topics.json');
+  const depsFile = path.join(__dirname, '..', '..', 'data', 'pep_dependencies.json');
+  if (fs.existsSync(topicsFile) && fs.existsSync(depsFile)) {
+    const rawTopics = JSON.parse(fs.readFileSync(topicsFile, 'utf-8')).topics || [];
+    const rawDeps = JSON.parse(fs.readFileSync(depsFile, 'utf-8')).dependencies || [];
+
+    const depMap = {};
+    for (const d of rawDeps) {
+      if (!depMap[d.topicId]) depMap[d.topicId] = [];
+      depMap[d.topicId].push(d.prerequisiteId);
+    }
+
+    for (const t of rawTopics) {
+      if (!KNOWLEDGE_GRAPH[t.id]) {
+        KNOWLEDGE_GRAPH[t.id] = {
+          id: t.id,
+          name: t.name,
+          subject: '数学',
+          grade: '7_up',
+          keywords: [t.name, t.domain].concat(Array.isArray(t.evidence) ? t.evidence : []),
+          prerequisites: depMap[t.id] || [],
+          coreRule: t.description || t.name,
+          commonMistake: t.assessmentPrompt || '在基本概念与运算步骤的严谨性上容易出现遗漏或符号错误。',
+          teacherMnemonic: `牢牢掌握【${t.domain}】核心定义与标准解题步骤！`,
+          lifeAnalogy: `就像学习语言必须先背基础词汇一样，掌握${t.name}是解综合大题的敲门砖。`,
+          feynmanChallenge: `能否用自己的话，向没有学过的人讲清楚${t.name}的核心内涵？`
+        };
+      }
+    }
+  }
+} catch (err) {
+  // 优雅降级，保留内置图谱
+}
 
 function getPrerequisites(nodeId, depth = 2, visited = new Set()) {
   const node = KNOWLEDGE_GRAPH[nodeId];

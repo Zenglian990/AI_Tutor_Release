@@ -1,0 +1,528 @@
+{
+  "version": "pep-math-7up-v1",
+  "dependencyCount": 87,
+  "dependencies": [
+    {
+      "topicId": "mt_ch1_002",
+      "prerequisiteId": "mt_ch1_001",
+      "strength": "hard",
+      "reason": "必须先理解正负数的概念，才能用它们表示相反意义的量"
+    },
+    {
+      "topicId": "mt_ch1_003",
+      "prerequisiteId": "mt_ch1_001",
+      "strength": "hard",
+      "reason": "有理数是在正数和负数基础上的概念扩展"
+    },
+    {
+      "topicId": "mt_ch1_004",
+      "prerequisiteId": "mt_ch1_003",
+      "strength": "hard",
+      "reason": "必须先理解有理数的定义，才能对有理数进行分类"
+    },
+    {
+      "topicId": "mt_ch1_005",
+      "prerequisiteId": "mt_ch1_003",
+      "strength": "hard",
+      "reason": "数轴是有理数的图形表示工具，需要先理解有理数"
+    },
+    {
+      "topicId": "mt_ch1_006",
+      "prerequisiteId": "mt_ch1_005",
+      "strength": "hard",
+      "reason": "在数轴上表示有理数需要先掌握数轴的画法"
+    },
+    {
+      "topicId": "mt_ch1_006",
+      "prerequisiteId": "mt_ch1_003",
+      "strength": "hard",
+      "reason": "需要理解有理数才能在数轴上表示它们"
+    },
+    {
+      "topicId": "mt_ch1_007",
+      "prerequisiteId": "mt_ch1_006",
+      "strength": "hard",
+      "reason": "相反数的概念需要借助数轴来理解"
+    },
+    {
+      "topicId": "mt_ch1_008",
+      "prerequisiteId": "mt_ch1_006",
+      "strength": "hard",
+      "reason": "绝对值的定义是数轴上点到原点的距离"
+    },
+    {
+      "topicId": "mt_ch1_008",
+      "prerequisiteId": "mt_ch1_007",
+      "strength": "soft",
+      "reason": "负数的绝对值等于其相反数，了解相反数有助于理解绝对值"
+    },
+    {
+      "topicId": "mt_ch1_009",
+      "prerequisiteId": "mt_ch1_008",
+      "strength": "hard",
+      "reason": "求绝对值需要先理解绝对值的定义"
+    },
+    {
+      "topicId": "mt_ch1_010",
+      "prerequisiteId": "mt_ch1_008",
+      "strength": "hard",
+      "reason": "比较两个负数的大小需要用到绝对值"
+    },
+    {
+      "topicId": "mt_ch1_010",
+      "prerequisiteId": "mt_ch1_006",
+      "strength": "hard",
+      "reason": "有理数大小比较可通过数轴直观理解"
+    },
+    {
+      "topicId": "mt_ch1_011",
+      "prerequisiteId": "mt_ch1_001",
+      "strength": "hard",
+      "reason": "有理数加法涉及正数和负数的运算"
+    },
+    {
+      "topicId": "mt_ch1_011",
+      "prerequisiteId": "mt_ch1_008",
+      "strength": "hard",
+      "reason": "加法法则中需要用到绝对值进行计算"
+    },
+    {
+      "topicId": "mt_ch1_012",
+      "prerequisiteId": "mt_ch1_011",
+      "strength": "hard",
+      "reason": "加法运算必须先掌握加法法则"
+    },
+    {
+      "topicId": "mt_ch1_013",
+      "prerequisiteId": "mt_ch1_011",
+      "strength": "hard",
+      "reason": "减法转化为加法，需要先掌握加法法则"
+    },
+    {
+      "topicId": "mt_ch1_013",
+      "prerequisiteId": "mt_ch1_007",
+      "strength": "hard",
+      "reason": "减去一个数等于加上其相反数，需要理解相反数"
+    },
+    {
+      "topicId": "mt_ch1_014",
+      "prerequisiteId": "mt_ch1_013",
+      "strength": "hard",
+      "reason": "减法运算需要先掌握减法法则"
+    },
+    {
+      "topicId": "mt_ch1_014",
+      "prerequisiteId": "mt_ch1_012",
+      "strength": "hard",
+      "reason": "减法转化为加法后需要进行加法运算"
+    },
+    {
+      "topicId": "mt_ch1_015",
+      "prerequisiteId": "mt_ch1_012",
+      "strength": "hard",
+      "reason": "加减混合运算需要熟练的加法运算能力"
+    },
+    {
+      "topicId": "mt_ch1_015",
+      "prerequisiteId": "mt_ch1_014",
+      "strength": "hard",
+      "reason": "加减混合运算需要熟练的减法运算能力"
+    },
+    {
+      "topicId": "mt_ch1_016",
+      "prerequisiteId": "mt_ch1_008",
+      "strength": "hard",
+      "reason": "乘法法则中需要计算绝对值的乘积"
+    },
+    {
+      "topicId": "mt_ch1_017",
+      "prerequisiteId": "mt_ch1_016",
+      "strength": "hard",
+      "reason": "乘法运算需要先掌握乘法法则"
+    },
+    {
+      "topicId": "mt_ch1_018",
+      "prerequisiteId": "mt_ch1_016",
+      "strength": "hard",
+      "reason": "倒数的定义基于乘积为1，需要先理解乘法"
+    },
+    {
+      "topicId": "mt_ch1_019",
+      "prerequisiteId": "mt_ch1_018",
+      "strength": "hard",
+      "reason": "除以一个数等于乘它的倒数"
+    },
+    {
+      "topicId": "mt_ch1_019",
+      "prerequisiteId": "mt_ch1_016",
+      "strength": "hard",
+      "reason": "除法转化为乘法后需要运用乘法法则"
+    },
+    {
+      "topicId": "mt_ch1_020",
+      "prerequisiteId": "mt_ch1_019",
+      "strength": "hard",
+      "reason": "除法运算需要先掌握除法法则"
+    },
+    {
+      "topicId": "mt_ch1_020",
+      "prerequisiteId": "mt_ch1_017",
+      "strength": "hard",
+      "reason": "乘除混合运算需要熟练的乘法运算能力"
+    },
+    {
+      "topicId": "mt_ch1_021",
+      "prerequisiteId": "mt_ch1_017",
+      "strength": "hard",
+      "reason": "乘方是特殊乘法，需要先理解乘法"
+    },
+    {
+      "topicId": "mt_ch1_022",
+      "prerequisiteId": "mt_ch1_021",
+      "strength": "hard",
+      "reason": "幂的计算需要先理解乘方的概念"
+    },
+    {
+      "topicId": "mt_ch1_023",
+      "prerequisiteId": "mt_ch1_015",
+      "strength": "hard",
+      "reason": "混合运算中的加减部分需要加减运算能力"
+    },
+    {
+      "topicId": "mt_ch1_023",
+      "prerequisiteId": "mt_ch1_020",
+      "strength": "hard",
+      "reason": "混合运算中的乘除部分需要乘除运算能力"
+    },
+    {
+      "topicId": "mt_ch1_023",
+      "prerequisiteId": "mt_ch1_022",
+      "strength": "hard",
+      "reason": "混合运算中的乘方部分需要幂的计算能力"
+    },
+    {
+      "topicId": "mt_ch1_024",
+      "prerequisiteId": "mt_ch1_021",
+      "strength": "hard",
+      "reason": "科学记数法需要用到10的幂"
+    },
+    {
+      "topicId": "mt_ch2_002",
+      "prerequisiteId": "mt_ch2_001",
+      "strength": "hard",
+      "reason": "单项式是用字母表示数的直接应用"
+    },
+    {
+      "topicId": "mt_ch2_003",
+      "prerequisiteId": "mt_ch2_002",
+      "strength": "hard",
+      "reason": "多项式由单项式的和构成"
+    },
+    {
+      "topicId": "mt_ch2_004",
+      "prerequisiteId": "mt_ch2_002",
+      "strength": "hard",
+      "reason": "整式的分类需要先理解单项式"
+    },
+    {
+      "topicId": "mt_ch2_004",
+      "prerequisiteId": "mt_ch2_003",
+      "strength": "hard",
+      "reason": "整式的分类需要先理解多项式"
+    },
+    {
+      "topicId": "mt_ch2_005",
+      "prerequisiteId": "mt_ch2_001",
+      "strength": "hard",
+      "reason": "列代数式需要先学会用字母表示数"
+    },
+    {
+      "topicId": "mt_ch2_006",
+      "prerequisiteId": "mt_ch2_002",
+      "strength": "hard",
+      "reason": "判断同类项需要理解单项式的字母和指数"
+    },
+    {
+      "topicId": "mt_ch2_007",
+      "prerequisiteId": "mt_ch2_006",
+      "strength": "hard",
+      "reason": "合并同类项需要先识别同类项"
+    },
+    {
+      "topicId": "mt_ch2_007",
+      "prerequisiteId": "mt_ch1_012",
+      "strength": "soft",
+      "reason": "合并同类项需要系数相加，用到有理数加法"
+    },
+    {
+      "topicId": "mt_ch2_008",
+      "prerequisiteId": "mt_ch2_002",
+      "strength": "hard",
+      "reason": "去括号涉及符号变化，需要理解代数式的结构"
+    },
+    {
+      "topicId": "mt_ch2_008",
+      "prerequisiteId": "mt_ch1_007",
+      "strength": "soft",
+      "reason": "去括号变号与相反数概念相关"
+    },
+    {
+      "topicId": "mt_ch2_009",
+      "prerequisiteId": "mt_ch2_007",
+      "strength": "hard",
+      "reason": "整式加减需要合并同类项"
+    },
+    {
+      "topicId": "mt_ch2_009",
+      "prerequisiteId": "mt_ch2_008",
+      "strength": "hard",
+      "reason": "整式加减常需要先去括号"
+    },
+    {
+      "topicId": "mt_ch2_010",
+      "prerequisiteId": "mt_ch2_009",
+      "strength": "hard",
+      "reason": "化简求值需要先掌握整式加减运算"
+    },
+    {
+      "topicId": "mt_ch2_001",
+      "prerequisiteId": "mt_ch1_001",
+      "strength": "soft",
+      "reason": "用字母表示数建立在对数的认识基础上"
+    },
+    {
+      "topicId": "mt_ch3_002",
+      "prerequisiteId": "mt_ch3_001",
+      "strength": "hard",
+      "reason": "一元一次方程是方程的一种特殊类型"
+    },
+    {
+      "topicId": "mt_ch3_003",
+      "prerequisiteId": "mt_ch3_001",
+      "strength": "hard",
+      "reason": "列方程需要先理解方程的概念"
+    },
+    {
+      "topicId": "mt_ch3_004",
+      "prerequisiteId": "mt_ch3_002",
+      "strength": "hard",
+      "reason": "理解方程的解需要先理解一元一次方程"
+    },
+    {
+      "topicId": "mt_ch3_005",
+      "prerequisiteId": "mt_ch3_001",
+      "strength": "hard",
+      "reason": "等式性质是解方程的基础，方程是特殊的等式"
+    },
+    {
+      "topicId": "mt_ch3_006",
+      "prerequisiteId": "mt_ch3_005",
+      "strength": "hard",
+      "reason": "利用等式性质解方程需要先掌握等式性质"
+    },
+    {
+      "topicId": "mt_ch3_007",
+      "prerequisiteId": "mt_ch3_005",
+      "strength": "hard",
+      "reason": "移项的依据是等式性质1"
+    },
+    {
+      "topicId": "mt_ch3_008",
+      "prerequisiteId": "mt_ch3_007",
+      "strength": "hard",
+      "reason": "合并同类项与移项解方程需要先掌握移项法则"
+    },
+    {
+      "topicId": "mt_ch3_009",
+      "prerequisiteId": "mt_ch3_008",
+      "strength": "hard",
+      "reason": "去括号解方程需要先掌握移项和合并同类项"
+    },
+    {
+      "topicId": "mt_ch3_010",
+      "prerequisiteId": "mt_ch3_008",
+      "strength": "hard",
+      "reason": "去分母解方程需要先掌握移项和合并同类项"
+    },
+    {
+      "topicId": "mt_ch3_011",
+      "prerequisiteId": "mt_ch3_009",
+      "strength": "hard",
+      "reason": "完整步骤需要掌握去括号"
+    },
+    {
+      "topicId": "mt_ch3_011",
+      "prerequisiteId": "mt_ch3_010",
+      "strength": "hard",
+      "reason": "完整步骤需要掌握去分母"
+    },
+    {
+      "topicId": "mt_ch3_012",
+      "prerequisiteId": "mt_ch3_011",
+      "strength": "hard",
+      "reason": "解应用题需要先会解方程"
+    },
+    {
+      "topicId": "mt_ch3_012",
+      "prerequisiteId": "mt_ch3_003",
+      "strength": "hard",
+      "reason": "解应用题需要会列方程"
+    },
+    {
+      "topicId": "mt_ch3_013",
+      "prerequisiteId": "mt_ch3_012",
+      "strength": "hard",
+      "reason": "综合应用题建立在基本应用题之上"
+    },
+    {
+      "topicId": "mt_ch3_008",
+      "prerequisiteId": "mt_ch1_012",
+      "strength": "soft",
+      "reason": "合并同类项涉及有理数加法"
+    },
+    {
+      "topicId": "mt_ch3_008",
+      "prerequisiteId": "mt_ch1_020",
+      "strength": "soft",
+      "reason": "系数化为1涉及有理数除法"
+    },
+    {
+      "topicId": "mt_ch3_002",
+      "prerequisiteId": "mt_ch2_004",
+      "strength": "hard",
+      "reason": "一元一次方程定义中要求等号两边都是整式"
+    },
+    {
+      "topicId": "mt_ch3_008",
+      "prerequisiteId": "mt_ch2_007",
+      "strength": "hard",
+      "reason": "解方程中的合并同类项直接用到整式中的合并同类项"
+    },
+    {
+      "topicId": "mt_ch3_009",
+      "prerequisiteId": "mt_ch2_008",
+      "strength": "hard",
+      "reason": "解方程中的去括号直接用到整式中的去括号法则"
+    },
+    {
+      "topicId": "mt_ch4_002",
+      "prerequisiteId": "mt_ch4_001",
+      "strength": "hard",
+      "reason": "区分立体和平面图形需要先理解几何图形"
+    },
+    {
+      "topicId": "mt_ch4_003",
+      "prerequisiteId": "mt_ch4_002",
+      "strength": "hard",
+      "reason": "三视图需要先区分立体和平面图形"
+    },
+    {
+      "topicId": "mt_ch4_004",
+      "prerequisiteId": "mt_ch4_002",
+      "strength": "hard",
+      "reason": "展开图需要先理解立体图形"
+    },
+    {
+      "topicId": "mt_ch4_005",
+      "prerequisiteId": "mt_ch4_002",
+      "strength": "hard",
+      "reason": "点线面体关系需要先理解几何图形的分类"
+    },
+    {
+      "topicId": "mt_ch4_006",
+      "prerequisiteId": "mt_ch4_005",
+      "strength": "soft",
+      "reason": "直线射线线段是'线'的具体类型"
+    },
+    {
+      "topicId": "mt_ch4_007",
+      "prerequisiteId": "mt_ch4_006",
+      "strength": "hard",
+      "reason": "直线性质需要先理解直线的概念"
+    },
+    {
+      "topicId": "mt_ch4_008",
+      "prerequisiteId": "mt_ch4_006",
+      "strength": "hard",
+      "reason": "线段度量需要先理解线段的概念"
+    },
+    {
+      "topicId": "mt_ch4_009",
+      "prerequisiteId": "mt_ch4_008",
+      "strength": "hard",
+      "reason": "中点概念需要先理解线段的度量"
+    },
+    {
+      "topicId": "mt_ch4_010",
+      "prerequisiteId": "mt_ch4_008",
+      "strength": "hard",
+      "reason": "尺规作图需要先理解线段度量"
+    },
+    {
+      "topicId": "mt_ch4_011",
+      "prerequisiteId": "mt_ch4_005",
+      "strength": "soft",
+      "reason": "角的概念与点线面体关系相关"
+    },
+    {
+      "topicId": "mt_ch4_012",
+      "prerequisiteId": "mt_ch4_011",
+      "strength": "hard",
+      "reason": "角的度量需要先理解角的概念"
+    },
+    {
+      "topicId": "mt_ch4_013",
+      "prerequisiteId": "mt_ch4_012",
+      "strength": "hard",
+      "reason": "度分秒运算需要先掌握角度制"
+    },
+    {
+      "topicId": "mt_ch4_014",
+      "prerequisiteId": "mt_ch4_012",
+      "strength": "hard",
+      "reason": "角的大小比较需要先掌握角的度量"
+    },
+    {
+      "topicId": "mt_ch4_015",
+      "prerequisiteId": "mt_ch4_013",
+      "strength": "hard",
+      "reason": "角的和差运算需要掌握度分秒运算"
+    },
+    {
+      "topicId": "mt_ch4_015",
+      "prerequisiteId": "mt_ch4_014",
+      "strength": "soft",
+      "reason": "角的和差运算与大小比较相关"
+    },
+    {
+      "topicId": "mt_ch4_016",
+      "prerequisiteId": "mt_ch4_015",
+      "strength": "hard",
+      "reason": "角平分线是角的和差的特殊应用"
+    },
+    {
+      "topicId": "mt_ch4_017",
+      "prerequisiteId": "mt_ch4_015",
+      "strength": "hard",
+      "reason": "余角补角需要角的和差运算"
+    },
+    {
+      "topicId": "mt_ch4_006",
+      "prerequisiteId": "mt_ch1_005",
+      "strength": "soft",
+      "reason": "数轴是直线的数学化表示，有助于理解直线"
+    },
+    {
+      "topicId": "mt_ch4_013",
+      "prerequisiteId": "mt_ch1_014",
+      "strength": "soft",
+      "reason": "度分秒减法运算用到有理数减法"
+    },
+    {
+      "topicId": "mt_ch4_017",
+      "prerequisiteId": "mt_ch1_014",
+      "strength": "soft",
+      "reason": "求余角补角涉及有理数减法"
+    }
+  ]
+}
