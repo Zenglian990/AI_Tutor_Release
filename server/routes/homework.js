@@ -89,7 +89,8 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       "score": 4,
       "maxScore": 10,
       "mistakeReason": "审题未注意‘射线’而非‘线段’，遗漏第二种分类讨论情况",
-      "keyInsight": "题眼在‘射线’关键字，必须分点P在线段AB上与AB延长线上两类讨论"
+      "keyInsight": "题眼在‘射线’关键字，必须分点P在线段AB上与AB延长线上两类讨论",
+      "stepByStepDeduction": "① 第一次列方程 t=5 推导正确；② 忽略了点P沿射线延伸反向运动的第二种可能；③ 步骤书写工整，但缺乏极端位置分类草图。"
     }
   ]
 }
@@ -97,8 +98,9 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
 注意：
 1. status 只能是 "correct"（正确）、"wrong"（错误）或 "partial"（部分对/步骤分）。
 2. box_2d: 必须准确识别该题在原图中的外接矩形定位坐标 [ymin, xmin, ymax, xmax]，取值在 0 到 1000 整数之间，用于多题交互切片与画框。
-3. 如果图片中没有找到题目或模糊无法看清，请在 summaryHeadline 中说明，并返回 results 为空数组。
-4. 严格输出合法的 JSON 对象，便于机器解析。`;
+3. stepByStepDeduction: 对有手写过程或错题，必须输出具体推导分步分析（第几步做对、第几步卡壳或符号遗漏、草稿演算建议），若完全正确且步骤简单可简述“步骤完整无误”。
+4. 如果图片中没有找到题目或模糊无法看清，请在 summaryHeadline 中说明，并返回 results 为空数组。
+5. 严格输出合法的 JSON 对象，便于机器解析。`;
 
     const contentsPayload = {
       contents: [{

@@ -944,6 +944,20 @@ export default function HomeworkBatchModal({
                           </div>
                         )}
 
+                        {/* Step-by-step Deduction / Scratchpad Analysis */}
+                        {q.stepByStepDeduction && (
+                          <div style={{
+                            background: 'rgba(168, 85, 247, 0.08)',
+                            borderLeft: '3px solid #a855f7',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <span style={{ color: '#c084fc', fontWeight: 600, marginRight: '6px' }}>🔍 草稿演算与步骤透视：</span>
+                            <span style={{ color: '#e9d5ff' }}><MathMarkdown content={q.stepByStepDeduction} /></span>
+                          </div>
+                        )}
+
                         {/* Socratic Tutoring Direct Action */}
                         {onStartSocraticTutoring && (
                           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>

@@ -53,6 +53,8 @@ export default function A4PrintModal({
   const [exportingImage, setExportingImage] = useState(false);
   const [exportSuccessMsg, setExportSuccessMsg] = useState('');
   const [showGate, setShowGate] = useState(false);
+  const [orgName, setOrgName] = useState('曾先生智慧私教中心');
+  const [showOrgInput, setShowOrgInput] = useState(false);
   const sheetRef = useRef(null);
 
   if (!isOpen) return null;
@@ -358,6 +360,67 @@ export default function A4PrintModal({
               {twoColumn ? '📰 双栏考卷' : '📋 单栏宽版'}
             </button>
 
+            {/* Organization Branding Button */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowOrgInput(!showOrgInput)}
+                style={{
+                  background: '#fff',
+                  color: '#475569',
+                  border: '1px solid #cbd5e1',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                🏢 机构：{orgName.length > 7 ? orgName.substring(0, 7) + '..' : orgName}
+              </button>
+              {showOrgInput && (
+                <div style={{
+                  position: 'absolute',
+                  top: '110%',
+                  right: 0,
+                  background: '#fff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                  zIndex: 60,
+                  width: '250px'
+                }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>自定义机构/托辅班名称：</div>
+                  <input
+                    type="text"
+                    value={orgName}
+                    onChange={e => setOrgName(e.target.value)}
+                    placeholder="如：卓越晚托托管中心"
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      boxSizing: 'border-box',
+                      marginBottom: '8px'
+                    }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setShowOrgInput(false)}
+                      style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '4px 12px', borderRadius: '4px', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      确定
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Print Trigger */}
             <button
               onClick={handlePrint}
@@ -501,10 +564,10 @@ export default function A4PrintModal({
             {/* Main Sheet Header */}
             <div style={{ textAlign: 'center', borderBottom: '2.5px solid #000', paddingBottom: '14px', marginBottom: '16px' }}>
               <div style={{ fontSize: '0.88rem', color: '#4b5563', letterSpacing: '2px', marginBottom: '4px' }}>
-                全国中小学名师诊断 · 纸屏融合实战微测系统
+                {orgName || '全国中小学名师诊断 · 纸屏融合实战微测系统'}
               </div>
               <h2 style={{ fontSize: '1.55rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '1.5px', color: '#000' }}>
-                【曾练专属私教】{subject}靶向突破周清微测试卷
+                【{studentName || '学员'}专属私教】{subject}靶向突破周清微测试卷
               </h2>
               <div style={{ fontSize: '0.92rem', color: '#374151', fontWeight: 600, marginBottom: '10px' }}>
                 （{printMode === 'blank_student' ? '📝 学生独立闭卷实操版 · 答题留白' : '📖 名师详析与考点穿透版 · 家长核对'}）

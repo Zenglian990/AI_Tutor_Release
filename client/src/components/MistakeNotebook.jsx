@@ -27,6 +27,38 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   const [editingTagsId, setEditingTagsId] = useState(null);
   const [tempTags, setTempTags] = useState('');
   const [showA4Modal, setShowA4Modal] = useState(false);
+  const [generatingTargetedPaper, setGeneratingTargetedPaper] = useState(false);
+  const [variantPaperQuestions, setVariantPaperQuestions] = useState([]);
+
+  const handleGenerateTargetedVariantPaper = async () => {
+    if (mistakes.length === 0) {
+      alert('错题本暂无记录，请先在作业批改中拍照批改或日常学习中归档错题！');
+      return;
+    }
+    setGeneratingTargetedPaper(true);
+    try {
+      const res = await authFetch('/api/test-paper/generate-from-mistakes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: currentProfileId || 'default',
+          subject: filterSubject || defaultSubject || '数学',
+          grade: filterGrade || defaultGrade || '7_up'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.testPaper) {
+        setVariantPaperQuestions(data.testPaper.questions || []);
+        setShowA4Modal(true);
+      } else {
+        alert(data.error || '生成靶向变式卷失败');
+      }
+    } catch (err) {
+      alert('网络超时，生成靶向变式卷失败');
+    } finally {
+      setGeneratingTargetedPaper(false);
+    }
+  };
 
   const handleSaveTags = async (mistakeId) => {
     try {
@@ -180,8 +212,22 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
             <button className="mistake-btn" onClick={() => setTestMode(!testMode)}>
               {testMode ? '👁️ 显示答案' : '📝 生成复习卷'}
             </button>
-            <button className="mistake-btn" onClick={() => setShowA4Modal(true)} style={{ borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>
-              📄 A4 试卷排版
+            <button
+              className="mistake-btn"
+              onClick={handleGenerateTargetedVariantPaper}
+              disabled={generatingTargetedPaper}
+              style={{
+                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                borderColor: '#38bdf8',
+                color: '#fff',
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)'
+              }}
+            >
+              {generatingTargetedPaper ? '⏳ 正在溯源组卷...' : '🎯 靶向变式巩固卷'}
+            </button>
+            <button className="mistake-btn" onClick={() => { setVariantPaperQuestions([]); setShowA4Modal(true); }} style={{ borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>
+              📄 A4 错题排版
             </button>
             <button className="mistake-btn" onClick={handlePrint}>🖨️ 快速打印</button>
             <button onClick={onClose} className="close-btn" title="关闭" aria-label="关闭错题本">×</button>
@@ -402,11 +448,21 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
       {showA4Modal && (
         <A4PrintModal
           isOpen={showA4Modal}
-          onClose={() => setShowA4Modal(false)}
+          onClose={() => { setShowA4Modal(false); setVariantPaperQuestions([]); }}
           studentName="曾练"
           grade={filterGrade || defaultGrade || '7_up'}
           subject={filterSubject || defaultSubject || '数学'}
-          questions={filtered.map((m, idx) => ({
+          questions={variantPaperQuestions.length > 0 ? variantPaperQuestions.map((q, idx) => ({
+            id: q.id || idx + 1,
+            questionNumber: idx + 1,
+            title: `第 ${idx + 1} 题 (${q.type === 'choice' ? '选择题' : q.type === 'blank' ? '填空题' : '解答题'}) [${q.category === 'prerequisite_grounding' ? '🌱 前置概念保底' : q.category === 'isomorphic_variant' ? '🔄 同构变式强化' : '🚀 综合拓展拔高'}]`,
+            body: q.question + (Array.isArray(q.options) && q.options.length > 0 ? '\n' + q.options.join('\n') : ''),
+            score: q.score || 15,
+            standardAnswer: q.answer,
+            keyInsight: q.explanation || '名师解析与思维破局点',
+            mistakeReason: q.category === 'prerequisite_grounding' ? '针对该题此前暴露的前置基础断层进行保底测评' : '',
+            status: 'wrong'
+          })) : filtered.map((m, idx) => ({
             id: m.id,
             questionNumber: idx + 1,
             title: `第 ${idx + 1} 题 (${m.subject || '错题'})`,

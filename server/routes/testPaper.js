@@ -8,6 +8,10 @@ const fs = require('fs');
 const path = require('path');
 const { getChapters } = require('../utils/dataLoader');
 const { GRADE_ALIASES } = require('../prompts/guidelines');
+const { decryptField } = require('../utils/crypto');
+const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('../services/knowledgeGraph');
+const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
+const { extractAndParseJson } = require('../utils/jsonParser');
 
 
 
@@ -474,6 +478,222 @@ router.post('/test-paper/grade', async (req, res) => {
       return res.status(429).json({ error: '今日额度已用完' });
     }
     res.status(500).json({ error: '批改试卷失败', details: NODE_ENV === 'development' ? e.message : undefined });
+  }
+});
+
+/**
+ * POST /api/test-paper/generate-from-mistakes
+ * 错题驱动的靶向变式巩固试卷全自动生成引擎
+ */
+router.post('/test-paper/generate-from-mistakes', async (req, res) => {
+  try {
+    const {
+      profile_id = 'default',
+      subject = '数学',
+      grade = '7_up',
+      student_name = '曾练',
+      mistake_ids = null,
+      limit = 4
+    } = req.body;
+
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) {
+      return res.status(503).json({ error: '数据库未就绪' });
+    }
+
+    let mistakes = [];
+    if (Array.isArray(mistake_ids) && mistake_ids.length > 0) {
+      const placeholders = mistake_ids.map(() => '?').join(',');
+      mistakes = await sqliteDb.all(
+        `SELECT * FROM mistakes WHERE profile_id = ? AND id IN (${placeholders})`,
+        [profile_id, ...mistake_ids]
+      );
+    } else {
+      mistakes = await sqliteDb.all(
+        'SELECT * FROM mistakes WHERE profile_id = ? AND (subject = ? OR ? = "") ORDER BY timestamp DESC LIMIT ?',
+        [profile_id, subject, subject, Math.min(Math.max(1, parseInt(limit, 10) || 4), 10)]
+      );
+    }
+
+    if (!mistakes || mistakes.length === 0) {
+      return res.status(400).json({
+        error: '当前暂无待订正错题，无法生成靶向变式卷。请先在作业批改中拍照批改或在错题本中添加错题！'
+      });
+    }
+
+    const decryptedMistakes = mistakes.map(m => ({
+      id: m.id,
+      query: decryptField(m.query),
+      answer: decryptField(m.answer),
+      reason: decryptField(m.reason),
+      grade: m.grade || grade,
+      subject: m.subject || subject
+    }));
+
+    // 1. GraphRAG 知识图谱根因诊断
+    const diagnoses = [];
+    for (const m of decryptedMistakes) {
+      const diagText = `${m.query} ${m.reason || ''}`;
+      const diag = diagnosePrerequisiteKnowledge(diagText, m.subject || subject);
+      if (diag) {
+        diagnoses.push(diag);
+      }
+    }
+
+    const primaryDiagnosis = diagnoses[0] || null;
+    const graphSection = primaryDiagnosis ? formatGraphRAGPromptSection(primaryDiagnosis) : '';
+
+    // 2. 匹配 481 道权威真题母题库
+    const canonicalHints = [];
+    for (const m of decryptedMistakes.slice(0, 3)) {
+      try {
+        const match = await lookupCanonicalQuestion(m.query, grade, subject, sqliteDb);
+        if (match && match.matched && match.canonical) {
+          canonicalHints.push(match.canonical);
+        }
+      } catch (err) {
+        // ignore lookup warning
+      }
+    }
+
+    // 3. 构建大模型提示词
+    const mistakesSummary = decryptedMistakes.map((m, idx) => 
+      `错题${idx + 1}：${m.query} (学生原错因：${m.reason || '未标注'})`
+    ).join('\n');
+
+    const canonicalSummary = canonicalHints.length > 0
+      ? `\n【参考权威教材母题标准题型】：\n` + canonicalHints.map((c, i) => `母题${i+1} [${c.chapter || '经典考点'}]: ${c.question}\n标答: ${c.standard_answer}`).join('\n')
+      : '';
+
+    const prompt = `你是一位精通中小学教学与学情溯源的特级教研员。
+请根据学生【${student_name}】近期在【${subject}】(${grade})中出现的真实错题，以及系统知识图谱的底层根因诊断，为该生定制一份满分 100 分、建议用时 45 分钟的【靶向溯源变式巩固试卷】。
+
+【真实错题集】：
+${mistakesSummary}
+${graphSection}
+${canonicalSummary}
+
+【试卷结构与出题准则】（必须严格遵守 100 分制结构）：
+1. 试卷题目总共 6 道题，分为三大部分：
+   - 第一部分：前置概念基础保底题（1道题，15分，题号1）：
+     * 必须专门考查导致学生出错的【底层前驱根因概念】（让学生在最底层概念上建立信心）。
+   - 第二部分：同构变式强化题（3道题，题号2、3、4，每题15分，共45分）：
+     * 题号2为选择题（A/B/C/D，15分）
+     * 题号3为填空题（15分）
+     * 题号4为计算/分析题（15分）
+     * 必须与学生的错题考点高度同构，更换数字、背景或未知数，考查举一反三能力。
+   - 第三部分：中考/期末综合压轴拓展题（2道题，题号5、6，每题20分，共40分）：
+     * 题号5为综合解答题（20分）
+     * 题号6为拓展探究题（20分）
+     * 考查知识点的综合迁移与逆向思维。
+2. 所有选择题必须提供 4 个选项（包含在 options 数组中，如 ["A. ...", "B. ...", "C. ...", "D. ..."]），answer 只能是 "A"、"B"、"C" 或 "D"。
+3. 填空题 answer 必须是精准数值或简洁表达式。
+4. 每道题都必须提供详尽的名师解析 explanation，指出解题突破口。
+
+请严格返回如下 JSON 结构（严禁包含额外文字）：
+{
+  "title": "【${student_name}】专属靶向溯源巩固卷",
+  "subtitle": "针对薄弱知识点靶向查漏补缺",
+  "subject": "${subject}",
+  "grade": "${grade}",
+  "duration": 45,
+  "totalScore": 100,
+  "rootCauseTopic": "${primaryDiagnosis?.rootCauseNode?.name || '基础综合概念'}",
+  "teacherAdvice": "先完成第1题概念自测，遇到变式题注意类比错题的解题规律。",
+  "questions": [
+    {
+      "id": 1,
+      "type": "blank",
+      "category": "prerequisite_grounding",
+      "question": "题目具体内容",
+      "score": 15,
+      "answer": "标准答案",
+      "explanation": "名师解析"
+    },
+    {
+      "id": 2,
+      "type": "choice",
+      "category": "isomorphic_variant",
+      "question": "题目具体内容",
+      "options": ["A. 选项1", "B. 选项2", "C. 选项3", "D. 选项4"],
+      "score": 15,
+      "answer": "A",
+      "explanation": "名师解析"
+    },
+    {
+      "id": 3,
+      "type": "blank",
+      "category": "isomorphic_variant",
+      "question": "题目具体内容",
+      "score": 15,
+      "answer": "标准答案",
+      "explanation": "名师解析"
+    },
+    {
+      "id": 4,
+      "type": "essay",
+      "category": "isomorphic_variant",
+      "question": "题目具体内容",
+      "score": 15,
+      "answer": "标准步骤与结果",
+      "explanation": "名师解析"
+    },
+    {
+      "id": 5,
+      "type": "essay",
+      "category": "advanced_extension",
+      "question": "题目具体内容",
+      "score": 20,
+      "answer": "标准推导与答案",
+      "explanation": "名师解析"
+    },
+    {
+      "id": 6,
+      "type": "essay",
+      "category": "advanced_extension",
+      "question": "题目具体内容",
+      "score": 20,
+      "answer": "标准推导与答案",
+      "explanation": "名师解析"
+    }
+  ]
+}`;
+
+    const response = await fetchWithKeyRotation(buildChatURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          response_mime_type: 'application/json',
+          temperature: 0.4
+        }
+      })
+    }, 8, 90000);
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      throw new Error('LLM 未返回有效试卷数据');
+    }
+
+    const testPaper = extractAndParseJson(rawText);
+    if (!testPaper || !Array.isArray(testPaper.questions)) {
+      throw new Error('生成的试卷格式不完整');
+    }
+
+    res.json({
+      success: true,
+      testPaper,
+      diagnoses,
+      mistakesCount: decryptedMistakes.length
+    });
+  } catch (e) {
+    logger.error('Generate Test Paper From Mistakes Error:', e);
+    if (e.message === 'QUOTA_EXHAUSTED') {
+      return res.status(429).json({ error: '今日额度已用完' });
+    }
+    res.status(500).json({ error: '生成靶向变式试卷失败', details: NODE_ENV === 'development' ? e.message : undefined });
   }
 });
 

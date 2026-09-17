@@ -20,6 +20,40 @@ undici.fetch = async (url, options) => {
     const reqBody = options.body ? JSON.parse(options.body) : {};
     const promptText = reqBody.contents?.[0]?.parts?.[0]?.text || "";
 
+    if (promptText.includes('靶向溯源变式') || promptText.includes('真实错题集')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          candidates: [{
+            content: {
+              parts: [{
+                text: JSON.stringify({
+                  title: "【曾小侠】专属靶向溯源巩固卷",
+                  subtitle: "针对薄弱知识点靶向查漏补缺",
+                  subject: "数学",
+                  grade: "7_up",
+                  duration: 45,
+                  totalScore: 100,
+                  rootCauseTopic: "有理数四则运算与去括号",
+                  teacherAdvice: "先完成第1题概念自测，遇到变式题注意类比错题的解题规律。",
+                  questions: [
+                    { id: 1, type: "blank", category: "prerequisite_grounding", question: "计算：- (-5) = ____", score: 15, answer: "5", explanation: "负数的相反数是正数" },
+                    { id: 2, type: "choice", category: "isomorphic_variant", question: "若 a = -2，则 -a 的值是？", options: ["A. -2", "B. 2", "C. 0", "D. 4"], score: 15, answer: "B", explanation: "去括号法则" },
+                    { id: 3, type: "blank", category: "isomorphic_variant", question: "化简：-(3 - x) = ____", score: 15, answer: "x - 3", explanation: "括号前是负号各项变号" },
+                    { id: 4, type: "essay", category: "isomorphic_variant", question: "解方程：3(x - 2) = - (x + 6)", score: 15, answer: "x = 0", explanation: "去括号移项" },
+                    { id: 5, type: "essay", category: "advanced_extension", question: "综合探究数轴动点与绝对值", score: 20, answer: "t = 3 或 7", explanation: "分类讨论" },
+                    { id: 6, type: "essay", category: "advanced_extension", question: "中考压轴变式拓展", score: 20, answer: "推导成立", explanation: "综合证明" }
+                  ]
+                })
+              }]
+            }
+          }]
+        }),
+        headers: new undici.Headers()
+      };
+    }
+
     if (promptText.includes('中小学教研员')) {
       return {
         ok: true,
@@ -195,4 +229,43 @@ test('Test Paper API: Grade', async () => {
   assert.equal(data.results[8].score, 20);
   assert.equal(data.results[9].score, 26);
   assert.equal(data.results[10].score, 30);
+});
+
+test('Test Paper API: Generate From Mistakes (Targeted Variant Paper)', async () => {
+  const { getSqliteDb } = require('../server/db/init');
+  const { encryptField } = require('../server/utils/crypto');
+  const sqliteDb = getSqliteDb();
+  await sqliteDb.run(
+    'INSERT INTO mistakes (query, answer, grade, subject, reason, profile_id) VALUES (?, ?, ?, ?, ?, ?)',
+    [
+      encryptField('计算：- (3 - 5) + (-2) 的结果是多少？'),
+      encryptField('学生算成了 -4'),
+      '7_up',
+      '数学',
+      encryptField('去括号时负负得正搞混了，符号法则不牢'),
+      'test_variant_student'
+    ]
+  );
+
+  const res = await fetch(`${baseUrl}/api/test-paper/generate-from-mistakes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      profile_id: 'test_variant_student',
+      subject: '数学',
+      grade: '7_up',
+      student_name: '曾小侠'
+    })
+  });
+
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.success, true);
+  assert.ok(data.testPaper);
+  assert.equal(data.testPaper.totalScore, 100);
+  assert.equal(data.testPaper.questions.length, 6);
+  assert.equal(data.testPaper.questions[0].category, 'prerequisite_grounding');
+  assert.equal(data.testPaper.questions[1].category, 'isomorphic_variant');
+  assert.equal(data.testPaper.questions[4].category, 'advanced_extension');
+  assert.ok(data.diagnoses.length >= 1, 'Should trigger GraphRAG diagnosis');
 });

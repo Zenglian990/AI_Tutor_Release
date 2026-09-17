@@ -12,6 +12,10 @@
     display: none !important;
   }
 
+  .only-print {
+    display: block !important;
+  }
+
   /* 2. 释放外层骨架的高度限制，使其遵循自然的分页高度 */
   html, body {
     height: auto !important;
