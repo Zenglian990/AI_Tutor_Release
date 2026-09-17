@@ -12,8 +12,8 @@ data/mistakes.db*
 data/textbooks/
 data/processed_pdfs.log
 data/backups/
-data/*.ape.json
-data/valid.ape.json
+data/*.json
+data/*.jsonl
 
 # Build output
 client/dist/

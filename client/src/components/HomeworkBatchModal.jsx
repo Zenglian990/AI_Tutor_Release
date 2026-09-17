@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch } from '../store/useStore';
 import { compressImage } from '../utils/image';
-import { enhanceDocumentFile } from '../utils/documentEnhancer';
+import { enhanceDocumentFile, sliceQuestionsLocally, eraseTeacherRedInkFile } from '../utils/documentEnhancer';
 import { preprocessLatex } from '../utils/math';
 import A4PrintModal from './A4PrintModal';
 
@@ -162,6 +162,9 @@ export default function HomeworkBatchModal({
   const [showA4Print, setShowA4Print] = useState(false);
   const [showVisualMap, setShowVisualMap] = useState(true);
   const [highlightedQNum, setHighlightedQNum] = useState(null);
+  const [cleanedPaperUrl, setCleanedPaperUrl] = useState(null);
+  const [erasingInk, setErasingInk] = useState(false);
+  const [showCleanModal, setShowCleanModal] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -211,7 +214,33 @@ export default function HomeworkBatchModal({
       }
 
       const result = await res.json();
-      const processed = recoverJsonIfEmbedded(result);
+      let processed = recoverJsonIfEmbedded(result);
+
+      // 本地离线投影切片安全兜底：如果模型未返回 box_2d 或个别题缺少定位，调用 sliceQuestionsLocally 毫秒补齐
+      if (processed && Array.isArray(processed.results) && processed.results.length > 0) {
+        const hasBoxes = processed.results.some(r => Array.isArray(r.box_2d) && r.box_2d.length === 4);
+        if (!hasBoxes && fileToUpload) {
+          try {
+            const img = new Image();
+            img.src = URL.createObjectURL(fileToUpload);
+            await new Promise(res => { img.onload = res; });
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            const localBoxes = sliceQuestionsLocally(canvas);
+            if (localBoxes.length > 0) {
+              processed.results = processed.results.map((r, i) => ({
+                ...r,
+                box_2d: localBoxes[i % localBoxes.length].box_2d
+              }));
+            }
+          } catch (sliceErr) {
+            console.warn('[HomeworkBatch] Local slice fallback warning:', sliceErr);
+          }
+        }
+      }
+
       setBatchResult(processed);
       setFilterTab('all');
     } catch (err) {
@@ -219,6 +248,23 @@ export default function HomeworkBatchModal({
       setErrorMsg(err.message || '网络连接超时，请重试');
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleGenerateCleanPaper = async () => {
+    if (!selectedFile) return;
+    setErasingInk(true);
+    try {
+      const cleaned = await eraseTeacherRedInkFile(selectedFile);
+      if (cleanedPaperUrl) URL.revokeObjectURL(cleanedPaperUrl);
+      const url = URL.createObjectURL(cleaned);
+      setCleanedPaperUrl(url);
+      setShowCleanModal(true);
+    } catch (err) {
+      console.error('Clean paper error:', err);
+      alert('试卷翻新失败，请重试');
+    } finally {
+      setErasingInk(false);
     }
   };
 
@@ -588,26 +634,50 @@ export default function HomeworkBatchModal({
                         : <>恭喜全对！可一键生成 <strong>A4 纸质留存/巩固微测卷</strong> 备战期末。</>}
                     </span>
                   </div>
-                  <button
-                    onClick={() => setShowA4Print(true)}
-                    style={{
-                      background: 'linear-gradient(135deg, #059669, #10b981)',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '7px 16px',
-                      borderRadius: '8px',
-                      fontSize: '0.84rem',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <span>🖨️</span>
-                    <span>生成 A4 空白复测卷 ({batchResult.wrongCount > 0 ? `重点练错题 ${batchResult.wrongCount} 道` : '全卷重练'})</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={handleGenerateCleanPaper}
+                      disabled={erasingInk}
+                      title="自动抹除老师红笔打勾打叉与学生笔迹，还原崭新空白卷"
+                      style={{
+                        background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.84rem',
+                        cursor: erasingInk ? 'wait' : 'pointer',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 8px rgba(14, 165, 233, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🧼</span>
+                      <span>{erasingInk ? '正在翻新...' : '一键翻新空白卷 (抹除字迹)'}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowA4Print(true)}
+                      style={{
+                        background: 'linear-gradient(135deg, #059669, #10b981)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 16px',
+                        borderRadius: '8px',
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🖨️</span>
+                      <span>生成 A4 考卷排版 ({batchResult.wrongCount > 0 ? `重点练错题 ${batchResult.wrongCount} 道` : '全卷重练'})</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6', background: 'rgba(0, 0, 0, 0.25)', padding: '12px 16px', borderRadius: '10px' }}>
@@ -1071,6 +1141,129 @@ export default function HomeworkBatchModal({
           initialMode="blank_student"
           initialFilter={batchResult?.wrongCount > 0 ? 'wrong_only' : 'all'}
         />
+      )}
+      {/* Cleaned Blank Paper Direct Preview & Download Modal */}
+      {showCleanModal && cleanedPaperUrl && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999
+        }}>
+          <div style={{
+            background: '#fff',
+            color: '#0f172a',
+            width: '92%',
+            maxWidth: '720px',
+            maxHeight: '90vh',
+            borderRadius: '20px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.4rem' }}>✨</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>崭新空白试卷 (字迹与红笔已抹除)</h3>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>已自动去除手写铅笔字、圆珠笔痕迹与老师批阅勾叉，还原全新印刷质感</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCleanModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '12px',
+              textAlign: 'center'
+            }}>
+              <img
+                src={cleanedPaperUrl}
+                alt="空白翻新试卷"
+                style={{ maxWidth: '100%', maxHeight: '55vh', objectFit: 'contain', boxShadow: '0 4px 14px rgba(0,0,0,0.1)', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <a
+                href={cleanedPaperUrl}
+                download={`${studentName}_空白翻新重练卷_${Date.now()}.jpg`}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                  color: '#fff',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  textDecoration: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>💾</span>
+                <span>保存/下载高清图片</span>
+              </a>
+              <button
+                onClick={() => {
+                  const w = window.open(cleanedPaperUrl);
+                  if (w) {
+                    setTimeout(() => w.print(), 300);
+                  }
+                }}
+                style={{
+                  background: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>🖨️</span>
+                <span>直接打印</span>
+              </button>
+              <button
+                onClick={() => setShowCleanModal(false)}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

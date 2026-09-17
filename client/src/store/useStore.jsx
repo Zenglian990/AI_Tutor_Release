@@ -204,6 +204,9 @@ export function AppProvider({ children }) {
   const [isLightMode, setIsLightMode] = useState(() =>
     localStorage.getItem('ai_tutor_theme') === 'light'
   );
+  const [isEinkMode, setIsEinkMode] = useState(() =>
+    localStorage.getItem('ai_tutor_eink_mode') === 'true'
+  );
   const [chatModel, setChatModel] = useState(() =>
     localStorage.getItem('ai_tutor_chat_model') || 'default'
   );
@@ -236,6 +239,19 @@ export function AppProvider({ children }) {
       document.body.classList.remove('light-mode');
     }
   }, [isLightMode]);
+
+  useEffect(() => {
+    localStorage.setItem('ai_tutor_eink_mode', isEinkMode ? 'true' : 'false');
+    if (isEinkMode) {
+      document.body.classList.add('eink-mode');
+    } else {
+      document.body.classList.remove('eink-mode');
+    }
+  }, [isEinkMode]);
+
+  const toggleEinkMode = useCallback(() => {
+    setIsEinkMode(prev => !prev);
+  }, []);
 
   const handleProfileChange = useCallback((profileId) => {
     if (profileId === 'ADD_NEW') {
@@ -281,6 +297,7 @@ export function AppProvider({ children }) {
     autoRead, setAutoRead,
     settings, setSettings,
     isLightMode, setIsLightMode,
+    isEinkMode, setIsEinkMode, toggleEinkMode,
     handleGradeChange,
     handleEditionChange,
     getApiUrl,

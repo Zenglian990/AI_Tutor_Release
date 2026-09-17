@@ -28,9 +28,9 @@ setInterval(() => {
  * In production: always requires valid Bearer token.
  */
 function authMiddleware(req, res, next) {
-  // Allow health check and static assets without auth
+  // Allow health check, parent remote view (authenticated via token query param) and static assets without Bearer auth
   // Note: middleware is mounted at /api/, so req.path is already stripped of the /api prefix
-  if (req.path === '/health') return next();
+  if (req.path === '/health' || req.path === '/parent/remote-view') return next();
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // In development, optionally skip auth

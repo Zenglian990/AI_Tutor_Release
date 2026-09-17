@@ -239,3 +239,181 @@ export async function eraseTeacherRedInkFile(file, options = {}) {
   });
 }
 
+/**
+ * 纯本地离线试卷智能切片算法 (Local Question Slicer)
+ * 采用水平投影积分 (Horizontal Projection) 与留白梯度分析，在浏览器端毫秒级定位单道题目矩形框 [ymin, xmin, ymax, xmax] (0-1000标准化坐标)
+ * 
+ * @param {HTMLCanvasElement} canvas
+ * @param {Object} options
+ * @returns {Array<{questionNumber: number, box_2d: [number, number, number, number]}>}
+ */
+export function sliceQuestionsLocally(canvas, options = {}) {
+  const {
+    minHeightRatio = 0.04,   // 单道题目最小高度占全图比例 (4%)
+    gapThresholdRatio = 0.015, // 题目间段落留白高度阈值 (1.5%)
+    darkPixelThreshold = 180  // 判定为文字/墨迹的灰度阈值
+  } = options;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  // 1. 计算水平投影直方图 (每行的黑像素数量)
+  const rowDensity = new Uint32Array(height);
+  // 左右保留5%边缘防装订线干扰
+  const startX = Math.floor(width * 0.05);
+  const endX = Math.floor(width * 0.95);
+
+  for (let y = 0; y < height; y++) {
+    let darkCount = 0;
+    const rowOffset = y * width * 4;
+    for (let x = startX; x < endX; x++) {
+      const idx = rowOffset + x * 4;
+      const gray = (data[idx] * 77 + data[idx + 1] * 150 + data[idx + 2] * 29) >> 8;
+      if (gray < darkPixelThreshold) {
+        darkCount++;
+      }
+    }
+    rowDensity[y] = darkCount;
+  }
+
+  // 2. 平滑投影曲线并寻找连续文字块与留白间距
+  const minPixelsPerRow = Math.max(8, Math.floor((endX - startX) * 0.012));
+  const minHeight = Math.floor(height * minHeightRatio);
+  const gapThreshold = Math.floor(height * gapThresholdRatio);
+
+  const blocks = [];
+  let inBlock = false;
+  let blockStart = 0;
+  let emptyRows = 0;
+
+  for (let y = 0; y < height; y++) {
+    const isTextRow = rowDensity[y] >= minPixelsPerRow;
+
+    if (isTextRow) {
+      if (!inBlock) {
+        inBlock = true;
+        blockStart = y;
+      }
+      emptyRows = 0;
+    } else {
+      if (inBlock) {
+        emptyRows++;
+        if (emptyRows >= gapThreshold) {
+          const blockEnd = y - emptyRows;
+          if (blockEnd - blockStart >= minHeight) {
+            blocks.push({ top: blockStart, bottom: blockEnd });
+          }
+          inBlock = false;
+          emptyRows = 0;
+        }
+      }
+    }
+  }
+
+  // 收尾处理
+  if (inBlock && (height - 1 - blockStart) >= minHeight) {
+    blocks.push({ top: blockStart, bottom: height - 1 });
+  }
+
+  // 如果未能切分出多块（比如试卷排版紧密），则回退为安全等分或全图切片
+  if (blocks.length === 0) {
+    return [{
+      questionNumber: 1,
+      box_2d: [50, 40, 950, 960]
+    }];
+  }
+
+  // 3. 计算每个块的实际左右墨迹边界并归一化为 0-1000 标准坐标
+  const slices = blocks.map((b, idx) => {
+    let minX = endX;
+    let maxX = startX;
+
+    for (let y = b.top; y <= b.bottom; y++) {
+      const rowOffset = y * width * 4;
+      for (let x = startX; x < endX; x++) {
+        const idx = rowOffset + x * 4;
+        const gray = (data[idx] * 77 + data[idx + 1] * 150 + data[idx + 2] * 29) >> 8;
+        if (gray < darkPixelThreshold) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+        }
+      }
+    }
+
+    // 留出适度内边距
+    const padY = Math.floor(height * 0.01);
+    const padX = Math.floor(width * 0.02);
+
+    const ymin = Math.max(0, Math.floor(((b.top - padY) / height) * 1000));
+    const ymax = Math.min(1000, Math.ceil(((b.bottom + padY) / height) * 1000));
+    const xmin = Math.max(0, Math.floor(((minX - padX) / width) * 1000));
+    const xmax = Math.min(1000, Math.ceil(((maxX + padX) / width) * 1000));
+
+    return {
+      questionNumber: idx + 1,
+      box_2d: [ymin, xmin, ymax, xmax]
+    };
+  });
+
+  return slices;
+}
+
+/**
+ * 提取手写笔迹图层 (Handwriting Mask Stripper)
+ * 能够将学生黑/蓝手写字迹与印刷体印刷油墨分离，方便批改聚焦与笔迹分析
+ */
+export function extractHandwritingMask(canvas, options = {}) {
+  const {
+    contrastThreshold = 45,
+    isolateRed = false
+  } = options;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const totalPixels = width * height;
+
+  const maskCanvas = document.createElement('canvas');
+  maskCanvas.width = width;
+  maskCanvas.height = height;
+  const maskCtx = maskCanvas.getContext('2d');
+  const maskImageData = maskCtx.createImageData(width, height);
+  const maskData = maskImageData.data;
+
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+
+    const isRed = r > 120 && (r - g > 30) && (r - b > 30);
+    const isBlue = b > 110 && (b - r > 25);
+    const isGrayPencil = (Math.abs(r - g) < 20 && Math.abs(g - b) < 20) && (r > 60 && r < 190);
+
+    let isHandwriting = false;
+    if (isolateRed && isRed) isHandwriting = true;
+    else if (isBlue || isGrayPencil) isHandwriting = true;
+
+    if (isHandwriting) {
+      maskData[idx] = 239;     // 红色高亮强调笔迹
+      maskData[idx + 1] = 68;
+      maskData[idx + 2] = 68;
+      maskData[idx + 3] = 255;
+    } else {
+      maskData[idx] = 255;
+      maskData[idx + 1] = 255;
+      maskData[idx + 2] = 255;
+      maskData[idx + 3] = 0;   // 印刷底图透明
+    }
+  }
+
+  maskCtx.putImageData(maskImageData, 0, 0);
+  return maskCanvas;
+}
+
+

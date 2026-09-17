@@ -12,6 +12,7 @@ const { decryptField } = require('../utils/crypto');
 const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('../services/knowledgeGraph');
 const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
 const { extractAndParseJson } = require('../utils/jsonParser');
+const { sendToNetworkPrinter, formatExamForPrinter } = require('../services/printerService');
 
 
 
@@ -694,6 +695,54 @@ ${canonicalSummary}
       return res.status(429).json({ error: '今日额度已用完' });
     }
     res.status(500).json({ error: '生成靶向变式试卷失败', details: NODE_ENV === 'development' ? e.message : undefined });
+  }
+});
+
+// POST /api/printer/print-ipp
+// LAN network printer direct raw/IPP socket dispatch
+router.post('/printer/print-ipp', async (req, res) => {
+  try {
+    const {
+      host = '192.168.1.200',
+      port = 9100,
+      title = '名师专属微测试卷',
+      studentName = '曾练',
+      grade = '7_up',
+      subject = '数学',
+      questions = [],
+      printMode = 'blank_student',
+      mock = false
+    } = req.body;
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: '试卷题目列表不能为空' });
+    }
+
+    const printableText = formatExamForPrinter({
+      title,
+      studentName,
+      grade,
+      subject,
+      questions,
+      printMode
+    });
+
+    const printResult = await sendToNetworkPrinter({
+      host,
+      port: parseInt(port, 10) || 9100,
+      data: printableText,
+      mock: !!mock
+    });
+
+    res.json({
+      success: true,
+      message: printResult.message,
+      simulated: !!printResult.simulated,
+      bytesSent: printResult.bytesSent
+    });
+  } catch (err) {
+    logger.error('[PrinterRoute] Direct print error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

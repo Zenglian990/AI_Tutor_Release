@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { authFetch, getApiUrl } from '../store/useStore';
 
 /**
  * ParentMemoModal
- * 家长端每日名师家访便签
+ * 家长端每日名师家访便签 + 手机微信扫码直连看板
  */
 export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '曾练' }) {
   const [memo, setMemo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [remoteToken, setRemoteToken] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [showQrCard, setShowQrCard] = useState(false);
   const [showWebhookInput, setShowWebhookInput] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('parent_webhook_url') || '');
   const [pushing, setPushing] = useState(false);
@@ -22,6 +27,20 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
         .then(d => setMemo(d))
         .catch(e => console.warn('Parent memo fetch error:', e))
         .finally(() => setLoading(false));
+
+      // Fetch remote token for WeChat QR scan
+      authFetch(`${getApiUrl()}/api/parent/remote-token?profile_id=${encodeURIComponent(currentProfileId)}`)
+        .then(res => res.json())
+        .then(d => {
+          if (d.success && d.token) {
+            setRemoteToken(d.token);
+            const shareUrl = `${window.location.origin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(d.token)}`;
+            QRCode.toDataURL(shareUrl, { width: 160, margin: 1, color: { dark: '#1e3a8a', light: '#ffffff' } })
+              .then(url => setQrDataUrl(url))
+              .catch(err => console.warn('QR code gen error:', err));
+          }
+        })
+        .catch(e => console.warn('Remote token fetch error:', e));
     }
   }, [isOpen, currentProfileId, grade, subject, studentName]);
 
@@ -185,6 +204,112 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
               {pushStatus && (
                 <div style={{ marginTop: '8px', fontSize: '0.85rem', fontWeight: '600', color: pushStatus.startsWith('✅') ? '#059669' : '#dc2626' }}>
                   {pushStatus}
+                </div>
+              )}
+            </div>
+
+            {/* WeChat / Mobile H5 QR Code Section */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.04), rgba(59, 130, 246, 0.04))',
+              border: '1px solid #cbd5e1',
+              borderRadius: '16px',
+              padding: '14px 16px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📱</span> 手机微信扫码随身看 (学情专属微看板)
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                    无需账号密码，微信扫码即可免密只读查看今日真动脑时长、五维素养雷达与薄弱考点
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowQrCard(!showQrCard)}
+                  style={{
+                    background: showQrCard ? '#e2e8f0' : '#2563eb',
+                    color: showQrCard ? '#334155' : '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {showQrCard ? '收起二维码' : '扫码看学情'}
+                </button>
+              </div>
+
+              {showQrCard && (
+                <div style={{
+                  marginTop: '14px',
+                  paddingTop: '12px',
+                  borderTop: '1px dashed #cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  {qrDataUrl ? (
+                    <div style={{
+                      background: '#fff',
+                      padding: '10px',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center'
+                    }}>
+                      <img src={qrDataUrl} alt="家长端学情直连二维码" style={{ width: '160px', height: '160px', display: 'block' }} />
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '6px' }}>微信扫一扫 · 30天免密有效</span>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '20px', color: '#94a3b8', fontSize: '0.85rem' }}>正在生成专属安全二维码...</div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(remoteToken)}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2500);
+                      }}
+                      style={{
+                        background: '#3b82f6',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '6px 14px',
+                        fontSize: '0.82rem',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {copiedLink ? '✅ 链接已复制到剪贴板' : '🔗 复制手机查看链接'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(remoteToken)}`;
+                        window.open(shareUrl, '_blank');
+                      }}
+                      style={{
+                        background: '#f1f5f9',
+                        color: '#334155',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '6px 14px',
+                        fontSize: '0.82rem',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🌐 在新标签页预览看板
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

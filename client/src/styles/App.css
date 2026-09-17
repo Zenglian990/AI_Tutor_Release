@@ -942,3 +942,112 @@ body.light-mode .chat-textarea::placeholder {
     justify-content: center;
   }
 }
+
+/* ==========================================================================
+   📖 E-ink Paper Mode (墨水屏纸质护眼模式)
+   专为文石BOOX、汉王、华为MatePad Paper、Kindle等电子墨水屏设备与护眼阅读深度调优:
+   1. 彻底禁用CSS动画与平滑过渡，杜绝墨水屏残影(Ghosting)
+   2. 纯黑白高对比度调色，0模糊、0渐变、0毛玻璃
+   3. 极简硬朗几何边框，极致提升纸质印刷级清晰度
+   ========================================================================== */
+body.eink-mode {
+  --bg-primary: #ffffff !important;
+  --bg-secondary: #f9f9f9 !important;
+  --text-color: #000000 !important;
+  --text-secondary: #222222 !important;
+  --glass-bg: #ffffff !important;
+  --glass-border: #000000 !important;
+  --user-msg-bg: #ffffff !important;
+  --ai-msg-bg: #f5f5f5 !important;
+  --accent-color: #000000 !important;
+  --accent-hover: #333333 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+body.eink-mode *,
+body.eink-mode *::before,
+body.eink-mode *::after {
+  animation: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.eink-mode .header {
+  background: #ffffff !important;
+  border-bottom: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+body.eink-mode .header-icon,
+body.eink-mode .header-text h1,
+body.eink-mode .header-subtitle {
+  color: #000000 !important;
+}
+
+body.eink-mode .grade-selector,
+body.eink-mode button,
+body.eink-mode .input-bar button,
+body.eink-mode select {
+  border: 1.5px solid #000000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+body.eink-mode button:active,
+body.eink-mode .active-tag,
+body.eink-mode .btn-active {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.eink-mode .message.user {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+}
+
+body.eink-mode .message.ai {
+  background: #f7f7f7 !important;
+  color: #000000 !important;
+  border: 1.5px solid #333333 !important;
+}
+
+body.eink-mode .message p,
+body.eink-mode .message li,
+body.eink-mode .message h1,
+body.eink-mode .message h2,
+body.eink-mode .message h3,
+body.eink-mode .message span {
+  color: #000000 !important;
+}
+
+body.eink-mode .katex {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+body.eink-mode .input-bar {
+  background: #ffffff !important;
+  border-top: 2px solid #000000 !important;
+}
+
+body.eink-mode .chat-input {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1.5px solid #000000 !important;
+}
+
+body.eink-mode .welcome-dashboard,
+body.eink-mode .primary-camera-card,
+body.eink-mode .action-dashboard-card,
+body.eink-mode .welcome-footer-banner {
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+

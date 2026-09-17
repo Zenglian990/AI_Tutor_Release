@@ -269,3 +269,54 @@ test('Test Paper API: Generate From Mistakes (Targeted Variant Paper)', async ()
   assert.equal(data.testPaper.questions[4].category, 'advanced_extension');
   assert.ok(data.diagnoses.length >= 1, 'Should trigger GraphRAG diagnosis');
 });
+
+test('Network Printer API: POST /api/printer/print-ipp dispatches formatted exam to LAN printer (simulated)', async () => {
+  const mockQuestions = [
+    {
+      id: 1,
+      title: '数轴与相反数',
+      body: '已知点 A 在数轴上表示 -3，点 B 到点 A 的距离为 5，求点 B 表示的数。',
+      score: 10,
+      standardAnswer: '点 B 表示 2 或 -8。'
+    }
+  ];
+
+  // Test simulated print to 192.168.1.100
+  const res = await fetch(`${baseUrl}/api/printer/print-ipp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      host: '192.168.1.100',
+      port: 9100,
+      title: '七年级数学周清微测卷',
+      studentName: '曾练',
+      grade: '7_up',
+      subject: '数学',
+      questions: mockQuestions,
+      printMode: 'blank_student',
+      mock: true
+    })
+  });
+
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.success, true);
+  assert.equal(data.simulated, true);
+  assert.ok(data.bytesSent > 100);
+  assert.ok(data.message.includes('192.168.1.100'));
+
+  // Test safe local LAN validation rejects public IP
+  const rejectRes = await fetch(`${baseUrl}/api/printer/print-ipp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      host: '8.8.8.8',
+      questions: mockQuestions,
+      mock: true
+    })
+  });
+  assert.equal(rejectRes.status, 500);
+  const rejectData = await rejectRes.json();
+  assert.ok(rejectData.error.includes('出于安全防护') || rejectData.error.includes('局域网'));
+});
+

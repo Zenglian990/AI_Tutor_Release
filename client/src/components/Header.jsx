@@ -89,7 +89,7 @@ export default function Header({
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
   onOpenGamification
 }) {
-  const { language } = useAppStore();
+  const { language, isEinkMode, toggleEinkMode } = useAppStore();
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
   const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
 
@@ -109,6 +109,23 @@ export default function Header({
         <h1>{getTranslation(language, 'app.title')}</h1>
         <div className="header-subtitle">{getTranslation(language, 'app.subtitle')}</div>
       </div>
+      <button onClick={toggleEinkMode} aria-label={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式'} title={isEinkMode ? '当前：墨水屏纸质护眼模式（点击退出）' : '切换为墨水屏纸质护眼模式 (零残影·无频闪)'}
+        style={{
+          background: isEinkMode ? '#000' : 'rgba(255, 255, 255, 0.1)',
+          color: isEinkMode ? '#fff' : 'inherit',
+          border: isEinkMode ? '1px solid #000' : '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          padding: '3px 8px',
+          marginRight: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px'
+        }}>
+        <span>📖</span>
+        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{isEinkMode ? '墨水屏' : '纸质'}</span>
+      </button>
       <button onClick={onThemeToggle} aria-label={isLightMode ? '切换到深色模式' : '切换到浅色模式'} title="切换主题"
         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', marginRight: '5px' }}>
         {isLightMode ? '🌙' : '☀️'}

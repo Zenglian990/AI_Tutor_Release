@@ -2,27 +2,30 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
 const { createApp } = require('../server/app');
+const { initDB, closeDB } = require('../server/db/init');
 const { getPromptGuidelines } = require('../server/prompts/guidelines');
 
 let server;
 let baseUrl;
 
-before((_, done) => {
+before(async () => {
+  await initDB();
   const app = createApp();
-  server = http.createServer(app);
-  server.listen(0, '127.0.0.1', () => {
-    const port = server.address().port;
-    baseUrl = `http://127.0.0.1:${port}`;
-    done();
+  await new Promise(resolve => {
+    server = http.createServer(app);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      baseUrl = `http://127.0.0.1:${port}`;
+      resolve();
+    });
   });
 });
 
-after((_, done) => {
+after(async () => {
   if (server) {
-    server.close(done);
-  } else {
-    done();
+    await new Promise(resolve => server.close(resolve));
   }
+  await closeDB();
 });
 
 test('Campaign Roadmap API: GET /api/campaign/roadmap returns coverage, milestones & simulated score', async () => {
@@ -98,3 +101,36 @@ test('Empathy Circuit Breaker: Prompt guidelines include frustration circuit bre
   assert.ok(guidelines.includes('挫败感共情熔断'));
   assert.ok(guidelines.includes('熔断保护机制'));
 });
+
+test('Parent Remote Dashboard API: GET /api/parent/remote-token generates cryptographically verifiable token', async () => {
+  const tokenRes = await fetch(`${baseUrl}/api/parent/remote-token?profile_id=test_child_1`);
+  assert.strictEqual(tokenRes.status, 200);
+  const tokenData = await tokenRes.json();
+  assert.strictEqual(tokenData.success, true);
+  assert.strictEqual(tokenData.profile_id, 'test_child_1');
+  assert.ok(tokenData.token && typeof tokenData.token === 'string');
+
+  // Test /api/parent/remote-view with valid token
+  const viewRes = await fetch(`${baseUrl}/api/parent/remote-view?token=${encodeURIComponent(tokenData.token)}`);
+  assert.strictEqual(viewRes.status, 200);
+  const viewData = await viewRes.json();
+
+  assert.strictEqual(viewData.success, true);
+  assert.strictEqual(viewData.profileId, 'test_child_1');
+  assert.ok(viewData.studentName);
+  assert.ok(viewData.todayStats);
+  assert.ok(typeof viewData.todayStats.activeMinutes === 'number');
+  assert.ok(viewData.overallStats);
+  assert.ok(typeof viewData.overallStats.masteryRate === 'number');
+  assert.ok(viewData.radarData);
+  assert.ok(viewData.radarData.conceptClarity >= 80);
+  assert.ok(Array.isArray(viewData.weakTags));
+  assert.ok(Array.isArray(viewData.recentMistakes));
+  assert.ok(Array.isArray(viewData.memoContent));
+  assert.strictEqual(viewData.comfortScore, '98 (放心特优)');
+
+  // Test invalid token rejects with 401
+  const invalidTokenRes = await fetch(`${baseUrl}/api/parent/remote-view?token=invalid_forged_token`);
+  assert.strictEqual(invalidTokenRes.status, 401);
+});
+

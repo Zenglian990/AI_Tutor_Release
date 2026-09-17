@@ -20,6 +20,7 @@ import CampaignRoadmapModal from './components/CampaignRoadmapModal';
 import ParentMemoModal from './components/ParentMemoModal';
 import HomeworkBatchModal from './components/HomeworkBatchModal';
 import GamificationBadgeModal from './components/GamificationBadgeModal';
+import ParentRemoteDashboard from './components/ParentRemoteDashboard';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -839,6 +840,17 @@ function ActionButton({ label, color, onClick }) {
 }
 
 export default function App() {
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const isParentRemoteView = urlParams && (urlParams.has('parent_view') || (urlParams.has('token') && !urlParams.has('admin')));
+
+  if (isParentRemoteView) {
+    return (
+      <ErrorBoundary>
+        <ParentRemoteDashboard token={urlParams.get('token')} />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <AppProvider><AppInner /></AppProvider>

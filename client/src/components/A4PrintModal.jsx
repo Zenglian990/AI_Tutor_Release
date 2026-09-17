@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import html2canvas from 'html2canvas';
 import { preprocessLatex } from '../utils/math';
-import { formatGrade } from '../store/useStore';
+import { formatGrade, getApiUrl, authFetch } from '../store/useStore';
 import ParentalGate from './ParentalGate';
 
 /**
@@ -55,6 +55,11 @@ export default function A4PrintModal({
   const [showGate, setShowGate] = useState(false);
   const [orgName, setOrgName] = useState('曾先生智慧私教中心');
   const [showOrgInput, setShowOrgInput] = useState(false);
+  const [showNetworkPrinterModal, setShowNetworkPrinterModal] = useState(false);
+  const [printerIp, setPrinterIp] = useState(() => localStorage.getItem('printer_lan_ip') || '192.168.1.200');
+  const [printerPort, setPrinterPort] = useState(() => localStorage.getItem('printer_lan_port') || '9100');
+  const [printerSending, setPrinterSending] = useState(false);
+  const [printerMsg, setPrinterMsg] = useState('');
   const sheetRef = useRef(null);
 
   if (!isOpen) return null;
@@ -154,6 +159,47 @@ export default function A4PrintModal({
       alert('导出长图失败，请直接使用快捷打印');
     } finally {
       setExportingImage(false);
+    }
+  };
+
+  const handleNetworkDirectPrint = async () => {
+    if (!printerIp || !printerIp.trim()) {
+      alert('请输入打印机局域网 IP 地址');
+      return;
+    }
+    setPrinterSending(true);
+    setPrinterMsg('');
+    try {
+      localStorage.setItem('printer_lan_ip', printerIp.trim());
+      localStorage.setItem('printer_lan_port', printerPort.trim());
+      const res = await authFetch(`${getApiUrl()}/api/printer/print-ipp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: printerIp.trim(),
+          port: parseInt(printerPort, 10) || 9100,
+          title: `${gradeDisplay} ${subject} 巩固周清试卷`,
+          studentName,
+          grade,
+          subject,
+          questions: displayQuestions,
+          printMode
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPrinterMsg(`✅ ${data.message}`);
+        setTimeout(() => {
+          setShowNetworkPrinterModal(false);
+          setPrinterMsg('');
+        }, 4000);
+      } else {
+        setPrinterMsg(`❌ ${data.error || '发送失败'}`);
+      }
+    } catch (e) {
+      setPrinterMsg(`❌ 无法连通打印机: ${e.message}`);
+    } finally {
+      setPrinterSending(false);
     }
   };
 
@@ -475,6 +521,29 @@ export default function A4PrintModal({
               )}
             </button>
 
+            {/* Direct LAN Network Printer (IPP/RAW 9100) */}
+            <button
+              onClick={() => setShowNetworkPrinterModal(true)}
+              title="通过局域网直接向爱普生、惠普、得力等网络打印机发送试卷任务"
+              style={{
+                background: 'linear-gradient(135deg, #4f46e5, #4338ca)',
+                color: '#fff',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.9rem',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.35)'
+              }}
+            >
+              <span>🖨️</span>
+              <span>局域网直连打印</span>
+            </button>
+
             {/* Close Button */}
             <button
               onClick={onClose}
@@ -770,6 +839,133 @@ export default function A4PrintModal({
           </div>
         </div>
       </div>
+
+      {/* Network Printer Configuration Dialog */}
+      {showNetworkPrinterModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1100
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '440px',
+            color: '#0f172a',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+              <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🖨️</span> 局域网网络打印机直连出纸
+              </div>
+              <button onClick={() => setShowNetworkPrinterModal(false)} style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+
+            <div style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: '1.5' }}>
+              支持连接同一局域网内的惠普(HP)、爱普生(Epson)、佳能(Canon)、得力等主流 WiFi / 网线打印机（RAW 9100 / IPP 协议）。
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#334155' }}>
+                打印机局域网 IP 地址:
+              </label>
+              <input
+                type="text"
+                value={printerIp}
+                onChange={e => setPrinterIp(e.target.value)}
+                placeholder="例如: 192.168.1.200"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.9rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#334155' }}>
+                打印协议端口 (默认 9100 为 RAW 直连，631 为 IPP):
+              </label>
+              <input
+                type="number"
+                value={printerPort}
+                onChange={e => setPrinterPort(e.target.value)}
+                placeholder="9100"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.9rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            {printerMsg && (
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                background: printerMsg.startsWith('✅') ? '#ecfdf5' : '#fef2f2',
+                color: printerMsg.startsWith('✅') ? '#059669' : '#dc2626',
+                border: `1px solid ${printerMsg.startsWith('✅') ? '#a7f3d0' : '#fecaca'}`
+              }}>
+                {printerMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <button
+                onClick={() => setShowNetworkPrinterModal(false)}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleNetworkDirectPrint}
+                disabled={printerSending}
+                style={{
+                  background: '#4f46e5',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: '700',
+                  cursor: printerSending ? 'wait' : 'pointer'
+                }}
+              >
+                {printerSending ? '正在传输试卷任务...' : '🚀 发送试卷并出纸'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Parental Gate for Answer Key Anti-Cheat Lock */}
       <ParentalGate
