@@ -19,7 +19,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Install build tools for native addons (sqlite3 / lancedb)
+# Install build tools for compiling native addons
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
@@ -29,8 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy backend dependency declarations
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --omit=dev
+# Install production dependencies and explicitly rebuild sqlite3 from source for container's exact GLIBC
+RUN npm ci --omit=dev && \
+    npm rebuild sqlite3 --build-from-source
 
 # Copy server source code, maintenance scripts, and data definitions
 COPY server/ ./server/
