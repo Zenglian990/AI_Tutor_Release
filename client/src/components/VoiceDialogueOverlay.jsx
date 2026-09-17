@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 /**
  * VoiceDialogueOverlay
@@ -59,7 +59,7 @@ export default function VoiceDialogueOverlay({
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
-      animation: 'slideUp 0.3s ease-out'
+      animation: 'modalSlideUp 0.3s ease-out'
     }}>
       {/* Header Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

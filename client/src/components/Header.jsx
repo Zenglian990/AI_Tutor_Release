@@ -76,17 +76,16 @@ function getValidSubjectsForGrade(grade) {
   return SUBJECTS;
 }
 
-// Three-level Socratic teaching mode
 const SOCRATIC_LEVELS = [
-  { value: 'direct', label: '💡 直接解答', title: 'AI直接给出完整答案和解析' },
-  { value: 'guided', label: '🤔 引导模式', title: 'AI先给提示引导学生自己思考' },
-  { value: 'strict', label: '🦉 苏格拉底', title: 'AI只用提问引导，绝不直接给答案' },
+  { value: 'direct', icon: '💡', shortLabel: '直答', label: '💡 直答', title: 'AI直接给出完整答案和解析' },
+  { value: 'guided', icon: '🤔', shortLabel: '启发', label: '🤔 启发', title: 'AI先给提示引导学生自己思考' },
+  { value: 'strict', icon: '🦉', shortLabel: '苏氏', label: '🦉 提问', title: 'AI只用提问引导，绝不直接给答案' },
 ];
 
 const PERSONAS = [
-  { value: 'owl', label: '🦉 智多星导师', title: '深度苏格拉底推理·严谨治学' },
-  { value: 'lion', label: '🦁 聪聪小狮子', title: '趣味互动·实物比喻·耐心肯定（推荐低年级）' },
-  { value: 'sister', label: '🌸 晓晴学姐', title: '温柔亲切·草稿步步拆解·温和陪伴' }
+  { value: 'owl', label: '🦉 智多星', title: '深度苏格拉底推理·严谨治学' },
+  { value: 'lion', label: '🦁 聪聪狮', title: '趣味互动·实物比喻·耐心肯定（推荐低年级）' },
+  { value: 'sister', label: '🌸 晓晴姐', title: '温柔亲切·草稿步步拆解·温和陪伴' }
 ];
 
 export default function Header({
@@ -222,7 +221,7 @@ export default function Header({
             }}
           >
             <span>🎒</span>
-            <span>实物教具</span>
+            <span className="btn-label">教具</span>
           </button>
         )}
 
@@ -240,7 +239,7 @@ export default function Header({
             }}
           >
             <span>📐</span>
-            <span>动点沙盒</span>
+            <span className="btn-label">沙盒</span>
           </button>
         )}
 
@@ -261,7 +260,7 @@ export default function Header({
             }}
           >
             <span>{isVip ? '👑' : '💎'}</span>
-            <span>{isVip ? 'VIP会员' : '激活VIP'}</span>
+            <span className="btn-label">{isVip ? 'VIP' : 'VIP'}</span>
           </button>
         )}
 
@@ -277,7 +276,8 @@ export default function Header({
             borderColor: socraticLevel !== 'direct' ? 'rgba(59, 130, 246, 0.35)' : 'rgba(255, 255, 255, 0.1)'
           }}
         >
-          {currentSocratic.label}
+          <span>{currentSocratic.icon}</span>
+          <span className="btn-label">{currentSocratic.shortLabel}</span>
         </button>
 
         <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
