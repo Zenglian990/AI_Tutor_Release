@@ -28,15 +28,24 @@ export function formatGrade(grade) {
 export const DEFAULT_BACKEND_URL = import.meta.env.VITE_API_URL || 'https://ai-tutor-release.onrender.com';
 
 /**
- * Get the full API URL for a path.
- * If a backend URL is configured (e.g., for mobile testing or cloud), it is prepended.
+ * Get the full API URL for a path or return base URL if no path provided.
+ * Handles:
+ * 1. getApiUrl() -> returns "https://ai-tutor-release.onrender.com"
+ * 2. getApiUrl('/api/chat') -> returns "https://ai-tutor-release.onrender.com/api/chat"
+ * 3. getApiUrl('https://.../api/chat') -> returns "https://.../api/chat" (safe against double prefixing)
  */
-function getApiUrl(path) {
+function getApiUrl(path = '') {
   const backendUrl = localStorage.getItem('ai_tutor_backend_url') || DEFAULT_BACKEND_URL;
-  if (!backendUrl) return path;
-  const cleanBase = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+  const cleanBase = backendUrl ? backendUrl.replace(/\/+$/, '') : '';
+
+  if (!path) return cleanBase;
+
+  if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {
+    return path;
+  }
+
   const cleanPath = path.startsWith('/') ? path : '/' + path;
-  return cleanBase + cleanPath;
+  return cleanBase ? cleanBase + cleanPath : cleanPath;
 }
 
 /**
@@ -84,8 +93,22 @@ async function authFetch(path, options = {}) {
   const fetchOptions = { ...options };
   const headers = { ...(fetchOptions.headers || {}) };
 
+  // Normalize path to check if this is an API call
+  let relativePath = '';
+  if (typeof path === 'string') {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      try {
+        relativePath = new URL(path).pathname;
+      } catch {
+        relativePath = path;
+      }
+    } else {
+      relativePath = path.split('?')[0];
+    }
+  }
+
   // Inject auth header for API calls
-  if (token && path.startsWith('/api/')) {
+  if (token && relativePath.startsWith('/api/')) {
     headers['Authorization'] = `Bearer ${token}`;
 
     const parentPinHash = sessionStorage.getItem('parent_gate_verified_pin_hash');
@@ -95,7 +118,7 @@ async function authFetch(path, options = {}) {
 
     // Generate and inject request signature
     const method = (fetchOptions.method || 'GET').toUpperCase();
-    const cleanPath = path.split('?')[0];
+    const cleanPath = relativePath.split('?')[0];
     const timestamp = Date.now().toString();
     const bodyStr = typeof fetchOptions.body === 'string' ? fetchOptions.body : '';
 
