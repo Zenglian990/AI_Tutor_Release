@@ -19,6 +19,25 @@ const loadAnyImage = (src) => new Promise((resolve) => {
   }
 });
 
+// Safe rounded rectangle helper with guaranteed path isolation (calls beginPath)
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, width, height, radius);
+  } else {
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.arcTo(x + width, y, x + width, y + radius, radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+    ctx.lineTo(x + radius, y + height);
+    ctx.arcTo(x, y + height, x, y + height - radius, radius);
+    ctx.lineTo(x, y + radius);
+    ctx.arcTo(x, y, x + radius, y, radius);
+    ctx.closePath();
+  }
+}
+
 export default function ParentSharePosterModal({ isOpen, onClose }) {
   const { currentProfile } = useAppStore();
   const canvasRef = useRef(null);
@@ -118,12 +137,13 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
 
     // 3. Central Card
     ctx.save();
+    drawRoundedRect(ctx, 36, 120, width - 72, 600, 20);
     ctx.fillStyle = template === 'primary' ? 'rgba(255, 255, 255, 0.92)' : 'rgba(30, 41, 59, 0.9)';
-    ctx.roundRect(36, 120, width - 72, 600, 20);
     ctx.fill();
     ctx.strokeStyle = template === 'primary' ? '#f59e0b' : '#6366f1';
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.beginPath(); // Explicitly clear path to prevent subsequent fill bleed
 
     // Card Content
     if (template === 'primary') {
@@ -243,8 +263,9 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
       ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 4;
-      ctx.roundRect(46, 738, 156, 156, 12);
+      drawRoundedRect(ctx, 46, 738, 156, 156, 12);
       ctx.fill();
+      ctx.beginPath(); // Explicitly clear path to prevent any bleed
       ctx.restore();
 
       // 4.2 Draw QR Image (centered within the white card)
