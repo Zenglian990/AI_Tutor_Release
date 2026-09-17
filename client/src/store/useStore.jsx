@@ -25,12 +25,14 @@ export function formatGrade(grade) {
   return GRADE_MAP[String(grade)] || `${grade}年级`;
 }
 
+export const DEFAULT_BACKEND_URL = import.meta.env.VITE_API_URL || '';
+
 /**
  * Get the full API URL for a path.
- * If a backend URL is configured (e.g., for mobile testing), it is prepended.
+ * If a backend URL is configured (e.g., for mobile testing or cloud), it is prepended.
  */
 function getApiUrl(path) {
-  const backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
+  const backendUrl = localStorage.getItem('ai_tutor_backend_url') || DEFAULT_BACKEND_URL;
   if (!backendUrl) return path;
   const cleanBase = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
   const cleanPath = path.startsWith('/') ? path : '/' + path;
@@ -176,7 +178,7 @@ function loadProfiles() {
 }
 
 export function AppProvider({ children }) {
-  const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('ai_tutor_backend_url') || '');
+  const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('ai_tutor_backend_url') || DEFAULT_BACKEND_URL);
   const [apiToken, setApiToken] = useState(() => {
     const encrypted = localStorage.getItem('ai_tutor_api_token');
     return decryptData(encrypted) || '';

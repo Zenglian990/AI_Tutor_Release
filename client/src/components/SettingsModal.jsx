@@ -90,14 +90,16 @@ export default function SettingsModal({
   const handleTestConnection = async () => {
     setTestResult('testing');
     try {
-      const res = await authFetch('/api/health');
+      const targetBase = url.trim() || '';
+      const testEndpoint = targetBase ? `${targetBase.replace(/\/+$/, '')}/api/health` : '/api/health';
+      const res = await fetch(testEndpoint);
       if (res.ok) {
         const data = await res.json();
         setTestResult({
           success: true,
           message: language === 'zh-CN'
-            ? `连接成功！服务器运行正常 (运行时间: ${Math.floor(data.uptime)}秒)`
-            : `Connected! Server is running normally (Uptime: ${Math.floor(data.uptime)}s)`
+            ? `连接成功！服务器运行正常 (状态: ${data.status || 'OK'})`
+            : `Connected! Server is healthy (${data.status || 'OK'})`
         });
       } else if (res.status === 401 || res.status === 403) {
         setTestResult({

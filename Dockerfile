@@ -1,49 +1,42 @@
-# Use Debian-based Node.js base image
-FROM node:20-bookworm
+# ============================================================
+# Stage 1: Build React Frontend
+# ============================================================
+FROM node:20-bookworm-slim AS frontend-builder
+WORKDIR /app/client
 
-# Prevent interactive prompts during installation
-ENV DEBIAN_FRONTEND=noninteractive
+COPY client/package*.json ./
+RUN npm ci
 
-# Install system dependencies (Python, pip, OpenCV dependencies)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
-    python3-venv \
-    build-essential \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+COPY client/ ./
+RUN npm run build
 
-# Set working directory
+# ============================================================
+# Stage 2: Production Server Runtime
+# ============================================================
+FROM node:20-bookworm-slim
 WORKDIR /app
 
-# Copy dependency definitions
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# Copy backend dependency declarations
 COPY package*.json ./
-COPY client/package*.json ./client/
-COPY requirements.txt ./
 
-# Install Python packages globally using system packages flag (safe in container)
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Install production dependencies only (sqlite3, lancedb, express, etc.)
+RUN npm ci --omit=dev
 
-# Install Node.js packages for both backend and frontend
-RUN npm ci && (cd client && npm ci)
+# Copy server source code, data directory, and maintenance scripts
+COPY server/ ./server/
+COPY scripts/ ./scripts/
+COPY data/ ./data/
 
-# Copy the entire release package
-COPY . .
+# Copy built frontend from Stage 1 for static hosting
+COPY --from=frontend-builder /app/client/dist ./client/dist
 
-# Build the React frontend
-RUN npm --prefix client run build && \
-    rm -rf client/node_modules client/src client/public
-
-# Clean up apt caches
-RUN apt-get clean && rm -rf /var/cache/apt/archives/*
-
-# Expose backend port
 EXPOSE 3001
 
-# Environment variables default
-ENV PORT=3001
-ENV NODE_ENV=production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node scripts/health-check.js || exit 1
 
-# Start backend server
-CMD ["node", "start.js"]
+# Launch the modular backend server directly
+CMD ["node", "server/index.js"]
