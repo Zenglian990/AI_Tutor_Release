@@ -12,9 +12,9 @@
     "cap:build:ios": "npm run build && npx cap sync ios"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.4",
-    "@capacitor/cli": "^8.3.4",
-    "@capacitor/core": "^8.3.4",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@capacitor/ios": "^8.3.4",
     "canvas-confetti": "^1.9.4",
     "crypto-js": "^4.2.0",

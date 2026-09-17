@@ -1,0 +1,92 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    name: Build ZengLian AI Tutor APK
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install client dependencies and build web assets
+        run: |
+          cd client
+          npm install
+          npm run build
+          npx cap sync android
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x client/android/gradlew
+
+      - name: Build Android APK
+        run: |
+          cd client/android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare APK release artifact
+        run: |
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.0.0.apk
+          ls -lh ./ZengLian_AI_Tutor_v1.0.0.apk
+
+      - name: Upload APK as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZengLian_AI_Tutor_v1.0.0
+          path: ./ZengLian_AI_Tutor_v1.0.0.apk
+          retention-days: 30
+
+      - name: Create GitHub Release and Upload APK
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: v1.0.0-apk
+          name: "曾练专属私教 Android 原生独立安装包 (v1.0.0)"
+          draft: false
+          prerelease: false
+          body: |
+            ## 📱 曾练专属私教 - 安卓端原生独立安装包 (APK)
+
+            本安装包专为中小学生（1-9年级）与家长端深度定制，内嵌曾先生微信私教裂变引流方案与全功能知识图谱辅导系统。
+
+            ### 🌟 核心特色与功能：
+            - **国家教材 1-9 年级全科知识图谱**：深度覆盖人教版/部编版，智能苏格拉底分步启发式精讲；
+            - **39,114+ 名校真题真卷库**：北京海淀、黄冈、启东真卷实战，步骤分级评测；
+            - **自动生成朋友圈营销海报**：一键生成带曾先生个人微信二维码名片的高清海报，微信长按秒加好友；
+            - **错题消除与变式卷打印**：错题本一键抹除手写笔迹，局域网秒级出卷重练。
+
+            ---
+            ### 📥 下载与安装指南：
+            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.0.0.apk`** 直接下载；
+            2. 在安卓手机或平板文件管理器中打开该 APK 进行安装；
+            3. 若系统弹出“未知来源应用安装提示”，点击“允许安装”或“信任”即可；
+            4. 安装完成后，手机桌面上将出现 **【曾练专属私教】** 应用图标，点开即用！
+          files: ./ZengLian_AI_Tutor_v1.0.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,10 +1,12 @@
 {
-  "appId": "com.zentutor.app",
+  "appId": "com.zenglian.aitutor",
   "appName": "曾练专属私教",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "cleartext": true,
+    "cleartext": true
+  },
+  "android": {
     "allowMixedContent": true
   }
 }
