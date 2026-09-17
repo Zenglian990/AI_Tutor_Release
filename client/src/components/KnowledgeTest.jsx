@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useStore';
 import DOMPurify from 'dompurify';
 import { initMermaid, sanitizeMermaid, stringHash } from '../utils/mermaid_helper';
 import ExamRoomModal from './ExamRoomModal';
+import ScratchpadModal from './ScratchpadModal';
 
 initMermaid();
 
@@ -171,6 +172,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   const [testType, setTestType] = useState('real_exam'); // 'custom' | 'unit' | 'midterm' | 'final' | 'real_exam'
   const [selectedRegion, setSelectedRegion] = useState('北京海淀名校密卷');
   const [showExamRoom, setShowExamRoom] = useState(false);
+  const [showExamScratchpad, setShowExamScratchpad] = useState(false);
   const [customKnowledgePoints, setCustomKnowledgePoints] = useState('');
   
   // 章节列表和选择
@@ -333,11 +335,14 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   };
 
   // 交卷批改
-  const handleSubmitTest = async () => {
-    const uncompleted = paper.questions.filter(q => !answers[q.id]?.trim());
-    if (uncompleted.length > 0) {
-      if (!window.confirm(`你还有 ${uncompleted.length} 道题目尚未作答，确定要提前交卷吗？`)) {
-        return;
+  const handleSubmitTest = async (customAnswers) => {
+    const activeAnswers = customAnswers || answers;
+    if (!customAnswers) {
+      const uncompleted = paper.questions.filter(q => !activeAnswers[q.id]?.trim());
+      if (uncompleted.length > 0) {
+        if (!window.confirm(`你还有 ${uncompleted.length} 道题目尚未作答，确定要提前交卷吗？`)) {
+          return;
+        }
       }
     }
 
@@ -348,7 +353,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           student_name: currentProfile.name,
-          answers: answers,
+          answers: activeAnswers,
           questions: paper.questions,
           grade: currentGrade
         })
@@ -1132,13 +1137,26 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
           paper={paper}
           answers={answers}
           onAnswerChange={(qId, val) => setAnswers(prev => ({ ...prev, [qId]: val }))}
-          onSubmit={() => {
+          onSubmitExam={(submittedAnswers) => {
             setShowExamRoom(false);
-            handleSubmitTest();
+            if (submittedAnswers) setAnswers(submittedAnswers);
+            handleSubmitTest(submittedAnswers);
           }}
+          onSubmit={(submittedAnswers) => {
+            setShowExamRoom(false);
+            if (submittedAnswers) setAnswers(submittedAnswers);
+            handleSubmitTest(submittedAnswers);
+          }}
+          onOpenScratchpad={() => setShowExamScratchpad(true)}
           durationMinutes={isElementary ? 90 : 120}
         />
       )}
+
+      {/* 考场内嵌演练草稿纸 */}
+      <ScratchpadModal
+        isOpen={showExamScratchpad}
+        onClose={() => setShowExamScratchpad(false)}
+      />
     </div>
   );
 }

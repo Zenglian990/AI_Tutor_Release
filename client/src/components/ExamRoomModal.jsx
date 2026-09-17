@@ -4,10 +4,13 @@ export default function ExamRoomModal({
   isOpen,
   onClose,
   paper,
+  answers: initialAnswersProp,
+  onAnswerChange,
   onSubmitExam,
+  onSubmit,
   onOpenScratchpad
 }) {
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState(initialAnswersProp || {});
   const [markedQuestions, setMarkedQuestions] = useState({}); // { [qId]: true }
   const [currentIdx, setCurrentIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0); // in seconds
@@ -23,7 +26,7 @@ export default function ExamRoomModal({
     if (isOpen && paper) {
       const initialSeconds = durationMinutes * 60;
       setTimeLeft(initialSeconds);
-      setAnswers({});
+      setAnswers(initialAnswersProp && Object.keys(initialAnswersProp).length > 0 ? initialAnswersProp : {});
       setMarkedQuestions({});
       setCurrentIdx(0);
       setIsTimeWarning(false);
@@ -49,7 +52,7 @@ export default function ExamRoomModal({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isOpen, paper, durationMinutes]);
+  }, [isOpen, paper, durationMinutes, initialAnswersProp]);
 
   // Handle timeout auto-submission
   useEffect(() => {
@@ -70,6 +73,7 @@ export default function ExamRoomModal({
 
   const handleAnswerChange = (qId, val) => {
     setAnswers(prev => ({ ...prev, [qId]: val }));
+    if (onAnswerChange) onAnswerChange(qId, val);
   };
 
   const toggleMarkQuestion = (qId) => {
@@ -82,8 +86,11 @@ export default function ExamRoomModal({
   const handleFinalSubmit = useCallback(() => {
     setShowSubmitConfirm(false);
     if (timerRef.current) clearInterval(timerRef.current);
-    onSubmitExam(answers);
-  }, [answers, onSubmitExam]);
+    const submitCallback = onSubmitExam || onSubmit;
+    if (submitCallback) {
+      submitCallback(answers);
+    }
+  }, [answers, onSubmitExam, onSubmit]);
 
   if (!isOpen || !paper) return null;
 

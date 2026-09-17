@@ -187,16 +187,12 @@ function AppInner() {
           }
         }
       } catch (e) { console.error('Failed to load history', e); }
-      // Fallback
-      const gradeLabel = currentProfile.grade ? (formatGrade(currentProfile.grade)) : '通用';
-      setMessages([{
-        id: genMsgId(), role: 'ai',
-        text: `您好！我是您的专属私教 🎓\n\n您现在处于 **${gradeLabel} ${selectedSubject || '学科'}** 的专属学习频道。\n我们将为您保存该频道下的所有讨论进度。\n\n您可以试着问我：\n1. 解释一下本册重点知识点\n2. 帮我解答一道练习题\n3. 推荐本册必背内容\n\n如果您在学习地图里点击了关卡，我也会在这里主动引导您过关！`
-      }]);
+      // Default to empty array so WelcomeDashboard renders when starting fresh
+      setMessages([]);
     };
     loadMessages();
     return () => {
-      if (messagesRef.current.length > 1) syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
+      if (messagesRef.current.length > 0) syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
     };
   }, [currentProfileId, currentProfile.grade, selectedSubject]);
 
@@ -576,7 +572,17 @@ function AppInner() {
       />
 
       {/* Action buttons */}
-      <div className="action-bar no-print" style={{ padding: '0 24px', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+      <div className="action-bar no-print">
+        {messages.length > 0 && (
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="mistake-btn"
+            style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#94a3b8', background: 'rgba(255,255,255,0.04)' }}
+            title="返回今日伴学首页看板（清空当前对话）"
+          >
+            🏠 今日导学
+          </button>
+        )}
         <ActionButton label="🔔 错题复测" color="#f59e0b" onClick={async (btn) => {
           const originalText = btn.innerHTML;
           btn.innerHTML = '⏳ 正在加载...';
@@ -729,9 +735,8 @@ function AppInner() {
                 className="primary-btn" 
                 style={{ flex: 1, padding: '10px', background: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
                 onClick={() => {
-                  const clearMsg = { id: genMsgId(), role: 'ai', text: '您好！我是您的 AI 助教。对话已清空，开始新的学习旅程吧！' };
-                  setMessages([clearMsg]);
-                  syncMessages([clearMsg]);
+                  setMessages([]);
+                  syncMessages([]);
                   setShowClearConfirm(false);
                 }}
               >
