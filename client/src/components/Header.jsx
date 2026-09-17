@@ -110,79 +110,115 @@ export default function Header({
 
   return (
     <header className="header" role="banner" aria-label="应用顶栏">
-      {/* 品牌与标题 (Left) */}
+      {/* 1. 品牌与标题 (Left) */}
       <div className="header-left">
-        <div className="header-icon" onClick={onClearChat} title="点击清空对话" role="button" tabIndex={0} aria-label="清空当前对话" onKeyDown={e => e.key === 'Enter' && onClearChat()}>
+        <div
+          className="header-icon"
+          onClick={onClearChat}
+          title="点击清空当前对话"
+          role="button"
+          tabIndex={0}
+          aria-label="清空当前对话"
+          onKeyDown={e => e.key === 'Enter' && onClearChat()}
+        >
           🎓
         </div>
-        <div className="header-text">
+        <div className="header-brand">
           <h1>{getTranslation(language, 'app.title')}</h1>
-          <div className="header-subtitle">{getTranslation(language, 'app.subtitle')}</div>
+          <span className="brand-badge">人教版 1-9年级</span>
         </div>
       </div>
 
-      {/* 控制栏与快捷工具 (Right) */}
-      <div className="header-controls">
-        {/* 学生档案选择与编辑 */}
-        <select className="grade-selector" style={{ backgroundColor: 'var(--accent-color)', color: 'white', fontWeight: 'bold' }}
-          value={currentProfileId} onChange={e => onProfileChange(e.target.value)} aria-label="选择学生档案">
-          {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
-          <option value="ADD_NEW">➕ 添加新用户...</option>
-        </select>
-        <button
-          onClick={() => {
-            const currentName = currentProfile.name || '曾练';
-            const newName = window.prompt(`修改学生姓名/昵称：`, currentName);
-            if (newName && newName.trim() && newName.trim() !== currentName) {
-              onRenameProfile && onRenameProfile(currentProfileId, newName.trim());
-            }
-          }}
-          title="修改当前学生姓名"
-          aria-label="修改当前学生姓名"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '15px', padding: '0 2px' }}
-        >
-          ✏️
-        </button>
-        {currentProfileId !== 'default' && (
-          <button onClick={onDeleteProfile} title="删除此档案" aria-label="删除当前学生档案"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>
-            🗑️
+      {/* 2. 学习情境胶囊 (Center) - 档案·年级·学科·名师 紧凑整合 */}
+      <div className="header-capsule">
+        {/* 学生档案 */}
+        <div className="capsule-item">
+          <select
+            className="capsule-select"
+            value={currentProfileId}
+            onChange={e => onProfileChange(e.target.value)}
+            aria-label="选择学生档案"
+            title={`当前学生：${currentProfile.name}`}
+            style={{ fontWeight: 'bold', color: '#60a5fa' }}
+          >
+            {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
+            <option value="ADD_NEW">➕ 新建档案...</option>
+          </select>
+          <button
+            onClick={() => {
+              const currentName = currentProfile.name || '曾练';
+              const newName = window.prompt(`修改学生姓名/昵称：`, currentName);
+              if (newName && newName.trim() && newName.trim() !== currentName) {
+                onRenameProfile && onRenameProfile(currentProfileId, newName.trim());
+              }
+            }}
+            title="修改学生姓名"
+            aria-label="修改学生姓名"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '11px', color: '#94a3b8', padding: '0 2px' }}
+          >
+            ✏️
           </button>
-        )}
+        </div>
 
-        {/* 学科选择 */}
-        <select className="grade-selector" value={selectedSubject} onChange={e => onSubjectChange(e.target.value)} aria-label="选择学科">
-          {getValidSubjectsForGrade(selectedGrade).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
+        <div className="capsule-divider" />
 
-        {/* 年级选择 */}
-        <select className="grade-selector" value={selectedGrade} onChange={e => onGradeChange(e.target.value)} aria-label="选择年级">
-          {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
-        </select>
+        {/* 年级 */}
+        <div className="capsule-item">
+          <select
+            className="capsule-select"
+            value={selectedGrade}
+            onChange={e => onGradeChange(e.target.value)}
+            aria-label="选择年级"
+            title="切换年级教材"
+          >
+            {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+          </select>
+        </div>
+
+        <div className="capsule-divider" />
+
+        {/* 学科 */}
+        <div className="capsule-item">
+          <select
+            className="capsule-select"
+            value={selectedSubject}
+            onChange={e => onSubjectChange(e.target.value)}
+            aria-label="选择学科"
+            title="切换学科"
+          >
+            {getValidSubjectsForGrade(selectedGrade).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+
+        <div className="capsule-divider" />
 
         {/* 名师风格 */}
-        <select
-          className="grade-selector"
-          value={tutorPersona}
-          onChange={e => setTutorPersona(e.target.value)}
-          title="切换名师/学伴风格"
-          aria-label="选择名师风格"
-          style={{ background: 'rgba(37, 99, 235, 0.15)', borderColor: 'rgba(37, 99, 235, 0.3)' }}
-        >
-          {PERSONAS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </select>
+        <div className="capsule-item">
+          <select
+            className="capsule-select"
+            value={tutorPersona}
+            onChange={e => setTutorPersona(e.target.value)}
+            title="切换名师/学伴风格"
+            aria-label="切换名师风格"
+          >
+            {PERSONAS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+      </div>
 
+      {/* 3. 核心功能与操作区 (Right) */}
+      <div className="header-actions">
         {/* 1-3年级趣味实物教具 */}
         {['1', '2', '3'].some(n => String(selectedGrade).startsWith(n)) && onOpenManipulatives && (
           <button
             onClick={onOpenManipulatives}
+            className="header-btn-pill"
             title="打开小学趣味积木与等式天平教具"
             aria-label="打开小学具象实物教具"
             style={{
-              background: 'linear-gradient(135deg, #f59e0b, #ea580c)',
-              color: '#fff', border: 'none', borderRadius: '10px',
-              padding: '6px 10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '3px'
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 88, 12, 0.15))',
+              color: '#fbbf24',
+              borderColor: 'rgba(245, 158, 11, 0.35)'
             }}
           >
             <span>🎒</span>
@@ -194,13 +230,13 @@ export default function Header({
         {['7', '8', '9'].some(n => String(selectedGrade).startsWith(n)) && onOpenGeometrySandbox && (
           <button
             onClick={onOpenGeometrySandbox}
+            className="header-btn-pill"
             title="打开初中动点几何与二次函数压轴沙盒"
             aria-label="打开初中动点压轴沙盒"
             style={{
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#fff', border: 'none', borderRadius: '10px',
-              padding: '6px 10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '3px'
+              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(29, 78, 216, 0.15))',
+              color: '#60a5fa',
+              borderColor: 'rgba(59, 130, 246, 0.35)'
             }}
           >
             <span>📐</span>
@@ -208,53 +244,20 @@ export default function Header({
           </button>
         )}
 
-        {/* 段位勋章 */}
-        {onOpenGamification && (
-          <button
-            onClick={onOpenGamification}
-            title="查看学霸成长段位与勋章"
-            aria-label="查看学霸段位勋章"
-            style={{
-              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.15))',
-              color: '#facc15',
-              border: '1px solid rgba(234, 179, 8, 0.4)',
-              borderRadius: '10px',
-              padding: '6px 10px',
-              fontSize: '0.82rem',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <span>👑</span>
-            <span>段位勋章</span>
-          </button>
-        )}
-
-        {/* VIP会员与卡密激活 */}
+        {/* VIP 会员与卡密激活 */}
         {onOpenMembership && (
           <button
             onClick={onOpenMembership}
+            className="header-btn-pill"
             title={isVip ? `VIP会员有效期至: ${membershipStatus?.expires_at ? new Date(membershipStatus.expires_at).toLocaleDateString() : '永久'}` : '开通/激活VIP会员'}
             aria-label="VIP会员与卡密激活"
             style={{
               background: isVip 
-                ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.3), rgba(245, 158, 11, 0.2))'
-                : 'linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.2))',
+                ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.15))'
+                : 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.15))',
               color: isVip ? '#fbbf24' : '#c084fc',
-              border: `1px solid ${isVip ? 'rgba(234, 179, 8, 0.5)' : 'rgba(139, 92, 246, 0.4)'}`,
-              borderRadius: '10px',
-              padding: '6px 10px',
-              fontSize: '0.82rem',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.2s'
+              borderColor: isVip ? 'rgba(234, 179, 8, 0.4)' : 'rgba(139, 92, 246, 0.35)',
+              boxShadow: isVip ? '0 0 10px rgba(245, 158, 11, 0.15)' : 'none'
             }}
           >
             <span>{isVip ? '👑' : '💎'}</span>
@@ -262,70 +265,73 @@ export default function Header({
           </button>
         )}
 
-        {/* 家长获客分享裂变海报 */}
-        {onOpenPoster && (
-          <button
-            onClick={onOpenPoster}
-            title="生成家长朋友圈高转化分享海报"
-            aria-label="生成家长分享海报"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15))',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              borderRadius: '10px',
-              padding: '6px 10px',
-              fontSize: '0.82rem',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <span>📣</span>
-            <span>海报</span>
-          </button>
-        )}
-
         {/* 教学模式 */}
-        <button onClick={handleSocraticClick} title={getTranslation(language, `mode.${currentSocratic.value}_title`)} aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
+        <button
+          onClick={handleSocraticClick}
+          className="header-btn-pill"
+          title={getTranslation(language, `mode.${currentSocratic.value}_title`)}
+          aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
           style={{
-            background: socraticLevel !== 'direct' ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)',
-            color: 'white', border: '1px solid var(--glass-border)', borderRadius: '10px',
-            padding: '6px 10px', fontSize: '0.82rem', cursor: 'pointer', transition: 'all 0.2s'
-          }}>
+            background: socraticLevel !== 'direct' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+            color: socraticLevel !== 'direct' ? '#60a5fa' : '#94a3b8',
+            borderColor: socraticLevel !== 'direct' ? 'rgba(59, 130, 246, 0.35)' : 'rgba(255, 255, 255, 0.1)'
+          }}
+        >
           {currentSocratic.label}
         </button>
 
-        {/* 护眼纸质/深色/设置 快捷工具图标组 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', paddingLeft: '4px', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
-          <button onClick={toggleEinkMode} aria-label={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式'} title={isEinkMode ? '当前：墨水屏纸质护眼模式（点击退出）' : '切换为墨水屏纸质护眼模式 (零残影·无频闪)'}
-            style={{
-              background: isEinkMode ? '#000' : 'rgba(255, 255, 255, 0.08)',
-              color: isEinkMode ? '#fff' : 'inherit',
-              border: isEinkMode ? '1px solid #000' : '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              padding: '3px 7px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2px',
-              fontWeight: 'bold'
-            }}>
-            <span>📖</span>
-            <span>{isEinkMode ? '墨水屏' : '纸质'}</span>
+        <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+
+        {/* 快捷工具小图标组 (勋章、海报、墨水屏、主题、设置) */}
+        {onOpenGamification && (
+          <button
+            onClick={onOpenGamification}
+            className="header-btn-icon"
+            title="学霸成长段位与勋章"
+            aria-label="学霸段位勋章"
+          >
+            👑
           </button>
-          <button onClick={onThemeToggle} aria-label={isLightMode ? '切换到深色模式' : '切换到浅色模式'} title="切换主题"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px 4px' }}>
-            {isLightMode ? '🌙' : '☀️'}
+        )}
+
+        {onOpenPoster && (
+          <button
+            onClick={onOpenPoster}
+            className="header-btn-icon"
+            title="生成家长朋友圈高转化宣传海报"
+            aria-label="生成家长宣传海报"
+          >
+            📣
           </button>
-          <button onClick={onSettingsOpen} aria-label="打开系统设置" title="系统设置"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px 4px' }}>
-            ⚙️
-          </button>
-        </div>
+        )}
+
+        <button
+          onClick={toggleEinkMode}
+          className="header-btn-icon"
+          title={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式 (零残影·无频闪)'}
+          aria-label="纸质护眼模式切换"
+          style={{ background: isEinkMode ? '#ffffff' : undefined, color: isEinkMode ? '#000000' : undefined }}
+        >
+          📖
+        </button>
+
+        <button
+          onClick={onThemeToggle}
+          className="header-btn-icon"
+          title={isLightMode ? '切换到深色模式' : '切换到浅色模式'}
+          aria-label="主题切换"
+        >
+          {isLightMode ? '🌙' : '☀️'}
+        </button>
+
+        <button
+          onClick={onSettingsOpen}
+          className="header-btn-icon"
+          title="系统设置"
+          aria-label="打开系统设置"
+        >
+          ⚙️
+        </button>
       </div>
     </header>
   );
