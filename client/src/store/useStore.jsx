@@ -214,6 +214,28 @@ export function AppProvider({ children }) {
     localStorage.getItem('ai_tutor_persona') || 'owl'
   );
 
+  const [membershipStatus, setMembershipStatus] = useState({
+    tier: 'free',
+    is_vip: false,
+    days_remaining: 0
+  });
+
+  const checkMembership = useCallback(async () => {
+    try {
+      const res = await authFetch(`/api/membership/status?profile_id=${currentProfileId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMembershipStatus(data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch membership status:', err);
+    }
+  }, [currentProfileId]);
+
+  useEffect(() => {
+    checkMembership();
+  }, [checkMembership]);
+
   const t = useCallback((key) => getTranslation(language, key), [language]);
 
   const currentProfile = profiles.find(p => p.id === currentProfileId) || profiles[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
@@ -303,6 +325,7 @@ export function AppProvider({ children }) {
     isLightMode, setIsLightMode,
     isEinkMode, setIsEinkMode, toggleEinkMode,
     tutorPersona, setTutorPersona,
+    membershipStatus, setMembershipStatus, checkMembership,
     handleGradeChange,
     handleEditionChange,
     getApiUrl,

@@ -23,6 +23,8 @@ import GamificationBadgeModal from './components/GamificationBadgeModal';
 import ParentRemoteDashboard from './components/ParentRemoteDashboard';
 import PrimaryVisualManipulatives from './components/PrimaryVisualManipulatives';
 import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
+import MembershipModal from './components/MembershipModal';
+import ParentSharePosterModal from './components/ParentSharePosterModal';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -88,6 +90,8 @@ function AppInner() {
   const [showGamification, setShowGamification] = useState(false);
   const [showManipulatives, setShowManipulatives] = useState(false);
   const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
+  const [showMembershipModal, setShowMembershipModal] = useState(false);
+  const [showPosterModal, setShowPosterModal] = useState(false);
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -567,6 +571,8 @@ function AppInner() {
         onOpenGamification={() => setShowGamification(true)}
         onOpenManipulatives={() => setShowManipulatives(true)}
         onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
+        onOpenMembership={() => setShowMembershipModal(true)}
+        onOpenPoster={() => setShowPosterModal(true)}
       />
 
       {/* Action buttons */}
@@ -602,7 +608,7 @@ function AppInner() {
           className="mistake-btn" style={{ borderColor: '#a78bfa', color: '#a78bfa', background: 'rgba(139, 92, 246, 0.1)' }}>📊 {language === 'zh-CN' ? '学习报表' : 'Stats Report'}</button>
         <button onClick={() => setShowKnowledgeTest(true)}
           className="mistake-btn" style={{ borderColor: '#ec4899', color: '#ec4899', background: 'rgba(236, 72, 153, 0.1)' }}>
-          📝 {language === 'zh-CN' ? '知识测试' : 'Knowledge Test'}
+          🏛️ {language === 'zh-CN' ? '名校模考' : 'Mock Exam'}
         </button>
         <button onClick={() => setShowMistakes(true)} className="mistake-btn">📖 {language === 'zh-CN' ? '我的错题本' : 'Mistake Book'}</button>
         <button onClick={() => setShowMap(true)} className="mistake-btn" style={{ borderColor: '#10b981', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>🗺️ {language === 'zh-CN' ? '学习地图' : 'Learning Map'}</button>
@@ -850,6 +856,18 @@ function AppInner() {
         isOpen={showGeometrySandbox}
         onClose={() => setShowGeometrySandbox(false)}
         onApplyToChat={(text) => setInput(text)}
+      />
+
+      <MembershipModal
+        isOpen={showMembershipModal}
+        onClose={() => setShowMembershipModal(false)}
+      />
+
+      <ParentSharePosterModal
+        isOpen={showPosterModal}
+        onClose={() => setShowPosterModal(false)}
+        studentName={currentProfile?.name || '曾练'}
+        grade={currentProfile?.grade || '八年级'}
       />
 
       <InputBar

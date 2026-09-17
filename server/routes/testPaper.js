@@ -19,7 +19,7 @@ const { sendToNetworkPrinter, formatExamForPrinter } = require('../services/prin
 /**
  * 拼装出题的 System Prompt (三段式 150分制)
  */
-function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr, knowledgePoints) {
+function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr, knowledgePoints, region, examYear) {
   const gradeNames = {
     '1_up': '一年级上册', '1_down': '一年级下册',
     '2_up': '二年级上册', '2_down': '二年级下册',
@@ -44,6 +44,10 @@ function getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, sylla
       .replace(/(ignore|prompt|system|instruction|bypass|forget)/gi, ''); // remove injection keywords
 
     scopeStr = `当前测试范围为用户主动要求的知识点：【${sanitizedPoints}】。请紧扣这些自定义知识点出题，确保全面覆盖用户的学习需求。`;
+  } else if (type === 'real_exam') {
+    const reg = region || '全国百强重点名校';
+    const yr = examYear || '2025-2026';
+    scopeStr = `当前测试范围为【${reg}·${yr}学年中考/期末全真模拟示范大卷】。请严格对标中考与各省名校统考试卷的命题结构与难度阶梯，既包含基础巩固考点，又包含综合创新与压轴思维题。`;
   } else if (type === 'unit' && chapterName) {
     scopeStr = `当前测试范围为特定单元章节：《${chapterName}》（章节描述：${chapterDesc}）。
 【重中之重】虽然这是单元测试，但你必须**严格保持下方规定的大考题量和总分（绝不允许删减题数！）**。如果本单元缺少某种题型的素材（例如本单元没有古诗文或文言文），请你引入相关的课外拓展素材，或者将其他考点的题量翻倍填补，务必凑齐规定的总题目数和总分值，保证试卷的体量足够庞大和严肃！`;
@@ -258,11 +262,16 @@ function getGradePrompt(question, studentAnswer, standardAnswer, score, explanat
 
 ${gradingPhilosophy}
 
-请根据上述阅卷原则，给出该题的最终得分和精炼评语。
+请根据上述阅卷原则，给出该题的最终得分、中考步骤采分点拆解和精炼评语。
 请严格以下列 JSON 格式返回，不要包含任何其他文字：
 {
   "score": 给出得分（必须是 0 到 ${score} 之间的整数）,
-  "comment": "阅卷评语"
+  "comment": "阅卷评语",
+  "step_breakdown": {
+    "concept": "审题与概念列式得分说明 (如: 审题准确、已知未知分析到位 3/3分)",
+    "deduction": "过程推导与公式代入得分说明 (如: 推导逻辑严密、计算无误 4/4分)",
+    "conclusion": "结果与量纲单位说明 (如: 结论正确 3/3分)"
+  }
 }
 `;
 }
@@ -287,7 +296,7 @@ ${questionsReport}
  */
 router.post('/test-paper/generate', async (req, res) => {
   try {
-    const { grade, subject, type, chapter_id, edition, knowledge_points } = req.body;
+    const { grade, subject, type, chapter_id, edition, knowledge_points, region, exam_year } = req.body;
     if (!grade || !subject || !type) {
       return res.status(400).json({ error: '缺少必需的年级、科目或测试类型' });
     }
@@ -320,7 +329,7 @@ router.post('/test-paper/generate', async (req, res) => {
       logger.error('Failed to parse chapter info from JSON config:', err);
     }
 
-    const prompt = getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr, knowledge_points);
+    const prompt = getGeneratePrompt(grade, subject, type, chapterName, chapterDesc, syllabusStr, knowledge_points, region, exam_year);
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
@@ -418,11 +427,13 @@ router.post('/test-paper/grade', async (req, res) => {
           const data = await response.json();
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
           
+          let parsedStep = null;
           const jsonMatch = text.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0].trim());
             score = typeof parsed.score === 'number' ? parsed.score : 0;
             comment = parsed.comment || '';
+            parsedStep = parsed.step_breakdown || null;
           } else {
             throw new Error('No JSON found in grade response');
           }
@@ -432,6 +443,13 @@ router.post('/test-paper/grade', async (req, res) => {
           comment = '批改系统繁忙，暂定 0 分。请参考标准解析。';
         }
       }
+
+      const isFullScore = score === (q.score || 10);
+      const stepBreakdown = {
+        concept: isFullScore ? '审题严谨，已知与未知条件把握精准' : (score > 0 ? '审题基本到位，提取了部分关键条件' : '审题不清或核心概念存在偏差'),
+        deduction: isFullScore ? '逻辑严密，公式与定理代入规范无误' : (score > 0 ? '步骤基本正确，中间计算有小瑕疵' : '推导逻辑中断或关键公式未列出'),
+        conclusion: isFullScore ? '结论计算完全正确，量纲与单位标准' : (score > 0 ? '结论部分吻合，需注意末尾结果核验' : '最终结论错误或未作答')
+      };
 
       totalScore += score;
       results.push({
@@ -443,7 +461,8 @@ router.post('/test-paper/grade', async (req, res) => {
         studentAnswer: studentAns,
         standardAnswer: standardAns,
         explanation: q.explanation,
-        comment
+        comment,
+        step_breakdown: stepBreakdown
       });
     }
 

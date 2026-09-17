@@ -93,9 +93,11 @@ export default function Header({
   profiles, currentProfileId, onProfileChange, onDeleteProfile, onRenameProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
-  onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox
+  onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
+  onOpenMembership, onOpenPoster
 }) {
-  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona } = useAppStore();
+  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, membershipStatus } = useAppStore();
+  const isVip = membershipStatus?.is_vip;
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
   const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
 
@@ -115,6 +117,34 @@ export default function Header({
         <h1>{getTranslation(language, 'app.title')}</h1>
         <div className="header-subtitle">{getTranslation(language, 'app.subtitle')}</div>
       </div>
+      {/* Membership VIP Button */}
+      {onOpenMembership && (
+        <button onClick={onOpenMembership} aria-label="会员中心与卡密激活" title={isVip ? '当前：VIP尊享会员（点击查看权益）' : '点击输入卡密激活 VIP 会员'}
+          style={{
+            background: isVip ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'rgba(255, 255, 255, 0.1)',
+            color: isVip ? '#ffffff' : '#facc15',
+            border: isVip ? 'none' : '1px solid rgba(250, 204, 21, 0.3)',
+            borderRadius: '8px', cursor: 'pointer', fontSize: '13px', padding: '4px 10px',
+            marginRight: '6px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold'
+          }}>
+          <span>👑</span>
+          <span style={{ fontSize: '12px' }}>{isVip ? 'VIP会员' : '激活VIP'}</span>
+        </button>
+      )}
+      {/* Parent Acquisition Poster Button */}
+      {onOpenPoster && (
+        <button onClick={onOpenPoster} aria-label="生成家长宣传海报" title="生成带二维码的家长宣传获客海报"
+          style={{
+            background: 'rgba(56, 189, 248, 0.15)',
+            color: '#38bdf8',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            borderRadius: '8px', cursor: 'pointer', fontSize: '13px', padding: '4px 8px',
+            marginRight: '6px', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 'bold'
+          }}>
+          <span>📣</span>
+          <span style={{ fontSize: '12px' }}>海报</span>
+        </button>
+      )}
       <button onClick={toggleEinkMode} aria-label={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式'} title={isEinkMode ? '当前：墨水屏纸质护眼模式（点击退出）' : '切换为墨水屏纸质护眼模式 (零残影·无频闪)'}
         style={{
           background: isEinkMode ? '#000' : 'rgba(255, 255, 255, 0.1)',
@@ -244,6 +274,61 @@ export default function Header({
             <span>段位勋章</span>
           </button>
         )}
+
+        {/* VIP会员与卡密激活 */}
+        {onOpenMembership && (
+          <button
+            onClick={onOpenMembership}
+            title={isVip ? `VIP会员有效期至: ${membershipStatus?.expires_at ? new Date(membershipStatus.expires_at).toLocaleDateString() : '永久'}` : '开通/激活VIP会员'}
+            aria-label="VIP会员与卡密激活"
+            style={{
+              background: isVip 
+                ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.3), rgba(245, 158, 11, 0.2))'
+                : 'linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.2))',
+              color: isVip ? '#fbbf24' : '#c084fc',
+              border: `1px solid ${isVip ? 'rgba(234, 179, 8, 0.5)' : 'rgba(139, 92, 246, 0.4)'}`,
+              borderRadius: '10px',
+              padding: '6px 11px',
+              fontSize: '0.82rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>{isVip ? '👑' : '💎'}</span>
+            <span>{isVip ? 'VIP会员' : '激活VIP'}</span>
+          </button>
+        )}
+
+        {/* 家长获客分享裂变海报 */}
+        {onOpenPoster && (
+          <button
+            onClick={onOpenPoster}
+            title="生成家长朋友圈高转化分享海报"
+            aria-label="生成家长分享海报"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15))',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              borderRadius: '10px',
+              padding: '6px 11px',
+              fontSize: '0.82rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📣</span>
+            <span>裂变海报</span>
+          </button>
+        )}
+
         <button onClick={handleSocraticClick} title={getTranslation(language, `mode.${currentSocratic.value}_title`)} aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
           style={{
             background: socraticLevel !== 'direct' ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)',

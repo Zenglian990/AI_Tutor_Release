@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useStore';
 import DOMPurify from 'dompurify';
 import { initMermaid, sanitizeMermaid, stringHash } from '../utils/mermaid_helper';
+import ExamRoomModal from './ExamRoomModal';
 
 initMermaid();
 
@@ -74,6 +75,20 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   const getExamGuideAndButtonText = () => {
     const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
     const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+
+    if (testType === 'real_exam') {
+      return {
+        title: `🏛️ 【${selectedRegion}】全真模考标准与作答指南：`,
+        btnText: `🏛️ 依据【${selectedRegion}】出卷并进入全真模考`,
+        desc: (
+          <>
+            • <b>名校教研真题规格：</b>严格比照【{selectedRegion}】近年中考真题及名校密卷题型结构、考点分布与梯度设问。<br />
+            • <b>沉浸式全真考场：</b>提供全屏防干扰模拟考场、标准中考倒计时、右侧交互答题卡与演算草稿纸。<br />
+            • <b>中考级步骤给分评阅：</b>交卷后 AI 阅卷老师按中考阅卷标准，细拆“概念公式立意分、逻辑推导演算分、最终结论得分”，诊断提分点到每一步。
+          </>
+        )
+      };
+    }
     
     let guide = {
       title: '📋 本卷信息与作答指南（依照中考题型格式出题）：',
@@ -153,7 +168,9 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   
   // UI 阶段状态: 'setup' | 'generating' | 'testing' | 'grading' | 'report'
   const [stage, setStage] = useState('setup'); 
-  const [testType, setTestType] = useState('custom'); // 'custom' | 'unit' | 'midterm' | 'final'
+  const [testType, setTestType] = useState('real_exam'); // 'custom' | 'unit' | 'midterm' | 'final' | 'real_exam'
+  const [selectedRegion, setSelectedRegion] = useState('北京海淀名校密卷');
+  const [showExamRoom, setShowExamRoom] = useState(false);
   const [customKnowledgePoints, setCustomKnowledgePoints] = useState('');
   
   // 章节列表和选择
@@ -286,7 +303,8 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
           type: testType,
           chapter_id: testType === 'unit' ? selectedChapterId : undefined,
           edition: currentEdition,
-          knowledge_points: testType === 'custom' ? customKnowledgePoints : undefined
+          knowledge_points: testType === 'custom' ? customKnowledgePoints : undefined,
+          region: testType === 'real_exam' ? selectedRegion : undefined
         })
       });
 
@@ -495,8 +513,9 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
               <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 🎯 第一步：选择测试范围
               </h3>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {[
+                  { id: 'real_exam', label: '🏛️ 名校全真模考' },
                   { id: 'custom', label: '✨ 自定义知识点' },
                   { id: 'unit', label: '📖 单元阶段测试' },
                   { id: 'midterm', label: '📅 期中阶段大考' },
@@ -508,13 +527,14 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                     aria-label={`选择测试类型：${type.label}`}
                     aria-pressed={testType === type.id}
                     style={{
-                      flex: 1,
+                      flex: '1 1 calc(20% - 10px)',
+                      minWidth: '130px',
                       padding: '12px',
                       borderRadius: '12px',
                       border: '1px solid',
-                      borderColor: testType === type.id ? '#3b82f6' : 'rgba(255,255,255,0.08)',
-                      background: testType === type.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.02)',
-                      color: testType === type.id ? '#60a5fa' : '#9ca3af',
+                      borderColor: testType === type.id ? (type.id === 'real_exam' ? '#f59e0b' : '#3b82f6') : 'rgba(255,255,255,0.08)',
+                      background: testType === type.id ? (type.id === 'real_exam' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(59, 130, 246, 0.15)') : 'rgba(255,255,255,0.02)',
+                      color: testType === type.id ? (type.id === 'real_exam' ? '#fbbf24' : '#60a5fa') : '#9ca3af',
                       fontWeight: 'bold',
                       cursor: 'pointer',
                       fontSize: '13px',
@@ -525,6 +545,41 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                   </button>
                 ))}
               </div>
+
+              {testType === 'real_exam' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                  <label style={{ fontSize: '13px', color: '#fbbf24', fontWeight: 'bold' }}>🏛️ 选择名校教研真题密卷题源：</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      '北京海淀名校密卷',
+                      '湖北黄冈中考模考',
+                      '江苏启东实验真卷',
+                      '四川成都七中示范',
+                      '全国重点名校联考'
+                    ].map(region => (
+                      <button
+                        key={region}
+                        type="button"
+                        onClick={() => setSelectedRegion(region)}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid',
+                          borderColor: selectedRegion === region ? '#f59e0b' : 'rgba(255,255,255,0.08)',
+                          background: selectedRegion === region ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.02)',
+                          color: selectedRegion === region ? '#fbbf24' : '#9ca3af',
+                          fontSize: '12px',
+                          fontWeight: selectedRegion === region ? 'bold' : 'normal',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {region}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {testType === 'unit' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -640,6 +695,45 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         {/* 3. 在线答题阶段 */}
         {stage === 'testing' && paper && (
           <div className="test-content-outer" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* 全真考场快捷横幅 */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(59, 130, 246, 0.15))',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '14px',
+              padding: '12px 16px',
+              marginBottom: '14px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🏛️ 中考/名校全真沉浸考场已就绪
+                </div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                  支持全屏防作弊、规范倒计时提醒、浮动交互答题卡与演算草稿纸
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExamRoom(true)}
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '8px 16px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                🚀 进入全真考场
+              </button>
+            </div>
+
             <div className="test-content-inner" style={{ flex: 1, overflowY: 'auto', paddingRight: '6px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
               {questionBlocks.map((block, bIdx) => {
@@ -946,6 +1040,51 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                         💬 <b>阅卷简评：</b>{r.comment}
                       </div>
 
+                      {/* 中考级步骤采分点细拆 (Step Breakdown) */}
+                      {r.step_breakdown && (
+                        <div style={{
+                          margin: '8px 0',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          background: 'rgba(245, 158, 11, 0.04)',
+                          border: '1px solid rgba(245, 158, 11, 0.18)',
+                          fontSize: '12px'
+                        }}>
+                          <div style={{ fontWeight: 'bold', color: '#fbbf24', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            ⚖️ 中考级步骤采分诊断明细（步步把关）：
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                            {r.step_breakdown.concept && (
+                              <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#60a5fa', fontWeight: 'bold', marginBottom: '2px' }}>
+                                  <span>📌 概念公式与立意</span>
+                                  <span>{r.step_breakdown.concept.score}/{r.step_breakdown.concept.maxScore}分</span>
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{r.step_breakdown.concept.comment}</div>
+                              </div>
+                            )}
+                            {r.step_breakdown.deduction && (
+                              <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a78bfa', fontWeight: 'bold', marginBottom: '2px' }}>
+                                  <span>⚙️ 逻辑推理推导</span>
+                                  <span>{r.step_breakdown.deduction.score}/{r.step_breakdown.deduction.maxScore}分</span>
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{r.step_breakdown.deduction.comment}</div>
+                              </div>
+                            )}
+                            {r.step_breakdown.conclusion && (
+                              <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34d399', fontWeight: 'bold', marginBottom: '2px' }}>
+                                  <span>🎯 结果结论与表达</span>
+                                  <span>{r.step_breakdown.conclusion.score}/{r.step_breakdown.conclusion.maxScore}分</span>
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{r.step_breakdown.conclusion.comment}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {/* 详细解析 */}
                       <div style={{ fontSize: '12px', color: '#d1d5db', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
                         💡 <b>解题步骤及解析：</b>
@@ -984,6 +1123,22 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
           </div>
         )}
       </div>
+
+      {/* 沉浸式中考模考全屏考场 */}
+      {showExamRoom && paper && (
+        <ExamRoomModal
+          isOpen={showExamRoom}
+          onClose={() => setShowExamRoom(false)}
+          paper={paper}
+          answers={answers}
+          onAnswerChange={(qId, val) => setAnswers(prev => ({ ...prev, [qId]: val }))}
+          onSubmit={() => {
+            setShowExamRoom(false);
+            handleSubmitTest();
+          }}
+          durationMinutes={isElementary ? 90 : 120}
+        />
+      )}
     </div>
   );
 }
