@@ -1,87 +1,135 @@
 <div align="center">
 
-# 🎓 EduAgent : AI Tutor for K-9 Education
+# 🎓 曾练专属私教 (ZengLian AI Tutor)
 
-**国内首个专为 1-9 年级量身定制的开源 RAG AI 智能教辅系统**
+**国内首个专为 1-9 年级量身定制的开源 RAG AI 智能私教系统**
+*覆盖人教版 1-9 年级全学科知识库 · 双模态自适应心智教学 · 闭环提分体系*
 
-[![React](https://img.shields.io/badge/Frontend-React-blue?style=flat-square&logo=react)](https://reactjs.org/)
-[![Node.js](https://img.shields.io/badge/Backend-Node.js-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![Python](https://img.shields.io/badge/RAG-Python-yellow?style=flat-square&logo=python)](https://python.org/)
-[![Database](https://img.shields.io/badge/Vector_DB-LanceDB-orange?style=flat-square)](https://lancedb.com/)
+<br/>
+
+[![Download APK](https://img.shields.io/badge/📱_Android_APK-v1.0.0_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
+
+<br/>
+
+[![React](https://img.shields.io/badge/Frontend-React_18-blue?style=flat-square&logo=react)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![Android](https://img.shields.io/badge/Mobile-Capacitor_Android-3DDC84?style=flat-square&logo=android)](https://capacitorjs.com/)
+[![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
+[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
-[![CI Pipeline](https://github.com/Zenglian990/AI_Tutor_Release/actions/workflows/ci.yml/badge.svg)](https://github.com/Zenglian990/AI_Tutor_Release/actions)
 
-[**中文版**](README.md) | [**English**](README_en.md)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**📱 APK 下载**](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
 
-*“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
+> *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
 </div>
 
 ---
 
-## 📸 界面预览 (UI Showcase)
+## 📱 手机端 APK 极速体验 (推荐)
+
+无需繁琐的电脑开发环境配置，手机直接下载安装即可体验专为手机端优化的 **9:16 竖屏全屏沉浸式私教**：
+
+- **📥 安装包直链下载**：[ZengLian_AI_Tutor_v1.0.0.apk (约 8.8MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
+- **🏷️ GitHub Release 页面**：[查看 Release 版本详情与更新说明](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
+- **✨ 移动端特性**：原生 9:16 锁定竖屏全屏、异形水滴/刘海屏贴边适配、零配置即装即用。
+
+---
+
+## 📸 界面全景展示 (UI Showcase)
 
 <div align="center">
-  <img src="docs/assets/ui-main.png" alt="主界面演示" width="800"/>
+  <h3>🖥️ 1. 现代化名师导学与思维脑图</h3>
+  <img src="docs/assets/ui-main.png" alt="主辅导与智能导学界面" width="850"/>
+  <p><i>名师深度备考推导过程、思维脑图骨架自动展开、题眼与陷阱一键剖析、演练草稿纸与整页秒批</i></p>
   <br/>
-  <img src="docs/assets/ui-settings.png" alt="系统设置演示" width="800"/>
+
+  <h3>🗺️ 2. 关卡式互动学习地图</h3>
+  <img src="docs/assets/ui-map.png" alt="关卡式互动学习地图" width="850"/>
+  <p><i>章节探索小岛、循序渐进解锁通关、告别枯燥刷题，开启游戏化知识探险</i></p>
   <br/>
-  <img src="docs/assets/ui-levels.png" alt="年级选择演示" width="800"/>
+
+  <h3>🧭 3. 终极关卡与学期通关路线图</h3>
+  <img src="docs/assets/ui-roadmap.png" alt="学期通关路线图" width="850"/>
+  <p><i>全学期核心副本全景呈现、通关目标、实战秘籍与几何/代数证明严谨指引</i></p>
+  <br/>
+
+  <h3>📝 4. 专属智能错题本 & 靶向变式巩固卷</h3>
+  <img src="docs/assets/ui-mistakes.png" alt="专属错题本与变式练习" width="850"/>
+  <p><i>艾宾浩斯复习智能推送、一键生成 A4 错题排版试卷、AI 举一反三靶向变式强化</i></p>
+  <br/>
+
+  <h3>📊 5. 家长监工与本周深度学情报告</h3>
+  <img src="docs/assets/ui-parent.png" alt="家长监工与学情报告" width="850"/>
+  <p><i>学习数据诊断、薄弱点追踪、定制家校协同跟进建议、支持一键打印“家访便签”</i></p>
+  <br/>
+
+  <h3>🎨 6. 微信朋友圈学习成就海报</h3>
+  <img src="docs/assets/ui-poster.png" alt="微信朋友圈海报" width="480"/>
+  <p><i>一键渲染高颜值朋友圈分享战报，集成个人专属微信二维码与打卡励志金句</i></p>
 </div>
 
 ---
 
+## 🌟 核心杀手级特性 (Core Features)
 
-## 中文版
+「曾练专属私教」摒弃了市面上传统搜题软件“直接给答案抄袭”的应试弊端，基于大语言模型与 LanceDB 精准教材向量知识库构建了真正的**“学-练-测-辅-管”全闭环 AI 私教智能体**：
 
-### 🎯 项目概述 (Overview)
-**EduAgent** 是一款开源的、基于 RAG（检索增强生成）的 AI 辅导系统，专为 K-9（1-9年级）学生设计。利用大语言模型和 LanceDB 向量数据库，它提供了一种自适应的、本地化的和高度互动的教育体验。
+- 🧠 **1-9 年级分龄双模态心智引擎**：
+  - **1-3 年级（童趣萌芽模式）**：语言生动活泼、多比喻、多鼓励，保护孩子好奇心，建立专注习惯。
+  - **4-9 年级（逻辑严谨模式）**：引入思维脑图、多步推导支架、反向追问与防坑避雷，强化理性思维与几何/代数深层内功。
+- 🗣️ **苏格拉底启发式交互（拒绝直接甩答案）**：
+  - 遇到难题绝不直接给答案，而是通过层层递进的提问引导孩子自主思考（“你觉得第一步应该先求什么？”）。
+  - 内置语音朗读（TTS）、演练草稿纸、整页秒批、题眼与陷阱专项剖析。
+- 🗺️ **游戏化知识图谱与关卡地图**：
+  - 覆盖人教版 1-9 年级全学科章节图谱，将教材知识解构成探险副本。
+  - 支持开启自由探索与闯关锁定，激发孩子自主通关的内生驱动力。
+- 📒 **智能错题闭环与靶向变式卷**：
+  - **错题一键收录**：智能归类知识点盲区与失分原因。
+  - **靶向变式举一反三**：AI 动态生成同类变式题，确保真正搞懂本质。
+  - **A4 打印排版**：支持直接导出 A4 清爽试卷格式，线下练习无缝衔接。
+- 📊 **家长监工看板与每周深度学情诊断**：
+  - 自动追踪互动频次、攻克错题数、薄弱知识分布。
+  - 智能生成给家长的定制跟进建议（包括亲子沟通技巧与微习惯养成建议），可打印“家访便签”。
+- 📱 **全平台跨端体验**：
+  - **PC 网页端**：沉浸式大屏操作，多窗口分屏，适合书房学习与深度做题。
+  - **Android 原生端**：专为手机 9:16 竖屏优化，贴边全屏防误触，随身口袋私教。
 
-“教育公平从来不是一句口号。我们致力于将顶级的 AI 私人教师带入每一个普通家庭。”
+---
 
-### 🌟 核心特性 (Features)
-
-EduAgent 摒弃了传统的“直接给答案”模式，而是基于大模型（Gemini）与精准向量库（RAG）构建了真正的**引导式智能体**：
-
-- 🧠 **双模态教学引擎**：
-  - **1-3年级（童趣模式）**：语言生动活泼，多鼓励、多比喻，保护孩子学习兴趣。
-  - **4-9年级（逻辑模式）**：侧重思维导图、逻辑推演与错题闭环。
-- 📚 **精准 RAG 知识库**：深度集成人教版教材 PDF，所有 AI 回答强制优先引用课本原话，杜绝大模型“幻觉”。
-- 🗣️ **苏格拉底提问法**：遇到难题不给最终答案，而是通过启发式提问（如“你觉得第一步应该先求什么？”）引导孩子自主解题。
-- 📷 **多模态搜题**：支持直接拍照上传作业题目，AI 自动进行 OCR 解析并分步指导。
-- 📒 **智能错题本**：后台自动追踪孩子反复出错的知识点并收录，支持一键生成“举一反三”变式练习卷。
-
-### 🛠️ 技术架构 (Tech Stack)
+## 🛠️ 技术架构 (Tech Stack)
 
 ```mermaid
 graph TD
-    A[React Client] -->|API Requests| B(Node.js Server)
-    B -->|Query & Context| C{Gemini LLM}
-    B -->|Search| D[(LanceDB Vector DB)]
-    D -->|Ingest| E[Python RAG Scripts]
-    E -->|Parse| F[1-9 Grade Textbooks PDF]
+    UserApp[📱 Android 原生 APK / 💻 Web 浏览器] -->|API 请求| Server(Node.js / Express 后端服务)
+    Server -->|教材向量检索| LanceDB[(LanceDB 向量知识库)]
+    Server -->|分龄 Prompt / 思维链| Gemini{Google Gemini 大模型}
+    LanceDB -->|本地高速向量入库| PythonRAG[Python RAG 多模态提取管道]
+    PythonRAG -->|OCR & 结构切片| Textbooks[人教版 1-9 年级教材库]
 ```
 
-### 🚀 快速开始 (Quick Start)
+---
 
-得益于我们高度自动化的启动脚本，您**不需要**手动配置复杂的 Node.js 和环境依赖。
+## 🚀 电脑端本地极速启动 (Quick Start for PC)
 
-#### 1. 克隆仓库
+得益于高度自动化的启动脚本，您**不需要**手动配置复杂的 Node.js 和环境依赖。
+
+### 1. 克隆仓库
 ```bash
 git clone https://github.com/Zenglian990/AI_Tutor_Release.git
 cd AI_Tutor_Release
 ```
 
-#### 2. 一键启动 (全自动构建)
+### 2. 一键启动 (全自动构建)
 - **Windows**: 双击运行 `启动AI辅导.bat`
 - **Mac/Linux**: 在终端执行 `sh start.sh`
 
-> **🪄 魔法体验**: 脚本会自动检查您的 Node.js 环境，并**全自动下载前后端依赖、打包构建前端页面**。
+> **🪄 自动化体验**: 脚本会自动检查您的 Node.js 环境，并**全自动下载前后端依赖、打包构建前端页面**。
 > 首次启动时，终端会**自动弹窗**请求输入您的 `Gemini API Key`（去 Google AI Studio 免费申请即可），然后直接启动服务！
+> 系统将在 `http://localhost:3001` 自动打开主界面。
 
-系统将在 `http://localhost:3001` 自动打开主界面。
-
-#### 3. 关于知识库 (RAG 课本数据)
+### 3. 关于知识库 (RAG 课本数据)
 
 系统提供**极速体验**与**全量教材入库**两种灵活方式：
 
@@ -105,8 +153,12 @@ cd AI_Tutor_Release
      ```
   脚本支持 EasyOCR / Gemini Vision 对课本插图、复杂数学公式排版的智能识别与切片。
 
+---
+
 ## 🤝 参与贡献 (Contributing)
+
 我们非常欢迎社区成员的参与！无论您是开发者、教育工作者还是家长，都欢迎提交 Pull Request 或提出 Issue。让我们共同把这个工具打磨得更好，惠及更多普通家庭。
 
 ---
+
 *由曾练与开源社区倾情打造 ❤️ (Built with ❤️ by Zeng Lian & the Open Source Community)*

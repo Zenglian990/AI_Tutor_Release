@@ -1,112 +1,134 @@
 <div align="center">
 
-# 🎓 EduAgent : AI Tutor for K-9 Education
+# 🎓 ZengLian AI Tutor (曾练专属私教)
 
-**An Open-Source, RAG-Powered AI Tutoring System specifically designed for K-9 Students**
+**The Next-Gen Open-Source RAG AI Tutoring System specifically tailored for K-9 Education**
+*Comprehensive K-9 Textbooks Knowledge Base · Dual-Modal Adaptive Mind Engines · Closed-Loop Learning System*
 
-[![React](https://img.shields.io/badge/Frontend-React-blue?style=flat-square&logo=react)](https://reactjs.org/)
-[![Node.js](https://img.shields.io/badge/Backend-Node.js-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![Python](https://img.shields.io/badge/RAG-Python-yellow?style=flat-square&logo=python)](https://python.org/)
-[![Database](https://img.shields.io/badge/Vector_DB-LanceDB-orange?style=flat-square)](https://lancedb.com/)
+<br/>
+
+[![Download APK](https://img.shields.io/badge/📱_Android_APK-v1.0.0_Download_Now-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
+
+<br/>
+
+[![React](https://img.shields.io/badge/Frontend-React_18-blue?style=flat-square&logo=react)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![Android](https://img.shields.io/badge/Mobile-Capacitor_Android-3DDC84?style=flat-square&logo=android)](https://capacitorjs.com/)
+[![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
+[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
-[![CI Pipeline](https://github.com/Zenglian990/AI_Tutor_Release/actions/workflows/ci.yml/badge.svg)](https://github.com/Zenglian990/AI_Tutor_Release/actions)
 
-[**中文版**](README.md) | [**English**](README_en.md)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**📱 APK Download**](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
 
-*"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
+> *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
 </div>
+
+---
+
+## 📱 Instant Experience on Android APK (Recommended)
+
+No complex development environments required. Install the native APK directly on your phone to experience the **immersive 9:16 portrait AI Tutor**:
+
+- **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.0.0.apk (~8.8MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
+- **🏷️ GitHub Releases**: [View Release Notes & Versions](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
+- **✨ Mobile Highlights**: Strict 9:16 full-screen portrait lock, edge-to-edge notch screen support, plug-and-play tutoring.
 
 ---
 
 ## 📸 UI Showcase
 
 <div align="center">
-  <img src="docs/assets/ui-main.png" alt="UI Main" width="800"/>
+  <h3>🖥️ 1. Modern Guided Tutoring & Concept Mind Maps</h3>
+  <img src="docs/assets/ui-main.png" alt="Guided Tutoring & Main Interface" width="850"/>
+  <p><i>Deep step-by-step guidance, hierarchical mind maps, instant traps & clues breakdown, live scratchpad</i></p>
   <br/>
-  <img src="docs/assets/ui-settings.png" alt="UI Settings" width="800"/>
+
+  <h3>🗺️ 2. Interactive Gamified Learning Map</h3>
+  <img src="docs/assets/ui-map.png" alt="Gamified Learning Map" width="850"/>
+  <p><i>Chapter exploration islands, progressive stage unlock, turning repetitive homework into an adventure</i></p>
   <br/>
-  <img src="docs/assets/ui-levels.png" alt="UI Levels" width="800"/>
+
+  <h3>🧭 3. Semester Roadmap & Boss Stages</h3>
+  <img src="docs/assets/ui-roadmap.png" alt="Semester Roadmap" width="850"/>
+  <p><i>Full semester dungeon overview with clear targets, core theorems, and rigorous geometric proof advice</i></p>
+  <br/>
+
+  <h3>📝 4. Smart Mistake Notebook & Targeted Variation Sheets</h3>
+  <img src="docs/assets/ui-mistakes.png" alt="Mistake Notebook & Practice Sheets" width="850"/>
+  <p><i>Ebbinghaus review schedules, one-click printable A4 layout, AI-generated variant exercises</i></p>
+  <br/>
+
+  <h3>📊 5. Parent Supervision & Weekly Learning Diagnostics</h3>
+  <img src="docs/assets/ui-parent.png" alt="Parent Supervision Dashboard" width="850"/>
+  <p><i>Actionable analytics, weak spot identification, customized parenting guidance, printable teacher notes</i></p>
+  <br/>
+
+  <h3>🎨 6. Social Achievement Posters for WeChat / Social Media</h3>
+  <img src="docs/assets/ui-poster.png" alt="Social Achievement Poster" width="480"/>
+  <p><i>High-aesthetic social poster rendering with personal QR codes and motivational quotes</i></p>
 </div>
 
 ---
 
+## 🌟 Core Features
 
-## English Version
+**ZengLian AI Tutor** eliminates the drawbacks of traditional "homework search engines" that encourage rote copying. Utilizing large language models and LanceDB textbook vector knowledge bases, it establishes a true **"Learn - Practice - Test - Guide - Manage" closed-loop tutoring agent**:
 
-### 🎯 Overview
-**EduAgent** is an open-source, RAG-powered AI tutoring system specifically designed for K-9 students. Utilizing Google's Gemini models and LanceDB, it provides an adaptive, localized, and interactive educational experience.
+- 🧠 **Dual-Modal Teaching Engines for Grades 1-9**:
+  - **Grades 1-3 (Playful Mode)**: Lively language, encouraging tone, and vivid metaphors to nurture curiosity and focus.
+  - **Grades 4-9 (Logical Mode)**: Employs mind maps, multi-step derivation scaffolding, and rigorous counter-questioning.
+- 🗣️ **Socratic Heuristic Tutoring**:
+  - Guides students step-by-step rather than spoon-feeding final answers.
+  - Features real-time Text-to-Speech (TTS), draft scratchpad, instant full-page correction, and trap analysis.
+- 🗺️ **Gamified Knowledge Graph**:
+  - Maps complete textbook curricula into explorable stages and dungeons with progressive locks.
+- 📒 **Mistake Closed Loop & Targeted Variation Practice**:
+  - Automatically captures flawed concepts, generates parallel variations, and exports clean A4 test papers.
+- 📊 **Parent Supervision & Academic Diagnosis**:
+  - Generates comprehensive weekly reports with personalized parent follow-up recommendations.
+- 📱 **Cross-Platform Access**:
+  - **Web Application**: Immersive desktop multi-window experience.
+  - **Native Android APK**: Tailored for 9:16 portrait phones.
 
-"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."
+---
 
-### 🌟 Features
-
-EduAgent abandons the traditional "give the answer directly" model. Instead, it builds a true **guided agent** based on LLMs (Gemini) and precise vector databases (RAG):
-
-- 🧠 **Dual-Modal Teaching Engine**:
-  - **Grades 1-3 (Playful Mode)**: Lively language, encouraging tone, and metaphors to protect children's interest in learning.
-  - **Grades 4-9 (Logical Mode)**: Focuses on mind maps, logical deduction, and closed-loop mistake tracking.
-- 📚 **Precise RAG Knowledge Base**: Deeply integrates official K-9 textbook PDFs. All AI answers prioritize citing original textbook text, eliminating LLM "hallucinations".
-- 🗣️ **Socratic Method**: It never gives the final answer immediately when encountering difficult problems. Instead, it guides the child to solve the problem independently through heuristic questioning (e.g., "What do you think we should calculate first?").
-- 📷 **Multi-modal Problem Search**: Supports uploading photos of homework. The AI automatically performs OCR parsing and provides step-by-step guidance.
-- 📒 **Smart Mistake Notebook**: Automatically tracks and records knowledge points where the child frequently makes mistakes, and supports one-click generation of variation exercise sheets.
-
-### 🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 ```mermaid
 graph TD
-    A[React Client] -->|API Requests| B(Node.js Server)
-    B -->|Query & Context| C{Gemini LLM}
-    B -->|Search| D[(LanceDB Vector DB)]
-    D -->|Ingest| E[Python RAG Scripts]
-    E -->|Parse| F[1-9 Grade Textbooks PDF]
+    UserApp[📱 Native Android APK / 💻 Web Browser] -->|API Requests| Server(Node.js / Express Server)
+    Server -->|Vector Search| LanceDB[(LanceDB Vector DB)]
+    Server -->|Age-Adaptive Prompts| Gemini{Google Gemini LLM}
+    LanceDB -->|Fast Embeddings| PythonRAG[Python RAG Multimodal Ingestion]
+    PythonRAG -->|OCR & Chunking| Textbooks[1-9 Grade Textbooks Library]
 ```
 
-### 🚀 Quick Start
+---
 
-Thanks to our highly automated startup scripts, you **DO NOT** need to manually configure complex Node.js or Python dependencies.
+## 🚀 Quick Start for PC
 
-#### 1. Clone the repository
+With our automated startup scripts, you **DO NOT** need to manually configure complicated dependencies.
+
+### 1. Clone the repository
 ```bash
 git clone https://github.com/Zenglian990/AI_Tutor_Release.git
 cd AI_Tutor_Release
 ```
 
-#### 2. One-Click Start (Fully Automated)
-- **Windows**: Double-click to run `启动AI辅导.bat`
-- **Mac/Linux**: Run `sh start.sh` in your terminal
+### 2. One-Click Start (Fully Automated)
+- **Windows**: Double-click `启动AI辅导.bat`
+- **Mac/Linux**: Execute `sh start.sh` in your terminal
 
-> **🪄 Magic Experience**: The script will automatically check your Node.js environment, **download all backend/frontend dependencies, and build the React frontend automatically**.
-> On first run, it will **automatically prompt** you to enter your `Gemini API Key` (get one for free at Google AI Studio), and then start the server directly!
-
-The system will automatically open the main interface at `http://localhost:3001`.
-
-#### 3. About the Knowledge Base (RAG Textbook Data)
-
-We support two flexible setup methods:
-
-- **⚡ Option A: Instant Demo (Zero-Config Built-in Data)**
-  No Python setup required! Run directly in your terminal:
-  ```bash
-  npm run seed:demo
-  ```
-  This command seeds core curriculum chapters for Grades 1-9 (elementary math & Chinese, junior high rational numbers, Pythagorean theorem, physics acoustics, chemistry, etc.) into your local LanceDB instance with 768-dim vector alignment and FTS indexing. You can immediately test textbook-grounded RAG!
-
-- **📚 Option B: Full K-9 Textbook Ingestion (Batch PDF Processing)**
-  If you have the full set of K-9 PEP (人教版) textbook PDFs:
-  1. Install Python extraction dependencies:
-     ```bash
-     pip install -r requirements.txt
-     ```
-  2. Place your textbook PDFs into `data/textbooks/` (recommended naming format: `人教版_数学_七年级上册.pdf`).
-  3. Run the multimodal ingestion script:
-     ```bash
-     python scripts/ingest_2_0.py
-     ```
-  The pipeline utilizes EasyOCR / Gemini Vision to intelligently parse diagrams, formulas, and textbook structures into high-density vector chunks.
-
-## 🤝 Contributing
-We highly welcome contributions from community members! Whether you are a developer, an educator, or a parent, you are welcome to submit Pull Requests or open Issues. Let's work together to polish this tool and benefit more ordinary families.
+> The script automatically installs required dependencies, builds the frontend, and prompts for your `Gemini API Key` before opening `http://localhost:3001` in your browser.
 
 ---
-*Built with ❤️ by 曾练 (Zeng Lian) & the Open Source Community*
+
+## 🤝 Contributing
+
+Contributions are warmly welcomed! Whether you are a developer, an educator, or a parent, feel free to open a Pull Request or file an Issue.
+
+---
+
+*Built with ❤️ by Zeng Lian & the Open Source Community*
