@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
+import defaultWechatQr from '../assets/zeng_wechat_qr.png';
 
 export default function ParentSharePosterModal({ isOpen, onClose }) {
   const { currentProfile } = useAppStore();
@@ -10,9 +11,9 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
   const [template, setTemplate] = useState('primary'); // 'primary' | 'junior'
   const [showConfig, setShowConfig] = useState(false);
 
-  // QR Code configuration
-  const [qrType, setQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'url'); // 'url' | 'custom_image'
-  const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || '');
+  // QR Code configuration — defaults to Zeng's official WeChat QR code
+  const [qrType, setQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'custom_image'); // 'custom_image' | 'url'
+  const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || defaultWechatQr);
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
   const [lanUrl, setLanUrl] = useState('');
   const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '私教微信：扫码添加曾先生');
@@ -416,30 +417,42 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                   📷 点击上传曾先生微信二维码图片
                 </button>
                 {customQrImage ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <img
                       src={customQrImage}
                       alt="预览"
-                      style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover', border: '1px solid #cbd5e1' }}
+                      style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', border: '1px solid #10b981' }}
                     />
                     <span style={{ color: '#059669', fontSize: '0.82rem', fontWeight: 600 }}>
-                      ✓ 已加载您的微信二维码，海报将直接使用该名片码！
+                      {customQrImage === defaultWechatQr ? '✓ 已搭载曾先生专属微信名片码（扫码加好友）' : '✓ 已加载自定义微信名片码！'}
                     </span>
+                    {customQrImage !== defaultWechatQr && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomQrImage(defaultWechatQr);
+                          localStorage.removeItem('parent_poster_custom_qr_img');
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        恢复曾先生默认名片
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.82rem' }}>当前未设置图片</span>
                     <button
                       type="button"
                       onClick={() => {
-                        setCustomQrImage('');
+                        setCustomQrImage(defaultWechatQr);
                         localStorage.removeItem('parent_poster_custom_qr_img');
                       }}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', cursor: 'pointer' }}
                     >
-                      移除
+                      加载曾先生默认微信码
                     </button>
                   </div>
-                ) : (
-                  <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
-                    （支持微信个人二维码截图或企业微信名片码，微信长按直接加曾先生好友买课/领试用）
-                  </span>
                 )}
               </div>
             )}
