@@ -110,67 +110,20 @@ export default function Header({
 
   return (
     <header className="header" role="banner" aria-label="应用顶栏">
-      <div className="header-icon" onClick={onClearChat} title="点击清空对话" role="button" tabIndex={0} aria-label="清空当前对话" onKeyDown={e => e.key === 'Enter' && onClearChat()}>
-        🎓
+      {/* 品牌与标题 (Left) */}
+      <div className="header-left">
+        <div className="header-icon" onClick={onClearChat} title="点击清空对话" role="button" tabIndex={0} aria-label="清空当前对话" onKeyDown={e => e.key === 'Enter' && onClearChat()}>
+          🎓
+        </div>
+        <div className="header-text">
+          <h1>{getTranslation(language, 'app.title')}</h1>
+          <div className="header-subtitle">{getTranslation(language, 'app.subtitle')}</div>
+        </div>
       </div>
-      <div className="header-text">
-        <h1>{getTranslation(language, 'app.title')}</h1>
-        <div className="header-subtitle">{getTranslation(language, 'app.subtitle')}</div>
-      </div>
-      {/* Membership VIP Button */}
-      {onOpenMembership && (
-        <button onClick={onOpenMembership} aria-label="会员中心与卡密激活" title={isVip ? '当前：VIP尊享会员（点击查看权益）' : '点击输入卡密激活 VIP 会员'}
-          style={{
-            background: isVip ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'rgba(255, 255, 255, 0.1)',
-            color: isVip ? '#ffffff' : '#facc15',
-            border: isVip ? 'none' : '1px solid rgba(250, 204, 21, 0.3)',
-            borderRadius: '8px', cursor: 'pointer', fontSize: '13px', padding: '4px 10px',
-            marginRight: '6px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold'
-          }}>
-          <span>👑</span>
-          <span style={{ fontSize: '12px' }}>{isVip ? 'VIP会员' : '激活VIP'}</span>
-        </button>
-      )}
-      {/* Parent Acquisition Poster Button */}
-      {onOpenPoster && (
-        <button onClick={onOpenPoster} aria-label="生成家长宣传海报" title="生成带二维码的家长宣传获客海报"
-          style={{
-            background: 'rgba(56, 189, 248, 0.15)',
-            color: '#38bdf8',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            borderRadius: '8px', cursor: 'pointer', fontSize: '13px', padding: '4px 8px',
-            marginRight: '6px', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 'bold'
-          }}>
-          <span>📣</span>
-          <span style={{ fontSize: '12px' }}>海报</span>
-        </button>
-      )}
-      <button onClick={toggleEinkMode} aria-label={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式'} title={isEinkMode ? '当前：墨水屏纸质护眼模式（点击退出）' : '切换为墨水屏纸质护眼模式 (零残影·无频闪)'}
-        style={{
-          background: isEinkMode ? '#000' : 'rgba(255, 255, 255, 0.1)',
-          color: isEinkMode ? '#fff' : 'inherit',
-          border: isEinkMode ? '1px solid #000' : '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontSize: '14px',
-          padding: '3px 8px',
-          marginRight: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '3px'
-        }}>
-        <span>📖</span>
-        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{isEinkMode ? '墨水屏' : '纸质'}</span>
-      </button>
-      <button onClick={onThemeToggle} aria-label={isLightMode ? '切换到深色模式' : '切换到浅色模式'} title="切换主题"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', marginRight: '5px' }}>
-        {isLightMode ? '🌙' : '☀️'}
-      </button>
-      <button onClick={onSettingsOpen} aria-label="打开系统设置" title="系统设置"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', marginRight: '10px' }}>
-        ⚙️
-      </button>
-      <div className="header-controls" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+
+      {/* 控制栏与快捷工具 (Right) */}
+      <div className="header-controls">
+        {/* 学生档案选择与编辑 */}
         <select className="grade-selector" style={{ backgroundColor: 'var(--accent-color)', color: 'white', fontWeight: 'bold' }}
           value={currentProfileId} onChange={e => onProfileChange(e.target.value)} aria-label="选择学生档案">
           {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
@@ -196,14 +149,18 @@ export default function Header({
             🗑️
           </button>
         )}
+
+        {/* 学科选择 */}
         <select className="grade-selector" value={selectedSubject} onChange={e => onSubjectChange(e.target.value)} aria-label="选择学科">
           {getValidSubjectsForGrade(selectedGrade).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
+
+        {/* 年级选择 */}
         <select className="grade-selector" value={selectedGrade} onChange={e => onGradeChange(e.target.value)} aria-label="选择年级">
           {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
         </select>
 
-        {/* Persona Selector */}
+        {/* 名师风格 */}
         <select
           className="grade-selector"
           value={tutorPersona}
@@ -250,6 +207,8 @@ export default function Header({
             <span>动点沙盒</span>
           </button>
         )}
+
+        {/* 段位勋章 */}
         {onOpenGamification && (
           <button
             onClick={onOpenGamification}
@@ -260,8 +219,8 @@ export default function Header({
               color: '#facc15',
               border: '1px solid rgba(234, 179, 8, 0.4)',
               borderRadius: '10px',
-              padding: '6px 12px',
-              fontSize: '0.85rem',
+              padding: '6px 10px',
+              fontSize: '0.82rem',
               fontWeight: 'bold',
               cursor: 'pointer',
               display: 'flex',
@@ -288,7 +247,7 @@ export default function Header({
               color: isVip ? '#fbbf24' : '#c084fc',
               border: `1px solid ${isVip ? 'rgba(234, 179, 8, 0.5)' : 'rgba(139, 92, 246, 0.4)'}`,
               borderRadius: '10px',
-              padding: '6px 11px',
+              padding: '6px 10px',
               fontSize: '0.82rem',
               fontWeight: 'bold',
               cursor: 'pointer',
@@ -314,7 +273,7 @@ export default function Header({
               color: '#34d399',
               border: '1px solid rgba(16, 185, 129, 0.35)',
               borderRadius: '10px',
-              padding: '6px 11px',
+              padding: '6px 10px',
               fontSize: '0.82rem',
               fontWeight: 'bold',
               cursor: 'pointer',
@@ -325,18 +284,48 @@ export default function Header({
             }}
           >
             <span>📣</span>
-            <span>裂变海报</span>
+            <span>海报</span>
           </button>
         )}
 
+        {/* 教学模式 */}
         <button onClick={handleSocraticClick} title={getTranslation(language, `mode.${currentSocratic.value}_title`)} aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
           style={{
             background: socraticLevel !== 'direct' ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)',
             color: 'white', border: '1px solid var(--glass-border)', borderRadius: '10px',
-            padding: '6px 12px', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s'
+            padding: '6px 10px', fontSize: '0.82rem', cursor: 'pointer', transition: 'all 0.2s'
           }}>
           {currentSocratic.label}
         </button>
+
+        {/* 护眼纸质/深色/设置 快捷工具图标组 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', paddingLeft: '4px', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+          <button onClick={toggleEinkMode} aria-label={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式'} title={isEinkMode ? '当前：墨水屏纸质护眼模式（点击退出）' : '切换为墨水屏纸质护眼模式 (零残影·无频闪)'}
+            style={{
+              background: isEinkMode ? '#000' : 'rgba(255, 255, 255, 0.08)',
+              color: isEinkMode ? '#fff' : 'inherit',
+              border: isEinkMode ? '1px solid #000' : '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              padding: '3px 7px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              fontWeight: 'bold'
+            }}>
+            <span>📖</span>
+            <span>{isEinkMode ? '墨水屏' : '纸质'}</span>
+          </button>
+          <button onClick={onThemeToggle} aria-label={isLightMode ? '切换到深色模式' : '切换到浅色模式'} title="切换主题"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px 4px' }}>
+            {isLightMode ? '🌙' : '☀️'}
+          </button>
+          <button onClick={onSettingsOpen} aria-label="打开系统设置" title="系统设置"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px 4px' }}>
+            ⚙️
+          </button>
+        </div>
       </div>
     </header>
   );
