@@ -3,8 +3,9 @@
  * scripts/fetch_and_ingest_external_datasets.js
  * 
  * 批量清洗并导入开源教育数据集：
- * 1. Ape210K (猿辅导 21万道小学数学应用题真题) -> 覆盖 1-6 年级
- * 2. GAOKAO-Bench (全国高考数理化真题) -> 覆盖 初高衔接与拔尖真题
+ * 1. Ape210K (猿辅导 21万道小学数学应用题真题) -> 覆盖 1-6 年级 (5000题)
+ * 2. CMMaTH (中英文多模态数学大题/选择题精细标注库) -> 覆盖 初中/高中 (1000题)
+ * 3. GAOKAO-Bench (全国高考各学科真题库：数学、物理、化学、生物、语文) -> 初高衔接与各学科选拔真题
  */
 
 const fs = require('fs');
@@ -13,7 +14,12 @@ const { batchIngestQuestions, getDb } = require('./ingest_canonical_questions');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const APE_PATH = path.join(DATA_DIR, 'valid.ape.json');
+const CMMATH_PATH = path.join(DATA_DIR, 'cmmath.json');
 const GAOKAO_MATH_PATH = path.join(DATA_DIR, 'gaokao_math_mcq.json');
+const GAOKAO_PHYSICS_PATH = path.join(DATA_DIR, 'gaokao_physics.json');
+const GAOKAO_CHEMISTRY_PATH = path.join(DATA_DIR, 'gaokao_chemistry.json');
+const GAOKAO_BIOLOGY_PATH = path.join(DATA_DIR, 'gaokao_biology.json');
+const GAOKAO_CHINESE_PATH = path.join(DATA_DIR, 'gaokao_chinese.json');
 
 /**
  * 根据小学应用题题干、方程与答案智能推导年级与章节
@@ -70,7 +76,7 @@ function inferApeGradeAndChapter(text, equation, ans) {
 /**
  * 转换 Ape210K 试题
  */
-function transformApeQuestions(limit = 350) {
+function transformApeQuestions(limit = 10000) {
   if (!fs.existsSync(APE_PATH)) {
     console.warn(`[Warning] 未找到 ${APE_PATH}，跳过 Ape210K 导入`);
     return [];
@@ -113,16 +119,68 @@ function transformApeQuestions(limit = 350) {
 }
 
 /**
- * 转换 GAOKAO-Bench 试题
+ * 转换 CMMaTH 试题
  */
-function transformGaokaoQuestions(limit = 100) {
-  if (!fs.existsSync(GAOKAO_MATH_PATH)) {
-    console.warn(`[Warning] 未找到 ${GAOKAO_MATH_PATH}，跳过 GAOKAO 导入`);
+function transformCmmathQuestions(limit = 2000) {
+  if (!fs.existsSync(CMMATH_PATH)) {
+    console.warn(`[Warning] 未找到 ${CMMATH_PATH}，跳过 CMMaTH 导入`);
     return [];
   }
 
   try {
-    const raw = JSON.parse(fs.readFileSync(GAOKAO_MATH_PATH, 'utf-8'));
+    const raw = JSON.parse(fs.readFileSync(CMMATH_PATH, 'utf-8'));
+    const list = Array.isArray(raw) ? raw : [];
+    const selected = list.slice(0, Math.min(list.length, limit));
+    const questions = [];
+
+    for (const item of selected) {
+      const qText = (item.question || '').trim();
+      const ans = String(item.answer || '').trim();
+      const analysis = (item.analysis || '').trim();
+      const kp = (item.knowledge_point || '').trim();
+      const gradeId = Number(item.grade_id);
+
+      if (!qText || !ans) continue;
+
+      // 映射年级: grade_id 7-9 为初中 (7_up, 8_up, 9_up), 10-12 为高中 (senior)
+      let grade = 'senior';
+      if (gradeId === 7) grade = '7_up';
+      else if (gradeId === 8) grade = '8_up';
+      else if (gradeId === 9) grade = '9_up';
+      else if (gradeId <= 6 && gradeId > 0) grade = `${gradeId}_up`;
+
+      questions.push({
+        question: qText,
+        options: '',
+        standard_answer: ans,
+        analysis: analysis || `标准答案为 ${ans}。`,
+        key_insight: kp ? `核心考查知识点：${kp}。结合几何与代数综合推导。` : '注重数形结合思想与规范解题步骤。',
+        grade,
+        subject: '数学',
+        chapter: kp || '初高中数学专项拔高',
+        source: 'CMMaTH多模态数学大题库'
+      });
+    }
+
+    console.log(`[CMMaTH] 成功解析 ${questions.length} 道初高中数学真题`);
+    return questions;
+  } catch (e) {
+    console.warn('[CMMaTH Parse Error]', e.message);
+    return [];
+  }
+}
+
+/**
+ * 转换 GAOKAO-Bench 试题文件
+ */
+function parseGaokaoFile(filePath, subjectName, defaultChapter, limit = 500) {
+  if (!fs.existsSync(filePath)) {
+    console.warn(`[Warning] 未找到 ${filePath}，跳过 ${subjectName} 导入`);
+    return [];
+  }
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     const examples = Array.isArray(raw.example) ? raw.example : [];
     const selected = examples.slice(0, Math.min(examples.length, limit));
     const questions = [];
@@ -131,6 +189,8 @@ function transformGaokaoQuestions(limit = 100) {
       const qText = (item.question || '').trim();
       const ans = Array.isArray(item.answer) ? item.answer.join('') : String(item.answer || '').trim();
       const analysis = (item.analysis || '').trim();
+      const year = item.year || '高考';
+      const category = item.category || '';
 
       if (!qText || !ans) continue;
 
@@ -138,32 +198,49 @@ function transformGaokaoQuestions(limit = 100) {
         question: qText,
         options: '',
         standard_answer: ans,
-        analysis: analysis || `标准答案为 ${ans}。`,
-        key_insight: '高考真题侧重考查基础概念的综合运用与严谨推导。',
+        analysis: analysis || `【标准答案】：${ans}\n【考查要点】：全国卷高考学科核心概念与逻辑推理能力。`,
+        key_insight: `高考真题(${year} ${category})侧重考查基础概念的综合运用与严谨推导。`,
         grade: 'senior',
-        subject: '数学',
-        chapter: '高中数学综合选拔真题',
-        source: 'GAOKAO-Bench全国高考真题库'
+        subject: subjectName,
+        chapter: defaultChapter,
+        source: `GAOKAO-Bench全国高考${subjectName}真题`
       });
     }
 
-    console.log(`[GAOKAO-Bench] 成功解析 ${questions.length} 道全国高考真题`);
+    console.log(`[GAOKAO-Bench] [${subjectName}] 成功解析 ${questions.length} 道真题`);
     return questions;
   } catch (e) {
-    console.warn('[GAOKAO-Bench Parse Error]', e.message);
+    console.warn(`[GAOKAO-Bench ${subjectName} Parse Error]`, e.message);
     return [];
   }
+}
+
+/**
+ * 汇总 GAOKAO-Bench 各学科
+ */
+function transformGaokaoQuestions() {
+  const math = parseGaokaoFile(GAOKAO_MATH_PATH, '数学', '高中数学综合选拔真题', 500);
+  const physics = parseGaokaoFile(GAOKAO_PHYSICS_PATH, '物理', '高中物理力学与电磁学真题', 500);
+  const chemistry = parseGaokaoFile(GAOKAO_CHEMISTRY_PATH, '化学', '高中化学反应原理与有机化学真题', 500);
+  const biology = parseGaokaoFile(GAOKAO_BIOLOGY_PATH, '生物', '高中生物分子与遗传学真题', 500);
+  const chinese = parseGaokaoFile(GAOKAO_CHINESE_PATH, '语文', '高中语文语言文字运用真题', 500);
+
+  return [...math, ...physics, ...chemistry, ...biology, ...chinese];
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
 
-  console.log('[Ingestion Pipeline] 开始准备外部优质题库数据...');
-  const apeQuestions = transformApeQuestions(350);
-  const gaokaoQuestions = transformGaokaoQuestions(100);
+  console.log('====================================================');
+  console.log('[Ingestion Pipeline] 启动全量优质题库扩容导入任务...');
+  console.log('====================================================');
 
-  const allQuestions = [...apeQuestions, ...gaokaoQuestions];
+  const apeQuestions = transformApeQuestions(10000); // valid.ape.json 全部 5,000 道题
+  const cmmathQuestions = transformCmmathQuestions(2000); // cmmath.json 全部 1,000 道题
+  const gaokaoQuestions = transformGaokaoQuestions(); // 高考数、理、化、生、语
+
+  const allQuestions = [...apeQuestions, ...cmmathQuestions, ...gaokaoQuestions];
   console.log(`[Ingestion Pipeline] 汇总待导入题目总计: ${allQuestions.length} 道`);
 
   const db = await getDb();
@@ -180,6 +257,8 @@ if (require.main === module) {
 
 module.exports = {
   transformApeQuestions,
+  transformCmmathQuestions,
   transformGaokaoQuestions,
   inferApeGradeAndChapter
 };
+

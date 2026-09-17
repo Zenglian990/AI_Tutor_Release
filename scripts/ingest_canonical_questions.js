@@ -50,6 +50,10 @@ async function batchIngestQuestions(questions, options = {}) {
 
   console.log(`[IngestPipeline] 开始处理 ${questions.length} 道试题...`);
 
+  if (!options.dryRun) {
+    await db.run('BEGIN TRANSACTION');
+  }
+
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
     const questionText = String(q.question || q.snippet || '').trim();
@@ -103,6 +107,10 @@ async function batchIngestQuestions(questions, options = {}) {
       console.warn(`[IngestPipeline] 写入第 ${i + 1} 题失败:`, err.message);
       skippedCount++;
     }
+  }
+
+  if (!options.dryRun) {
+    await db.run('COMMIT');
   }
 
   const row = await db.get('SELECT COUNT(*) as total FROM canonical_questions');
