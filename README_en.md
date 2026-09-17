@@ -42,30 +42,35 @@ No complex development environments required. Install the native APK directly on
 <div align="center">
   <h3>🖥️ 1. Modern Guided Tutoring & Concept Mind Maps</h3>
   <img src="docs/assets/ui-main.png" alt="Guided Tutoring & Main Interface" width="850"/>
-  <p><i>Deep step-by-step guidance, hierarchical mind maps, instant traps & clues breakdown, live scratchpad</i></p>
+  <p><i>Deep step-by-step guidance, hierarchical mind maps, instant traps & clues breakdown, full page checking</i></p>
   <br/>
 
-  <h3>🗺️ 2. Interactive Gamified Learning Map</h3>
+  <h3>📐 2. Immersive Scratchpad & Geometry/Parabola Whiteboard</h3>
+  <img src="docs/assets/ui-scratchpad.png" alt="Interactive Scratchpad and Whiteboard" width="850"/>
+  <p><i>Handwritten scratchpad, dynamic geometry points, parabola sandbox, and instant "Grade My Scratchpad" AI audit</i></p>
+  <br/>
+
+  <h3>🗺️ 3. Interactive Gamified Learning Map</h3>
   <img src="docs/assets/ui-map.png" alt="Gamified Learning Map" width="850"/>
   <p><i>Chapter exploration islands, progressive stage unlock, turning repetitive homework into an adventure</i></p>
   <br/>
 
-  <h3>🧭 3. Semester Roadmap & Boss Stages</h3>
+  <h3>🧭 4. Semester Roadmap & Boss Stages</h3>
   <img src="docs/assets/ui-roadmap.png" alt="Semester Roadmap" width="850"/>
   <p><i>Full semester dungeon overview with clear targets, core theorems, and rigorous geometric proof advice</i></p>
   <br/>
 
-  <h3>📝 4. Smart Mistake Notebook & Targeted Variation Sheets</h3>
+  <h3>📝 5. Smart Mistake Notebook & Targeted Variation Sheets</h3>
   <img src="docs/assets/ui-mistakes.png" alt="Mistake Notebook & Practice Sheets" width="850"/>
   <p><i>Ebbinghaus review schedules, one-click printable A4 layout, AI-generated variant exercises</i></p>
   <br/>
 
-  <h3>📊 5. Parent Supervision & Weekly Learning Diagnostics</h3>
+  <h3>📊 6. Parent Supervision & Weekly Learning Diagnostics</h3>
   <img src="docs/assets/ui-parent.png" alt="Parent Supervision Dashboard" width="850"/>
   <p><i>Actionable analytics, weak spot identification, customized parenting guidance, printable teacher notes</i></p>
   <br/>
 
-  <h3>🎨 6. Social Achievement Posters for WeChat / Social Media</h3>
+  <h3>🎨 7. Social Achievement Posters for WeChat / Social Media</h3>
   <img src="docs/assets/ui-poster.png" alt="Social Achievement Poster" width="480"/>
   <p><i>High-aesthetic social poster rendering with personal QR codes and motivational quotes</i></p>
 </div>
