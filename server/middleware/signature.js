@@ -3,7 +3,7 @@ const { API_TOKEN, NODE_ENV } = require('../config');
 
 function signatureMiddleware(req, res, next) {
   // Allow health check, parent remote view (token based) and static assets without signature
-  if (req.path === '/health' || req.path === '/parent/remote-view') return next();
+  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/network-info') return next();
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // In development, optionally skip signature if REQUIRE_AUTH is not set
