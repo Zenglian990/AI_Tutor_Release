@@ -392,3 +392,152 @@ body {
   }
 }
 
+/* ==========================================================================
+   Android APK & Mobile 9:16 Edge-to-Edge Full-Screen Adaptation
+   消除手机端黑边与悬浮卡片缩进，保证 9:16 原生沉浸式满屏展示
+   ========================================================================== */
+@media (max-width: 768px), (pointer: coarse) {
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    background-color: var(--bg-color) !important;
+  }
+
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    justify-content: stretch;
+    align-items: stretch;
+  }
+
+  .app-container {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: var(--bg-color) !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 顶部状态栏与安全区域适配 */
+  .header {
+    height: auto !important;
+    min-height: 52px !important;
+    max-height: none !important;
+    padding-top: max(6px, env(safe-area-inset-top)) !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+    padding-bottom: 6px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+  }
+  .header::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-left {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .header-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .header-brand h1 {
+    font-size: 0.92rem;
+  }
+
+  .header-capsule {
+    font-size: 11px;
+    padding: 2px 4px;
+    flex-shrink: 0;
+  }
+
+  .capsule-select {
+    font-size: 11px;
+    padding: 2px 8px 2px 2px;
+    max-width: 80px;
+  }
+
+  /* 快捷操作栏支持平滑横向滚动 */
+  .action-bar {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* 底部输入框安全区域适配 */
+  .input-bar {
+    padding-top: 6px !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+    gap: 6px;
+  }
+
+  .chat-input {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+
+  .input-action-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .send-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  /* 欢迎看版在 9:16 屏幕下紧凑贴合 */
+  .welcome-dashboard {
+    padding: 0 10px !important;
+    margin: 8px auto 16px auto !important;
+    gap: 12px !important;
+  }
+
+  .welcome-hero-card {
+    padding: 16px !important;
+    border-radius: 14px !important;
+  }
+
+  .action-dashboard-card {
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* 针对 Capacitor Android 原生容器强制 100% 满屏 */
+.capacitor-android .app-container,
+body.capacitor-app .app-container {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
