@@ -46,7 +46,7 @@ function AppInner() {
     autoRead, setAutoRead, isLightMode, setIsLightMode,
     handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
     setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
-    language, t, chatModel, tutorPersona
+    language, t, chatModel, tutorPersona, setTutorPersona
   } = store;
 
   const isOffline = useOfflineStatus();
