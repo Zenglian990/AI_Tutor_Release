@@ -322,11 +322,13 @@ body {
 .action-bar {
   padding: 6px 16px !important;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -478,12 +480,16 @@ body {
     max-width: 80px;
   }
 
-  /* 快捷操作栏支持平滑横向滚动 */
+  /* 快捷操作栏支持平滑横向滚动（支持手指左右滑动） */
   .action-bar {
-    padding: 6px 10px !important;
-    gap: 6px !important;
+    padding: 6px 12px !important;
+    gap: 8px !important;
+    justify-content: flex-start !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    scroll-behavior: smooth !important;
+    overscroll-behavior-x: contain !important;
   }
 
   /* 底部输入框安全区域适配 */
