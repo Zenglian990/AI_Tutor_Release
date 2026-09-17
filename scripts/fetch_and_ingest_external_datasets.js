@@ -15,11 +15,58 @@ const { batchIngestQuestions, getDb } = require('./ingest_canonical_questions');
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const APE_PATH = path.join(DATA_DIR, 'valid.ape.json');
 const CMMATH_PATH = path.join(DATA_DIR, 'cmmath.json');
+const MATH23K_PATH = path.join(DATA_DIR, 'Math_23K.json');
 const GAOKAO_MATH_PATH = path.join(DATA_DIR, 'gaokao_math_mcq.json');
 const GAOKAO_PHYSICS_PATH = path.join(DATA_DIR, 'gaokao_physics.json');
 const GAOKAO_CHEMISTRY_PATH = path.join(DATA_DIR, 'gaokao_chemistry.json');
 const GAOKAO_BIOLOGY_PATH = path.join(DATA_DIR, 'gaokao_biology.json');
 const GAOKAO_CHINESE_PATH = path.join(DATA_DIR, 'gaokao_chinese.json');
+
+/**
+ * 转换 Math23K 试题（23,162 道精选中小学数学应用题真题）
+ */
+function transformMath23kQuestions(limit = 30000) {
+  if (!fs.existsSync(MATH23K_PATH)) {
+    console.warn(`[Warning] 未找到 ${MATH23K_PATH}，跳过 Math23K 导入`);
+    return [];
+  }
+
+  const content = fs.readFileSync(MATH23K_PATH, 'utf-8');
+  const chunks = content.split(/\n(?=\{)/g);
+  const selected = chunks.slice(0, Math.min(chunks.length, limit));
+  const questions = [];
+
+  for (const chunk of selected) {
+    if (!chunk.trim()) continue;
+    try {
+      const item = JSON.parse(chunk.trim());
+      const text = (item.original_text || item.segmented_text || '').trim();
+      const ans = String(item.ans || '').trim();
+      const eq = String(item.equation || '').trim();
+
+      if (!text || !ans) continue;
+
+      const { grade, chapter, keyInsight } = inferApeGradeAndChapter(text, eq, ans);
+
+      questions.push({
+        question: text,
+        options: '',
+        standard_answer: ans,
+        analysis: `【标准方程与列式】：${eq}\n【详细解答】：根据题干等量关系列式求解，计算得出准确结果为 ${ans}。\n【特级教师精析】：${keyInsight}`,
+        key_insight: keyInsight,
+        grade,
+        subject: '数学',
+        chapter,
+        source: 'Math23K权威中小学数学应用题真题集'
+      });
+    } catch (e) {
+      // ignore json parse error
+    }
+  }
+
+  console.log(`[Math23K] 成功解析 ${questions.length} 道权威应用题真题`);
+  return questions;
+}
 
 /**
  * 根据小学应用题题干、方程与答案智能推导年级与章节
@@ -239,8 +286,9 @@ async function main() {
   const apeQuestions = transformApeQuestions(10000); // valid.ape.json 全部 5,000 道题
   const cmmathQuestions = transformCmmathQuestions(2000); // cmmath.json 全部 1,000 道题
   const gaokaoQuestions = transformGaokaoQuestions(); // 高考数、理、化、生、语
+  const math23kQuestions = transformMath23kQuestions(30000); // Math23K 全部 23,162 道题
 
-  const allQuestions = [...apeQuestions, ...cmmathQuestions, ...gaokaoQuestions];
+  const allQuestions = [...apeQuestions, ...cmmathQuestions, ...gaokaoQuestions, ...math23kQuestions];
   console.log(`[Ingestion Pipeline] 汇总待导入题目总计: ${allQuestions.length} 道`);
 
   const db = await getDb();
@@ -259,6 +307,7 @@ module.exports = {
   transformApeQuestions,
   transformCmmathQuestions,
   transformGaokaoQuestions,
+  transformMath23kQuestions,
   inferApeGradeAndChapter
 };
 
