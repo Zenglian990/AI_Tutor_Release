@@ -59,6 +59,37 @@ router.get('/health', (req, res) => {
   res.json(base);
 });
 
+// GET /api/system/network-info — Get server host LAN IP for mobile phone QR code scanning
+const os = require('os');
+function getPrimaryLanIp() {
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          if (iface.address.startsWith('192.168.') || iface.address.startsWith('10.') || /^172\.(1[6-9]|2\d|3[01])\./.test(iface.address)) {
+            return iface.address;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+  return '127.0.0.1';
+}
+
+router.get('/system/network-info', (req, res) => {
+  const lanIp = getPrimaryLanIp();
+  const port = process.env.PORT || 3001;
+  res.json({
+    lanIp,
+    port,
+    lanUrl: `http://${lanIp}:${port}`,
+    hostname: os.hostname()
+  });
+});
+
 // Chat history
 router.get('/chat-history', async (req, res) => {
   try {

@@ -1,15 +1,61 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
-import { useAppStore } from '../store/useStore';
+import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
 
 export default function ParentSharePosterModal({ isOpen, onClose }) {
   const { currentProfile } = useAppStore();
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   const [template, setTemplate] = useState('primary'); // 'primary' | 'junior'
-  const [generating, setGenerating] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+
+  // QR Code configuration
+  const [qrType, setQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'url'); // 'url' | 'custom_image'
+  const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || '');
+  const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
+  const [lanUrl, setLanUrl] = useState('');
+  const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '私教微信：扫码添加曾先生');
+  const [promoLine1, setPromoLine1] = useState(() => localStorage.getItem('parent_poster_promo_line1') || '送 7 天名校全真模考体验');
+  const [promoLine2, setPromoLine2] = useState(() => localStorage.getItem('parent_poster_promo_line2') || '全国 1-9 年级教材同步深度辅导');
 
   const studentName = currentProfile?.name || '同学';
   const grade = currentProfile?.grade || '7';
+
+  // Fetch LAN IP info on mount
+  useEffect(() => {
+    authFetch(`${getApiUrl()}/api/system/network-info`)
+      .then(res => res.json())
+      .then(d => {
+        if (d && d.lanUrl) {
+          setLanUrl(d.lanUrl);
+          const savedUrl = localStorage.getItem('parent_poster_target_url');
+          if (!savedUrl || savedUrl.includes('localhost') || savedUrl.includes('127.0.0.1')) {
+            setTargetUrl(d.lanUrl);
+            localStorage.setItem('parent_poster_target_url', d.lanUrl);
+          }
+        }
+      })
+      .catch(e => {
+        console.warn('Network info fetch error:', e);
+        if (!targetUrl) setTargetUrl(window.location.origin);
+      });
+  }, []);
+
+  // Handle uploading custom WeChat QR Code
+  const handleQrUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      setCustomQrImage(dataUrl);
+      setQrType('custom_image');
+      localStorage.setItem('parent_poster_custom_qr_img', dataUrl);
+      localStorage.setItem('parent_poster_qr_type', 'custom_image');
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Automatically draw poster on Canvas
   const drawPoster = useCallback(async () => {
@@ -140,45 +186,77 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
 
     // 4. Bottom QR Code & Referral Info
     try {
-      const qrDataUrl = await QRCode.toDataURL(window.location.origin, {
-        width: 140,
-        margin: 1,
-        color: {
-          dark: template === 'primary' ? '#78350f' : '#0f172a',
-          light: '#ffffff'
+      let qrImg = null;
+
+      if (qrType === 'custom_image' && customQrImage) {
+        qrImg = new Image();
+        qrImg.src = customQrImage;
+        await new Promise((resolve) => {
+          qrImg.onload = resolve;
+          qrImg.onerror = () => {
+            console.warn('Custom QR image failed to load');
+            resolve();
+          };
+        });
+      } else {
+        // Encode URL (guaranteed non-localhost fallback)
+        let textToEncode = targetUrl || lanUrl;
+        if (!textToEncode || textToEncode.includes('localhost') || textToEncode.includes('127.0.0.1')) {
+          textToEncode = lanUrl || window.location.origin;
         }
-      });
 
-      const qrImg = new Image();
-      qrImg.src = qrDataUrl;
-      await new Promise(resolve => { qrImg.onload = resolve; });
+        const qrDataUrl = await QRCode.toDataURL(textToEncode, {
+          width: 140,
+          margin: 1,
+          color: {
+            dark: template === 'primary' ? '#78350f' : '#0f172a',
+            light: '#ffffff'
+          }
+        });
+        qrImg = new Image();
+        qrImg.src = qrDataUrl;
+        await new Promise(resolve => { qrImg.onload = resolve; });
+      }
 
-      // Draw QR image
-      ctx.drawImage(qrImg, 56, 750, 140, 140);
+      // 4.1 High-contrast White Card for QR Code (prevents WeChat camera read issues)
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+      ctx.roundRect(46, 738, 156, 156, 12);
+      ctx.fill();
+      ctx.restore();
 
+      // 4.2 Draw QR Image
+      if (qrImg) {
+        ctx.drawImage(qrImg, 54, 746, 140, 140);
+      }
+
+      // 4.3 Text description on the right
       ctx.save();
       ctx.fillStyle = template === 'primary' ? '#78350f' : '#ffffff';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('微信扫码立即体验', 215, 790);
+      ctx.fillText(qrType === 'custom_image' ? '微信扫码添加私教' : '微信扫码立即体验', 215, 788);
 
       ctx.fillStyle = template === 'primary' ? '#92400e' : '#94a3b8';
       ctx.font = '14px sans-serif';
-      ctx.fillText('送 7 天名校全真模考体验', 215, 825);
-      ctx.fillText('全国 1-9 年级教材同步深度辅导', 215, 855);
-      ctx.fillText('私教微信：扫码添加曾先生', 215, 885);
+      ctx.fillText(promoLine1 || '送 7 天名校全真模考体验', 215, 822);
+      ctx.fillText(promoLine2 || '全国 1-9 年级教材同步深度辅导', 215, 852);
+      ctx.fillText(contactName || '私教微信：扫码添加曾先生', 215, 882);
       ctx.restore();
     } catch (qrErr) {
       console.warn('QR Code generation failed:', qrErr);
     }
-  }, [template, studentName, grade]);
+  }, [template, studentName, grade, qrType, customQrImage, targetUrl, lanUrl, contactName, promoLine1, promoLine2]);
 
   useEffect(() => {
     if (isOpen) {
-      // Small timeout to ensure canvas is attached
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         drawPoster();
-      }, 50);
+      }, 60);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, drawPoster]);
 
@@ -225,7 +303,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
           background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 20px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px'
         }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               onClick={() => setTemplate('primary')}
               style={{
@@ -248,6 +326,18 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
             >
               📐 中考压轴冲刺版 (7-9年级)
             </button>
+
+            <button
+              onClick={() => setShowConfig(!showConfig)}
+              style={{
+                padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                border: '1px solid #3b82f6', background: showConfig ? '#eff6ff' : '#ffffff',
+                color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+            >
+              <span>⚙️ 二维码配置</span>
+              <span style={{ fontSize: '0.75rem' }}>{showConfig ? '▲' : '▼'}</span>
+            </button>
           </div>
 
           <button
@@ -262,6 +352,170 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
             <span>💾 保存高清海报发圈</span>
           </button>
         </div>
+
+        {/* QR Code & Referral Configuration Drawer */}
+        {showConfig && (
+          <div style={{
+            background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', padding: '16px 20px',
+            fontSize: '0.88rem', color: '#334155'
+          }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 'bold', color: '#0f172a' }}>二维码类型：</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="qrType"
+                  value="custom_image"
+                  checked={qrType === 'custom_image'}
+                  onChange={() => {
+                    setQrType('custom_image');
+                    localStorage.setItem('parent_poster_qr_type', 'custom_image');
+                  }}
+                />
+                <span style={{ fontWeight: 600, color: '#047857' }}>
+                  📱 上传曾先生微信名片码 (最强推荐·私域转化首选)
+                </span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="qrType"
+                  value="url"
+                  checked={qrType === 'url'}
+                  onChange={() => {
+                    setQrType('url');
+                    localStorage.setItem('parent_poster_qr_type', 'url');
+                  }}
+                />
+                <span>🌐 在线体验网址码 (手机扫码直达网页)</span>
+              </label>
+            </div>
+
+            {/* Type A: Custom WeChat QR Image */}
+            {qrType === 'custom_image' && (
+              <div style={{
+                background: '#ffffff', border: '1px dashed #10b981', borderRadius: '8px',
+                padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap'
+              }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleQrUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '6px',
+                    padding: '6px 14px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  📷 点击上传曾先生微信二维码图片
+                </button>
+                {customQrImage ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img
+                      src={customQrImage}
+                      alt="预览"
+                      style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover', border: '1px solid #cbd5e1' }}
+                    />
+                    <span style={{ color: '#059669', fontSize: '0.82rem', fontWeight: 600 }}>
+                      ✓ 已加载您的微信二维码，海报将直接使用该名片码！
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomQrImage('');
+                        localStorage.removeItem('parent_poster_custom_qr_img');
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      移除
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
+                    （支持微信个人二维码截图或企业微信名片码，微信长按直接加曾先生好友买课/领试用）
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Type B: URL Mode */}
+            {qrType === 'url' && (
+              <div style={{
+                background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px',
+                padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.82rem', minWidth: '80px' }}>体验网址：</label>
+                  <input
+                    type="text"
+                    value={targetUrl}
+                    onChange={e => {
+                      setTargetUrl(e.target.value);
+                      localStorage.setItem('parent_poster_target_url', e.target.value);
+                    }}
+                    placeholder={lanUrl || "http://192.168.1.9:3001 或 您的公网域名"}
+                    style={{
+                      flex: 1, minWidth: '260px', padding: '6px 10px', borderRadius: '6px',
+                      border: '1px solid #94a3b8', fontSize: '0.85rem'
+                    }}
+                  />
+                  {lanUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTargetUrl(lanUrl);
+                        localStorage.setItem('parent_poster_target_url', lanUrl);
+                      }}
+                      style={{
+                        background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd',
+                        borderRadius: '6px', padding: '6px 12px', fontSize: '0.8rem', cursor: 'pointer'
+                      }}
+                    >
+                      填入本机局域网: {lanUrl}
+                    </button>
+                  )}
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.78rem', paddingLeft: '88px' }}>
+                  ⚠️ 请勿填入 localhost，手机无法解析电脑本机 localhost。同一 Wi-Fi 下填入上方局域网 IP，或填入内网穿透/公网域名。
+                </div>
+              </div>
+            )}
+
+            {/* Additional Text Customization */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '2px' }}>私教联系文案：</label>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={e => {
+                    setContactName(e.target.value);
+                    localStorage.setItem('parent_poster_contact_name', e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '2px' }}>福利标语：</label>
+                <input
+                  type="text"
+                  value={promoLine1}
+                  onChange={e => {
+                    setPromoLine1(e.target.value);
+                    localStorage.setItem('parent_poster_promo_line1', e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Poster Canvas Preview */}
         <div style={{

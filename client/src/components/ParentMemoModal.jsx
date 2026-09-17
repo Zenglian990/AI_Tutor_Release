@@ -28,19 +28,22 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
         .catch(e => console.warn('Parent memo fetch error:', e))
         .finally(() => setLoading(false));
 
-      // Fetch remote token for WeChat QR scan
-      authFetch(`${getApiUrl()}/api/parent/remote-token?profile_id=${encodeURIComponent(currentProfileId)}`)
-        .then(res => res.json())
-        .then(d => {
-          if (d.success && d.token) {
-            setRemoteToken(d.token);
-            const shareUrl = `${window.location.origin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(d.token)}`;
-            QRCode.toDataURL(shareUrl, { width: 160, margin: 1, color: { dark: '#1e3a8a', light: '#ffffff' } })
-              .then(url => setQrDataUrl(url))
-              .catch(err => console.warn('QR code gen error:', err));
-          }
-        })
-        .catch(e => console.warn('Remote token fetch error:', e));
+      // Fetch remote token and network info for WeChat QR scan
+      Promise.all([
+        authFetch(`${getApiUrl()}/api/parent/remote-token?profile_id=${encodeURIComponent(currentProfileId)}`).then(r => r.json()),
+        authFetch(`${getApiUrl()}/api/system/network-info`).then(r => r.json()).catch(() => ({}))
+      ]).then(([tokenData, netData]) => {
+        if (tokenData.success && tokenData.token) {
+          setRemoteToken(tokenData.token);
+          const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && netData?.lanUrl
+            ? netData.lanUrl
+            : window.location.origin;
+          const shareUrl = `${baseOrigin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(tokenData.token)}`;
+          QRCode.toDataURL(shareUrl, { width: 160, margin: 1, color: { dark: '#1e3a8a', light: '#ffffff' } })
+            .then(url => setQrDataUrl(url))
+            .catch(err => console.warn('QR code gen error:', err));
+        }
+      }).catch(e => console.warn('Remote token fetch error:', e));
     }
   }, [isOpen, currentProfileId, grade, subject, studentName]);
 
