@@ -18,7 +18,10 @@ __pycache__/
 *.pyd
 
 # Local database files and logs
-data/
+data/lancedb/
+data/mistakes.db*
+data/textbooks/
+data/backups/
 logs/
 *.log
 
