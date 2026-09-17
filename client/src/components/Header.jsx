@@ -83,13 +83,19 @@ const SOCRATIC_LEVELS = [
   { value: 'strict', label: '🦉 苏格拉底', title: 'AI只用提问引导，绝不直接给答案' },
 ];
 
+const PERSONAS = [
+  { value: 'owl', label: '🦉 智多星导师', title: '深度苏格拉底推理·严谨治学' },
+  { value: 'lion', label: '🦁 聪聪小狮子', title: '趣味互动·实物比喻·耐心肯定（推荐低年级）' },
+  { value: 'sister', label: '🌸 晓晴学姐', title: '温柔亲切·草稿步步拆解·温和陪伴' }
+];
+
 export default function Header({
   profiles, currentProfileId, onProfileChange, onDeleteProfile, onRenameProfile,
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
-  onOpenGamification
+  onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox
 }) {
-  const { language, isEinkMode, toggleEinkMode } = useAppStore();
+  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona } = useAppStore();
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
   const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
 
@@ -166,6 +172,54 @@ export default function Header({
         <select className="grade-selector" value={selectedGrade} onChange={e => onGradeChange(e.target.value)} aria-label="选择年级">
           {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
         </select>
+
+        {/* Persona Selector */}
+        <select
+          className="grade-selector"
+          value={tutorPersona}
+          onChange={e => setTutorPersona(e.target.value)}
+          title="切换名师/学伴风格"
+          aria-label="选择名师风格"
+          style={{ background: 'rgba(37, 99, 235, 0.15)', borderColor: 'rgba(37, 99, 235, 0.3)' }}
+        >
+          {PERSONAS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+
+        {/* 1-3年级趣味实物教具 */}
+        {['1', '2', '3'].some(n => String(selectedGrade).startsWith(n)) && onOpenManipulatives && (
+          <button
+            onClick={onOpenManipulatives}
+            title="打开小学趣味积木与等式天平教具"
+            aria-label="打开小学具象实物教具"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+              color: '#fff', border: 'none', borderRadius: '10px',
+              padding: '6px 10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '3px'
+            }}
+          >
+            <span>🎒</span>
+            <span>实物教具</span>
+          </button>
+        )}
+
+        {/* 7-9年级动点压轴沙盒 */}
+        {['7', '8', '9'].some(n => String(selectedGrade).startsWith(n)) && onOpenGeometrySandbox && (
+          <button
+            onClick={onOpenGeometrySandbox}
+            title="打开初中动点几何与二次函数压轴沙盒"
+            aria-label="打开初中动点压轴沙盒"
+            style={{
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: '#fff', border: 'none', borderRadius: '10px',
+              padding: '6px 10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '3px'
+            }}
+          >
+            <span>📐</span>
+            <span>动点沙盒</span>
+          </button>
+        )}
         {onOpenGamification && (
           <button
             onClick={onOpenGamification}

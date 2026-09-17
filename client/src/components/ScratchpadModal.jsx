@@ -27,6 +27,13 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const [history, setHistory] = useState([]);
   const [historyStep, setHistoryStep] = useState(-1);
 
+  // Stroke Timing Recording & Scribble Cleaning States
+  const strokesRef = useRef([]); // array of strokes: { color, lineWidth, tool, points: [{x, y, t}] }
+  const currentStrokeRef = useRef(null);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const replayCancelRef = useRef(false);
+  const [cleanMessage, setCleanMessage] = useState('');
+
   const startPosRef = useRef({ x: 0, y: 0 });
   const snapshotRef = useRef(null);
 
@@ -223,11 +230,182 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     };
   };
 
+  // Redraw all strokes onto context
+  const redrawAllStrokes = useCallback((ctx, strokes) => {
+    for (const stroke of strokes) {
+      if (!stroke.points || stroke.points.length === 0) continue;
+      ctx.save();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (stroke.tool === 'line' && stroke.points.length >= 2) {
+        const pStart = stroke.points[0];
+        const pEnd = stroke.points[stroke.points.length - 1];
+        ctx.beginPath();
+        ctx.moveTo(pStart.x, pStart.y);
+        ctx.lineTo(pEnd.x, pEnd.y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }, []);
+
+  // Detect if a stroke is a scratch-out / scribble mistake
+  const isScribbleStroke = (stroke) => {
+    if (!stroke.points || stroke.points.length < 10) return false;
+    if (stroke.tool === 'line') return false;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let totalLength = 0;
+    let xReversals = 0;
+    let yReversals = 0;
+
+    const pts = stroke.points;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+
+      if (i > 0) {
+        const dx = p.x - pts[i - 1].x;
+        const dy = p.y - pts[i - 1].y;
+        totalLength += Math.hypot(dx, dy);
+
+        if (i > 1) {
+          const prevDx = pts[i - 1].x - pts[i - 2].x;
+          const prevDy = pts[i - 1].y - pts[i - 2].y;
+          if (dx * prevDx < -4) xReversals++;
+          if (dy * prevDy < -4) yReversals++;
+        }
+      }
+    }
+
+    const boxW = maxX - minX;
+    const boxH = maxY - minY;
+    const diagonal = Math.hypot(boxW, boxH);
+    const totalReversals = xReversals + yReversals;
+    const densityRatio = totalLength / (diagonal + 1);
+
+    // Frequent back-and-forth direction reversals in a compact boundary
+    return totalReversals >= 5 && densityRatio >= 3.2;
+  };
+
+  // Replay strokes step-by-step
+  const handleReplayStrokes = () => {
+    if (isReplaying) {
+      replayCancelRef.current = true;
+      setIsReplaying(false);
+      return;
+    }
+    if (strokesRef.current.length === 0) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    setIsReplaying(true);
+    replayCancelRef.current = false;
+    drawBackground(ctx, canvas.width, canvas.height);
+
+    const strokes = [...strokesRef.current];
+    let strokeIdx = 0;
+    let pointIdx = 0;
+
+    const step = () => {
+      if (replayCancelRef.current) {
+        drawBackground(ctx, canvas.width, canvas.height);
+        redrawAllStrokes(ctx, strokes);
+        setIsReplaying(false);
+        return;
+      }
+
+      if (strokeIdx >= strokes.length) {
+        setIsReplaying(false);
+        return;
+      }
+
+      const stroke = strokes[strokeIdx];
+      ctx.save();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (stroke.tool === 'line') {
+        if (stroke.points.length >= 2) {
+          const pStart = stroke.points[0];
+          const pEnd = stroke.points[stroke.points.length - 1];
+          ctx.beginPath();
+          ctx.moveTo(pStart.x, pStart.y);
+          ctx.lineTo(pEnd.x, pEnd.y);
+          ctx.stroke();
+        }
+        strokeIdx++;
+        pointIdx = 0;
+      } else {
+        const p1 = stroke.points[pointIdx];
+        const p2 = stroke.points[pointIdx + 1];
+        if (p1 && p2) {
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+        pointIdx += 2;
+        if (pointIdx >= stroke.points.length - 1) {
+          strokeIdx++;
+          pointIdx = 0;
+        }
+      }
+      ctx.restore();
+
+      requestAnimationFrame(step);
+    };
+
+    requestAnimationFrame(step);
+  };
+
+  // Clean scratch-outs / scribbles automatically
+  const handleCleanScribbles = () => {
+    const initialCount = strokesRef.current.length;
+    const cleaned = strokesRef.current.filter(stroke => !isScribbleStroke(stroke));
+    const removedCount = initialCount - cleaned.length;
+
+    if (removedCount === 0) {
+      setCleanMessage('画板整洁，未检测到乱涂乱画或涂改杂迹！');
+      setTimeout(() => setCleanMessage(''), 3000);
+      return;
+    }
+
+    strokesRef.current = cleaned;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    drawBackground(ctx, canvas.width, canvas.height);
+    redrawAllStrokes(ctx, cleaned);
+    saveState();
+
+    setCleanMessage(`✨ 已智能净化 ${removedCount} 处涂改杂迹，已为您保留工整解题笔迹！`);
+    setTimeout(() => setCleanMessage(''), 4000);
+  };
+
   const handleClear = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     drawBackground(ctx, canvas.width, canvas.height);
+    strokesRef.current = [];
     saveState();
   };
 
@@ -249,12 +427,22 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
 
   // Drawing Handlers
   const startDrawing = (e) => {
+    if (isReplaying) return;
     e.preventDefault();
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const pos = getCoordinates(e);
     startPosRef.current = pos;
     setIsDrawing(true);
+
+    const strokeColor = tool === 'eraser' ? '#ffffff' : color;
+    const strokeWidth = tool === 'eraser' ? lineWidth * 4 : lineWidth;
+    currentStrokeRef.current = {
+      color: strokeColor,
+      lineWidth: strokeWidth,
+      tool,
+      points: [{ x: pos.x, y: pos.y, t: Date.now() }]
+    };
 
     if (tool === 'line') {
       snapshotRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -265,11 +453,15 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   };
 
   const draw = (e) => {
-    if (!isDrawing) return;
+    if (!isDrawing || isReplaying) return;
     e.preventDefault();
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const pos = getCoordinates(e);
+
+    if (currentStrokeRef.current) {
+      currentStrokeRef.current.points.push({ x: pos.x, y: pos.y, t: Date.now() });
+    }
 
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'round';
@@ -301,6 +493,12 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     if (!isDrawing) return;
     e.preventDefault();
     setIsDrawing(false);
+
+    if (currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
+      strokesRef.current.push(currentStrokeRef.current);
+      currentStrokeRef.current = null;
+    }
+
     saveState();
   };
 
@@ -488,6 +686,30 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
             </select>
 
             <button
+              onClick={handleCleanScribbles}
+              style={{
+                padding: '5px 10px', borderRadius: '6px', border: '1px solid #f59e0b',
+                background: '#fffbeb', color: '#b45309', cursor: 'pointer', fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              title="智能检测并清除乱涂乱抹/来回划掉的涂改废迹，保留清晰工整计算"
+            >
+              <span>🧹 净化涂改</span>
+            </button>
+            <button
+              onClick={handleReplayStrokes}
+              style={{
+                padding: '5px 10px', borderRadius: '6px',
+                border: isReplaying ? '1px solid #ef4444' : '1px solid #3b82f6',
+                background: isReplaying ? '#fef2f2' : '#eff6ff',
+                color: isReplaying ? '#dc2626' : '#1d4ed8',
+                cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              title="按笔迹时间轨迹动态回放演算推导过程"
+            >
+              <span>{isReplaying ? '⏹️ 停止回放' : '▶️ 过程回放'}</span>
+            </button>
+            <button
               onClick={handleUndo}
               disabled={historyStep <= 0}
               style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: historyStep <= 0 ? 'not-allowed' : 'pointer', opacity: historyStep <= 0 ? 0.4 : 1 }}
@@ -515,6 +737,17 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
 
         {/* Canvas area */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#f8fafc', touchAction: 'none' }}>
+          {/* Clean Message Notification */}
+          {cleanMessage && (
+            <div style={{
+              position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+              background: '#0f172a', color: '#ffffff', padding: '8px 16px', borderRadius: '8px',
+              fontSize: '0.85rem', fontWeight: 500, zIndex: 30, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: '8px', animation: 'fadeIn 0.2s ease-out'
+            }}>
+              <span>{cleanMessage}</span>
+            </div>
+          )}
           {/* Proactive Silence Care Bubble */}
           {showSilenceHint && (
             <div style={{

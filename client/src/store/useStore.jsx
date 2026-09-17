@@ -210,6 +210,9 @@ export function AppProvider({ children }) {
   const [chatModel, setChatModel] = useState(() =>
     localStorage.getItem('ai_tutor_chat_model') || 'default'
   );
+  const [tutorPersona, setTutorPersona] = useState(() =>
+    localStorage.getItem('ai_tutor_persona') || 'owl'
+  );
 
   const t = useCallback((key) => getTranslation(language, key), [language]);
 
@@ -230,6 +233,7 @@ export function AppProvider({ children }) {
   }, [apiToken]);
   useEffect(() => { localStorage.setItem('ai_tutor_language', language); }, [language]);
   useEffect(() => { localStorage.setItem('ai_tutor_chat_model', chatModel); }, [chatModel]);
+  useEffect(() => { localStorage.setItem('ai_tutor_persona', tutorPersona); }, [tutorPersona]);
 
   useEffect(() => {
     localStorage.setItem('ai_tutor_theme', isLightMode ? 'light' : 'dark');
@@ -298,6 +302,7 @@ export function AppProvider({ children }) {
     settings, setSettings,
     isLightMode, setIsLightMode,
     isEinkMode, setIsEinkMode, toggleEinkMode,
+    tutorPersona, setTutorPersona,
     handleGradeChange,
     handleEditionChange,
     getApiUrl,

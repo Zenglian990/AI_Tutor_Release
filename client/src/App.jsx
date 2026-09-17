@@ -21,10 +21,13 @@ import ParentMemoModal from './components/ParentMemoModal';
 import HomeworkBatchModal from './components/HomeworkBatchModal';
 import GamificationBadgeModal from './components/GamificationBadgeModal';
 import ParentRemoteDashboard from './components/ParentRemoteDashboard';
+import PrimaryVisualManipulatives from './components/PrimaryVisualManipulatives';
+import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
 import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
+import { generateOfflineSocraticResponse } from './utils/offlineSocraticEngine';
 import OnboardingGuide from './components/OnboardingGuide';
 import WelcomeDashboard from './components/WelcomeDashboard';
 
@@ -41,7 +44,7 @@ function AppInner() {
     autoRead, setAutoRead, isLightMode, setIsLightMode,
     handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
     setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
-    language, t, chatModel
+    language, t, chatModel, tutorPersona
   } = store;
 
   const isOffline = useOfflineStatus();
@@ -83,6 +86,8 @@ function AppInner() {
   const [showParentMemo, setShowParentMemo] = useState(false);
   const [showBatchGrade, setShowBatchGrade] = useState(false);
   const [showGamification, setShowGamification] = useState(false);
+  const [showManipulatives, setShowManipulatives] = useState(false);
+  const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -322,8 +327,14 @@ function AppInner() {
     setIsLoading(true);
 
     if (isOffline) {
-      const fallbackText = language === 'zh-CN' ? OFFLINE_FALLBACK_RESPONSE : OFFLINE_FALLBACK_RESPONSE_EN;
-      setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: fallbackText }]);
+      const offlineSocraticText = generateOfflineSocraticResponse({
+        query: userQuery,
+        grade: gradeRef.current || currentProfile?.grade || '7',
+        subject: subjectRef.current || selectedSubject || '数学',
+        persona: tutorPersona,
+        studentName: currentProfile?.name || '同学'
+      });
+      setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: offlineSocraticText }]);
       setIsLoading(false);
       return;
     }
@@ -436,18 +447,34 @@ function AppInner() {
       }
     } catch (error) {
       console.error(error);
-      let errorMsg = error.message || '对不起，系统忙碌中，请稍后再试。';
-      if (typeof errorMsg !== 'string') errorMsg = JSON.stringify(errorMsg);
-      if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
-        errorMsg = '无法连接到服务器，请确认后端已启动（端口 3001）。';
+      const isNetError = error?.message?.includes('Failed to fetch') ||
+                         error?.message?.includes('NetworkError') ||
+                         error?.message?.includes('Load failed');
+      if (isNetError) {
+        // Fallback to pure client-side offline Socratic engine
+        const offlineSocraticText = generateOfflineSocraticResponse({
+          query: userQuery,
+          grade: gradeRef.current || currentProfile?.grade || '7',
+          subject: subjectRef.current || selectedSubject || '数学',
+          persona: tutorPersona,
+          studentName: currentProfile?.name || '同学'
+        });
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: offlineSocraticText }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: offlineSocraticText }];
+        });
+      } else {
+        let errorMsg = error.message || '对不起，系统忙碌中，请稍后再试。';
+        if (typeof errorMsg !== 'string') errorMsg = JSON.stringify(errorMsg);
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg) }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg) }];
+        });
       }
-      setMessages(prev => {
-        const lastMsg = prev[prev.length - 1];
-        if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg) }];
-        return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg) }];
-      });
     } finally { setIsLoading(false); }
-  }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel]);
+  }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
 
   const clearChat = () => {
     setGateAction(() => () => setShowClearConfirm(true));
@@ -538,6 +565,8 @@ function AppInner() {
         onThemeToggle={() => setIsLightMode(!isLightMode)}
         onSettingsOpen={() => setShowSettings(true)}
         onOpenGamification={() => setShowGamification(true)}
+        onOpenManipulatives={() => setShowManipulatives(true)}
+        onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
       />
 
       {/* Action buttons */}
@@ -809,6 +838,18 @@ function AppInner() {
         onClose={() => setShowGamification(false)}
         currentProfileId={currentProfileId}
         studentName={currentProfile?.name || '曾练'}
+      />
+
+      <PrimaryVisualManipulatives
+        isOpen={showManipulatives}
+        onClose={() => setShowManipulatives(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      <DynamicGeometrySandbox
+        isOpen={showGeometrySandbox}
+        onClose={() => setShowGeometrySandbox(false)}
+        onApplyToChat={(text) => setInput(text)}
       />
 
       <InputBar
