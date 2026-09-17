@@ -25,7 +25,7 @@ export function formatGrade(grade) {
   return GRADE_MAP[String(grade)] || `${grade}年级`;
 }
 
-export const DEFAULT_BACKEND_URL = import.meta.env.VITE_API_URL || '';
+export const DEFAULT_BACKEND_URL = import.meta.env.VITE_API_URL || 'https://ai-tutor-release.onrender.com';
 
 /**
  * Get the full API URL for a path.
