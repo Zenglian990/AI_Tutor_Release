@@ -1,11 +1,11 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { authFetch, getApiUrl } from '../store/useStore';
 
 /**
  * CampaignRoadmapModal
  * 长周期宏观战役沙盘与中考/期末预测推演
  */
-export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学' }) {
+export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '曾练' }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -52,7 +52,7 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#38bdf8' }}>
-              🏛️ 曾练专属：长周期宏观战役沙盘
+              🏛️ {studentName}专属：长周期宏观战役沙盘
             </h2>
             <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '0.9rem' }}>
               从中考/期末宏观全局把控，告别走马观花，步步为营锁定核心分

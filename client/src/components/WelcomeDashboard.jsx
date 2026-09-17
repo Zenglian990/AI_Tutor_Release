@@ -7,15 +7,19 @@ export default function WelcomeDashboard({
   selectedSubject,
   onGradeChange,
   onSubjectChange,
+  onPersonaChange,
   onCameraClick,
   onReviewMistakes,
   onOpenMap,
+  onOpenTest,
   onQuickPrompt,
   onOpenRoadmap,
   onOpenPrint,
   onOpenParentMemo,
   onOpenBatchGrade,
-  onOpenGamification
+  onOpenGamification,
+  onOpenManipulatives,
+  onOpenGeometrySandbox
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -138,21 +142,33 @@ export default function WelcomeDashboard({
           <button
             type="button"
             className={`stage-pill ${gradeStr.startsWith('1') || gradeStr.startsWith('2') || gradeStr.startsWith('3') ? 'active' : ''}`}
-            onClick={() => { onGradeChange('3_up'); if (!selectedSubject) onSubjectChange('数学'); }}
+            onClick={() => {
+              onGradeChange('3_up');
+              if (!selectedSubject) onSubjectChange('数学');
+              if (onPersonaChange) onPersonaChange('lion');
+            }}
           >
             🎈 小学低段 (1-3年级)
           </button>
           <button
             type="button"
             className={`stage-pill ${gradeStr.startsWith('4') || gradeStr.startsWith('5') || gradeStr.startsWith('6') ? 'active' : ''}`}
-            onClick={() => { onGradeChange('5_up'); if (!selectedSubject) onSubjectChange('数学'); }}
+            onClick={() => {
+              onGradeChange('5_up');
+              if (!selectedSubject) onSubjectChange('数学');
+              if (onPersonaChange) onPersonaChange('sister');
+            }}
           >
             📘 小学高段 (4-6年级)
           </button>
           <button
             type="button"
             className={`stage-pill ${gradeStr.startsWith('7') || gradeStr.startsWith('8') || gradeStr.startsWith('9') ? 'active' : ''}`}
-            onClick={() => { onGradeChange('7_up'); if (!selectedSubject) onSubjectChange('数学'); }}
+            onClick={() => {
+              onGradeChange('7_up');
+              if (!selectedSubject) onSubjectChange('数学');
+              if (onPersonaChange) onPersonaChange('owl');
+            }}
           >
             📐 初中阶段 (7-9年级)
           </button>
@@ -241,6 +257,39 @@ export default function WelcomeDashboard({
           <p className="action-card-desc">精选必考母题模型，掌握解题钥匙，举一反三</p>
           <div className="action-card-cta">攻克母题 →</div>
         </div>
+
+        {onOpenTest && (
+          <div className="action-card" onClick={onOpenTest} role="button" tabIndex={0} style={{ borderColor: 'rgba(236, 72, 153, 0.4)', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(219, 39, 119, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🏛️</span>
+              <span className="action-card-name" style={{ color: '#ec4899' }}>名校全真模考</span>
+            </div>
+            <p className="action-card-desc">全真中考/期末试卷规格，沉浸式倒计时答题与名师步骤给分</p>
+            <div className="action-card-cta" style={{ color: '#ec4899' }}>进入考场 →</div>
+          </div>
+        )}
+
+        {onOpenManipulatives && ['1', '2', '3'].some(n => gradeStr.startsWith(n)) && (
+          <div className="action-card" onClick={onOpenManipulatives} role="button" tabIndex={0} style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🎒</span>
+              <span className="action-card-name" style={{ color: '#f59e0b' }}>小学趣味实物教具</span>
+            </div>
+            <p className="action-card-desc">十进制积木、苹果糖果均分与等式守恒天平动手启发</p>
+            <div className="action-card-cta" style={{ color: '#f59e0b' }}>动手摆一摆 →</div>
+          </div>
+        )}
+
+        {onOpenGeometrySandbox && ['7', '8', '9'].some(n => gradeStr.startsWith(n)) && (
+          <div className="action-card" onClick={onOpenGeometrySandbox} role="button" tabIndex={0} style={{ borderColor: 'rgba(37, 99, 235, 0.4)', background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">📐</span>
+              <span className="action-card-name" style={{ color: '#60a5fa' }}>动点压轴几何沙盒</span>
+            </div>
+            <p className="action-card-desc">中考动点轨迹动态推演，二次函数系数滑杆直观击穿难点</p>
+            <div className="action-card-cta" style={{ color: '#60a5fa' }}>推演动点 →</div>
+          </div>
+        )}
 
         {/* 6. Macro Roadmap & Paper-Screen Loop Super Cards */}
         {onOpenGamification && (

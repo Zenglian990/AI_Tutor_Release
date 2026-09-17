@@ -310,7 +310,7 @@ function AppInner() {
   // Chat submit
   const handleSubmit = useCallback(async (e, customText) => {
     if (e && e.preventDefault) e.preventDefault();
-    const textToSubmit = customText || '';
+    const textToSubmit = (customText !== undefined && customText !== null) ? customText : input;
     if ((!textToSubmit && !imageFile) || isLoading) return;
 
     const userQuery = textToSubmit || '请帮我解答这张图片里的题目。';
@@ -660,14 +660,18 @@ function AppInner() {
             selectedSubject={selectedSubject}
             onGradeChange={handleGradeChange}
             onSubjectChange={setSelectedSubject}
+            onPersonaChange={setTutorPersona}
             onCameraClick={() => fileInputRef.current?.click()}
             onReviewMistakes={() => setShowMistakes(true)}
             onOpenMap={() => setShowMap(true)}
+            onOpenTest={() => setShowKnowledgeTest(true)}
             onOpenRoadmap={() => setShowRoadmap(true)}
             onOpenPrint={() => setShowPrintModal(true)}
             onOpenParentMemo={() => setShowParentMemo(true)}
             onOpenBatchGrade={() => setShowBatchGrade(true)}
             onOpenGamification={() => setShowGamification(true)}
+            onOpenManipulatives={() => setShowManipulatives(true)}
+            onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -822,6 +826,7 @@ function AppInner() {
         currentProfileId={currentProfileId}
         grade={currentProfile?.grade || '八年级'}
         subject={selectedSubject || '数学'}
+        studentName={currentProfile?.name || '曾练'}
       />
 
       <ParentMemoModal

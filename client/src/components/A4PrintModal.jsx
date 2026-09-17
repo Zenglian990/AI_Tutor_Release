@@ -148,7 +148,7 @@ export default function A4PrintModal({
       });
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      const filename = `曾练专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
+      const filename = `${studentName}专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
       link.download = filename;
       link.href = dataUrl;
       link.click();
@@ -832,7 +832,7 @@ export default function A4PrintModal({
               fontSize: '0.78rem',
               color: '#6b7280'
             }}>
-              <span>曾练专属私教 · 知识图谱靶向实体卷</span>
+              <span>{studentName}专属私教 · 知识图谱靶向实体卷</span>
               <span>打印日期：{currentDateStr}</span>
               <span>第 1 页 (共 1 页)</span>
             </div>

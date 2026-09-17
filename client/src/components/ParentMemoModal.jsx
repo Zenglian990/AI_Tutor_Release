@@ -160,7 +160,7 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
                 <span style={{ fontSize: '0.85rem', color: '#059669', fontWeight: 'bold' }}>
                   🛡️ 家长放心指数：{memo?.comfortScore}
                 </span>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>曾练专属私教案头督学</span>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{studentName}专属私教案头督学</span>
               </div>
             </div>
 

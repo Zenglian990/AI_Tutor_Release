@@ -3,11 +3,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
-import { getApiUrl, authFetch, formatGrade } from '../store/useStore';
+import { getApiUrl, authFetch, formatGrade, useAppStore } from '../store/useStore';
 import { preprocessLatex } from '../utils/math';
 import A4PrintModal from './A4PrintModal';
 
 export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject }) {
+  const { currentProfile } = useAppStore();
+  const studentName = currentProfile?.name || '曾练';
   const [mistakes, setMistakes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -449,7 +451,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
         <A4PrintModal
           isOpen={showA4Modal}
           onClose={() => { setShowA4Modal(false); setVariantPaperQuestions([]); }}
-          studentName="曾练"
+          studentName={studentName}
           grade={filterGrade || defaultGrade || '7_up'}
           subject={filterSubject || defaultSubject || '数学'}
           questions={variantPaperQuestions.length > 0 ? variantPaperQuestions.map((q, idx) => ({
