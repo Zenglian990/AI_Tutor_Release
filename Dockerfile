@@ -1,7 +1,7 @@
 # ============================================================
 # Stage 1: Build React Frontend
 # ============================================================
-FROM node:20-bookworm-slim AS frontend-builder
+FROM node:22-noble AS frontend-builder
 WORKDIR /app/client
 
 COPY client/package*.json ./
@@ -11,27 +11,19 @@ COPY client/ ./
 RUN npm run build
 
 # ============================================================
-# Stage 2: Production Server Runtime
+# Stage 2: Production Server Runtime (Ubuntu 24.04 LTS Noble - GLIBC 2.39)
 # ============================================================
-FROM node:20-bookworm-slim
+FROM node:22-noble-slim
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Install build tools for compiling native addons
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy backend dependency declarations
 COPY package*.json ./
 
-# Install production dependencies and explicitly rebuild sqlite3 from source for container's exact GLIBC
-RUN npm ci --omit=dev && \
-    npm rebuild sqlite3 --build-from-source
+# Install production dependencies (runs cleanly on Node 22 with Ubuntu 24.04 GLIBC)
+RUN npm ci --omit=dev
 
 # Copy server source code, maintenance scripts, and data definitions
 COPY server/ ./server/
