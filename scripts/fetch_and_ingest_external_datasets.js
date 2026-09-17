@@ -15,6 +15,10 @@ const { batchIngestQuestions, getDb } = require('./ingest_canonical_questions');
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const APE_PATH = path.join(DATA_DIR, 'valid.ape.json');
 const CMMATH_PATH = path.join(DATA_DIR, 'cmmath.json');
+const CMM_MATH_ALL_PATH = path.join(DATA_DIR, 'cmm_math_all.jsonl');
+const TAL_TRAIN_PATH = path.join(DATA_DIR, 'tal_train_3k.jsonl');
+const TAL_TEST_PATH = path.join(DATA_DIR, 'tal_test_2k.jsonl');
+const SZZK_FIXED_PATH = path.join(DATA_DIR, 'szzk_fixed.json');
 const MATH23K_PATH = path.join(DATA_DIR, 'Math_23K.json');
 const GAOKAO_MATH_PATH = path.join(DATA_DIR, 'gaokao_math_mcq.json');
 const GAOKAO_PHYSICS_PATH = path.join(DATA_DIR, 'gaokao_physics.json');
@@ -275,6 +279,185 @@ function transformGaokaoQuestions() {
   return [...math, ...physics, ...chemistry, ...biology, ...chinese];
 }
 
+/**
+ * 转换 CMM-Math 初中 7-9 年级真题（华东师大开源：6,335 道初中真题）
+ */
+function transformCmmMathJuniorQuestions() {
+  if (!fs.existsSync(CMM_MATH_ALL_PATH)) {
+    console.warn(`[Warning] 未找到 ${CMM_MATH_ALL_PATH}，跳过 CMM-Math 初中导入`);
+    return [];
+  }
+
+  const lines = fs.readFileSync(CMM_MATH_ALL_PATH, 'utf-8').split('\n');
+  const questions = [];
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    try {
+      const item = JSON.parse(line);
+      const lvl = item.level;
+      if (!['七年级', '八年级', '九年级'].includes(lvl)) continue;
+
+      const qText = (item.question || '').trim();
+      const ans = String(item.answer || '').trim();
+      const opts = String(item.options || '').trim();
+      const analysis = String(item.analysis || '').trim();
+      const subj = (item.subject || '数学').trim();
+
+      if (!qText || !ans) continue;
+
+      let grade = '7_up';
+      if (lvl === '八年级') grade = '8_up';
+      else if (lvl === '九年级') grade = '9_up';
+
+      questions.push({
+        question: qText,
+        options: opts,
+        standard_answer: ans,
+        analysis: analysis || `【标准答案】：${ans}\n【名师推导】：根据初中数理逻辑与公式推导，得出结果为 ${ans}。`,
+        key_insight: `掌握初中${lvl}【${subj}】核心概念，灵活运用几何变换与代数化简。`,
+        grade,
+        subject: '数学',
+        chapter: subj || `${lvl}数学重点突破`,
+        source: 'CMM-Math全国初中数学权威大题库'
+      });
+    } catch (e) {
+      // ignore parse error
+    }
+  }
+
+  console.log(`[CMM-Math] 成功解析 ${questions.length} 道初中 7-9 年级权威真题`);
+  return questions;
+}
+
+/**
+ * 转换 TAL-SCQ5K 中考与初中高难度真题（好未来好题库：2,898 道初中竞赛与中考真题）
+ */
+function transformTalJuniorQuestions() {
+  const files = [TAL_TRAIN_PATH, TAL_TEST_PATH];
+  const questions = [];
+
+  for (const f of files) {
+    if (!fs.existsSync(f)) continue;
+    const lines = fs.readFileSync(f, 'utf-8').split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const item = JSON.parse(line);
+        const sourceList = item.competition_source_list || [];
+        const kpRoutes = item.knowledge_point_routes || [];
+        const textTag = JSON.stringify(sourceList) + ' ' + JSON.stringify(kpRoutes);
+
+        // 智能识别初中 7-9 年级真题
+        const isJunior = textTag.includes('初') || textTag.includes('七年级') || textTag.includes('八年级') || textTag.includes('九年级') || textTag.includes('中考') || textTag.includes('华杯赛') || textTag.includes('希望杯');
+        if (!isJunior) continue;
+
+        const qText = (item.problem || '').trim();
+        const ans = String(item.answer_value || '').trim();
+        const analysisList = item.answer_analysis || [];
+        const analysis = analysisList.join('\n').trim();
+
+        if (!qText || !ans) continue;
+
+        // 格式化选项
+        let optionsStr = '';
+        if (Array.isArray(item.answer_option_list)) {
+          optionsStr = item.answer_option_list.map(arr => {
+            const opt = arr[0] || {};
+            return `${opt.aoVal || ''}. ${opt.content || ''}`.trim();
+          }).join('\n');
+        }
+
+        let grade = '8_up';
+        if (textTag.includes('七年级') || textTag.includes('初一')) grade = '7_up';
+        else if (textTag.includes('九年级') || textTag.includes('初三') || textTag.includes('中考')) grade = '9_up';
+
+        const sourceTitle = sourceList[0] || '好未来全国初中数学竞赛与中考培优题库';
+        const kp = kpRoutes[0] ? kpRoutes[0].split('->').pop() : '初中数理综合压轴';
+
+        questions.push({
+          question: qText,
+          options: optionsStr,
+          standard_answer: ans,
+          analysis: analysis || `【标准答案】：${ans}`,
+          key_insight: `好未来名师真题解析：抓住知识核心【${kp}】，严谨化简求解。`,
+          grade,
+          subject: '数学',
+          chapter: kp,
+          source: sourceTitle
+        });
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+  }
+
+  console.log(`[TAL-SCQ5K] 成功解析 ${questions.length} 道初中竞赛与中考真题`);
+  return questions;
+}
+
+/**
+ * 转换深圳中考 11 年各科真题（1,239 道中考原题）
+ */
+function transformSzzkQuestions() {
+  if (!fs.existsSync(SZZK_FIXED_PATH)) {
+    console.warn(`[Warning] 未找到 ${SZZK_FIXED_PATH}，跳过深圳中考导入`);
+    return [];
+  }
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(SZZK_FIXED_PATH, 'utf-8'));
+    const list = Array.isArray(raw) ? raw : [];
+    const questions = [];
+
+    const subjectMap = {
+      math: '数学',
+      chinese: '语文',
+      physics: '物理',
+      chemistry: '化学',
+      english: '英语',
+      history: '历史',
+      politics: '道法'
+    };
+
+    for (const item of list) {
+      const qText = (item.question || '').trim();
+      const ans = String(item.answer || '').trim();
+      const rawSubj = (item.subject || 'math').toLowerCase();
+      const subject = subjectMap[rawSubj] || '数学';
+      const year = item.year || '中考';
+      const source = item.source || `深圳市${year}年中考真题`;
+
+      if (!qText || !ans) continue;
+
+      let optionsStr = '';
+      if (Array.isArray(item.options)) {
+        optionsStr = item.options.join('\n');
+      } else if (typeof item.options === 'string') {
+        optionsStr = item.options;
+      }
+
+      questions.push({
+        question: qText,
+        options: optionsStr,
+        standard_answer: ans,
+        analysis: `【中考标准答案】：${ans}\n【试题评析】：本题选自${source}，属于广东省/深圳市中考命题标杆，考查核心学科素养与规范答题能力。`,
+        key_insight: `中考真题特级名师点拨：立足${subject}考纲核心考点，严格遵循答题规范与得分要点。`,
+        grade: '9_up',
+        subject,
+        chapter: `${subject}中考全真模拟与冲刺`,
+        source: `深圳11年中考真题库(${year}年)`
+      });
+    }
+
+    console.log(`[SZZK-LLM] 成功解析 ${questions.length} 道深圳中考七科真题`);
+    return questions;
+  } catch (e) {
+    console.warn('[SZZK Parse Error]', e.message);
+    return [];
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
@@ -287,8 +470,19 @@ async function main() {
   const cmmathQuestions = transformCmmathQuestions(2000); // cmmath.json 全部 1,000 道题
   const gaokaoQuestions = transformGaokaoQuestions(); // 高考数、理、化、生、语
   const math23kQuestions = transformMath23kQuestions(30000); // Math23K 全部 23,162 道题
+  const cmmJuniorQuestions = transformCmmMathJuniorQuestions(); // CMM-Math 初中 7-9 年级 6,335 道题
+  const talJuniorQuestions = transformTalJuniorQuestions(); // 好未来初中竞赛与中考 2,898 道题
+  const szzkQuestions = transformSzzkQuestions(); // 深圳中考 11 年七科全真试题 1,239 道题
 
-  const allQuestions = [...apeQuestions, ...cmmathQuestions, ...gaokaoQuestions, ...math23kQuestions];
+  const allQuestions = [
+    ...apeQuestions,
+    ...cmmathQuestions,
+    ...gaokaoQuestions,
+    ...math23kQuestions,
+    ...cmmJuniorQuestions,
+    ...talJuniorQuestions,
+    ...szzkQuestions
+  ];
   console.log(`[Ingestion Pipeline] 汇总待导入题目总计: ${allQuestions.length} 道`);
 
   const db = await getDb();
@@ -308,6 +502,9 @@ module.exports = {
   transformCmmathQuestions,
   transformGaokaoQuestions,
   transformMath23kQuestions,
+  transformCmmMathJuniorQuestions,
+  transformTalJuniorQuestions,
+  transformSzzkQuestions,
   inferApeGradeAndChapter
 };
 
