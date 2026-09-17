@@ -1,7 +1,23 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
-import defaultWechatQr from '../assets/zeng_wechat_qr.png';
+import { ZENG_WECHAT_QR_DATA_URL } from '../assets/zeng_wechat_qr_base64.js';
+
+// Reliable image loader that handles synchronous completion and cached Base64 data URLs
+const loadAnyImage = (src) => new Promise((resolve) => {
+  if (!src) return resolve(null);
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => resolve(img);
+  img.onerror = (err) => {
+    console.warn('Image load error:', err);
+    resolve(null);
+  };
+  img.src = src;
+  if (img.complete && img.naturalWidth > 0) {
+    resolve(img);
+  }
+});
 
 export default function ParentSharePosterModal({ isOpen, onClose }) {
   const { currentProfile } = useAppStore();
@@ -11,9 +27,15 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
   const [template, setTemplate] = useState('primary'); // 'primary' | 'junior'
   const [showConfig, setShowConfig] = useState(false);
 
-  // QR Code configuration — defaults to Zeng's official WeChat QR code
-  const [qrType, setQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'custom_image'); // 'custom_image' | 'url'
-  const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || defaultWechatQr);
+  // QR Code configuration — ALWAYS defaults to Zeng's official WeChat QR code
+  const [qrType, setQrType] = useState(() => {
+    const saved = localStorage.getItem('parent_poster_qr_type');
+    return saved === 'url' ? 'url' : 'custom_image';
+  });
+  const [customQrImage, setCustomQrImage] = useState(() => {
+    const saved = localStorage.getItem('parent_poster_custom_qr_img');
+    return saved || ZENG_WECHAT_QR_DATA_URL;
+  });
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
   const [lanUrl, setLanUrl] = useState('');
   const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '私教微信：扫码添加曾先生');
@@ -189,18 +211,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
     try {
       let qrImg = null;
 
-      if (qrType === 'custom_image' && customQrImage) {
-        qrImg = new Image();
-        qrImg.src = customQrImage;
-        await new Promise((resolve) => {
-          qrImg.onload = resolve;
-          qrImg.onerror = () => {
-            console.warn('Custom QR image failed to load');
-            resolve();
-          };
-        });
-      } else {
-        // Encode URL (guaranteed non-localhost fallback)
+      if (qrType === 'url') {
         let textToEncode = targetUrl || lanUrl;
         if (!textToEncode || textToEncode.includes('localhost') || textToEncode.includes('127.0.0.1')) {
           textToEncode = lanUrl || window.location.origin;
@@ -214,9 +225,16 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
             light: '#ffffff'
           }
         });
-        qrImg = new Image();
-        qrImg.src = qrDataUrl;
-        await new Promise(resolve => { qrImg.onload = resolve; });
+        qrImg = await loadAnyImage(qrDataUrl);
+      } else {
+        // Default: Zeng's official WeChat QR code
+        const imgSrc = customQrImage || ZENG_WECHAT_QR_DATA_URL;
+        qrImg = await loadAnyImage(imgSrc);
+      }
+
+      // 100% fallback safety: if loading failed for any reason, load Zeng's QR directly
+      if (!qrImg) {
+        qrImg = await loadAnyImage(ZENG_WECHAT_QR_DATA_URL);
       }
 
       // 4.1 High-contrast White Card for QR Code (prevents WeChat camera read issues)
@@ -229,9 +247,9 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.fill();
       ctx.restore();
 
-      // 4.2 Draw QR Image
+      // 4.2 Draw QR Image (centered within the white card)
       if (qrImg) {
-        ctx.drawImage(qrImg, 54, 746, 140, 140);
+        ctx.drawImage(qrImg, 52, 744, 144, 144);
       }
 
       // 4.3 Text description on the right
@@ -239,7 +257,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.fillStyle = template === 'primary' ? '#78350f' : '#ffffff';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(qrType === 'custom_image' ? '微信扫码添加私教' : '微信扫码立即体验', 215, 788);
+      ctx.fillText(qrType === 'url' ? '微信扫码立即体验' : '微信扫码添加私教', 215, 788);
 
       ctx.fillStyle = template === 'primary' ? '#92400e' : '#94a3b8';
       ctx.font = '14px sans-serif';
@@ -424,13 +442,13 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                       style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', border: '1px solid #10b981' }}
                     />
                     <span style={{ color: '#059669', fontSize: '0.82rem', fontWeight: 600 }}>
-                      {customQrImage === defaultWechatQr ? '✓ 已搭载曾先生专属微信名片码（扫码加好友）' : '✓ 已加载自定义微信名片码！'}
+                      {customQrImage === ZENG_WECHAT_QR_DATA_URL ? '✓ 已搭载曾先生专属微信名片码（扫码加好友）' : '✓ 已加载自定义微信名片码！'}
                     </span>
-                    {customQrImage !== defaultWechatQr && (
+                    {customQrImage !== ZENG_WECHAT_QR_DATA_URL && (
                       <button
                         type="button"
                         onClick={() => {
-                          setCustomQrImage(defaultWechatQr);
+                          setCustomQrImage(ZENG_WECHAT_QR_DATA_URL);
                           localStorage.removeItem('parent_poster_custom_qr_img');
                         }}
                         style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
@@ -445,7 +463,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setCustomQrImage(defaultWechatQr);
+                        setCustomQrImage(ZENG_WECHAT_QR_DATA_URL);
                         localStorage.removeItem('parent_poster_custom_qr_img');
                       }}
                       style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', cursor: 'pointer' }}
