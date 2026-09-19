@@ -299,108 +299,139 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                     let icon = '💡';
                     let borderColor = '#3b82f6';
                     let bgColor = 'rgba(59, 130, 246, 0.08)';
+                    let badgeText = '知识点睛';
 
-                  if (text.includes('题眼') || text.includes('陷阱') || text.includes('思路')) {
-                    icon = '🎯';
-                    borderColor = '#f59e0b';
-                    bgColor = 'rgba(245, 158, 11, 0.1)';
-                  } else if (text.includes('动笔') || text.includes('支架') || text.includes('步骤')) {
-                    icon = '✏️';
-                    borderColor = '#3b82f6';
-                    bgColor = 'rgba(59, 130, 246, 0.1)';
-                  } else if (text.includes('母题') || text.includes('举一反三') || text.includes('过关') || text.includes('闯关')) {
-                    icon = '🔥';
-                    borderColor = '#8b5cf6';
-                    bgColor = 'rgba(139, 92, 246, 0.12)';
-                  } else if (text.includes('易错') || text.includes('盲区')) {
-                    icon = '⚠️';
-                    borderColor = '#ef4444';
-                    bgColor = 'rgba(239, 68, 68, 0.1)';
-                  }
+                    if (text.includes('挑战') || text.includes('母题模型') || text.includes('经典母题')) {
+                      icon = '🎯';
+                      borderColor = '#f59e0b';
+                      bgColor = 'rgba(245, 158, 11, 0.12)';
+                      badgeText = '母题挑战';
+                    } else if (text.includes('题眼') || text.includes('陷阱') || text.includes('思路')) {
+                      icon = '🎯';
+                      borderColor = '#f59e0b';
+                      bgColor = 'rgba(245, 158, 11, 0.1)';
+                      badgeText = '核心题眼';
+                    } else if (text.includes('动笔') || text.includes('支架') || text.includes('设问') || text.includes('第一步')) {
+                      icon = '✏️';
+                      borderColor = '#3b82f6';
+                      bgColor = 'rgba(59, 130, 246, 0.1)';
+                      badgeText = '动笔设问';
+                    } else if (text.includes('步骤') || text.includes('锦囊') || text.includes('解析')) {
+                      icon = '💡';
+                      borderColor = '#10b981';
+                      bgColor = 'rgba(16, 185, 129, 0.1)';
+                      badgeText = '步骤拆解';
+                    } else if (text.includes('母题') || text.includes('举一反三') || text.includes('微练') || text.includes('过关') || text.includes('闯关')) {
+                      icon = '🔥';
+                      borderColor = '#8b5cf6';
+                      bgColor = 'rgba(139, 92, 246, 0.12)';
+                      badgeText = '举一反三';
+                    } else if (text.includes('易错') || text.includes('盲区') || text.includes('注意')) {
+                      icon = '⚠️';
+                      borderColor = '#ef4444';
+                      bgColor = 'rgba(239, 68, 68, 0.1)';
+                      badgeText = '易错警示';
+                    }
 
-                  return (
-                    <div 
-                      className="scaffold-card-header" 
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontWeight: 'bold',
-                        fontSize: '0.95rem',
-                        padding: '7px 12px',
-                        margin: '14px 0 8px 0',
-                        borderRadius: '8px',
-                        borderLeft: `4px solid ${borderColor}`,
-                        backgroundColor: bgColor
-                      }}
-                    >
-                      <span>{icon}</span>
-                      <span {...props}>{children}</span>
-                    </div>
-                  );
-                },
-                pre({children, ...props}) {
-                  // If the child is a MermaidChart (returned from code override), render without <pre> wrapper
-                  const child = Array.isArray(children) ? children[0] : children;
-                  if (child?.type === MermaidChart) {
-                    return <>{children}</>;
-                  }
-                  return <pre {...props}>{children}</pre>;
-                },
-                code({node, inline, className, children, ...props}) {
-                  const match = /language-(\w+)/.exec(className || '')
-                  if (!inline && match && match[1] === 'mermaid') {
-                    if (isStreaming) {
-                      return (
-                        <div className="mermaid-loading-placeholder">
-                          <div className="brain-icon">🧠</div>
-                          <div className="title">专属私教正在构思与绘制知识脑图...</div>
-                          <div className="subtitle">打字输出完毕后将自动呈现思维导图</div>
+                    return (
+                      <div 
+                        className="scaffold-card-header" 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          fontWeight: 'bold',
+                          fontSize: '0.96rem',
+                          padding: '8px 14px',
+                          margin: '16px 0 10px 0',
+                          borderRadius: '10px',
+                          borderLeft: `4px solid ${borderColor}`,
+                          backgroundColor: bgColor,
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{icon}</span>
+                          <span {...props} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
                         </div>
-                      )
+                        <span style={{
+                          fontSize: '0.72rem',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          backgroundColor: borderColor,
+                          color: '#ffffff',
+                          fontWeight: 600,
+                          letterSpacing: '0.5px',
+                          flexShrink: 0
+                        }}>
+                          {badgeText}
+                        </span>
+                      </div>
+                    );
+                  },
+                  pre({children, ...props}) {
+                    // If the child is a MermaidChart (returned from code override), render without <pre> wrapper
+                    const child = Array.isArray(children) ? children[0] : children;
+                    if (child?.type === MermaidChart) {
+                      return <>{children}</>;
                     }
-                    return <MermaidChart chart={String(children).replace(/\n$/, '')} />
+                    return <pre {...props}>{children}</pre>;
+                  },
+                  code({node, inline, className, children, ...props}) {
+                    const match = /language-(\w+)/.exec(className || '')
+                    if (!inline && match && match[1] === 'mermaid') {
+                      if (isStreaming) {
+                        return (
+                          <div className="mermaid-loading-placeholder">
+                            <div className="brain-icon">🧠</div>
+                            <div className="title">专属私教正在构思与绘制知识脑图...</div>
+                            <div className="subtitle">打字输出完毕后将自动呈现思维导图</div>
+                          </div>
+                        )
+                      }
+                      return <MermaidChart chart={String(children).replace(/\n$/, '')} />
+                    }
+                    return <code className={className} {...props}>{children}</code>
+                  },
+                  table({children, ...props}) {
+                    return (
+                      <div className="table-responsive">
+                        <table {...props}>{children}</table>
+                      </div>
+                    );
+                  },
+                  td({children, ...props}) {
+                    const renderWithHtmlLineBreaks = (val) => {
+                      if (typeof val === 'string') {
+                        if (val.includes('<br>') || val.includes('<br />')) {
+                          return val.split(/<br\s*\/?>/gi).map((text, i, arr) => (
+                            <React.Fragment key={i}>
+                              {text}
+                              {i < arr.length - 1 && <br />}
+                            </React.Fragment>
+                          ));
+                        }
+                      }
+                      if (React.isValidElement(val)) {
+                        if (val.props && val.props.children) {
+                          return React.cloneElement(val, {
+                            ...val.props,
+                            children: React.Children.map(val.props.children, renderWithHtmlLineBreaks)
+                          });
+                        }
+                      }
+                      if (Array.isArray(val)) {
+                        return val.map((item, idx) => <React.Fragment key={idx}>{renderWithHtmlLineBreaks(item)}</React.Fragment>);
+                      }
+                      return val;
+                    };
+                    return <td {...props}>{React.Children.map(children, renderWithHtmlLineBreaks)}</td>;
                   }
-                  return <code className={className} {...props}>{children}</code>
-                },
-                table({children, ...props}) {
-                  return (
-                    <div className="table-responsive">
-                      <table {...props}>{children}</table>
-                    </div>
-                  );
-                },
-                td({children, ...props}) {
-                  const renderWithHtmlLineBreaks = (val) => {
-                    if (typeof val === 'string') {
-                      if (val.includes('<br>') || val.includes('<br />')) {
-                        return val.split(/<br\s*\/?>/gi).map((text, i, arr) => (
-                          <React.Fragment key={i}>
-                            {text}
-                            {i < arr.length - 1 && <br />}
-                          </React.Fragment>
-                        ));
-                      }
-                    }
-                    if (React.isValidElement(val)) {
-                      if (val.props && val.props.children) {
-                        return React.cloneElement(val, {
-                          ...val.props,
-                          children: React.Children.map(val.props.children, renderWithHtmlLineBreaks)
-                        });
-                      }
-                    }
-                    if (Array.isArray(val)) {
-                      return val.map((item, idx) => <React.Fragment key={idx}>{renderWithHtmlLineBreaks(item)}</React.Fragment>);
-                    }
-                    return val;
-                  };
-                  return <td {...props}>{React.Children.map(children, renderWithHtmlLineBreaks)}</td>;
-                }
-              }}
-            >
-              {preprocessLatex(cleanAiBody)}
-            </ReactMarkdown>
+                }}
+              >
+                {preprocessLatex(cleanAiBody)}
+              </ReactMarkdown>
             )}
             <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>
               {msg.role === 'ai' && onMarkMistake && (
@@ -435,18 +466,21 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
       </div>
       {msg.sources?.length > 0 && (
         <div className="sources-container">
-          <div className="sources-label">📚 参考来源：</div>
-          {msg.sources.map((src, i) => (
-            <div key={i} className="source-card" title={src.text_snippet}>
-              <div className="source-header">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
-                </svg>
-                {src.source} (第 {src.page} 页)
-              </div>
-              <div className="source-text">{src.text_snippet}</div>
-            </div>
-          ))}
+          <div className="sources-label">📚 本地教材出处核验：</div>
+          <div className="sources-pill-list">
+            {msg.sources.map((src, i) => (
+              <details key={i} className="source-pill-card">
+                <summary className="source-pill-header">
+                  <span className="source-pill-icon">📖</span>
+                  <span className="source-pill-title">{src.source} · 第 {src.page} 页</span>
+                  <span className="source-pill-expand-hint">查看教材原文 ▾</span>
+                </summary>
+                <div className="source-pill-body">
+                  <div className="source-text">{src.text_snippet}</div>
+                </div>
+              </details>
+            ))}
+          </div>
         </div>
       )}
       
