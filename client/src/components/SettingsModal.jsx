@@ -272,7 +272,9 @@ export default function SettingsModal({
                 background: '#1e293b', color: 'white', outline: 'none', fontSize: '0.9rem', cursor: 'pointer'
               }}
             >
-              <option value="default">{language === 'zh-CN' ? '⚡ 系统智能路由 (Gemini 3.6 / DeepSeek 自动容灾)' : 'System Smart Route'}</option>
+              <option value="default">{language === 'zh-CN' ? '⚡ 系统智能路由 (国内优先/海外自动容灾)' : 'System Smart Route'}</option>
+              <option value="qwen2.5-vl-72b-instruct">🇨🇳 阿里通义千问 Qwen2.5-VL (国内免代理·试卷OCR与秒批之王)</option>
+              <option value="glm-4v-plus">🇨🇳 智谱 GLM-4V-Plus (国内免代理·图文综合推理)</option>
               <option value="deepseek-chat">🇨🇳 DeepSeek-V3 (国内免代理直连·通识与语文英语)</option>
               <option value="deepseek-reasoner">🇨🇳 DeepSeek-R1 (顶尖慢思考·数理化深度推理名师)</option>
               <option value="gemini-3.6-flash">🌐 Google Gemini 3.6 Flash (最新多模态·试卷秒批推荐)</option>
@@ -280,14 +282,14 @@ export default function SettingsModal({
             </select>
           </div>
 
-          {/* 🇨🇳 DeepSeek 国内免代理配置卡片 */}
+          {/* 🇨🇳 国内免代理配置卡片 (通义千问 / 智谱 / DeepSeek / 硅基流动) */}
           <div style={{
             background: 'rgba(37, 99, 235, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)',
             borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#60a5fa' }}>
-                🇨🇳 中国大陆免代理通道 (DeepSeek / OpenAI兼容)
+                🇨🇳 中国大陆免代理通道 (通义千问 / 智谱 / DeepSeek / 硅基流动)
               </span>
               {serverProviderInfo?.deepseek?.configured && (
                 <span style={{ fontSize: '0.75rem', background: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>
@@ -297,7 +299,7 @@ export default function SettingsModal({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>DeepSeek API Key (可选)</label>
+              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>API Key (国内服务商密钥)</label>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type={showDeepseekKey ? 'text' : 'password'}
@@ -317,7 +319,43 @@ export default function SettingsModal({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>API Base URL (支持智谱/通义/硅基流动等端点)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>API Base URL (国内免代理端点)</label>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDeepseekUrl('https://dashscope.aliyuncs.com/compatible-mode/v1')}
+                    style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: '#93c5fd', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                    title="阿里云百炼·通义千问官方兼容端点"
+                  >
+                    +阿里百炼
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeepseekUrl('https://api.siliconflow.cn/v1')}
+                    style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: '#93c5fd', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                    title="硅基流动·汇聚Qwen2.5-VL与DeepSeek"
+                  >
+                    +硅基流动
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeepseekUrl('https://open.bigmodel.cn/api/paas/v4')}
+                    style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: '#93c5fd', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                    title="智谱AI官方开放平台"
+                  >
+                    +智谱AI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeepseekUrl('https://api.deepseek.com/v1')}
+                    style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: '#93c5fd', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                    title="DeepSeek官方端点"
+                  >
+                    +DeepSeek
+                  </button>
+                </div>
+              </div>
               <input
                 type="text"
                 placeholder="https://api.deepseek.com/v1"

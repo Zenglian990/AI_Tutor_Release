@@ -107,50 +107,97 @@ function startEmbeddingCheck() {
 }
 
 /**
- * Convert Gemini payload structure to DeepSeek (OpenAI compatible) payload
+ * Helper to determine if a model supports OpenAI-compatible multimodal vision
+ */
+function isOpenAiVisionModel(modelName) {
+  if (!modelName) return false;
+  const m = String(modelName).toLowerCase();
+  return m.includes('vl') || m.includes('vision') || m.includes('glm-4v') || m.includes('step-1v') || m.includes('qwen-vl');
+}
+
+/**
+ * Convert Gemini payload structure to DeepSeek / OpenAI-compatible payload
  */
 function convertGeminiToDeepSeekPayload(geminiPayload, isStream, modelName = null) {
+  const selectedModel = modelName && modelName !== 'default' ? modelName : (process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat');
+  const isVisionModel = isOpenAiVisionModel(selectedModel);
+
   const contents = geminiPayload.contents || [];
   let userMessageContent = '';
+  const imageParts = [];
 
   if (contents.length > 0 && contents[0].parts) {
     const textParts = contents[0].parts.filter(p => p.text).map(p => p.text);
     userMessageContent = textParts.join('\n');
     
-    // Check if there is image data
-    const hasImage = contents[0].parts.some(p => p.inline_data);
-    if (hasImage) {
-      userMessageContent += '\n(注意：备用大模型收到了图片描述提问，但由于降级运行在文本模型模式，无法直接看图，已基于上下文文本进行回答)';
+    for (const p of contents[0].parts) {
+      if (p.inline_data && p.inline_data.data) {
+        imageParts.push(p.inline_data);
+      }
     }
   }
-  
-  // Optimize prompt format for DeepSeek: Split System and User roles
+
+  const hasImage = imageParts.length > 0;
   let messages = [];
-  const splitKey = '学生提问：\n';
-  const splitIdx = userMessageContent.indexOf(splitKey);
-  if (splitIdx !== -1) {
-    let systemPrompt = userMessageContent.substring(0, splitIdx).trim();
-    systemPrompt += '\n\n【极其重要：Mermaid 脑图渲染规范】\n当你在回答中需要绘制思维导图时，必须且只能使用 ```mermaid 代码块包裹（内部写标准的 mindmap 或 graph TD 语法，如 mindmap\n  root\n    ...），绝对不要使用 ```mindmap 或 ```mermaid-mindmap 等非标准的 Markdown 语言标签，以便客户端能够正常编译和渲染图表。';
-    const userPrompt = userMessageContent.substring(splitIdx + splitKey.length).trim();
+
+  if (hasImage && isVisionModel) {
+    // Standard OpenAI multimodal format (Qwen-VL, GLM-4V, SiliconFlow, DashScope)
+    const contentItems = [];
+    for (const img of imageParts) {
+      const mime = img.mime_type || 'image/jpeg';
+      contentItems.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${mime};base64,${img.data}`
+        }
+      });
+    }
+    contentItems.push({
+      type: 'text',
+      text: userMessageContent
+    });
     messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: contentItems }
     ];
   } else {
-    messages = [
-      { role: 'user', content: userMessageContent }
-    ];
+    // Text-only mode
+    if (hasImage && !isVisionModel) {
+      userMessageContent += '\n(注意：备用大模型收到了图片描述提问，但由于运行在纯文本模型模式，无法直接看图，已基于上下文文本进行回答)';
+    }
+
+    const splitKey = '学生提问：\n';
+    const splitIdx = userMessageContent.indexOf(splitKey);
+    if (splitIdx !== -1) {
+      let systemPrompt = userMessageContent.substring(0, splitIdx).trim();
+      systemPrompt += '\n\n【极其重要：Mermaid 脑图渲染规范】\n当你在回答中需要绘制思维导图时，必须且只能使用 ```mermaid 代码块包裹（内部写标准的 mindmap 或 graph TD 语法，如 mindmap\n  root\n    ...），绝对不要使用 ```mindmap 或 ```mermaid-mindmap 等非标准的 Markdown 语言标签，以便客户端能够正常编译和渲染图表。';
+      const userPrompt = userMessageContent.substring(splitIdx + splitKey.length).trim();
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ];
+    } else {
+      messages = [
+        { role: 'user', content: userMessageContent }
+      ];
+    }
   }
   
   const deepseekPayload = {
-    model: modelName && modelName !== 'default' ? modelName : DEEPSEEK_CHAT_MODEL,
+    model: selectedModel,
     messages: messages,
     temperature: geminiPayload.generationConfig?.temperature ?? 0.2,
-    stream: isStream,
-    thinking: {
-      type: "enabled"
-    }
+    stream: isStream
   };
+
+  if (selectedModel.includes('reasoner') || selectedModel.includes('r1')) {
+    deepseekPayload.thinking = {
+      type: "enabled"
+    };
+  }
+
+  if (geminiPayload.generationConfig?.responseMimeType === 'application/json') {
+    deepseekPayload.response_format = { type: "json_object" };
+  }
 
   if (geminiPayload.generationConfig?.maxOutputTokens) {
     deepseekPayload.max_tokens = geminiPayload.generationConfig.maxOutputTokens;
@@ -354,17 +401,22 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     }
   } catch (e) {}
 
-  // DeepSeek text-only model cannot process images; strictly skip DeepSeek fallback for image requests
-  const effectiveSkipDeepSeek = skipDeepSeek || hasImage;
-  
-  // Check if directly routing to DeepSeek
-  const isDeepSeek = selectedModel.toLowerCase().includes('deepseek');
+  // Check if directly routing to domestic / OpenAI-compatible models (DeepSeek, Qwen-VL, GLM-4V, etc.)
+  const isOpenAiCompatible = selectedModel.toLowerCase().includes('deepseek') ||
+                             selectedModel.toLowerCase().includes('qwen') ||
+                             selectedModel.toLowerCase().includes('glm') ||
+                             selectedModel.toLowerCase().includes('step-');
   const url = buildURL(selectedModel);
   const urlType = url.includes('streamGenerateContent') ? 'stream' : (url.includes('embedContent') ? 'embed' : 'chat');
 
-  if (isDeepSeek && (urlType === 'chat' || urlType === 'stream')) {
+  if (isOpenAiCompatible && (urlType === 'chat' || urlType === 'stream')) {
     return await fetchDeepSeek(urlType, options, selectedModel);
   }
+
+  // Fallback check: if request has image and the fallback model CANNOT see images, skip text-only fallback
+  const fallbackModel = process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
+  const fallbackCanSeeImage = isOpenAiVisionModel(fallbackModel);
+  const effectiveSkipDeepSeek = skipDeepSeek || (hasImage && !fallbackCanSeeImage);
 
   const modifiedOptions = options;
 
@@ -599,5 +651,7 @@ module.exports = {
   getEmbedding,
   buildChatURL,
   buildStreamURL,
-  startEmbeddingCheck
+  startEmbeddingCheck,
+  convertGeminiToDeepSeekPayload,
+  isOpenAiVisionModel
 };

@@ -62,7 +62,7 @@ function updateEnvFile(key, value) {
  */
 router.post('/config/update-keys', (req, res) => {
   try {
-    const { deepseekApiKey, deepseekApiUrl, geminiApiKey } = req.body;
+    const { deepseekApiKey, deepseekApiUrl, deepseekChatModel, geminiApiKey } = req.body;
 
     let updatedCount = 0;
 
@@ -75,6 +75,12 @@ router.post('/config/update-keys', (req, res) => {
     if (typeof deepseekApiUrl === 'string' && deepseekApiUrl.trim()) {
       const cleanUrl = deepseekApiUrl.trim();
       updateEnvFile('DEEPSEEK_API_URL', cleanUrl);
+      updatedCount++;
+    }
+
+    if (typeof deepseekChatModel === 'string' && deepseekChatModel.trim()) {
+      const cleanModel = deepseekChatModel.trim();
+      updateEnvFile('DEEPSEEK_CHAT_MODEL', cleanModel);
       updatedCount++;
     }
 
