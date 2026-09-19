@@ -15,7 +15,7 @@
     "@capacitor/android": "^8.5.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
-    "@capacitor/ios": "^8.3.4",
+    "@capacitor/ios": "^8.5.2",
     "canvas-confetti": "^1.9.4",
     "crypto-js": "^4.2.0",
     "dompurify": "^3.4.11",
