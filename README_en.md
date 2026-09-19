@@ -7,19 +7,21 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/📱_Android_APK-v1.0.0_Download_Now-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.0.0_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
+[![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
+[![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
 [![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
 
 <br/>
 
 [![React](https://img.shields.io/badge/Frontend-React_18-blue?style=flat-square&logo=react)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![Android](https://img.shields.io/badge/Mobile-Capacitor_Android-3DDC84?style=flat-square&logo=android)](https://capacitorjs.com/)
+[![Mobile Dual](https://img.shields.io/badge/Mobile-Capacitor_Android_%26_iOS-3DDC84?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
-[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
+[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash_%26_DeepSeek-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**📱 APK Download**](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -27,13 +29,27 @@
 
 ---
 
-## 📱 Instant Experience on Android APK (Recommended)
+## 📱 Multi-Platform Support (Android / iOS / PC)
 
-No complex development environments required. Install the native APK directly on your phone to experience the **immersive 9:16 portrait AI Tutor**:
+Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
+### 🤖 1. Android (Phone & Tablet)
 - **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.0.0.apk (~8.8MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
-- **🏷️ GitHub Releases**: [View Release Notes & Versions](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
-- **✨ Mobile Highlights**: Strict 9:16 full-screen portrait lock, edge-to-edge notch screen support, plug-and-play tutoring.
+- **✨ Features**: Strict 9:16 full-screen portrait lock, edge-to-edge notch adaptation, zero-configuration startup.
+
+### 🍎 2. iOS (iPhone & iPad)
+- **🌟 Method A (Recommended · Zero-Certificate · Add to Home Screen in 1s)**:
+  1. Open Safari on your iPhone/iPad and visit: [https://ai-tutor-release.onrender.com](https://ai-tutor-release.onrender.com)
+  2. Tap the **Share button 📤** at the bottom of Safari;
+  3. Scroll down and tap **"Add to Home Screen"** ➔ Tap **"Add"** at top right;
+  4. The **【曾练专属私教】** native App icon appears on your home screen with immersive full-screen UX and camera support!
+- **📦 Method B (IPA Native Package)**:
+  - [Download ZengLian_AI_Tutor_v1.0.0.ipa](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
+  - Install via AltStore, Sideloadly, or Apple Enterprise Certificate.
+
+### 💻 3. PC Desktop (Windows / Mac / Linux)
+- Direct browser access: [https://ai-tutor-release.onrender.com](https://ai-tutor-release.onrender.com)
+- Large eye-protection display, keyboard shortcuts, one-click A4 test paper printing preview (`Ctrl+P`), and LAN network printer integration.
 
 ---
 
