@@ -15,13 +15,18 @@ const proxyAgent = config.proxyUrl ? new ProxyAgent(config.proxyUrl) : null;
  */
 router.get('/config/providers', (req, res) => {
   const geminiConfigured = config.API_KEYS.length > 0;
+  const firstGeminiKey = geminiConfigured ? config.API_KEYS[0] : '';
+  const maskedGeminiKey = geminiConfigured && firstGeminiKey
+    ? `${firstGeminiKey.slice(0, 6)}***${firstGeminiKey.slice(-4)}`
+    : '';
   const deepseekConfigured = Boolean(process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim());
 
   res.json({
     gemini: {
       configured: geminiConfigured,
       keyCount: config.API_KEYS.length,
-      defaultModel: config.CHAT_MODEL
+      defaultModel: config.CHAT_MODEL,
+      maskedKey: maskedGeminiKey
     },
     deepseek: {
       configured: deepseekConfigured,
@@ -166,7 +171,7 @@ router.post('/config/test-llm', async (req, res) => {
         return res.status(400).json({ success: false, error: '缺少 Gemini API Key' });
       }
 
-      const testModel = model || config.CHAT_MODEL || 'gemini-flash-lite-latest';
+      const testModel = model || config.CHAT_MODEL || 'gemini-3.6-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${keyToUse}`;
 
       const fetchOptions = {

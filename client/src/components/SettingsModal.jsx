@@ -31,6 +31,12 @@ export default function SettingsModal({
   const [deepseekUrl, setDeepseekUrl] = useState('https://api.deepseek.com/v1');
   const [showDeepseekKey, setShowDeepseekKey] = useState(false);
   const [llmTestStatus, setLlmTestStatus] = useState(null); // { testing, success, message, latencyMs }
+
+  // Google Gemini Key State
+  const [geminiKey, setGeminiKey] = useState('');
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [geminiTestStatus, setGeminiTestStatus] = useState(null);
+
   const [serverProviderInfo, setServerProviderInfo] = useState(null);
 
   // Load existing provider configs
@@ -61,13 +67,14 @@ export default function SettingsModal({
     onSaveApiToken(token.trim());
     localStorage.setItem('parent_anti_cheat_locked', antiCheatLocked ? 'true' : 'false');
 
-    // Persist DeepSeek key if entered
-    if (deepseekKey.trim() || deepseekUrl.trim()) {
+    // Persist DeepSeek or Gemini key if entered
+    if (geminiKey.trim() || deepseekKey.trim() || deepseekUrl.trim()) {
       try {
         await authFetch('/api/config/update-keys', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            geminiApiKey: geminiKey.trim() || undefined,
             deepseekApiKey: deepseekKey.trim() || undefined,
             deepseekApiUrl: deepseekUrl.trim() || undefined
           })
@@ -156,6 +163,48 @@ export default function SettingsModal({
       }
     } catch (err) {
       setLlmTestStatus({
+        testing: false,
+        success: false,
+        message: `❌ 测试异常: ${err.message}`
+      });
+    }
+  };
+
+  // Ping test Gemini provider
+  const handleTestGemini = async () => {
+    setGeminiTestStatus({ testing: true });
+    try {
+      const payload = {
+        provider: 'gemini',
+        apiKey: geminiKey.trim() || undefined,
+        model: chatModel && chatModel.startsWith('gemini') ? chatModel : 'gemini-3.6-flash'
+      };
+
+      const targetBase = url.trim() || '';
+      const testEndpoint = targetBase ? `${targetBase.replace(/\/+$/, '')}/api/config/test-llm` : '/api/config/test-llm';
+
+      const res = await authFetch(testEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGeminiTestStatus({
+          testing: false,
+          success: true,
+          message: `⚡ ${data.message || 'Gemini 连通正常！'}`
+        });
+      } else {
+        setGeminiTestStatus({
+          testing: false,
+          success: false,
+          message: `❌ 连通失败: ${data.error || '无法访问'} ${data.details ? '(' + data.details + ')' : ''}`
+        });
+      }
+    } catch (err) {
+      setGeminiTestStatus({
         testing: false,
         success: false,
         message: `❌ 测试异常: ${err.message}`
@@ -383,6 +432,66 @@ export default function SettingsModal({
             {llmTestStatus && !llmTestStatus.testing && (
               <span style={{ fontSize: '0.8rem', color: llmTestStatus.success ? '#34d399' : '#f87171' }}>
                 {llmTestStatus.message}
+              </span>
+            )}
+          </div>
+
+          {/* 🌐 Google Gemini API 密钥配置 */}
+          <div style={{
+            background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#34d399' }}>
+                🌐 Google Gemini 官方通道 (Gemini 3.6 Flash / 2.5 Flash / Pro)
+              </span>
+              {serverProviderInfo?.gemini?.configured && (
+                <span style={{ fontSize: '0.75rem', background: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>
+                  已激活 {serverProviderInfo.gemini.keyCount > 0 ? `(${serverProviderInfo.gemini.keyCount}个密钥)` : ''}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>Gemini API Key (Google 官方密钥)</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type={showGeminiKey ? 'text' : 'password'}
+                  placeholder={serverProviderInfo?.gemini?.maskedKey || '输入 AIzaSy... (不填保留服务器现有Key)'}
+                  value={geminiKey}
+                  onChange={e => setGeminiKey(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', fontSize: '0.85rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowGeminiKey(!showGeminiKey)}
+                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer' }}
+                >
+                  {showGeminiKey ? '🙈' : '👁️'}
+                </button>
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>
+                Google AI Studio 申请的 API Key（通常为 AIzaSy 开头），支持最新 Gemini 3.6 Flash 与 2.5 Flash。
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+              <button
+                type="button"
+                onClick={handleTestGemini}
+                disabled={geminiTestStatus?.testing}
+                style={{
+                  padding: '6px 12px', borderRadius: '6px', border: 'none',
+                  background: '#059669', color: 'white', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer'
+                }}
+              >
+                {geminiTestStatus?.testing ? '⏳ 测试连通性中...' : '⚡ 诊断 Gemini 连通性'}
+              </button>
+            </div>
+
+            {geminiTestStatus && !geminiTestStatus.testing && (
+              <span style={{ fontSize: '0.8rem', color: geminiTestStatus.success ? '#34d399' : '#f87171' }}>
+                {geminiTestStatus.message}
               </span>
             )}
           </div>
