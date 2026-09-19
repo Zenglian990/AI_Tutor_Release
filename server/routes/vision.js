@@ -218,7 +218,7 @@ ${contextSection}学生提问：${query}
     await streamChatToClient(contentsPayload, res, {
       query, grade, subject, sources,
       profile_id: profile_id || 'default',
-      model
+      model: model || 'gemini-3.6-flash'
     });
   } catch (e) {
     logger.error('Vision Chat Error:', e);

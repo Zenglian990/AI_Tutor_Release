@@ -332,7 +332,30 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     logger.warn(`Invalid model name format provided: ${rawModel}, falling back to default`);
     rawModel = CHAT_MODEL;
   }
+  // Remap deprecated Gemini models (e.g. 2.0-flash, 1.5-flash, 2.5-flash-lite) to modern 3.6-flash
+  if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel.includes('gemini-2.5-flash-lite')) {
+    rawModel = 'gemini-3.6-flash';
+  }
   const selectedModel = rawModel;
+
+  // Auto-detect image / multimodal parts
+  let hasImage = false;
+  try {
+    if (options && options.body) {
+      const parsedBody = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+      if (parsedBody && Array.isArray(parsedBody.contents)) {
+        for (const content of parsedBody.contents) {
+          if (content.parts && content.parts.some(p => p.inline_data)) {
+            hasImage = true;
+            break;
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  // DeepSeek text-only model cannot process images; strictly skip DeepSeek fallback for image requests
+  const effectiveSkipDeepSeek = skipDeepSeek || hasImage;
   
   // Check if directly routing to DeepSeek
   const isDeepSeek = selectedModel.toLowerCase().includes('deepseek');
@@ -349,7 +372,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   const validKeys = API_KEYS.filter(k => !invalidKeys.has(k));
 
   if (validKeys.length === 0) {
-    if ((urlType === 'chat' || urlType === 'stream') && !skipDeepSeek) {
+    if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek) {
       return await fetchDeepSeek(urlType, modifiedOptions);
     }
     throw new Error('EMBED_QUOTA_EXHAUSTED');
@@ -384,7 +407,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       }
     }
     if (!key) {
-      if ((urlType === 'chat' || urlType === 'stream') && !skipDeepSeek) {
+      if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek) {
         return await fetchDeepSeek(urlType, modifiedOptions);
       }
       // For embed requests, wait for the earliest cooldown to expire
@@ -489,7 +512,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   }
 
   // All Gemini retries failed. If chat or stream, attempt DeepSeek fallback!
-  if ((urlType === 'chat' || urlType === 'stream') && !skipDeepSeek) {
+  if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek) {
     try {
       return await fetchDeepSeek(urlType, modifiedOptions);
     } catch (fallbackErr) {

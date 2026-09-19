@@ -27,7 +27,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       grade = '7_up',
       subject = '数学',
       student_name = '曾练',
-      model = null
+      model = 'gemini-3.6-flash'
     } = req.body;
 
     const imageBuffer = req.file?.buffer;
@@ -99,8 +99,9 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
 1. status 只能是 "correct"（正确）、"wrong"（错误）或 "partial"（部分对/步骤分）。
 2. box_2d: 必须准确识别该题在原图中的外接矩形定位坐标 [ymin, xmin, ymax, xmax]，取值在 0 到 1000 整数之间，用于多题交互切片与画框。
 3. stepByStepDeduction: 对有手写过程或错题，必须输出具体推导分步分析（第几步做对、第几步卡壳或符号遗漏、草稿演算建议），若完全正确且步骤简单可简述“步骤完整无误”。
-4. 如果图片中没有找到题目或模糊无法看清，请在 summaryHeadline 中说明，并返回 results 为空数组。
-5. 严格输出合法的 JSON 对象，便于机器解析。`;
+4. 【逐题独立拆分】：必须将卷面上出现的每一道带题号的题目（如第10题、第11题、第12题等）独立拆分为 results 数组中的一个条目，严禁将多道不同题号的题目合并为一个，以便前端逐题画框切片与错题本精确归档！
+5. 如果图片中没有找到题目或模糊无法看清，请在 summaryHeadline 中说明，并返回 results 为空数组。
+6. 严格输出合法的 JSON 对象，便于机器解析。`;
 
     const contentsPayload = {
       contents: [{
@@ -123,7 +124,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
     };
 
     logger.info(`[HomeworkBatch] Calling vision model for student ${student_name}, profile ${profile_id}...`);
-    const aiRes = await fetchWithKeyRotation(buildChatURL, options, 3, 45000, model);
+    const aiRes = await fetchWithKeyRotation(buildChatURL, options, 3, 60000, model || 'gemini-3.6-flash', true);
     
     if (!aiRes.ok) {
       const errText = await aiRes.text();
