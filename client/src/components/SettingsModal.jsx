@@ -272,12 +272,11 @@ export default function SettingsModal({
                 background: '#1e293b', color: 'white', outline: 'none', fontSize: '0.9rem', cursor: 'pointer'
               }}
             >
-              <option value="default">{language === 'zh-CN' ? '系统智能路由 (Gemini/DeepSeek自动容灾)' : 'System Smart Route'}</option>
-              <option value="deepseek-chat">🇨🇳 DeepSeek-V3 (国内免代理直连·推荐)</option>
-              <option value="deepseek-reasoner">🇨🇳 DeepSeek-R1 (深度推理·慢思考名师)</option>
-              <option value="gemini-2.0-flash">🌐 Google Gemini 2.0 Flash (海外极速)</option>
-              <option value="gemini-1.5-flash">🌐 Google Gemini 1.5 Flash (极速稳定)</option>
-              <option value="gemini-1.5-pro">🌐 Google Gemini 1.5 Pro (全功能高阶)</option>
+              <option value="default">{language === 'zh-CN' ? '⚡ 系统智能路由 (Gemini 3.6 / DeepSeek 自动容灾)' : 'System Smart Route'}</option>
+              <option value="deepseek-chat">🇨🇳 DeepSeek-V3 (国内免代理直连·通识与语文英语)</option>
+              <option value="deepseek-reasoner">🇨🇳 DeepSeek-R1 (顶尖慢思考·数理化深度推理名师)</option>
+              <option value="gemini-3.6-flash">🌐 Google Gemini 3.6 Flash (2026最新多模态旗舰·试卷秒批推荐)</option>
+              <option value="gemini-3.6-pro">🌐 Google Gemini 3.6 Pro (2026顶配满血大模型·最强图文综合推导)</option>
             </select>
           </div>
 
