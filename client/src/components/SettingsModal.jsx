@@ -278,6 +278,7 @@ export default function SettingsModal({
               <option value="deepseek-chat">🇨🇳 DeepSeek-V3 (国内免代理直连·通识与语文英语)</option>
               <option value="deepseek-reasoner">🇨🇳 DeepSeek-R1 (顶尖慢思考·数理化深度推理名师)</option>
               <option value="gemini-3.6-flash">🌐 Google Gemini 3.6 Flash (最新多模态·试卷秒批推荐)</option>
+              <option value="gemini-2.5-flash">🌐 Google Gemini 2.5 Flash (经典多模态·高稳定度)</option>
               <option value="gemini-pro-latest">🌐 Google Gemini Pro Latest (满血全能大模型)</option>
             </select>
           </div>
