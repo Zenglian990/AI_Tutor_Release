@@ -37,6 +37,9 @@ export default function SettingsModal({
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiTestStatus, setGeminiTestStatus] = useState(null);
 
+  // App Update & Version State
+  const [updateCheckStatus, setUpdateCheckStatus] = useState(null);
+
   const [serverProviderInfo, setServerProviderInfo] = useState(null);
 
   // Load existing provider configs
@@ -209,6 +212,63 @@ export default function SettingsModal({
         success: false,
         message: `❌ 测试异常: ${err.message}`
       });
+    }
+  };
+
+  // Check for app updates
+  const handleCheckUpdate = async () => {
+    setUpdateCheckStatus({ checking: true, message: '正在检查更新...' });
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update().catch(() => {});
+        }
+      }
+      const targetBase = url.trim() || '';
+      const versionEndpoint = targetBase ? `${targetBase.replace(/\/+$/, '')}/api/system/version` : '/api/system/version';
+      const res = await fetch(versionEndpoint);
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateCheckStatus({
+          checking: false,
+          success: true,
+          message: `已连接服务端 (v${data.version || '1.2.0'} - ${data.buildDate})！若有新界面，刷新后立即生效。`
+        });
+      } else {
+        setUpdateCheckStatus({
+          checking: false,
+          success: true,
+          message: '已触发前端与 Service Worker 资源检测！'
+        });
+      }
+    } catch (e) {
+      setUpdateCheckStatus({
+        checking: false,
+        success: false,
+        message: '无法连通服务端版本检测，若界面未刷新可尝试【清除缓存强刷】。'
+      });
+    }
+  };
+
+  // Clear offline cache and reload
+  const handleHardRefresh = async () => {
+    if (window.confirm('确定要清除本地缓存并强制重新加载应用吗？')) {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+          }
+        }
+      } catch (e) {
+        console.warn('Cache clear error:', e);
+      }
+      window.location.reload(true);
     }
   };
 
@@ -546,6 +606,59 @@ export default function SettingsModal({
                 fontSize: '0.8rem', flex: 1
               }}>
                 {testResult === 'testing' ? (language === 'zh-CN' ? '⏳ 测试中...' : '⏳ Testing...') : testResult.message}
+              </span>
+            )}
+          </div>
+
+          {/* 🔄 应用版本与自动更新 */}
+          <div style={{
+            background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.25)',
+            borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#a5b4fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📱</span>
+                <span>应用版本与更新状态</span>
+              </span>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(99, 102, 241, 0.2)', color: '#c7d2fe', padding: '2px 8px', borderRadius: '12px' }}>
+                v1.2.0 (Build 2026.09.19)
+              </span>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              {typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
+                ? '当前运行于 Android 原生安装包 (APK)。若有代码更新，PWA 网页版会自动静默拉取；原生端可通过下方强制重载或下载最新 APK。'
+                : '当前运行于 Web PWA 渐进式应用，已开启 Service Worker 自动热更新 (无感知后台静默升级)。'}
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={handleCheckUpdate}
+                disabled={updateCheckStatus?.checking}
+                style={{
+                  flex: 1, minWidth: '130px', padding: '7px 12px', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.4)',
+                  background: 'rgba(99, 102, 241, 0.2)', color: '#e0e7ff', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer'
+                }}
+              >
+                {updateCheckStatus?.checking ? '⏳ 正在检测...' : '🔄 检查最新更新'}
+              </button>
+              <button
+                type="button"
+                onClick={handleHardRefresh}
+                style={{
+                  padding: '7px 12px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.3)',
+                  background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', fontSize: '0.8rem', cursor: 'pointer'
+                }}
+                title="清除离线缓存与陈旧 ServiceWorker 并强制重新载入"
+              >
+                🧹 清除缓存强刷
+              </button>
+            </div>
+
+            {updateCheckStatus && (
+              <span style={{ fontSize: '0.75rem', color: updateCheckStatus.success ? '#34d399' : '#f87171' }}>
+                {updateCheckStatus.message}
               </span>
             )}
           </div>

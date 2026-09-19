@@ -3,7 +3,7 @@ const { API_TOKEN, NODE_ENV } = require('../config');
 
 function signatureMiddleware(req, res, next) {
   // Allow health check, config testing, parent remote view (token based) and static assets without signature
-  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/network-info' || req.path === '/config/test-llm') return next();
+  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/network-info' || req.path === '/system/version' || req.path === '/config/test-llm') return next();
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // If auth is explicitly disabled in environment, skip

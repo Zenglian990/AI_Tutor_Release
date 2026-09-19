@@ -30,7 +30,7 @@ setInterval(() => {
 function authMiddleware(req, res, next) {
   // Allow health check, config testing, parent remote view and static assets without Bearer auth
   // Note: middleware is mounted at /api/, so req.path is already stripped of the /api prefix
-  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/network-info' || req.path === '/config/test-llm') return next();
+  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/network-info' || req.path === '/system/version' || req.path === '/config/test-llm') return next();
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // If auth is explicitly disabled in environment, skip

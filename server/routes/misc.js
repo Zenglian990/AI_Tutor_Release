@@ -90,6 +90,20 @@ router.get('/system/network-info', (req, res) => {
   });
 });
 
+// GET /api/system/version — Version and update info for client apps
+router.get('/system/version', (req, res) => {
+  res.json({
+    version: '1.2.0',
+    buildDate: '2026-09-19',
+    appName: '曾练专属私教',
+    minAppVersion: '1.0.0',
+    hasUpdate: false,
+    updateType: 'pwa_hot_update',
+    apkFileName: 'ZengLian_AI_Tutor_v1.0.0.apk',
+    releaseNotes: '新增 Google Gemini 官方渠道与 3.6 Flash / 2.5 Flash 视觉试卷解析支持，增强 PWA 自动热更新'
+  });
+});
+
 // Chat history
 router.get('/chat-history', async (req, res) => {
   try {
