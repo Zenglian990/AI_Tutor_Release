@@ -30,10 +30,26 @@ router.post('/chat', async (req, res) => {
       return res.end();
     }
 
+    // Context-aware query expansion for conversational greetings & short follow-ups
+    const cleanQuery = (query || '').trim();
+    const isGreeting = /^(你好|您好|哈喽|hello|hi|在吗|在么|早上好|中午好|晚上好|老师好)[\s!！?？~～]*$/i.test(cleanQuery);
+    const isShortFollowUp = cleanQuery.length <= 4 && /^(好的|对|不对|是的|不是|不懂|不会|为什么|然后呢|下一步|算完了|做完了)$/.test(cleanQuery);
+
+    let searchQuery = query;
+    if ((isGreeting || isShortFollowUp) && Array.isArray(history) && history.length > 0) {
+      for (let i = history.length - 1; i >= 0; i--) {
+        const hMsg = history[i];
+        if (hMsg && hMsg.role === 'user' && hMsg.text && hMsg.text.trim().length > 5) {
+          searchQuery = hMsg.text.trim();
+          break;
+        }
+      }
+    }
+
     let results = [];
     let isQuotaExhausted = false;
     try {
-      results = await performHybridSearch(query, grade, subject, RAG_TOP_K, edition);
+      results = await performHybridSearch(searchQuery, grade, subject, RAG_TOP_K, edition);
     } catch (err) {
       logger.error("[RAG Error] Hybrid search failed:", err);
       if (err.message === 'EMBED_QUOTA_EXHAUSTED' || err.message === 'QUOTA_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'))) {
@@ -66,7 +82,7 @@ router.post('/chat', async (req, res) => {
         page: 0,
         text_snippet: "⚠️ 警告：AI 教材关联服务（Embedding）额度已耗尽，当前回答将无法结合教材内容，仅使用 AI 本地知识库解答。"
       });
-    } else if (sources.length === 0) {
+    } else if (sources.length === 0 && !isGreeting) {
       sources.push({
         source: "系统提示",
         page: 0,

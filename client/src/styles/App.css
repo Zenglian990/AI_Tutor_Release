@@ -1,14 +1,24 @@
 .message-wrapper {
   flex-direction: column;
-  max-width: 90%;
+  max-width: 96%;
   min-width: 0;
-  /* animation removed: triggered via .msg-slide-in class from React on first mount only */
+  box-sizing: border-box;
 }
 
-.message-wrapper.user { align-self: flex-end; }
-.message-wrapper.ai  { align-self: flex-start; }
+.message-wrapper.user {
+  align-self: flex-end;
+  max-width: 88%;
+}
+
+.message-wrapper.ai {
+  align-self: stretch;
+  max-width: 100%;
+  width: 100%;
+}
 
 .message {
+  width: 100%;
+  box-sizing: border-box;
   padding: 16px 20px;
   border-radius: 18px;
   font-size: 1rem;
@@ -514,20 +524,44 @@ body.light-mode .chat-textarea::placeholder {
     height: 100dvh;
     border-radius: 0;
   }
+  .chat-container {
+    padding: 10px 8px 80px 8px !important;
+    gap: 14px !important;
+  }
   .header {
     flex-wrap: wrap;
-    padding: 12px 16px;
+    padding: 10px 12px;
   }
-  .header h1 { font-size: 1.1rem; }
+  .header h1 { font-size: 1.05rem; }
   .header-subtitle { display: none; }
   .header-controls {
     width: 100%;
     margin-top: 4px;
     justify-content: flex-start;
   }
-  .message {
+  .message-wrapper {
+    max-width: 100%;
+    width: 100%;
+  }
+  .message-wrapper.user {
+    align-self: flex-end;
     max-width: 90%;
+    width: auto;
+  }
+  .message-wrapper.ai {
+    align-self: stretch;
+    max-width: 100%;
+    width: 100%;
+  }
+  .message {
+    max-width: 100% !important;
+    width: 100%;
+    padding: 13px 14px;
     font-size: 0.95rem;
+    box-sizing: border-box;
+  }
+  .message.ai {
+    border-radius: 14px;
   }
   .input-form input { font-size: 1rem; }
   .grade-selector {

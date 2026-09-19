@@ -1,5 +1,5 @@
 const { getEmbedding } = require('./embedding');
-const { getTable } = require('../db/init');
+const { getTable, getSqliteDb } = require('../db/init');
 const { buildLanceDBWhereClause } = require('../prompts/guidelines');
 const logger = require('./logger');
 
@@ -69,6 +69,64 @@ function cleanQueryForFTS(query) {
 }
 
 /**
+ * Query Canonical Questions (39,114 verified benchmark questions) from SQLite
+ */
+async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
+  const db = getSqliteDb();
+  if (!db) return [];
+  try {
+    let gradePattern = '%';
+    if (grade) {
+      if (grade.includes('7') || grade.includes('初一')) gradePattern = '%7%';
+      else if (grade.includes('8') || grade.includes('初二')) gradePattern = '%8%';
+      else if (grade.includes('9') || grade.includes('初三')) gradePattern = '%9%';
+      else if (/^[1-6]/.test(grade)) gradePattern = `%${grade.charAt(0)}%`;
+    }
+
+    const cleanSubj = subject ? subject.replace(/[\s\-_]/g, '') : '数学';
+
+    // Extract core educational keywords from query
+    const keywords = (query || '')
+      .replace(/老师|请问|帮我|针对|考考我|分步|启发|出题|一道|经典|最新|关于|我想|挑战|母题|模型|题眼|难题/g, ' ')
+      .match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z0-9]+/g) || [];
+
+    let rows = [];
+    if (keywords.length > 0) {
+      const topKw = keywords.slice(0, 3);
+      let sql = 'SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE grade LIKE ? AND subject LIKE ?';
+      const params = [gradePattern, `%${cleanSubj}%`];
+      
+      const likeClauses = topKw.map(() => '(question LIKE ? OR chapter LIKE ? OR key_insight LIKE ?)').join(' OR ');
+      if (likeClauses) {
+        sql += ` AND (${likeClauses})`;
+        topKw.forEach(k => params.push(`%${k}%`, `%${k}%`, `%${k}%`));
+      }
+      sql += ' ORDER BY id ASC LIMIT ?';
+      params.push(limit);
+      rows = await db.all(sql, params);
+    }
+
+    if (rows.length === 0) {
+      // Return curated benchmark questions for this grade and subject
+      rows = await db.all(
+        'SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE grade LIKE ? AND subject LIKE ? ORDER BY id ASC LIMIT ?',
+        [gradePattern, `%${cleanSubj}%`, limit]
+      );
+    }
+
+    return rows.map(r => ({
+      source: r.source || `人教版_${cleanSubj}_${grade || '全册'}_真题母题库`,
+      page: r.chapter || '典型母题考点',
+      text: `【考点归属】${r.chapter || '经典母题模型'}\n【典例原题】${r.question}\n【解题关键与题眼突破】${r.key_insight || r.analysis || ''}\n【标准答案】${r.standard_answer || ''}`,
+      score: 0.95
+    }));
+  } catch (err) {
+    logger.warn('[SearchService] Canonical questions lookup error:', err.message);
+    return [];
+  }
+}
+
+/**
  * Execute Hybrid Search (Dense Vector Search + Sparse Text Search) with automatic fallback.
  * 
  * @param {string} query - Raw query text
@@ -80,8 +138,8 @@ function cleanQueryForFTS(query) {
 async function performHybridSearch(query, grade, subject, limit = 3, edition) {
   const table = getTable();
   if (!table) {
-    logger.warn('[SearchService] LanceDB table not ready. Skipping retrieval.');
-    return [];
+    logger.warn('[SearchService] LanceDB table not ready. Falling back to canonical questions.');
+    return await searchCanonicalQuestions(query, grade, subject, limit);
   }
 
   try {
@@ -115,6 +173,12 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition) {
         logger.warn('[SearchService] FTS text search failed in fallback:', ftsErr.message);
       }
       ftsResults = ftsResults.filter(r => r.source !== 'mock.txt');
+
+      if (ftsResults.length < limit) {
+        const canonicalMatches = await searchCanonicalQuestions(query, grade, subject, limit - ftsResults.length);
+        ftsResults = [...ftsResults, ...canonicalMatches];
+      }
+
       if (isQuotaExhausted) {
         const quotaExhaustedErr = new Error('EMBED_QUOTA_EXHAUSTED');
         quotaExhaustedErr.partialResults = ftsResults.slice(0, limit);
@@ -172,12 +236,22 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition) {
     // Filter out mock placeholder data
     results = results.filter(r => r.source !== 'mock.txt');
 
+    // Ground with verified Canonical Questions from SQLite if needed
+    if (results.length < limit) {
+      const canonicalMatches = await searchCanonicalQuestions(query, grade, subject, limit - results.length);
+      results = [...results, ...canonicalMatches];
+    }
+
     return results.slice(0, limit);
   } catch (err) {
     if (err.message === 'EMBED_QUOTA_EXHAUSTED') throw err;
-    logger.error('[SearchService] Hybrid search failed:', err);
-    return [];
+    logger.error('[SearchService] Hybrid search failed, attempting canonical questions:', err);
+    try {
+      return await searchCanonicalQuestions(query, grade, subject, limit);
+    } catch (e) {
+      return [];
+    }
   }
 }
 
-module.exports = { performHybridSearch, reciprocalRankFusion };
+module.exports = { performHybridSearch, reciprocalRankFusion, searchCanonicalQuestions };

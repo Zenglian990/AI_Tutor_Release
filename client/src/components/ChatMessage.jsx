@@ -277,7 +277,7 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                   overflowY: 'auto',
                   color: '#cbd5e1'
                 }}>
-                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>
                     {preprocessLatex(thinking)}
                   </ReactMarkdown>
                 </div>
@@ -292,7 +292,7 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
             ) : (
               <ReactMarkdown 
                 remarkPlugins={[remarkMath, remarkGfm]} 
-                rehypePlugins={[rehypeKatex]}
+                rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
                 components={{
                   h3({node, children, ...props}) {
                     const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
