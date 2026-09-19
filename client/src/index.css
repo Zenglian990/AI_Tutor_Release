@@ -445,6 +445,44 @@ body {
     flex-direction: column;
   }
 
+  /* 消息滚动区与卡片在手机端消除多余留白，最大化利用屏幕空间 */
+  .chat-container {
+    padding: 10px 10px 80px 10px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .message-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .message-wrapper.user {
+    align-self: flex-end !important;
+    max-width: 90% !important;
+    width: auto !important;
+  }
+
+  .message-wrapper.ai {
+    align-self: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .message {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px 14px !important;
+    font-size: 0.95rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .message.ai {
+    border-radius: 14px !important;
+  }
+
   /* 顶部状态栏与安全区域适配 */
   .header {
     height: auto !important;

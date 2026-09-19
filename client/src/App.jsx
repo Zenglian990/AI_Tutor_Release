@@ -326,19 +326,6 @@ function AppInner() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     setIsLoading(true);
 
-    if (isOffline) {
-      const offlineSocraticText = generateOfflineSocraticResponse({
-        query: userQuery,
-        grade: gradeRef.current || currentProfile?.grade || '7',
-        subject: subjectRef.current || selectedSubject || '数学',
-        persona: tutorPersona,
-        studentName: currentProfile?.name || '同学'
-      });
-      setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: offlineSocraticText }]);
-      setIsLoading(false);
-      return;
-    }
-
     if (window.speechSynthesis && !hasInitializedTTS) {
       hasInitializedTTS = true;
       const silentUtterance = new SpeechSynthesisUtterance('');
