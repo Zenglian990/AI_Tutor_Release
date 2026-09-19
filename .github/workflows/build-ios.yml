@@ -36,19 +36,39 @@ jobs:
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Build iOS Project (Unsigned build verification)
+      - name: Build iOS Project & Generate IPA
         run: |
           cd client/ios/App
-          xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO build
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -derivedDataPath build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO build
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr ../../../ZengLian_AI_Tutor_v1.0.0.ipa Payload
+          ls -lh ../../../ZengLian_AI_Tutor_v1.0.0.ipa
 
       - name: Compress iOS Xcode Project Bundle
         run: |
           cd client/ios
-          zip -r ../../ZengLian_AI_Tutor_iOS_Project.zip App
+          zip -qr ../../ZengLian_AI_Tutor_iOS_Project.zip App
 
-      - name: Upload iOS Build Artifact
+      - name: Upload Artifacts to Workflow
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_iOS_v1.0.0
-          path: ./ZengLian_AI_Tutor_iOS_Project.zip
+          name: ZengLian_AI_Tutor_iOS_Package
+          path: |
+            ./ZengLian_AI_Tutor_v1.0.0.ipa
+            ./ZengLian_AI_Tutor_iOS_Project.zip
           retention-days: 30
+
+      - name: Upload iOS Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: v1.0.0-apk
+          name: "曾练专属私教 移动双端独立安装包 (Android APK + iOS IPA v1.0.0)"
+          draft: false
+          prerelease: false
+          files: |
+            ./ZengLian_AI_Tutor_v1.0.0.ipa
+            ./ZengLian_AI_Tutor_iOS_Project.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
