@@ -1,0 +1,54 @@
+name: Build iOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/build-ios.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    name: Build ZengLian AI Tutor iOS App
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install root & client dependencies
+        run: |
+          npm install
+          cd client
+          npm install
+          npm run build
+          npx cap sync ios
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Build iOS Project (Unsigned build verification)
+        run: |
+          cd client/ios/App
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO build
+
+      - name: Compress iOS Xcode Project Bundle
+        run: |
+          cd client/ios
+          zip -r ../../ZengLian_AI_Tutor_iOS_Project.zip App
+
+      - name: Upload iOS Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZengLian_AI_Tutor_iOS_v1.0.0
+          path: ./ZengLian_AI_Tutor_iOS_Project.zip
+          retention-days: 30
