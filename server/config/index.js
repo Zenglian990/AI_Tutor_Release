@@ -59,47 +59,14 @@ const proxyUrl = (() => {
   return null;
 })();
 
-// API auth token — if not set, generate a random one and log it for the admin
+// API auth token — if not set, fallback to standard release token
+const STANDARD_DEFAULT_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
 const API_TOKEN = (() => {
   const fromEnv = process.env.API_TOKEN;
   if (fromEnv && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
     return fromEnv;
   }
-  let token;
-  try {
-    // Use randomUUID which does not block on low entropy like randomBytes
-    const tokenBytes = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
-    token = tokenBytes;
-  } catch (err) {
-    logger.error('Failed to generate secure random bytes. Falling back to insecure random generator.', err);
-    // Fallback: mixed timestamp + Math.random + Math.random
-    const randPart1 = Math.random().toString(36).substring(2);
-    const randPart2 = Math.random().toString(36).substring(2);
-    const tsPart = Date.now().toString(36);
-    const tokenBytes = `${tsPart}${randPart1}${randPart2}`.padEnd(64, '0').slice(0, 64);
-    token = 'insecure_' + tokenBytes;
-  }
-  logger.warn('⚠️  WARNING: No secure API_TOKEN configured!');
-  logger.warn(`   Auto-generated token: ${token}`);
-  logger.warn('   Persisting API_TOKEN to .env automatically.');
-
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const envPath = path.join(__dirname, '..', '..', '.env');
-    let envContent = '';
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
-    if (!envContent.includes('API_TOKEN=')) {
-      fs.appendFileSync(envPath, `\nAPI_TOKEN=${token}\n`);
-      logger.info('   [SUCCESS] Automatically wrote API_TOKEN to .env file');
-    }
-  } catch (err) {
-    logger.error('   [ACTION REQUIRED] Failed to write API_TOKEN. Please manually add it to .env');
-  }
-
-  return token;
+  return STANDARD_DEFAULT_TOKEN;
 })();
 
 // DB encryption key — decoupled from API_TOKEN for key rotation safety

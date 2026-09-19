@@ -131,7 +131,10 @@ export default function SettingsModal({
         model: chatModel !== 'default' ? chatModel : undefined
       };
 
-      const res = await authFetch('/api/config/test-llm', {
+      const targetBase = url.trim() || '';
+      const testEndpoint = targetBase ? `${targetBase.replace(/\/+$/, '')}/api/config/test-llm` : '/api/config/test-llm';
+
+      const res = await authFetch(testEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

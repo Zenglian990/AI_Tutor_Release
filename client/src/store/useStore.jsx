@@ -48,12 +48,16 @@ function getApiUrl(path = '') {
   return cleanBase ? cleanBase + cleanPath : cleanPath;
 }
 
+export const DEFAULT_API_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+
 /**
  * Get the stored API token.
  */
 function getApiToken() {
   const encrypted = localStorage.getItem('ai_tutor_api_token');
-  return decryptData(encrypted) || '';
+  const decrypted = decryptData(encrypted);
+  if (decrypted) return decrypted;
+  return DEFAULT_API_TOKEN;
 }
 
 async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {

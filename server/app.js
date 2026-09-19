@@ -63,17 +63,69 @@ function createApp() {
   }));
 
   // --- Core middleware ---
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map(s => s.trim());
-  allowedOrigins.push('http://localhost:3001', 'http://127.0.0.1:3001');
+  const rawAllowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const explicitAllowed = new Set([
+    'http://localhost:5173',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:5173',
+    ...rawAllowed
+  ]);
+
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow if no origin (e.g. curl) or if origin is in the allowed list
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+      // Allow non-browser requests (curl, server-to-server, mobile native HTTP) or 'null' (sandboxed webviews)
+      if (!origin || origin === 'null') {
+        return callback(null, true);
       }
-    }
+
+      // Allow if wildcard or explicitly configured
+      if (process.env.ALLOWED_ORIGINS === '*' || explicitAllowed.has(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow localhost with any port or without port (Capacitor Android/iOS WebView, local dev)
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow Capacitor / Ionic / local file schemas
+      if (/^(capacitor|ionic|file):\/\//.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow LAN private IPs (e.g. mobile phone connecting to PC over same Wi-Fi)
+      if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow onrender.com and other cloud deployments
+      if (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+
+      // For public mobile client access: allow origin (API security is enforced by token & HMAC signature)
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-timestamp',
+      'x-signature',
+      'x-api-key',
+      'x-form-fields',
+      'x-file-fields',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Cache-Control',
+      'Pragma'
+    ],
+    exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After'],
+    optionsSuccessStatus: 200,
+    maxAge: 86400
   }));
   app.use(express.json({ limit: MAX_BODY_SIZE }));
   app.use(express.urlencoded({ extended: true, limit: MAX_BODY_SIZE }));

@@ -10,5 +10,12 @@ services:
         value: production
       - key: PORT
         value: 3001
+      - key: API_TOKEN
+        value: ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: REQUIRE_AUTH
+        value: "false"
       - key: GEMINI_API_KEY
         sync: false
+

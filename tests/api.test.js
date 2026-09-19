@@ -228,3 +228,32 @@ test('POST, GET, and PUT /api/mistakes — tags management', async () => {
   assert.ok(updatedMistake);
   assert.equal(updatedMistake.tags, '一元一次方程,易错题,计算');
 });
+
+test('CORS: allows Capacitor Android origins and sets Access-Control-Allow-Origin', async () => {
+  // 1. Test GET /api/health with Origin: http://localhost (Capacitor Android default)
+  const res1 = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'http://localhost' }
+  });
+  assert.equal(res1.status, 200);
+  assert.equal(res1.headers.get('access-control-allow-origin'), 'http://localhost');
+
+  // 2. Test GET /api/health with Origin: capacitor://localhost (Capacitor iOS/Android)
+  const res2 = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'capacitor://localhost' }
+  });
+  assert.equal(res2.status, 200);
+  assert.equal(res2.headers.get('access-control-allow-origin'), 'capacitor://localhost');
+
+  // 3. Test OPTIONS preflight for /api/config/test-llm
+  const preflightRes = await fetch(`${baseUrl}/api/config/test-llm`, {
+    method: 'OPTIONS',
+    headers: {
+      'Origin': 'http://localhost',
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type,authorization,x-timestamp,x-signature'
+    }
+  });
+  assert.ok(preflightRes.status === 200 || preflightRes.status === 204);
+  assert.equal(preflightRes.headers.get('access-control-allow-origin'), 'http://localhost');
+});
+
