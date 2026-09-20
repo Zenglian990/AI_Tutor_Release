@@ -189,9 +189,12 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
     } else {
       logger.error('Streaming Chat Error:', e);
       if (!res.writableEnded) {
-        let errorMsg = '服务器流式响应出错。';
-        if (e.message === 'QUOTA_EXHAUSTED') {
-          errorMsg = '今日额度已用完。由于使用的是免费版 API，今日的 4000 次查询额度已耗尽。请明天早上 8 点后再试。';
+        let errorMsg = '服务器流式响应出错，请稍后重试。';
+        const errStr = (e && e.message) ? e.message : String(e);
+        if (errStr.includes('QUOTA_EXHAUSTED') || errStr.includes('429')) {
+          errorMsg = '今日 AI 调用额度已达上限。请稍后再试，或点击右上角设置 (⚙️) 填入您的自定义 Gemini Key。';
+        } else if (/API_KEY|auth|invalid|400|403|not configured/i.test(errStr)) {
+          errorMsg = 'AI 密钥未配置或已失效。请在云端控制台更新密钥，或点击右上角设置 (⚙️) 填入您的自定义 Gemini Key。';
         }
         res.write(`data: ${JSON.stringify({ error: errorMsg, details: NODE_ENV === 'development' ? e.message : undefined })}\n\n`);
         res.end();
