@@ -220,7 +220,7 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
 
   const geminiVoice = mapVoiceToGemini(voice);
 
-  const TTS_CANDIDATE_MODELS = ['gemini-2.5-flash-preview-tts', 'gemini-3.1-flash-tts-preview'];
+  const TTS_CANDIDATE_MODELS = ['gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
   const buildTtsURL = (modelName) =>
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
@@ -236,7 +236,7 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
         method: 'POST',
         headers: requestHeaders,
         body: JSON.stringify({
-          contents: [{ parts: [{ text }] }],
+          contents: [{ parts: [{ text: 'Please read the following text aloud verbatim: ' + text }] }],
           generationConfig: {
             responseModalities: ['AUDIO'],
             speechConfig: {

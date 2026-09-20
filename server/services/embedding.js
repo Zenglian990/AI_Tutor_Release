@@ -557,10 +557,16 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
         keyCooldown.set(key, Date.now() + 5000);
         await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
-        // Critical key error (400 key invalid / 403 blocked)
-        invalidKeys.add(key);
-        logger.error(`[KeyPool] Key ${maskKey(key)} returned critical error ${response.status}. Key disabled.`);
-        continue;
+        // Only disable key if the error specifically points to invalid API key or permission denied
+        const isKeyAuthError = /API_KEY_INVALID|API key not valid|PERMISSION_DENIED|key.*invalid|CONSUMER_SUSPENDED/i.test(body);
+        if (isKeyAuthError) {
+          invalidKeys.add(key);
+          logger.error(`[KeyPool] Key ${maskKey(key)} returned critical key auth error ${response.status}. Key disabled.`);
+          continue;
+        } else {
+          logger.warn(`[KeyPool] API returned ${response.status} (${body.slice(0, 120)}), key remains valid.`);
+          break;
+        }
       }
     } catch (e) {
       cleanup();
