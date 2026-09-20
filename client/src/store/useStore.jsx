@@ -48,7 +48,7 @@ function getApiUrl(path = '') {
   return cleanBase ? cleanBase + cleanPath : cleanPath;
 }
 
-export const DEFAULT_API_TOKEN = '';
+export const DEFAULT_API_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
 
 /**
  * Get the stored API token.
@@ -56,7 +56,7 @@ export const DEFAULT_API_TOKEN = '';
 function getApiToken() {
   const encrypted = localStorage.getItem('ai_tutor_api_token');
   const decrypted = decryptData(encrypted);
-  if (decrypted) return decrypted;
+  if (decrypted && decrypted.trim()) return decrypted.trim();
   return import.meta.env.VITE_API_TOKEN || DEFAULT_API_TOKEN;
 }
 
