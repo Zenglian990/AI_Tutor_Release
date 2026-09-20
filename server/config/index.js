@@ -72,7 +72,7 @@ const API_TOKEN = (() => {
   if (fromEnv && fromEnv.trim() && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
     return fromEnv.trim();
   }
-  if (NODE_ENV === 'production' && process.env.REQUIRE_AUTH === 'true') {
+  if (NODE_ENV === 'production') {
     logger.error('[CRITICAL] API_TOKEN environment variable is missing in production! Server refusing to start without a secure secret token.');
     throw new Error('API_TOKEN environment variable must be set in production!');
   }
