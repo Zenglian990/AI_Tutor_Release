@@ -582,29 +582,51 @@ export default function SettingsModal({
               onChange={e => setUrl(e.target.value)}
               style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', fontSize: '0.9rem' }}
             />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px', flexWrap: 'wrap', gap: '6px' }}>
               <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem' }}>
                 {t('settings.backend_note')}
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setUrl('https://ai-tutor-release.onrender.com');
-                  setToken('ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3');
-                  setTestResult({ success: true, message: '已填入官方云端配置！请点击保存生效。' });
-                }}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(59, 130, 246, 0.4)',
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  color: '#60a5fa',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer'
-                }}
-              >
-                🔄 填入官方云端地址与Token
-              </button>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUrl('');
+                    setToken('');
+                    setTestResult({ success: true, message: '已切换为本地电脑服务！点击保存即刻生效。' });
+                  }}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#34d399',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                  title="清空地址，直接使用当前电脑的本地服务器"
+                >
+                  💻 使用本地电脑服务
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUrl('https://ai-tutor-release.onrender.com');
+                    setToken('ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3');
+                    setTestResult({ success: true, message: '已填入官方云端配置！点击保存生效。' });
+                  }}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    color: '#60a5fa',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 填入官方云端地址
+                </button>
+              </div>
             </div>
           </div>
 
