@@ -109,23 +109,6 @@ function createApp() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'x-timestamp',
-      'x-signature',
-      'x-api-key',
-      'x-gemini-api-key',
-      'x-deepseek-api-key',
-      'x-parent-pin-hash',
-      'x-form-fields',
-      'x-file-fields',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-      'Cache-Control',
-      'Pragma'
-    ],
     exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After'],
     optionsSuccessStatus: 200,
     maxAge: 86400

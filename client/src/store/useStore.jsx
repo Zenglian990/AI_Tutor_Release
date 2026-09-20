@@ -120,14 +120,21 @@ async function authFetch(path, options = {}) {
       headers['x-parent-pin-hash'] = parentPinHash;
     }
 
-    const customGeminiKey = localStorage.getItem('ai_tutor_gemini_key');
-    if (customGeminiKey && customGeminiKey.trim()) {
-      headers['x-gemini-api-key'] = customGeminiKey.trim();
-    }
+    const isLlmRoute = relativePath.startsWith('/api/chat') ||
+                       relativePath.startsWith('/api/test-paper') ||
+                       relativePath.startsWith('/api/homework') ||
+                       relativePath.startsWith('/api/config');
 
-    const customDeepseekKey = localStorage.getItem('ai_tutor_deepseek_key');
-    if (customDeepseekKey && customDeepseekKey.trim()) {
-      headers['x-deepseek-api-key'] = customDeepseekKey.trim();
+    if (isLlmRoute) {
+      const customGeminiKey = localStorage.getItem('ai_tutor_gemini_key');
+      if (customGeminiKey && customGeminiKey.trim()) {
+        headers['x-gemini-api-key'] = customGeminiKey.trim();
+      }
+
+      const customDeepseekKey = localStorage.getItem('ai_tutor_deepseek_key');
+      if (customDeepseekKey && customDeepseekKey.trim()) {
+        headers['x-deepseek-api-key'] = customDeepseekKey.trim();
+      }
     }
 
     // Generate and inject request signature
