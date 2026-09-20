@@ -17,8 +17,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Local database files and logs
-data/lancedb/
+# Local database files and logs (LanceDB 5.4MB is preserved for RAG, large raw files ignored)
 data/mistakes.db*
 data/textbooks/
 data/backups/

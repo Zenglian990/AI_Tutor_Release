@@ -13,11 +13,11 @@ services:
       - key: API_TOKEN
         value: ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3
       - key: ALLOWED_ORIGINS
-        value: "*"
+        value: https://zenglian-ai-tutor.onrender.com,http://localhost:5173
       - key: REQUIRE_AUTH
-        value: "false"
+        value: "true"
       - key: GEMINI_API_KEY
         sync: false
       - key: CHAT_MODEL
-        value: gemini-3.6-flash
+        value: gemini-2.5-flash
 

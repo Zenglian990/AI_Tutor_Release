@@ -11,7 +11,8 @@
     "test": "npm run test:all",
     "test:all": "node --test --test-concurrency=1 tests/*.test.js",
     "seed:demo": "node scripts/seed_demo_data.js",
-    "healthcheck": "node scripts/health-check.js"
+    "healthcheck": "node scripts/health-check.js",
+    "verify:security": "node scripts/package-clean.js"
   },
   "keywords": [],
   "author": "",

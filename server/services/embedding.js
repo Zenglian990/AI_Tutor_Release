@@ -379,9 +379,9 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     logger.warn(`Invalid model name format provided: ${rawModel}, falling back to default`);
     rawModel = CHAT_MODEL;
   }
-  // Remap deprecated Gemini models (e.g. 2.0-flash, 1.5-flash, 2.5-flash-lite) to modern 3.6-flash
+  // Remap deprecated Gemini models (e.g. 2.0-flash, 1.5-flash, 2.5-flash-lite) to modern configured model
   if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel.includes('gemini-2.5-flash-lite')) {
-    rawModel = 'gemini-3.6-flash';
+    rawModel = CHAT_MODEL || 'gemini-2.5-flash';
   }
   const selectedModel = rawModel;
 

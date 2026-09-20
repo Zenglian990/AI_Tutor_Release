@@ -66,15 +66,20 @@ router.get('/parent/remote-view', async (req, res) => {
       return res.status(401).json({ error: '家长访问链接无效或已过期，请在伴学客户端重新扫码获取' });
     }
 
+    // IDOR Protection: Token is cryptographically bound to verified.profileId.
+    // Switching to an unauthorized profile without a matching token is strictly forbidden.
+    let activeProfileId = verified.profileId;
+    if (switch_profile_id && switch_profile_id.trim()) {
+      const targetProfile = switch_profile_id.trim();
+      if (targetProfile !== verified.profileId) {
+        return res.status(403).json({ error: '无权访问其他学生的专属档案' });
+      }
+      activeProfileId = targetProfile;
+    }
+
     const db = getSqliteDb();
     if (!db) {
       return res.status(503).json({ error: '伴学数据库尚未就绪' });
-    }
-
-    // Allow switching profile if authorized by token
-    let activeProfileId = verified.profileId;
-    if (switch_profile_id && switch_profile_id.trim()) {
-      activeProfileId = switch_profile_id.trim();
     }
 
     // 1. Fetch cognitive memory and student name

@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { API_TOKEN, NODE_ENV, AUTH_RATE_LIMIT_WINDOW_MS, AUTH_RATE_LIMIT_MAX } = require('../config');
 const logger = require('../services/logger');
 
@@ -28,9 +29,9 @@ setInterval(() => {
  * In production: always requires valid Bearer token.
  */
 function authMiddleware(req, res, next) {
-  // Allow health check, config testing, parent remote view and static assets without Bearer auth
+  // Allow health check, parent remote view and public version without Bearer auth
   // Note: middleware is mounted at /api/, so req.path is already stripped of the /api prefix
-  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/network-info' || req.path === '/system/version' || req.path === '/config/test-llm') return next();
+  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/version') return next();
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // If auth is explicitly disabled in environment, skip
@@ -80,8 +81,10 @@ function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-  const STANDARD_RELEASE_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
-  if (token !== API_TOKEN && token !== STANDARD_RELEASE_TOKEN) {
+  const isMatch = token && API_TOKEN &&
+    token.length === API_TOKEN.length &&
+    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(API_TOKEN));
+  if (!isMatch) {
     failureEntry.count++;
     logger.warn(`[Auth] Failed attempt from ${clientIp} (${failureEntry.count}/${AUTH_RATE_LIMIT_MAX})`);
     return res.status(403).json({ error: '访问令牌无效。' });

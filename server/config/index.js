@@ -46,17 +46,24 @@ const proxyUrl = (() => {
   const envPort = envProxy ? getPort(envProxy) : null;
   
   if (envPort) {
+    // If proxy host is remote (not loopback), trust configured remote proxy without local netstat
+    const isLocalhost = !envProxy || envProxy.includes('127.0.0.1') || envProxy.includes('localhost') || envProxy.includes('::1');
+    if (!isLocalhost) {
+      return envProxy;
+    }
+
     try {
       const execSync = require('child_process').execSync;
       const netstatOut = execSync('netstat -an', { encoding: 'utf8', timeout: 500 });
-      const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1):${envPort}\\s+.*LISTENING`, 'i');
+      const portRegex = new RegExp(`(?:127\\.0\\.0\\.1|0\\.0\\.0\\.0|::1|:::|\\*):${envPort}\\s+.*\\bLISTEN(?:ING)?\\b`, 'i');
       if (portRegex.test(netstatOut)) {
         return envProxy;
       } else {
-        return null; // Configured proxy is dead, fallback to direct connection
+        return null; // Configured local proxy is dead, fallback to direct connection
       }
     } catch (e) {
-      // Ignore netstat errors
+      // If netstat is unavailable (e.g. Docker container without net-tools), trust envProxy
+      return envProxy;
     }
   }
 

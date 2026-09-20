@@ -104,8 +104,8 @@ function createApp() {
         return callback(null, true);
       }
 
-      // For public mobile client access: allow origin (API security is enforced by token & HMAC signature)
-      return callback(null, true);
+      // Block all other unauthorized origins
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
