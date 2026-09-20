@@ -113,9 +113,10 @@ test('CanonicalQuestions: Extended benchmark includes 1-9 grade milestone questi
 
 test('CanonicalQuestions: batchIngestQuestions handles duplicates and new items gracefully', async () => {
   const { batchIngestQuestions } = require('../scripts/ingest_canonical_questions');
+  const uniqueQuestionText = `测试新题_${Date.now()}_${Math.random()}：圆的半径为 2 cm，其面积是（ ）cm²。`;
   const sampleBatch = [
     {
-      question: '测试新题：圆的半径为 2 cm，其面积是（ ）cm²。',
+      question: uniqueQuestionText,
       standard_answer: '4π',
       analysis: '圆面积公式 S = πr² = 4π',
       grade: '6_up',
