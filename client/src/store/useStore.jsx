@@ -123,7 +123,8 @@ async function authFetch(path, options = {}) {
     const isLlmRoute = relativePath.startsWith('/api/chat') ||
                        relativePath.startsWith('/api/test-paper') ||
                        relativePath.startsWith('/api/homework') ||
-                       relativePath.startsWith('/api/config');
+                       relativePath.startsWith('/api/config') ||
+                       relativePath.startsWith('/api/tts');
 
     if (isLlmRoute) {
       const customGeminiKey = localStorage.getItem('ai_tutor_gemini_key');

@@ -1,4 +1,4 @@
-﻿import { authFetch } from '../store/useStore';
+import { authFetch } from '../store/useStore';
 
 const activeControllers = new Set();
 const speakingListeners = new Set();
@@ -51,24 +51,38 @@ export function extractQuestionFocus(text) {
 }
 
 function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
-  if (!window.speechSynthesis) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
     if (onEnd) onEnd();
     notifySpeakingState(false);
     return;
   }
   
+  try {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
+  } catch (e) {}
+
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = 'zh-CN';
-  const voices = window.speechSynthesis.getVoices();
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  const voices = window.speechSynthesis.getVoices() || [];
   let selectedVoice = null;
-  if (grade && (grade.includes('1') || grade.includes('2') || grade.includes('3'))) {
-    selectedVoice = voices.find(v => v.lang.includes('zh') && (v.name.includes('Xiaoxiao') || v.name.includes('Tingting') || v.name.includes('female') || v.name.includes('女')));
+  const gradeStr = String(grade || '');
+  if (gradeStr.includes('1') || gradeStr.includes('2') || gradeStr.includes('3')) {
+    selectedVoice = voices.find(v => (v.lang.includes('zh') || v.lang.includes('cmn')) && (v.name.includes('Xiaoxiao') || v.name.includes('Tingting') || v.name.includes('female') || v.name.includes('女')));
   } else {
-    selectedVoice = voices.find(v => v.lang.includes('zh') && (v.name.includes('Yunxi') || v.name.includes('Yunjian') || v.name.includes('male') || v.name.includes('男')));
+    selectedVoice = voices.find(v => (v.lang.includes('zh') || v.lang.includes('cmn')) && (v.name.includes('Yunxi') || v.name.includes('Yunjian') || v.name.includes('male') || v.name.includes('男')));
+  }
+  if (!selectedVoice) {
+    selectedVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('cmn'));
   }
   if (selectedVoice) utterance.voice = selectedVoice;
   
+  let started = false;
   utterance.onstart = () => {
+    started = true;
     notifySpeakingState(true);
     if (onStart) onStart();
   };
@@ -86,9 +100,10 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
   };
 
   utterance.onend = finish;
-  utterance.onerror = finish;
-  
-  window.speechSynthesis.speak(utterance);
+  utterance.onerror = (e) => {
+    console.warn("SpeechSynthesis error:", e);
+    finish();
+  };
   
   ctrl.stop = () => {
     try {
@@ -96,20 +111,42 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
     } catch (e) {}
     finish();
   };
+
+  window.speechSynthesis.speak(utterance);
+
+  // Chrome mobile watchdog: resume periodically if paused
+  const resumeTimer = setInterval(() => {
+    if (!didEnd && window.speechSynthesis.speaking) {
+      window.speechSynthesis.resume();
+    } else {
+      clearInterval(resumeTimer);
+    }
+  }, 2500);
 }
 
 /**
- * Play text to speech (TTS) using Cloud Edge-TTS, falling back to local synthesis on error.
+ * Play text to speech (TTS) using Cloud Gemini TTS, falling back to local synthesis on error.
+ * Supports both call signatures:
+ *   playTTS(text, onStart, onEnd)
+ *   playTTS(text, grade, onStart, onEnd)
  * Returns a controller object { stop: () => void }
- * 
- * @param {string} text 
- * @param {string} grade 
- * @param {function} onStart 
- * @param {function} onEnd 
- * @returns {object} Controller with .stop() method
  */
-export function playTTS(text, grade, onStart, onEnd) {
+export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
   stopTTS();
+
+  let grade = '';
+  let onStart = null;
+  let onEnd = null;
+
+  if (typeof gradeOrOnStart === 'function') {
+    onStart = gradeOrOnStart;
+    onEnd = onStartOrOnEnd;
+    grade = '';
+  } else {
+    grade = gradeOrOnStart || '';
+    onStart = onStartOrOnEnd;
+    onEnd = maybeOnEnd;
+  }
 
   let cleanText = text
     .replace(/<[^>]+>/g, '')
@@ -129,6 +166,19 @@ export function playTTS(text, grade, onStart, onEnd) {
   const ctrl = { stop: () => {} };
   activeControllers.add(ctrl);
 
+  // Pre-create Audio synchronously inside user gesture turn to bypass mobile autoplay restrictions
+  const audio = new Audio();
+  try {
+    audio.play().catch(() => {});
+  } catch (e) {}
+
+  ctrl.stop = () => {
+    try {
+      audio.pause();
+      audio.src = '';
+    } catch (e) {}
+  };
+
   authFetch('/api/tts', {
     method: 'POST',
     headers: {
@@ -145,7 +195,7 @@ export function playTTS(text, grade, onStart, onEnd) {
     })
     .then(blob => {
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      audio.src = url;
       
       let didEnd = false;
       const finish = () => {
@@ -166,13 +216,16 @@ export function playTTS(text, grade, onStart, onEnd) {
         notifySpeakingState(true);
         if (onStart) onStart();
         audio.play().catch(e => {
-          console.warn("Autoplay prevented:", e);
-          finish();
+          console.warn("Autoplay prevented on audio element:", e);
+          fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
         });
       };
       
       audio.onended = finish;
-      audio.onerror = finish;
+      audio.onerror = (e) => {
+        console.warn("Audio playback error:", e);
+        fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
+      };
       
       ctrl.stop = () => {
         try {
@@ -183,7 +236,7 @@ export function playTTS(text, grade, onStart, onEnd) {
       };
     })
     .catch(err => {
-      console.warn("Cloud TTS failed, falling back to local", err);
+      console.warn("Cloud TTS failed, falling back to local speech:", err);
       fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
     });
 

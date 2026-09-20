@@ -169,8 +169,43 @@ function mapVoiceToGemini(edgeVoice) {
 }
 
 /**
- * Synthesize text to MP3 audio using Gemini TTS API.
- * Replaces the broken Edge TTS WebSocket approach (401 due to Sec-MS-GEC requirement).
+ * Convert raw PCM (e.g. 24000Hz 16-bit mono) into a valid playable RIFF WAV buffer
+ */
+function pcmToWav(pcmBuffer, sampleRate = 24000, numChannels = 1, bitsPerSample = 16) {
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = pcmBuffer.length;
+  const headerSize = 44;
+  const wavBuffer = Buffer.alloc(headerSize + dataSize);
+
+  // RIFF header
+  wavBuffer.write('RIFF', 0);
+  wavBuffer.writeUInt32LE(36 + dataSize, 4);
+  wavBuffer.write('WAVE', 8);
+
+  // fmt subchunk
+  wavBuffer.write('fmt ', 12);
+  wavBuffer.writeUInt32LE(16, 16); // subchunk size (16 for PCM)
+  wavBuffer.writeUInt16LE(1, 20);  // format: 1 (PCM)
+  wavBuffer.writeUInt16LE(numChannels, 22);
+  wavBuffer.writeUInt32LE(sampleRate, 24);
+  wavBuffer.writeUInt32LE(byteRate, 28);
+  wavBuffer.writeUInt16LE(blockAlign, 32);
+  wavBuffer.writeUInt16LE(bitsPerSample, 34);
+
+  // data subchunk
+  wavBuffer.write('data', 36);
+  wavBuffer.writeUInt32LE(dataSize, 40);
+
+  // Payload
+  pcmBuffer.copy(wavBuffer, 44);
+  return wavBuffer;
+}
+
+/**
+ * Synthesize text to WAV audio using Gemini TTS API.
+ * Uses gemini-2.5-flash-preview-tts with fallback to gemini-3.1-flash-tts-preview.
+ * Converts raw PCM response to standard playable WAV with 44-byte RIFF header.
  *
  * @param {string} rawText
  * @param {string} voice  - Edge-style voice name (mapped internally to Gemini voice)
@@ -185,48 +220,62 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural') {
 
   const geminiVoice = mapVoiceToGemini(voice);
 
-  // Gemini TTS endpoint (uses the same base URL as chat but with tts model)
-  const TTS_MODEL = 'gemini-2.5-flash';
+  const TTS_CANDIDATE_MODELS = ['gemini-2.5-flash-preview-tts', 'gemini-3.1-flash-tts-preview'];
   const buildTtsURL = (modelName) =>
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
-  try {
-    const response = await fetchWithKeyRotation(buildTtsURL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text }] }],
-        generationConfig: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: geminiVoice }
+  let lastError = null;
+  for (const modelName of TTS_CANDIDATE_MODELS) {
+    try {
+      const response = await fetchWithKeyRotation(buildTtsURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text }] }],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: geminiVoice }
+              }
             }
           }
-        }
-      })
-    }, 3, 30000, TTS_MODEL, true);
+        })
+      }, 2, 25000, modelName, true);
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (data.error) {
-      throw new Error(data.error.message || JSON.stringify(data.error));
+      if (data.error) {
+        throw new Error(data.error.message || JSON.stringify(data.error));
+      }
+
+      // Extract base64-encoded audio from response
+      const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      const audioData = inlineData?.data;
+      if (!audioData) {
+        throw new Error('No audio data in Gemini TTS response');
+      }
+
+      let sampleRate = 24000;
+      if (inlineData?.mimeType && inlineData.mimeType.includes('rate=')) {
+        const match = inlineData.mimeType.match(/rate=(\d+)/);
+        if (match && match[1]) sampleRate = parseInt(match[1], 10);
+      }
+
+      const pcmBuffer = Buffer.from(audioData, 'base64');
+      const wavBuffer = pcmToWav(pcmBuffer, sampleRate, 1, 16);
+      logger.info(`[TTS] Gemini TTS synthesized ${wavBuffer.length} bytes (model: ${modelName}, voice: ${geminiVoice}, rate: ${sampleRate})`);
+      return wavBuffer;
+
+    } catch (err) {
+      lastError = err;
+      logger.warn(`[TTS] Model ${modelName} synthesis failed: ${err.message}, trying next model...`);
     }
-
-    // Extract base64-encoded audio from response
-    const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) {
-      throw new Error('No audio data in Gemini TTS response');
-    }
-
-    const audioBuffer = Buffer.from(audioData, 'base64');
-    logger.info(`[TTS] Gemini TTS synthesized ${audioBuffer.length} bytes (voice: ${geminiVoice})`);
-    return audioBuffer;
-
-  } catch (err) {
-    logger.error('[TTS] Gemini TTS synthesis failed:', err.message);
-    throw err;
   }
+
+  logger.error('[TTS] All Gemini TTS models failed:', lastError?.message);
+  throw lastError || new Error('TTS synthesis failed for all models');
 }
 
-module.exports = { synthesizeSpeech, cleanTextForTTS, translateMathToChinese };
+module.exports = { synthesizeSpeech, cleanTextForTTS, translateMathToChinese, pcmToWav };
+
