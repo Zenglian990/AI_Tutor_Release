@@ -99,18 +99,22 @@ test('Auth & Signature: rejects arbitrary tokens and protects sensitive endpoint
 });
 
 // Test 4 (Item 7 & 8): File isolation and encoding integrity checks
-test('Release integrity: .dockerignore includes lancedb and .env is clean UTF-8', () => {
+test('Release integrity: .dockerignore includes lancedb and .env.example is clean UTF-8', () => {
   const rootDir = path.resolve(__dirname, '..');
   
   // Verify .dockerignore does not exclude data/lancedb/
   const dockerignore = fs.readFileSync(path.join(rootDir, '.dockerignore'), 'utf8');
   assert.strictEqual(dockerignore.includes('data/lancedb/'), false);
 
-  // Verify .env (or .env.example in CI runner where .env is gitignored) contains no corrupted characters
-  const envPath = fs.existsSync(path.join(rootDir, '.env'))
-    ? path.join(rootDir, '.env')
-    : path.join(rootDir, '.env.example');
-  const envContent = fs.readFileSync(envPath, 'utf8');
-  assert.strictEqual(envContent.includes('\uFFFD'), false);
-  assert.strictEqual(envContent.includes('ALLOWED_ORIGINS='), true);
+  // Verify .env.example contains no corrupted characters and defines ALLOWED_ORIGINS
+  const exampleContent = fs.readFileSync(path.join(rootDir, '.env.example'), 'utf8');
+  assert.strictEqual(exampleContent.includes('\uFFFD'), false);
+  assert.strictEqual(exampleContent.includes('ALLOWED_ORIGINS='), true);
+
+  // If local .env exists, verify it contains no replacement character
+  const localEnvPath = path.join(rootDir, '.env');
+  if (fs.existsSync(localEnvPath)) {
+    const envContent = fs.readFileSync(localEnvPath, 'utf8');
+    assert.strictEqual(envContent.includes('\uFFFD'), false);
+  }
 });
