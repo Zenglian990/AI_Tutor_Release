@@ -27,13 +27,13 @@ export default function SettingsModal({
   const [showExportGate, setShowExportGate] = useState(false);
 
   // DeepSeek & Domestic Provider Keys State
-  const [deepseekKey, setDeepseekKey] = useState('');
-  const [deepseekUrl, setDeepseekUrl] = useState('https://api.deepseek.com/v1');
+  const [deepseekKey, setDeepseekKey] = useState(() => localStorage.getItem('ai_tutor_deepseek_key') || '');
+  const [deepseekUrl, setDeepseekUrl] = useState(() => localStorage.getItem('ai_tutor_deepseek_url') || 'https://api.deepseek.com/v1');
   const [showDeepseekKey, setShowDeepseekKey] = useState(false);
   const [llmTestStatus, setLlmTestStatus] = useState(null); // { testing, success, message, latencyMs }
 
   // Google Gemini Key State
-  const [geminiKey, setGeminiKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('ai_tutor_gemini_key') || '');
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiTestStatus, setGeminiTestStatus] = useState(null);
 
@@ -70,7 +70,22 @@ export default function SettingsModal({
     onSaveApiToken(token.trim());
     localStorage.setItem('parent_anti_cheat_locked', antiCheatLocked ? 'true' : 'false');
 
-    // Persist DeepSeek or Gemini key if entered
+    // Save keys locally in browser/device storage
+    if (geminiKey.trim()) {
+      localStorage.setItem('ai_tutor_gemini_key', geminiKey.trim());
+    } else {
+      localStorage.removeItem('ai_tutor_gemini_key');
+    }
+    if (deepseekKey.trim()) {
+      localStorage.setItem('ai_tutor_deepseek_key', deepseekKey.trim());
+    } else {
+      localStorage.removeItem('ai_tutor_deepseek_key');
+    }
+    if (deepseekUrl.trim()) {
+      localStorage.setItem('ai_tutor_deepseek_url', deepseekUrl.trim());
+    }
+
+    // Persist DeepSeek or Gemini key to server if entered
     if (geminiKey.trim() || deepseekKey.trim() || deepseekUrl.trim()) {
       try {
         await authFetch('/api/config/update-keys', {

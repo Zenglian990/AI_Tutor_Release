@@ -92,9 +92,17 @@ router.post('/config/update-keys', (req, res) => {
     if (typeof geminiApiKey === 'string' && geminiApiKey.trim()) {
       const cleanKey = geminiApiKey.trim();
       updateEnvFile('GEMINI_API_KEY', cleanKey);
-      if (!config.API_KEYS.includes(cleanKey)) {
-        config.API_KEYS.push(cleanKey);
+      const existingIdx = config.API_KEYS.indexOf(cleanKey);
+      if (existingIdx !== -1) {
+        config.API_KEYS.splice(existingIdx, 1);
       }
+      config.API_KEYS.unshift(cleanKey);
+
+      try {
+        const { unmarkInvalidKey } = require('../services/embedding');
+        if (typeof unmarkInvalidKey === 'function') unmarkInvalidKey(cleanKey);
+      } catch (e) {}
+
       updatedCount++;
     }
 

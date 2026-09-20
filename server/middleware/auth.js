@@ -103,6 +103,28 @@ function authMiddleware(req, res, next) {
 
   // Successful auth — reset failure count for this IP
   authFailures.delete(clientIp);
+
+  // Dynamic client-provided Gemini & DeepSeek Key integration
+  const clientGeminiKey = req.headers['x-gemini-api-key'];
+  if (clientGeminiKey && typeof clientGeminiKey === 'string' && clientGeminiKey.trim()) {
+    const cleanKey = clientGeminiKey.trim();
+    const config = require('../config');
+    const existingIdx = config.API_KEYS.indexOf(cleanKey);
+    if (existingIdx !== -1) {
+      config.API_KEYS.splice(existingIdx, 1);
+    }
+    config.API_KEYS.unshift(cleanKey);
+    try {
+      const { unmarkInvalidKey } = require('../services/embedding');
+      if (typeof unmarkInvalidKey === 'function') unmarkInvalidKey(cleanKey);
+    } catch (e) {}
+  }
+
+  const clientDeepseekKey = req.headers['x-deepseek-api-key'];
+  if (clientDeepseekKey && typeof clientDeepseekKey === 'string' && clientDeepseekKey.trim()) {
+    process.env.DEEPSEEK_API_KEY = clientDeepseekKey.trim();
+  }
+
   next();
 }
 

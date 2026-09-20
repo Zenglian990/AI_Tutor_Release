@@ -418,6 +418,15 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   const fallbackCanSeeImage = isOpenAiVisionModel(fallbackModel);
   const effectiveSkipDeepSeek = skipDeepSeek || (hasImage && !fallbackCanSeeImage);
 
+  const clientCustomKey = (options?.headers?.['x-gemini-api-key'] || options?.headers?.['X-Gemini-Api-Key'])?.trim();
+  if (clientCustomKey) {
+    if (!API_KEYS.includes(clientCustomKey)) {
+      API_KEYS.unshift(clientCustomKey);
+    }
+    invalidKeys.delete(clientCustomKey);
+    keyCooldown.delete(clientCustomKey);
+  }
+
   const modifiedOptions = options;
 
   // Filter valid keys
@@ -646,6 +655,13 @@ async function getEmbedding(text) {
   }
 }
 
+function unmarkInvalidKey(key) {
+  if (key) {
+    invalidKeys.delete(key);
+    keyCooldown.delete(key);
+  }
+}
+
 module.exports = {
   fetchWithKeyRotation,
   getEmbedding,
@@ -653,5 +669,6 @@ module.exports = {
   buildStreamURL,
   startEmbeddingCheck,
   convertGeminiToDeepSeekPayload,
-  isOpenAiVisionModel
+  isOpenAiVisionModel,
+  unmarkInvalidKey
 };
