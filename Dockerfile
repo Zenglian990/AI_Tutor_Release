@@ -5,7 +5,7 @@ FROM node:22-bookworm-slim AS frontend-builder
 WORKDIR /app/client
 
 COPY client/package*.json ./
-RUN npm ci
+RUN npm ci || npm install
 
 COPY client/ ./
 RUN npm run build
@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install production dependencies (prebuilt binaries run natively on Ubuntu 24.04)
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev || npm install --omit=dev
 
 # Copy server source code, maintenance scripts, and data definitions
 COPY server/ ./server/
