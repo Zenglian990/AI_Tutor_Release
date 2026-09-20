@@ -211,7 +211,7 @@ function pcmToWav(pcmBuffer, sampleRate = 24000, numChannels = 1, bitsPerSample 
  * @param {string} voice  - Edge-style voice name (mapped internally to Gemini voice)
  * @returns {Promise<Buffer>}
  */
-async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural') {
+async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientGeminiKey = null) {
   const text = cleanTextForTTS(rawText);
   if (!text) {
     logger.info('[TTS] Text is empty after cleaning, returning empty buffer');
@@ -224,12 +224,17 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural') {
   const buildTtsURL = (modelName) =>
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
+  const requestHeaders = { 'Content-Type': 'application/json' };
+  if (clientGeminiKey && typeof clientGeminiKey === 'string' && clientGeminiKey.trim()) {
+    requestHeaders['x-gemini-api-key'] = clientGeminiKey.trim();
+  }
+
   let lastError = null;
   for (const modelName of TTS_CANDIDATE_MODELS) {
     try {
       const response = await fetchWithKeyRotation(buildTtsURL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: requestHeaders,
         body: JSON.stringify({
           contents: [{ parts: [{ text }] }],
           generationConfig: {

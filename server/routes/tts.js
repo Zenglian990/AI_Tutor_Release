@@ -26,8 +26,9 @@ router.post('/tts', async (req, res) => {
       }
     }
 
+    const clientGeminiKey = req.headers['x-gemini-api-key'];
     logger.info(`[TTS] Synthesizing text: "${text.substring(0, 30)}..." with voice ${selectedVoice}`);
-    const audioBuffer = await synthesizeSpeech(text, selectedVoice);
+    const audioBuffer = await synthesizeSpeech(text, selectedVoice, clientGeminiKey);
 
     if (!audioBuffer || audioBuffer.length === 0) {
       return res.status(204).send(); // No content (empty text after cleaning)
