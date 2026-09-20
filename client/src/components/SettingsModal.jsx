@@ -40,6 +40,9 @@ export default function SettingsModal({
   // App Update & Version State
   const [updateCheckStatus, setUpdateCheckStatus] = useState(null);
 
+  // TTS Engine preference ('local' | 'cloud')
+  const [ttsEngine, setTtsEngineState] = useState(() => localStorage.getItem('tts_engine') || 'local');
+
   const [serverProviderInfo, setServerProviderInfo] = useState(null);
 
   // Load existing provider configs
@@ -109,6 +112,7 @@ export default function SettingsModal({
     };
     setSettings(newSettings);
     localStorage.setItem('ai_tutor_settings', JSON.stringify(newSettings));
+    localStorage.setItem('tts_engine', ttsEngine);
     onClose();
   };
 
@@ -569,6 +573,56 @@ export default function SettingsModal({
                 {geminiTestStatus.message}
               </span>
             )}
+          </div>
+
+          {/* 🎙️ 语音朗读模式 (TTS Engine) */}
+          <div style={{
+            background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)',
+            borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#a5b4fc' }}>
+                🎙️ 语音朗读模式 (TTS Engine)
+              </span>
+              <span style={{ fontSize: '0.75rem', background: '#6366f1', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>
+                {ttsEngine === 'local' ? '⚡ 0秒极速' : '☁️ 云端拟人'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => setTtsEngineState('local')}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: '8px',
+                  border: ttsEngine === 'local' ? '2px solid #6366f1' : '1px solid var(--glass-border)',
+                  background: ttsEngine === 'local' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(0,0,0,0.2)',
+                  color: 'white', fontSize: '0.82rem', fontWeight: ttsEngine === 'local' ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'center'
+                }}
+              >
+                ⚡ 本地系统原声 (推荐)<br />
+                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>0秒即读 · 稳定不卡 · 0流量</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTtsEngineState('cloud')}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: '8px',
+                  border: ttsEngine === 'cloud' ? '2px solid #6366f1' : '1px solid var(--glass-border)',
+                  background: ttsEngine === 'cloud' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(0,0,0,0.2)',
+                  color: 'white', fontSize: '0.82rem', fontWeight: ttsEngine === 'cloud' ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'center'
+                }}
+              >
+                ☁️ 云端 Gemini 语音<br />
+                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>AI 拟真音色 · 需网络算力</span>
+              </button>
+            </div>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>
+              推荐使用【本地系统原声】：调用手机内置高性能语音库，点击立即发声，告别网络卡顿与额度限制。
+            </span>
           </div>
 
           {/* Backend URL */}

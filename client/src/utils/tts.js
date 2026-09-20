@@ -124,12 +124,21 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl) {
   }, 2500);
 }
 
+export function getTtsEngine() {
+  if (typeof window === 'undefined') return 'local';
+  return localStorage.getItem('tts_engine') || 'local';
+}
+
+export function setTtsEngine(engine) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('tts_engine', engine);
+  }
+}
+
 /**
- * Play text to speech (TTS) using Cloud Gemini TTS, falling back to local synthesis on error.
- * Supports both call signatures:
- *   playTTS(text, onStart, onEnd)
- *   playTTS(text, grade, onStart, onEnd)
- * Returns a controller object { stop: () => void }
+ * Play text to speech (TTS).
+ * Defaults to instant native offline speech (0s latency, 100% reliable).
+ * If user selected 'cloud', calls cloud Gemini TTS with fast 4s fallback to local speech.
  */
 export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
   stopTTS();
@@ -166,18 +175,35 @@ export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
   const ctrl = { stop: () => {} };
   activeControllers.add(ctrl);
 
-  // Pre-create Audio synchronously inside user gesture turn to bypass mobile autoplay restrictions
+  const engine = getTtsEngine();
+
+  // Mode 1: Local native speech (Default: instant 0ms start, reliable on all devices)
+  if (engine === 'local') {
+    fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
+    return ctrl;
+  }
+
+  // Mode 2: Cloud Gemini AI TTS (with 4-second timeout protection)
   const audio = new Audio();
   try {
     audio.play().catch(() => {});
   } catch (e) {}
 
-  ctrl.stop = () => {
+  let hasSwitchedToLocal = false;
+  const switchToLocal = () => {
+    if (hasSwitchedToLocal) return;
+    hasSwitchedToLocal = true;
     try {
       audio.pause();
       audio.src = '';
     } catch (e) {}
+    fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
   };
+
+  const cloudTimeout = setTimeout(() => {
+    console.warn("[TTS] Cloud TTS took > 4s, falling back to instant local speech");
+    switchToLocal();
+  }, 4000);
 
   authFetch('/api/tts', {
     method: 'POST',
@@ -185,15 +211,18 @@ export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      text: cleanText,
+      text: cleanText.slice(0, 350), // Cap length for cloud AI to prevent long synthesis lag
       grade: grade || ''
     })
   })
     .then(res => {
+      clearTimeout(cloudTimeout);
+      if (hasSwitchedToLocal) return null;
       if (!res.ok) throw new Error('Cloud TTS server error: ' + res.status);
       return res.blob();
     })
     .then(blob => {
+      if (!blob || hasSwitchedToLocal) return;
       const url = URL.createObjectURL(blob);
       audio.src = url;
       
@@ -213,18 +242,19 @@ export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
       };
 
       audio.oncanplay = () => {
+        if (hasSwitchedToLocal) return;
         notifySpeakingState(true);
         if (onStart) onStart();
         audio.play().catch(e => {
           console.warn("Autoplay prevented on audio element:", e);
-          fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
+          switchToLocal();
         });
       };
       
       audio.onended = finish;
       audio.onerror = (e) => {
         console.warn("Audio playback error:", e);
-        fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
+        switchToLocal();
       };
       
       ctrl.stop = () => {
@@ -236,8 +266,9 @@ export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
       };
     })
     .catch(err => {
+      clearTimeout(cloudTimeout);
       console.warn("Cloud TTS failed, falling back to local speech:", err);
-      fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl);
+      switchToLocal();
     });
 
   return ctrl;
