@@ -11,7 +11,7 @@ services:
       - key: PORT
         value: 3001
       - key: API_TOKEN
-        value: ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3
+        sync: false
       - key: ALLOWED_ORIGINS
         value: https://zenglian-ai-tutor.onrender.com,http://localhost:5173
       - key: REQUIRE_AUTH

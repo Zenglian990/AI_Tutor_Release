@@ -8,13 +8,16 @@ const { isSafeExternalUrl, validateSafeUrlAsync } = require('../utils/urlValidat
 const { API_TOKEN } = require('../config');
 const logger = require('../services/logger');
 
+// Cryptographic signing secret dedicated to parent view tokens (domain-separated from general API_TOKEN)
+const PARENT_HMAC_SECRET = process.env.PARENT_VIEW_SECRET || crypto.createHmac('sha256', API_TOKEN).update('parent_remote_view_subsystem_v1').digest('hex');
+
 /**
  * Generate cryptographically signed token for parent remote WeChat/mobile view
  */
 function generateParentToken(profileId = 'default', daysValid = 30) {
   const exp = Date.now() + daysValid * 24 * 60 * 60 * 1000;
   const payload = `${profileId}:${exp}`;
-  const sig = crypto.createHmac('sha256', API_TOKEN).update(payload).digest('hex');
+  const sig = crypto.createHmac('sha256', PARENT_HMAC_SECRET).update(payload).digest('hex');
   return Buffer.from(`${payload}:${sig}`).toString('base64url');
 }
 
@@ -30,8 +33,10 @@ function verifyParentToken(token) {
     const [profileId, expStr, sig] = parts;
     const exp = parseInt(expStr, 10);
     if (isNaN(exp) || Date.now() > exp) return null;
-    const expectedSig = crypto.createHmac('sha256', API_TOKEN).update(`${profileId}:${exp}`).digest('hex');
-    if (sig !== expectedSig) return null;
+    const expectedSig = crypto.createHmac('sha256', PARENT_HMAC_SECRET).update(`${profileId}:${exp}`).digest('hex');
+    if (typeof sig !== 'string' || sig.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
+      return null;
+    }
     return { profileId, exp };
   } catch (err) {
     return null;

@@ -10,24 +10,20 @@ const isTestEnv = process.env.NODE_ENV === 'test' ||
   process.argv.some(arg => arg.includes('test'));
 const NODE_ENV = process.env.NODE_ENV || (isTestEnv ? 'test' : 'production');
 const EMBED_MODEL = process.env.EMBED_MODEL || 'gemini-embedding-2';
-const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-3.6-flash';
+const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-2.5-flash';
 const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 const DEEPSEEK_CHAT_MODEL = process.env.DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
 const DB_PATH = require('path').join(__dirname, '..', '..', 'data/lancedb');
 const SQLITE_DB_PATH = process.env.SQLITE_DB_PATH || require('path').join(__dirname, '..', '..', 'data/mistakes.db');
 
-// API Key pool with rotation
+// API Key pool with rotation — read ONLY from environment variables
 const API_KEYS = (() => {
   const keys = [];
   for (let i = 1; i <= 100; i++) {
     const keyName = i === 1 ? 'GEMINI_API_KEY' : `GEMINI_API_KEY_${i}`;
     const key = process.env[keyName];
-    if (key) keys.push(key);
-  }
-  const defaultKey = Buffer.from('QVEuQWI4Uk42SXdJS0VYVFU5S2pyYWQ3WWtSSmw3MTdsSk51UWl0M0s5SHF5VWxZakRXYUE=', 'base64').toString('utf8');
-  if (!keys.includes(defaultKey)) {
-    keys.push(defaultKey);
+    if (key && key.trim()) keys.push(key.trim());
   }
   return keys;
 })();
@@ -70,14 +66,20 @@ const proxyUrl = (() => {
   return null;
 })();
 
-// API auth token — if not set, fallback to standard release token
-const STANDARD_DEFAULT_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+// API auth token — strictly from environment, never fall back to public constants
 const API_TOKEN = (() => {
   const fromEnv = process.env.API_TOKEN;
-  if (fromEnv && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
-    return fromEnv;
+  if (fromEnv && fromEnv.trim() && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
+    return fromEnv.trim();
   }
-  return STANDARD_DEFAULT_TOKEN;
+  if (NODE_ENV === 'production' && process.env.REQUIRE_AUTH === 'true') {
+    logger.error('[CRITICAL] API_TOKEN environment variable is missing in production! Server refusing to start without a secure secret token.');
+    throw new Error('API_TOKEN environment variable must be set in production!');
+  }
+  // For local development or tests without explicit token, generate an ephemeral random token
+  const ephemeralToken = 'ait_' + crypto.randomBytes(32).toString('hex');
+  logger.warn(`[Security] No API_TOKEN found in environment. Generated ephemeral session token: ${ephemeralToken}`);
+  return ephemeralToken;
 })();
 
 // DB encryption key — decoupled from API_TOKEN for key rotation safety

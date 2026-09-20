@@ -41,11 +41,9 @@ test('CORS: rejects unauthorized external origins', async () => {
 
 // Test 2 (Item 3): Parent Remote View blocks IDOR profile switching
 test('Parent Remote View: blocks IDOR profile switching to unauthorized student profile', async () => {
-  // Generate a valid token for profile 'child_alice'
-  const exp = Date.now() + 30 * 24 * 60 * 60 * 1000;
-  const payload = `child_alice:${exp}`;
-  const sig = crypto.createHmac('sha256', API_TOKEN).update(payload).digest('hex');
-  const token = Buffer.from(`${payload}:${sig}`).toString('base64url');
+  const tokenRes = await fetch(`${baseUrl}/api/parent/remote-token?profile_id=child_alice`);
+  const tokenData = await tokenRes.json();
+  const token = tokenData.token;
 
   // Requesting switch_profile_id=child_bob must be blocked with 403
   const res = await fetch(`${baseUrl}/api/parent/remote-view?token=${token}&switch_profile_id=child_bob`);

@@ -171,7 +171,7 @@ router.post('/config/test-llm', async (req, res) => {
         return res.status(400).json({ success: false, error: '缺少 Gemini API Key' });
       }
 
-      const testModel = model || config.CHAT_MODEL || 'gemini-3.6-flash';
+      const testModel = model || config.CHAT_MODEL || 'gemini-2.5-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${keyToUse}`;
 
       const fetchOptions = {
