@@ -582,9 +582,30 @@ export default function SettingsModal({
               onChange={e => setUrl(e.target.value)}
               style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', fontSize: '0.9rem' }}
             />
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '2px' }}>
-              {t('settings.backend_note')}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem' }}>
+                {t('settings.backend_note')}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setUrl('https://ai-tutor-release.onrender.com');
+                  setToken('ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3');
+                  setTestResult({ success: true, message: '已填入官方云端配置！请点击保存生效。' });
+                }}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  color: '#60a5fa',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 填入官方云端地址与Token
+              </button>
+            </div>
           </div>
 
           {/* API Token */}
