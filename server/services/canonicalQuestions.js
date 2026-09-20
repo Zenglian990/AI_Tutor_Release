@@ -9,6 +9,9 @@
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
 const logger = require('./logger');
 
 /**
@@ -400,10 +403,44 @@ const BENCHMARK_CANONICAL_QUESTIONS = [
 
 /**
  * 预热并自动同步权威真题基准库
+ * 优先从 data/canonical_questions.db.gz 种子压缩包全量同步 39,114 道题，
+ * 若无种子包则同步代码内置基准题。
  */
 async function seedCanonicalQuestionsIfEmpty(db) {
   if (!db) return;
   try {
+    const initialRow = await db.get('SELECT COUNT(*) as cnt FROM canonical_questions');
+    const currentCount = initialRow ? initialRow.cnt : 0;
+
+    // 若题库未满（如刚在云端初始化运行），自动从 9.7MB 压缩包解压并灌入 39,114 道题
+    const seedGzPath = path.join(__dirname, '..', '..', 'data', 'canonical_questions.db.gz');
+    if (currentCount < 1000 && fs.existsSync(seedGzPath)) {
+      logger.info(`[CanonicalQuestions] Current questions count (${currentCount}) < 1000. Found seed package (${(fs.statSync(seedGzPath).size / 1024 / 1024).toFixed(2)} MB). Unpacking...`);
+      const tempUnpackDbPath = path.join(__dirname, '..', '..', 'data', `canonical_unpack_${Date.now()}.db`);
+      try {
+        const compressedBuf = fs.readFileSync(seedGzPath);
+        const uncompressedBuf = zlib.gunzipSync(compressedBuf);
+        fs.writeFileSync(tempUnpackDbPath, uncompressedBuf);
+
+        const safeTempPath = tempUnpackDbPath.replace(/'/g, "''");
+        await db.run(`ATTACH DATABASE '${safeTempPath}' AS seed_db`);
+        await db.run(`
+          INSERT OR IGNORE INTO canonical_questions 
+          (question, options, standard_answer, analysis, key_insight, grade, subject, chapter, source, fingerprint)
+          SELECT question, options, standard_answer, analysis, key_insight, grade, subject, chapter, source, fingerprint 
+          FROM seed_db.canonical_questions
+        `);
+        await db.run('DETACH DATABASE seed_db');
+        logger.info('[CanonicalQuestions] ✅ Successfully unpacked and imported all 39,114 canonical questions into database!');
+      } catch (unpackErr) {
+        logger.error('[CanonicalQuestions] Error unpacking seed package:', unpackErr);
+      } finally {
+        try {
+          if (fs.existsSync(tempUnpackDbPath)) fs.unlinkSync(tempUnpackDbPath);
+        } catch (e) {}
+      }
+    }
+
     let newlyInserted = 0;
     for (const item of BENCHMARK_CANONICAL_QUESTIONS) {
       const fp = computeQuestionFingerprint(item.question);
@@ -426,8 +463,8 @@ async function seedCanonicalQuestionsIfEmpty(db) {
       );
       if (res && res.changes > 0) newlyInserted++;
     }
-    const row = await db.get('SELECT COUNT(*) as cnt FROM canonical_questions');
-    logger.info(`[CanonicalQuestions] Grounding bank synchronized. Total canonical questions: ${row ? row.cnt : 0} (newly added: ${newlyInserted}).`);
+    const finalRow = await db.get('SELECT COUNT(*) as cnt FROM canonical_questions');
+    logger.info(`[CanonicalQuestions] Grounding bank synchronized. Total canonical questions: ${finalRow ? finalRow.cnt : 0} (newly added: ${newlyInserted}).`);
   } catch (err) {
     logger.warn('[CanonicalQuestions] Seeding warning:', err.message);
   }
