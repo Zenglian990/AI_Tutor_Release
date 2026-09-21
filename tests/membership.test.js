@@ -8,6 +8,11 @@ let baseUrl;
 
 before(async () => {
   await initDB();
+  const db = await getSqliteDb();
+  const crypto = require('crypto');
+  const testPinHash = crypto.createHash('sha256').update('123456').digest('hex');
+  await db.run("INSERT INTO system_settings (key, value) VALUES ('parent_pin_hash', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [testPinHash]);
+
   const app = createApp();
   await new Promise(resolve => {
     server = app.listen(0, () => {
@@ -57,6 +62,15 @@ test('Membership API: POST /api/membership/admin/generate-keys creates license k
   assert.equal(data.count, 3);
   assert.equal(data.keys.length, 3);
   assert.match(data.keys[0], /^VIP-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+});
+
+test('Membership API: POST /api/membership/admin/generate-keys strictly rejects unauthenticated generation', async () => {
+  const res = await fetch(`${baseUrl}/api/membership/admin/generate-keys`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count: 1, days: 30, pin_hash: 'wrong_pin_hash_12345' })
+  });
+  assert.equal(res.status, 403);
 });
 
 test('Membership API: POST /api/membership/redeem successfully activates Pro VIP', async () => {

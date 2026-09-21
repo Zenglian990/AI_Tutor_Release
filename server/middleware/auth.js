@@ -81,8 +81,7 @@ function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-  const STANDARD_RELEASE_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
-  const candidateTokens = Array.from(new Set([API_TOKEN, STANDARD_RELEASE_TOKEN].filter(Boolean)));
+  const candidateTokens = [API_TOKEN].filter(Boolean);
   
   let isMatch = false;
   if (token && typeof token === 'string') {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getSqliteDb } = require('../db/init');
+const { API_TOKEN } = require('../config');
 const logger = require('../services/logger');
 
 let tablesInitialized = false;
@@ -164,12 +165,23 @@ router.post('/membership/redeem', async (req, res) => {
 });
 
 /**
- * Verify Parent Admin PIN
+ * Verify Parent Admin PIN or Master API Token
  */
-async function verifyAdminPin(sqliteDb, pinHash) {
+async function verifyAdminPin(sqliteDb, pinHash, req) {
+  // 1. Allow master API_TOKEN from system administrator
+  if (req) {
+    const authHeader = req.headers?.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    if (token && API_TOKEN && token === API_TOKEN) {
+      return true;
+    }
+  }
+
+  // 2. Check parent_pin_hash stored in system_settings
   const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
   if (!savedPinRow || !savedPinRow.value) {
-    return true; // No PIN configured yet, allow admin setup
+    // Strict security: require configured PIN, reject unauthenticated generation
+    return false;
   }
   if (!pinHash) return false;
   const savedBuf = Buffer.from(String(savedPinRow.value));
@@ -188,7 +200,7 @@ router.post('/membership/admin/generate-keys', async (req, res) => {
 
     const { count = 10, days = 30, tier = 'pro', batch_name = '默认发卡批次', pin_hash } = req.body;
 
-    const isPinValid = await verifyAdminPin(sqliteDb, pin_hash);
+    const isPinValid = await verifyAdminPin(sqliteDb, pin_hash, req);
     if (!isPinValid) {
       return res.status(403).json({ error: '家长/管理员安全 PIN 校验未通过，禁止生成激活码' });
     }
@@ -239,7 +251,7 @@ router.get('/membership/admin/keys', async (req, res) => {
     await ensureMembershipTables(sqliteDb);
 
     const pinHash = req.query.pin_hash || req.headers['x-parent-pin-hash'];
-    const isPinValid = await verifyAdminPin(sqliteDb, pinHash);
+    const isPinValid = await verifyAdminPin(sqliteDb, pinHash, req);
     if (!isPinValid) {
       return res.status(403).json({ error: '家长/管理员安全 PIN 校验未通过' });
     }

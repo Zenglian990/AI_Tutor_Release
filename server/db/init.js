@@ -5,34 +5,56 @@ const { RAG_TOP_K, EMBED_MODEL, SQLITE_DB_PATH, DB_PATH } = require('../config')
 const logger = require('../services/logger');
 const { initCanonicalQuestionsTable, seedCanonicalQuestionsIfEmpty } = require('../services/canonicalQuestions');
 
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
+
 let table = null;
 let sqliteDb = null;
 
 async function initDB() {
   try {
     const db = await lancedb.connect(DB_PATH);
+    const seedPath = path.join(__dirname, '..', '..', 'data', 'textbooks_k9_seed.json.gz');
+
     try {
       table = await db.openTable('textbooks');
-      logger.info("Connected to LanceDB 'textbooks' table successfully.");
+      const rowCount = await table.countRows();
+      logger.info(`Connected to LanceDB 'textbooks' table successfully (${rowCount} records).`);
+      
+      // Auto-populate if table was previously initialized with only 1 blank mock record
+      if (rowCount <= 1 && fs.existsSync(seedPath)) {
+        logger.info(`[LanceDB] Table has ${rowCount} records. Auto-seeding full K-9 curriculum dataset...`);
+        const gzBuffer = fs.readFileSync(seedPath);
+        const records = JSON.parse(zlib.gunzipSync(gzBuffer).toString('utf8'));
+        await db.dropTable('textbooks');
+        table = await db.createTable('textbooks', records);
+        try {
+          await table.createIndex('text', { config: lancedb.Index.fts() });
+        } catch (e) {}
+        logger.info(`[LanceDB] Successfully auto-seeded ${records.length} authentic K-9 curriculum records.`);
+      }
     } catch (openErr) {
       if (openErr.message.includes('not found') || openErr.message.includes('Table') || openErr.message.includes('Dataset')) {
-        logger.warn("LanceDB table 'textbooks' not found. Creating a blank table for testing/runtime...");
-        const emptyData = [{
-          id: 0,
-          vector: new Array(768).fill(0),
-          text: 'mock_initial_data',
-          source: 'mock.txt'
-        }];
-        try {
+        if (fs.existsSync(seedPath)) {
+          logger.info("[LanceDB] Table 'textbooks' not found. Auto-seeding from pre-packaged K-9 seed package...");
+          const gzBuffer = fs.readFileSync(seedPath);
+          const records = JSON.parse(zlib.gunzipSync(gzBuffer).toString('utf8'));
+          table = await db.createTable('textbooks', records);
+          try {
+            await table.createIndex('text', { config: lancedb.Index.fts() });
+          } catch (e) {}
+          logger.info(`[LanceDB] Successfully created 'textbooks' table with ${records.length} records.`);
+        } else {
+          logger.warn("LanceDB table 'textbooks' not found and seed file missing. Creating a blank table for testing/runtime...");
+          const emptyData = [{
+            id: 0,
+            vector: new Array(768).fill(0),
+            text: 'mock_initial_data',
+            source: 'mock.txt'
+          }];
           table = await db.createTable('textbooks', emptyData);
           logger.info("Blank LanceDB 'textbooks' table created successfully.");
-        } catch (createErr) {
-          if (createErr.message.includes('already exists') || createErr.message.includes('Table')) {
-            table = await db.openTable('textbooks');
-            logger.info("Opened existing textbooks table (created concurrently).");
-          } else {
-            throw createErr;
-          }
         }
       } else {
         throw openErr;

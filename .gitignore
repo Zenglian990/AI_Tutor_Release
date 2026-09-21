@@ -10,6 +10,7 @@ node_modules/
 data/lancedb/
 data/mistakes.db*
 !data/canonical_questions.db.gz
+!data/textbooks_k9_seed.json.gz
 data/textbooks/
 data/processed_pdfs.log
 data/backups/

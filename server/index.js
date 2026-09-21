@@ -10,17 +10,22 @@
  *   routes/     → API route handlers
  */
 
-const { PORT, NODE_ENV, API_KEYS } = require('./config');
+const config = require('./config');
+const { PORT, NODE_ENV, API_KEYS } = config;
 const { initDB, getSqliteDb, closeDB } = require('./db/init');
 const { startDataRetentionCleanup } = require('./services/data-retention');
 const { createApp } = require('./app');
 const logger = require('./services/logger');
 
-if (API_KEYS.length === 0) {
-  logger.error('FATAL: No GEMINI_API_KEY found in environment!');
+const hasGemini = Array.isArray(API_KEYS) && API_KEYS.length > 0;
+const hasDeepSeek = Boolean(config.DEEPSEEK_API_KEY);
+
+if (!hasGemini && !hasDeepSeek) {
+  logger.error('FATAL: No AI API keys configured! Please set GEMINI_API_KEY or DEEPSEEK_API_KEY in environment.');
   process.exit(1);
 }
-logger.info(`[Key Pool] Loaded ${API_KEYS.length} API key(s).`);
+if (hasGemini) logger.info(`[Key Pool] Loaded ${API_KEYS.length} Gemini API key(s).`);
+if (hasDeepSeek) logger.info(`[Provider] DeepSeek configured (Model: ${config.DEEPSEEK_CHAT_MODEL || 'deepseek-chat'}).`);
 
 const app = createApp();
 

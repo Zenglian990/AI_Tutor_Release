@@ -14,6 +14,7 @@ const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-2.5-flash';
 const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 const DEEPSEEK_CHAT_MODEL = process.env.DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
+const DEFAULT_PROVIDER = (process.env.DEFAULT_PROVIDER || (DEEPSEEK_API_KEY ? 'deepseek' : 'gemini')).trim().toLowerCase();
 const DB_PATH = require('path').join(__dirname, '..', '..', 'data/lancedb');
 const SQLITE_DB_PATH = process.env.SQLITE_DB_PATH || require('path').join(__dirname, '..', '..', 'data/mistakes.db');
 
@@ -159,6 +160,7 @@ module.exports = {
   DEEPSEEK_API_KEY,
   DEEPSEEK_API_URL,
   DEEPSEEK_CHAT_MODEL,
+  DEFAULT_PROVIDER,
   DB_PATH,
   SQLITE_DB_PATH,
   API_KEYS,
