@@ -190,6 +190,7 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
     }
   }, [msg.id]);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const ttsCtrlRef = useRef(null);
 
   useEffect(() => {
@@ -201,12 +202,8 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
     };
   }, []);
 
-
-
-
-
   const toggleSpeech = () => {
-    if (isPlaying) {
+    if (isPlaying || isLoadingAudio) {
       if (ttsCtrlRef.current) {
         ttsCtrlRef.current.stop();
         ttsCtrlRef.current = null;
@@ -215,18 +212,28 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
         else if (window.speechSynthesis) window.speechSynthesis.cancel();
       }
       setIsPlaying(false);
+      setIsLoadingAudio(false);
     } else {
       if (stopTTS) stopTTS();
       
-      setIsPlaying(true);
+      setIsLoadingAudio(true);
       if (playTTS) {
         const { body } = splitThinkingContent(msg.text);
         const textToSpeak = body || msg.text;
-        ttsCtrlRef.current = playTTS(textToSpeak, () => setIsPlaying(true), () => {
-          setIsPlaying(false);
-          ttsCtrlRef.current = null;
-        });
+        ttsCtrlRef.current = playTTS(
+          textToSpeak,
+          () => {
+            setIsLoadingAudio(false);
+            setIsPlaying(true);
+          },
+          () => {
+            setIsLoadingAudio(false);
+            setIsPlaying(false);
+            ttsCtrlRef.current = null;
+          }
+        );
       } else {
+        setIsLoadingAudio(false);
         setIsPlaying(false);
       }
     }
@@ -449,13 +456,13 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                   onClick={toggleSpeech}
                   className="tts-btn"
                   style={{ 
-                    background: isPlaying ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
-                    color: isPlaying ? '#ef4444' : '#3b82f6', 
-                    borderColor: isPlaying ? '#ef4444' : '#3b82f6' 
+                    background: isPlaying ? 'rgba(239, 68, 68, 0.1)' : isLoadingAudio ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.1)', 
+                    color: isPlaying ? '#ef4444' : isLoadingAudio ? '#f59e0b' : '#3b82f6', 
+                    borderColor: isPlaying ? '#ef4444' : isLoadingAudio ? '#f59e0b' : '#3b82f6' 
                   }}
-                  title={isPlaying ? "停止播放语音" : "播放语音"}
+                  title={isPlaying ? "停止播放语音" : isLoadingAudio ? "正在准备语音..." : "播放语音"}
                 >
-                  {isPlaying ? "⏹️ 停止朗读" : "🔊 语音朗读"}
+                  {isPlaying ? "⏹️ 停止朗读" : isLoadingAudio ? "⏳ 正在加载语音..." : "🔊 语音朗读"}
                 </button>
               )}
             </div>

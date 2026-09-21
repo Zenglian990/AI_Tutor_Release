@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.0_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.3.0.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.1_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.1/ZengLian_AI_Tutor_v1.3.1.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.0.0-apk)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.1)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash_%26_DeepSeek-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.3.0)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.3.0.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.3.1)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.1/ZengLian_AI_Tutor_v1.3.1.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,9 +34,9 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.3.0.apk (~8.9MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.3.0.apk)
-- **📥 Legacy Fallback**: [ZengLian_AI_Tutor_v1.0.0.apk](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.apk)
-- **✨ Features**: Built-in 0ms instant native TTS engine, strict 9:16 full-screen portrait lock, edge-to-edge notch adaptation, zero-configuration startup.
+- **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.3.1.apk (~8.9MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.1/ZengLian_AI_Tutor_v1.3.1.apk)
+- **📥 Legacy Fallback**: [ZengLian_AI_Tutor_v1.3.0.apk](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.0/ZengLian_AI_Tutor_v1.3.0.apk)
+- **✨ Features**: High-fidelity universal audio channel, sub-second speech synthesis, strict 9:16 portrait lock, zero-configuration startup.
 
 ### 🍎 2. iOS (iPhone & iPad)
 - **🌟 Method A (Recommended · Zero-Certificate · Add to Home Screen in 1s)**:

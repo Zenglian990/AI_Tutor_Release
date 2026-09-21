@@ -17,6 +17,16 @@ const originalFetch = undici.fetch;
 undici.fetch = async (url, options) => {
   const urlStr = String(url);
 
+  // Mock Google TTS
+  if (urlStr.includes('translate.google')) {
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => Buffer.from('mock_mp3_audio_data').buffer,
+      headers: new undici.Headers({ 'content-type': 'audio/mpeg' })
+    };
+  }
+
   // 1. Mock Google Gemini API
   if (urlStr.includes('generativelanguage.googleapis.com')) {
     geminiCalled++;
@@ -256,7 +266,7 @@ test('Integration: POST /api/chat-vision — uploads image and streams response'
   assert.ok(streamData.text.includes('Gemini streaming response'), "Should receive mock Gemini response");
 });
 
-test('Integration: POST /api/tts — returns WAV audio response', async () => {
+test('Integration: POST /api/tts — returns audio response', async () => {
   mockGeminiFail = false;
   geminiCalled = 0;
 
@@ -266,11 +276,10 @@ test('Integration: POST /api/tts — returns WAV audio response', async () => {
     body: JSON.stringify({ text: '测试语音合成', grade: '1_up' })
   });
   assert.equal(res.status, 200);
-  assert.equal(res.headers.get('Content-Type'), 'audio/wav');
+  assert.ok(['audio/mp3', 'audio/wav', 'audio/mpeg'].includes(res.headers.get('Content-Type')));
   
   const buffer = await res.arrayBuffer();
   assert.ok(buffer.byteLength > 0, "Audio response should be non-empty");
-  assert.ok(geminiCalled > 0, "Should have called Gemini TTS API");
 });
 
 test('Integration: Fallback to DeepSeek when Gemini mock-fails', async () => {

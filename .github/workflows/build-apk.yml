@@ -51,54 +51,48 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.0.0.apk
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.1.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.0.apk
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.0.0.apk
           ls -lh ./ZengLian_AI_Tutor_v1*.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_v1.3.0
-          path: ./ZengLian_AI_Tutor_v1.3.0.apk
+          name: ZengLian_AI_Tutor_v1.3.1
+          path: ./ZengLian_AI_Tutor_v1.3.1.apk
           retention-days: 30
 
-      - name: Create GitHub Release and Upload APK
+      - name: Create or Update v1.3.1 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.0.0-apk
-          name: "曾练专属私教 移动双端独立安装包 (Android APK + iOS IPA v1.3.0)"
+          tag_name: v1.3.1
+          name: "曾练专属私教 v1.3.1 - 全机型高清独立语音通道与秒级朗读 (最新发布)"
           draft: false
           prerelease: false
+          make_latest: true
           body: |
-            ## 📱 曾练专属私教 - 移动双端安装指南 (Android + iOS)
+            ## 📱 曾练专属私教 v1.3.1 (Build 2026.09.21)
 
-            本方案专为中小学生（1-9年级）与家长端深度定制，覆盖人教版/部编版，智能苏格拉底分步启发式精讲，内嵌曾先生微信私教裂变引流方案与全功能知识图谱辅导系统。
+            - 🔊 **全机型独立高保真语音通道**：彻底解决部分安卓手机（三星/小米/华为）WebView 自带语音包缺失导致的无法朗读或静音问题。
+            - ⚡ **秒级极速流式响应**：升级多语块智能拼接与内存极速缓存，点击朗读即刻出声。
+            - 📱 **原生 Android 深度适配**：版本升级为 v1.3.1 (versionCode 4)，支持无缝覆盖安装更新。
+            - 🔒 **全链路安全防护与向量检索**：已脱敏全量密钥，内置 1-9 年级教材向量索引库。
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.0.apk`** 直接下载（推荐，含 0 秒即读本地原声）；
+            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.1.apk`** 直接下载；
             2. 在安卓手机或平板文件管理器中打开该 APK 进行安装（或直接覆盖更新）；
-            3. 若系统弹出“未知来源应用安装提示”，点击“允许安装”或“信任”即可；
-            4. 安装完成后，手机桌面上将出现 **【曾练专属私教】** 应用图标，点开即用！
-
-            ---
-            ### 🍎 苹果端下载与使用 (iPhone / iPad iOS)：
-            - **方案 A（最推荐·免签名免越狱·1秒添加至桌面）**：
-              1. 用 iPhone 自带的 **Safari 浏览器** 打开云端地址：`https://ai-tutor-release.onrender.com`
-              2. 点击 Safari 底部中央的 **【分享按钮 📤】**；
-              3. 选择 **【添加到主屏幕】** ➔ 点击右上角 **【添加】**；
-              4. 手机桌面上立即出现 **【曾练专属私教】** 独立全屏 App，支持原生相机高清拍题！
-            - **方案 B（IPA 原生安装包）**：
-              1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.0.0.ipa`** 下载；
-              2. 可通过爱思助手、AltStore、Sideloadly 或企业证书一键导入 iPhone 安装。
+            3. 安装完成后，手机桌面上将出现 **【曾练专属私教】** 应用图标，点开即用！
           files: |
-            ./ZengLian_AI_Tutor_v1.0.0.apk
+            ./ZengLian_AI_Tutor_v1.3.1.apk
             ./ZengLian_AI_Tutor_v1.3.0.apk
+            ./ZengLian_AI_Tutor_v1.0.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update v1.3.0 Latest Release
+      - name: Sync to v1.3.0 and v1.0.0-apk Releases
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
@@ -107,7 +101,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./ZengLian_AI_Tutor_v1.0.0.apk
+            ./ZengLian_AI_Tutor_v1.3.1.apk
             ./ZengLian_AI_Tutor_v1.3.0.apk
+            ./ZengLian_AI_Tutor_v1.0.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -585,26 +585,11 @@ export default function SettingsModal({
                 🎙️ 语音朗读模式 (TTS Engine)
               </span>
               <span style={{ fontSize: '0.75rem', background: '#6366f1', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>
-                {ttsEngine === 'local' ? '⚡ 0秒极速' : '☁️ 云端拟人'}
+                {ttsEngine === 'cloud' ? '⚡ 高清原声' : '💻 设备原声'}
               </span>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-              <button
-                type="button"
-                onClick={() => setTtsEngineState('local')}
-                style={{
-                  flex: 1, padding: '8px 10px', borderRadius: '8px',
-                  border: ttsEngine === 'local' ? '2px solid #6366f1' : '1px solid var(--glass-border)',
-                  background: ttsEngine === 'local' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(0,0,0,0.2)',
-                  color: 'white', fontSize: '0.82rem', fontWeight: ttsEngine === 'local' ? 600 : 400,
-                  cursor: 'pointer', textAlign: 'center'
-                }}
-              >
-                ⚡ 本地系统原声 (推荐)<br />
-                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>0秒即读 · 稳定不卡 · 0流量</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => setTtsEngineState('cloud')}
@@ -616,12 +601,27 @@ export default function SettingsModal({
                   cursor: 'pointer', textAlign: 'center'
                 }}
               >
-                ☁️ 云端 Gemini 语音<br />
-                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>AI 拟真音色 · 需网络算力</span>
+                ⚡ 高清网络原声 (推荐)<br />
+                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>100% 适配所有机型 · 清晰稳定</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTtsEngineState('local')}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: '8px',
+                  border: ttsEngine === 'local' ? '2px solid #6366f1' : '1px solid var(--glass-border)',
+                  background: ttsEngine === 'local' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(0,0,0,0.2)',
+                  color: 'white', fontSize: '0.82rem', fontWeight: ttsEngine === 'local' ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'center'
+                }}
+              >
+                💻 设备本地朗读<br />
+                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>0流量 · 依赖手机自带语音包</span>
               </button>
             </div>
             <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>
-              推荐使用【本地系统原声】：调用手机内置高性能语音库，点击立即发声，告别网络卡顿与额度限制。
+              推荐使用【高清网络原声】：通过通用高品质音频通道播放，适配包括三星、小米、华为在内的所有手机和平板。
             </span>
           </div>
 
@@ -733,13 +733,13 @@ export default function SettingsModal({
                 <span>应用版本与更新状态</span>
               </span>
               <span style={{ fontSize: '0.75rem', background: 'rgba(99, 102, 241, 0.2)', color: '#c7d2fe', padding: '2px 8px', borderRadius: '12px' }}>
-                v1.3.0 (Build 2026.09.21)
+                v1.3.1 (Build 2026.09.21)
               </span>
             </div>
 
             <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4 }}>
               {typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
-                ? '当前运行于 Android 原生安装包 (APK)。最新 v1.3.0 已内嵌 0秒即读本地原声与全套极速架构。'
+                ? '当前运行于 Android 原生安装包 (APK)。最新 v1.3.1 已内置全机型通用的高保真独立语音通道与秒级朗读。'
                 : '当前运行于 Web PWA 渐进式应用，已开启 Service Worker 自动热更新 (无感知后台静默升级)。'}
             </p>
 
@@ -767,7 +767,7 @@ export default function SettingsModal({
                 🧹 清除缓存强刷
               </button>
               <a
-                href="https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.3.0.apk"
+                href="https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.1/ZengLian_AI_Tutor_v1.3.1.apk"
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -776,7 +776,7 @@ export default function SettingsModal({
                   background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 500
                 }}
               >
-                📥 下载最新 v1.3.0 APK
+                📥 下载最新 v1.3.1 APK
               </a>
             </div>
 

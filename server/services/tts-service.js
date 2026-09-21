@@ -1,5 +1,57 @@
+const crypto = require('crypto');
 const { fetchWithKeyRotation, buildChatURL } = require('./embedding');
+const { ProxyAgent, fetch: undiciFetch } = require('undici');
+const { proxyUrl } = require('../config');
 const logger = require('./logger');
+
+const proxyAgent = proxyUrl ? new ProxyAgent(proxyUrl) : null;
+const ttsCache = new Map();
+const MAX_CACHE_SIZE = 300;
+
+function splitIntoPunctuationChunks(text, maxLen = 120) {
+  const sentences = text.match(/[^。！？；\n\r]+[。！？；\n\r]?/g) || [text];
+  const chunks = [];
+  let current = '';
+  for (const s of sentences) {
+    if ((current + s).length <= maxLen) {
+      current += s;
+    } else {
+      if (current) chunks.push(current.trim());
+      if (s.length > maxLen) {
+        for (let i = 0; i < s.length; i += maxLen) {
+          chunks.push(s.slice(i, i + maxLen).trim());
+        }
+        current = '';
+      } else {
+        current = s;
+      }
+    }
+  }
+  if (current && current.trim()) chunks.push(current.trim());
+  return chunks.filter(Boolean);
+}
+
+async function synthesizeViaGoogle(text) {
+  const chunks = splitIntoPunctuationChunks(text, 120);
+  if (chunks.length === 0) return Buffer.alloc(0);
+
+  const fetchChunk = async (chunk) => {
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=zh-CN&client=tw-ob`;
+    const opts = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    };
+    if (proxyAgent) opts.dispatcher = proxyAgent;
+    const res = await undiciFetch(url, opts);
+    if (!res.ok) throw new Error(`Google TTS failed with status ${res.status}`);
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  };
+
+  const buffers = await Promise.all(chunks.map(fetchChunk));
+  return Buffer.concat(buffers);
+}
 
 /**
  * Basic translation of LaTeX math formulas to spoken Chinese
@@ -215,9 +267,35 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
   const text = cleanTextForTTS(rawText);
   if (!text) {
     logger.info('[TTS] Text is empty after cleaning, returning empty buffer');
-    return Buffer.alloc(0);
+    const emptyBuf = Buffer.alloc(0);
+    emptyBuf.contentType = 'audio/mp3';
+    return emptyBuf;
   }
 
+  const cacheKey = crypto.createHash('md5').update(`${voice}:${text}`).digest('hex');
+  if (ttsCache.has(cacheKey)) {
+    logger.info(`[TTS] Cache hit for: "${text.substring(0, 25)}..."`);
+    return ttsCache.get(cacheKey);
+  }
+
+  // Tier 1: Instant Neural TTS (Google Speech, ~1s, MP3)
+  try {
+    const mp3Buffer = await synthesizeViaGoogle(text);
+    if (mp3Buffer && mp3Buffer.length > 0) {
+      mp3Buffer.contentType = 'audio/mp3';
+      if (ttsCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = ttsCache.keys().next().value;
+        ttsCache.delete(firstKey);
+      }
+      ttsCache.set(cacheKey, mp3Buffer);
+      logger.info(`[TTS] Neural TTS synthesized ${mp3Buffer.length} bytes MP3 for: "${text.substring(0, 30)}..."`);
+      return mp3Buffer;
+    }
+  } catch (err) {
+    logger.warn(`[TTS] Neural TTS failed (${err.message}), falling back to Gemini TTS...`);
+  }
+
+  // Tier 2: Gemini Audio TTS (Fallback)
   const geminiVoice = mapVoiceToGemini(voice);
 
   const TTS_CANDIDATE_MODELS = ['gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
@@ -269,6 +347,12 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
 
       const pcmBuffer = Buffer.from(audioData, 'base64');
       const wavBuffer = pcmToWav(pcmBuffer, sampleRate, 1, 16);
+      wavBuffer.contentType = 'audio/wav';
+      if (ttsCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = ttsCache.keys().next().value;
+        ttsCache.delete(firstKey);
+      }
+      ttsCache.set(cacheKey, wavBuffer);
       logger.info(`[TTS] Gemini TTS synthesized ${wavBuffer.length} bytes (model: ${modelName}, voice: ${geminiVoice}, rate: ${sampleRate})`);
       return wavBuffer;
 
@@ -278,7 +362,7 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
     }
   }
 
-  logger.error('[TTS] All Gemini TTS models failed:', lastError?.message);
+  logger.error('[TTS] All TTS models failed:', lastError?.message);
   throw lastError || new Error('TTS synthesis failed for all models');
 }
 

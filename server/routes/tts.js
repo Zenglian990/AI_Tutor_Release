@@ -34,8 +34,8 @@ router.post('/tts', async (req, res) => {
       return res.status(204).send(); // No content (empty text after cleaning)
     }
 
-    // Gemini TTS returns audio/wav (PCM with WAV header)
-    res.setHeader('Content-Type', 'audio/wav');
+    // Returns audio/mp3 or audio/wav
+    res.setHeader('Content-Type', audioBuffer.contentType || 'audio/mp3');
     res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
     res.send(audioBuffer);
   } catch (err) {
