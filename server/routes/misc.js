@@ -94,13 +94,13 @@ router.get('/system/network-info', (req, res) => {
 router.get('/system/version', (req, res) => {
   res.json({
     version: '1.3.0',
-    buildDate: '2026-09-20',
+    buildDate: '2026-09-21',
     appName: '曾练专属私教',
     minAppVersion: '1.0.0',
     hasUpdate: false,
     updateType: 'pwa_hot_update',
-    apkFileName: 'ZengLian_AI_Tutor_v1.0.0.apk',
-    releaseNotes: '完成全链路安全加固与密钥轮换，更新 Android 原生 APK 与 iOS 资源包，默认升级至 Gemini 2.5 Flash 稳定通道'
+    apkFileName: 'ZengLian_AI_Tutor_v1.3.0.apk',
+    releaseNotes: '升级 0 秒即读本地语音朗读模式 (TTS Engine)，全链路极速响应与全平台自适配更新'
   });
 });
 

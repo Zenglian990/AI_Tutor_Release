@@ -733,13 +733,13 @@ export default function SettingsModal({
                 <span>应用版本与更新状态</span>
               </span>
               <span style={{ fontSize: '0.75rem', background: 'rgba(99, 102, 241, 0.2)', color: '#c7d2fe', padding: '2px 8px', borderRadius: '12px' }}>
-                v1.2.0 (Build 2026.09.19)
+                v1.3.0 (Build 2026.09.21)
               </span>
             </div>
 
             <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4 }}>
               {typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
-                ? '当前运行于 Android 原生安装包 (APK)。若有代码更新，PWA 网页版会自动静默拉取；原生端可通过下方强制重载或下载最新 APK。'
+                ? '当前运行于 Android 原生安装包 (APK)。最新 v1.3.0 已内嵌 0秒即读本地原声与全套极速架构。'
                 : '当前运行于 Web PWA 渐进式应用，已开启 Service Worker 自动热更新 (无感知后台静默升级)。'}
             </p>
 
@@ -749,7 +749,7 @@ export default function SettingsModal({
                 onClick={handleCheckUpdate}
                 disabled={updateCheckStatus?.checking}
                 style={{
-                  flex: 1, minWidth: '130px', padding: '7px 12px', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.4)',
+                  flex: 1, minWidth: '120px', padding: '7px 12px', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.4)',
                   background: 'rgba(99, 102, 241, 0.2)', color: '#e0e7ff', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer'
                 }}
               >
@@ -766,6 +766,18 @@ export default function SettingsModal({
               >
                 🧹 清除缓存强刷
               </button>
+              <a
+                href="https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.3.0.apk"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                  padding: '7px 12px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.5)',
+                  background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 500
+                }}
+              >
+                📥 下载最新 v1.3.0 APK
+              </a>
             </div>
 
             {updateCheckStatus && (
