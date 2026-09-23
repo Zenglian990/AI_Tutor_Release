@@ -28,4 +28,10 @@ services:
         value: https://api.deepseek.com/v1
       - key: DEEPSEEK_CHAT_MODEL
         value: deepseek-chat
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: JEV_ENABLED
+        value: "true"
+      - key: JEV_CONFIDENCE_THRESHOLD
+        value: "0.85"
 
