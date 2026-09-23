@@ -4,8 +4,10 @@
 FROM node:22-bookworm-slim AS frontend-builder
 WORKDIR /app/client
 
+ENV NODE_OPTIONS="--max-old-space-size=400"
+
 COPY client/package*.json ./
-RUN npm ci || npm install
+RUN npm ci || npm install --legacy-peer-deps
 
 COPY client/ ./
 RUN npm run build
