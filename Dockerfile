@@ -21,6 +21,7 @@ WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV NODE_OPTIONS="--max-old-space-size=384"
 
 # Install official Node.js 22 LTS on Ubuntu 24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -43,6 +44,12 @@ COPY data/ ./data/
 
 # Ensure runtime directories exist
 RUN mkdir -p data/lancedb logs
+
+# Pre-build LanceDB and canonical questions database during Docker image build
+# (Build environment has ample RAM; pre-populating databases ensures runtime starts in <1s with ~80MB RAM)
+RUN node scripts/seed_demo_data.js \
+    && node -e "const { initDB, closeDB } = require('./server/db/init'); (async () => { await initDB(); await closeDB(); })()" \
+    && rm -f data/textbooks_k9_seed.json.gz
 
 # Copy built frontend from Stage 1 for static hosting
 COPY --from=frontend-builder /app/client/dist ./client/dist

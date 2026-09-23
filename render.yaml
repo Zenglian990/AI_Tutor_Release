@@ -10,6 +10,8 @@ services:
         value: production
       - key: PORT
         value: 3001
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=384"
       - key: API_TOKEN
         sync: false
       - key: ALLOWED_ORIGINS

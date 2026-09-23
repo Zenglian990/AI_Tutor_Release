@@ -94,13 +94,20 @@ async function initDB() {
       }
     })().catch(err => logger.error('[Embedding] Async dimension validation failed:', err));
 
-    // Create Full-Text Search (FTS) index on the 'text' column for hybrid search
+    // Verify or create Full-Text Search (FTS) index on the 'text' column for hybrid search
     try {
-      // Fixed A3-2: Removed replace: true to prevent unnecessary rebuilds
-      await table.createIndex('text', { config: lancedb.Index.fts() });
-      logger.info("[LanceDB] FTS index verified/created on 'text' column.");
+      const indices = typeof table.listIndices === 'function' ? await table.listIndices() : [];
+      const hasFts = Array.isArray(indices) && indices.some(idx => 
+        idx && (idx.name === 'text_idx' || idx.indexType === 'FTS' || (Array.isArray(idx.columns) && idx.columns.includes('text')))
+      );
+      if (!hasFts) {
+        await table.createIndex('text', { config: lancedb.Index.fts() });
+        logger.info("[LanceDB] FTS index created on 'text' column.");
+      } else {
+        logger.info("[LanceDB] FTS index verified on 'text' column.");
+      }
     } catch (e) {
-      logger.warn("[LanceDB] FTS index warning (it might already exist or is loading):", e);
+      logger.warn("[LanceDB] FTS index warning (it might already exist or is loading):", e.message || e);
     }
 
     sqliteDb = await open({
