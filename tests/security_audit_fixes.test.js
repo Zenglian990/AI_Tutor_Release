@@ -118,3 +118,61 @@ test('Release integrity: .dockerignore includes lancedb and .env.example is clea
     assert.strictEqual(envContent.includes('\uFFFD'), false);
   }
 });
+
+// Test 5: Rejection of legacy/backdoor token ait_ca1b...
+test('Security Hardening: legacy token ait_ca1b... is strictly rejected', async () => {
+  const previousAuth = process.env.REQUIRE_AUTH;
+  try {
+    process.env.REQUIRE_AUTH = 'true';
+    const legacyToken = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+    const res = await fetch(`${baseUrl}/api/system/network-info`, {
+      headers: { 'Authorization': `Bearer ${legacyToken}` }
+    });
+    // If API_TOKEN happens to be set in .env, verify legacy token is rejected unless it was explicitly configured
+    if (API_TOKEN !== legacyToken) {
+      assert.strictEqual(res.status, 403);
+    }
+  } finally {
+    process.env.REQUIRE_AUTH = previousAuth;
+  }
+});
+
+// Test 6: CORS strictly rejects null origin and wildcard .onrender.com / .vercel.app
+test('CORS: rejects null origin and arbitrary cloud subdomains', async () => {
+  // 1. null origin
+  const resNull = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'null' }
+  });
+  assert.notStrictEqual(resNull.headers.get('access-control-allow-origin'), 'null');
+
+  // 2. arbitrary onrender subdomain
+  const resRender = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'https://arbitrary-malicious-app.onrender.com' }
+  });
+  assert.notStrictEqual(resRender.headers.get('access-control-allow-origin'), 'https://arbitrary-malicious-app.onrender.com');
+
+  // 3. arbitrary vercel subdomain
+  const resVercel = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'https://phishing-site.vercel.app' }
+  });
+  assert.notStrictEqual(resVercel.headers.get('access-control-allow-origin'), 'https://phishing-site.vercel.app');
+});
+
+// Test 7: update-keys endpoint requires valid master authorization
+test('Config Security: POST /api/config/update-keys requires master authorization', async () => {
+  const previousAuth = process.env.REQUIRE_AUTH;
+  try {
+    process.env.REQUIRE_AUTH = 'true';
+    const res = await fetch(`${baseUrl}/api/config/update-keys`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer wrong_unauthorized_token'
+      },
+      body: JSON.stringify({ deepseekApiUrl: 'https://evil.example.com' })
+    });
+    assert.strictEqual(res.status, 403);
+  } finally {
+    process.env.REQUIRE_AUTH = previousAuth;
+  }
+});

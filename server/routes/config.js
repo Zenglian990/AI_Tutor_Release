@@ -67,7 +67,16 @@ function updateEnvFile(key, value) {
  */
 router.post('/config/update-keys', (req, res) => {
   try {
-    const { deepseekApiKey, deepseekApiUrl, deepseekChatModel, geminiApiKey } = req.body;
+    // Enforce master token authorization for persisting system environment configurations
+    if (config.API_TOKEN && process.env.REQUIRE_AUTH !== 'false') {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+      if (!token || token !== config.API_TOKEN) {
+        return res.status(403).json({ error: '无权修改系统环境配置：需要主管理员授权。' });
+      }
+    }
+
+    const { deepseekApiKey, deepseekApiUrl, deepseekChatModel, geminiApiKey } = req.body || {};
 
     let updatedCount = 0;
 

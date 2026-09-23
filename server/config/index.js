@@ -67,15 +67,38 @@ const proxyUrl = (() => {
   return null;
 })();
 
-const STANDARD_DEFAULT_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
-
-// API auth token — from environment or standard release token fallback
+// API auth token — from environment, persistent token file, or newly generated secure token
 const API_TOKEN = (() => {
   const fromEnv = process.env.API_TOKEN;
-  if (fromEnv && fromEnv.trim() && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
+  if (fromEnv && fromEnv.trim() && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me' && fromEnv !== 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3') {
     return fromEnv.trim();
   }
-  return STANDARD_DEFAULT_TOKEN;
+
+  // Check persistent file in data/api_token
+  const tokenFilePath = path.join(__dirname, '..', '..', 'data', 'api_token');
+  try {
+    if (fs.existsSync(tokenFilePath)) {
+      const savedToken = fs.readFileSync(tokenFilePath, 'utf8').trim();
+      if (savedToken && savedToken.length >= 32 && savedToken !== 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3') {
+        return savedToken;
+      }
+    }
+  } catch (e) {
+    // Ignore read error
+  }
+
+  // Generate a brand new 256-bit cryptographic secure token
+  const generatedToken = 'ait_' + crypto.randomBytes(32).toString('hex');
+  try {
+    const dataDir = path.join(__dirname, '..', '..', 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(tokenFilePath, generatedToken, { mode: 0o600 });
+    logger.info('[Security] Generated brand new persistent API_TOKEN in data/api_token');
+  } catch (err) {
+    logger.warn('[Security] Could not persist API_TOKEN to data/api_token:', err.message);
+  }
+
+  return generatedToken;
 })();
 
 // DB encryption key — decoupled from API_TOKEN for key rotation safety

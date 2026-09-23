@@ -48,10 +48,15 @@ test('POST /api/config/test-llm — rejects invalid provider cleanly', async () 
   assert.ok(data.error.includes('未知的提供商类型'));
 });
 
-test('POST /api/config/update-keys — safely accepts update payload', async () => {
+const { API_TOKEN } = require('../server/config');
+
+test('POST /api/config/update-keys — safely accepts update payload with valid authorization', async () => {
   const res = await fetch(`${baseUrl}/api/config/update-keys`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_TOKEN}`
+    },
     body: JSON.stringify({ deepseekApiUrl: 'https://api.deepseek.com/v1' })
   });
 

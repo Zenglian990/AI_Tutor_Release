@@ -37,26 +37,39 @@ function signatureMiddleware(req, res, next) {
   const method = req.method;
   const path = req.originalUrl.split('?')[0]; // Full path starting with /api
   
-  // If request contains body, stringify it
-  const bodyStr = req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body) : '';
+  // If request contains body, prefer exact raw incoming bytes (req.rawBody) to eliminate serialization discrepancy,
+  // while falling back to JSON.stringify for compatibility with mock tests
+  const bodyCandidates = [];
+  if (typeof req.rawBody === 'string') {
+    bodyCandidates.push(req.rawBody);
+  }
+  const fallbackJsonStr = req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body) : '';
+  if (!bodyCandidates.includes(fallbackJsonStr)) {
+    bodyCandidates.push(fallbackJsonStr);
+  }
+  if (bodyCandidates.length === 0) {
+    bodyCandidates.push('');
+  }
+
   const formFieldsStr = req.headers['x-form-fields'] || '';
   const fileFieldsStr = req.headers['x-file-fields'] || '';
-  
-  const msg = `${method}:${path}:${bodyStr}:${timestamp}:${formFieldsStr}:${fileFieldsStr}`;
-
   const candidateTokens = [API_TOKEN].filter(Boolean);
 
   let isValid = false;
   if (typeof signature === 'string') {
     const sigBuf = Buffer.from(signature);
-    for (const key of candidateTokens) {
-      const hmac = crypto.createHmac('sha256', key);
-      hmac.update(msg);
-      const expectedSig = hmac.digest('hex');
-      if (signature.length === expectedSig.length && crypto.timingSafeEqual(sigBuf, Buffer.from(expectedSig))) {
-        isValid = true;
-        break;
+    for (const bodyStr of bodyCandidates) {
+      const msg = `${method}:${path}:${bodyStr}:${timestamp}:${formFieldsStr}:${fileFieldsStr}`;
+      for (const key of candidateTokens) {
+        const hmac = crypto.createHmac('sha256', key);
+        hmac.update(msg);
+        const expectedSig = hmac.digest('hex');
+        if (signature.length === expectedSig.length && crypto.timingSafeEqual(sigBuf, Buffer.from(expectedSig))) {
+          isValid = true;
+          break;
+        }
       }
+      if (isValid) break;
     }
   }
 

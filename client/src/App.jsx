@@ -32,6 +32,7 @@ import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_
 import { generateOfflineSocraticResponse } from './utils/offlineSocraticEngine';
 import OnboardingGuide from './components/OnboardingGuide';
 import WelcomeDashboard from './components/WelcomeDashboard';
+import PrivacyConsentModal from './components/PrivacyConsentModal';
 
 const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
 let hasInitializedTTS = false;
@@ -92,6 +93,9 @@ function AppInner() {
   const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
+  const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
+    return localStorage.getItem('ai_tutor_minor_privacy_consented') !== 'true';
+  });
 
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
@@ -865,6 +869,11 @@ function AppInner() {
         onClose={() => setShowPosterModal(false)}
         studentName={currentProfile?.name || '曾练'}
         grade={currentProfile?.grade || '八年级'}
+      />
+
+      <PrivacyConsentModal
+        isOpen={showPrivacyConsent}
+        onAccept={() => setShowPrivacyConsent(false)}
       />
 
       <InputBar

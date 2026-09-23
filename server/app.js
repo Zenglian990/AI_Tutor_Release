@@ -74,22 +74,27 @@ function createApp() {
 
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow non-browser requests (curl, server-to-server, mobile native HTTP) or 'null' (sandboxed webviews)
-      if (!origin || origin === 'null') {
+      // Allow non-browser server-to-server requests (no Origin header)
+      if (!origin) {
         return callback(null, true);
       }
 
-      // Allow if wildcard or explicitly configured
+      // Explicitly reject 'null' origin to prevent sandboxed iframe exploits
+      if (origin === 'null') {
+        return callback(new Error('Origin null is rejected for security.'));
+      }
+
+      // Allow if wildcard or explicitly configured in ALLOWED_ORIGINS
       if (process.env.ALLOWED_ORIGINS === '*' || explicitAllowed.has(origin)) {
         return callback(null, true);
       }
 
-      // Allow localhost with any port or without port (Capacitor Android/iOS WebView, local dev)
+      // Allow localhost with any port (local web and dev)
       if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
 
-      // Allow Capacitor / Ionic / local file schemas
+      // Allow Capacitor / Ionic local file schemas for mobile app
       if (/^(capacitor|ionic|file):\/\//.test(origin)) {
         return callback(null, true);
       }
@@ -99,12 +104,7 @@ function createApp() {
         return callback(null, true);
       }
 
-      // Allow onrender.com and other cloud deployments
-      if (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app')) {
-        return callback(null, true);
-      }
-
-      // Block all other unauthorized origins
+      // Block all other unauthorized external origins (e.g. arbitrary .onrender.com or .vercel.app)
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
@@ -113,8 +113,19 @@ function createApp() {
     optionsSuccessStatus: 200,
     maxAge: 86400
   }));
-  app.use(express.json({ limit: MAX_BODY_SIZE }));
-  app.use(express.urlencoded({ extended: true, limit: MAX_BODY_SIZE }));
+  app.use(express.json({
+    limit: MAX_BODY_SIZE,
+    verify: (req, res, buf) => {
+      req.rawBody = buf ? buf.toString('utf8') : '';
+    }
+  }));
+  app.use(express.urlencoded({
+    extended: true,
+    limit: MAX_BODY_SIZE,
+    verify: (req, res, buf) => {
+      req.rawBody = buf ? buf.toString('utf8') : '';
+    }
+  }));
 
   // Rate limiting on API routes
   const apiLimiter = rateLimit({

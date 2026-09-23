@@ -665,8 +665,7 @@ export default function SettingsModal({
                   type="button"
                   onClick={() => {
                     setUrl('https://ai-tutor-release.onrender.com');
-                    setToken('ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3');
-                    setTestResult({ success: true, message: '已填入官方云端配置！点击保存生效。' });
+                    setTestResult({ success: true, message: '已填入官方云端服务地址！请填入管理员分配的访问令牌后保存。' });
                   }}
                   style={{
                     padding: '3px 8px',
