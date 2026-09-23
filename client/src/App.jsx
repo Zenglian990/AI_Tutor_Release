@@ -24,6 +24,7 @@ import ParentRemoteDashboard from './components/ParentRemoteDashboard';
 import PrimaryVisualManipulatives from './components/PrimaryVisualManipulatives';
 import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
 import MembershipModal from './components/MembershipModal';
+import AdminConsoleModal from './components/AdminConsoleModal';
 import ParentSharePosterModal from './components/ParentSharePosterModal';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
@@ -93,6 +94,7 @@ function AppInner() {
   const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
+  const [showAdminConsole, setShowAdminConsole] = useState(false);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
     return localStorage.getItem('ai_tutor_minor_privacy_consented') !== 'true';
   });
@@ -117,6 +119,7 @@ function AppInner() {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+  const recordingTimerRef = useRef(null);
   const audioChunksRef = useRef([]);
   const gradeRef = useRef(currentProfile.grade);
   const subjectRef = useRef(selectedSubject);
@@ -206,14 +209,28 @@ function AppInner() {
     if (result === 'ADD_NEW') setShowAddProfile(true);
   }, [handleProfileChange]);
 
-  // Voice recording engine
+  // Admin console gate handler
+  const handleOpenAdminConsole = useCallback(() => {
+    const isVerified = sessionStorage.getItem('parent_gate_verified_pin_hash');
+    if (isVerified) {
+      setShowAdminConsole(true);
+    } else {
+      setGateAction(() => () => setShowAdminConsole(true));
+      setGateReason('进入【曾先生·管理员专属控制台】');
+      setGateOpen(true);
+    }
+  }, []);
+
+  // Enhanced Voice recording engine with timer, mime detection & error handling
   const startVoiceRecording = useCallback(async (isDialogueLoop = false) => {
     try {
       audioChunksRef.current = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       let options = {};
-      if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
+      else if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
       else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
+      else if (MediaRecorder.isTypeSupported('audio/aac')) options = { mimeType: 'audio/aac' };
       else if (MediaRecorder.isTypeSupported('audio/ogg')) options = { mimeType: 'audio/ogg' };
       else if (MediaRecorder.isTypeSupported('audio/wav')) options = { mimeType: 'audio/wav' };
 
@@ -221,17 +238,37 @@ function AppInner() {
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data); };
       recorder.onstop = async () => {
+        if (recordingTimerRef.current) {
+          clearTimeout(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
         stream.getTracks().forEach(track => track.stop());
         const mime = options.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mime });
-        if (audioBlob.size === 0) return;
+        if (audioBlob.size < 300) {
+          setIsListening(false);
+          setIsLoading(false);
+          return;
+        }
         setIsLoading(true);
         if (isDialogueLoop) setVoiceDialogueMode('processing');
         setInput('🎙️ 正在压缩并识别您的声音...');
         try {
-          const compressedBlob = await compressAudio(audioBlob);
+          let finalBlob = audioBlob;
+          let fileName = 'voice.webm';
+          try {
+            const compressed = await compressAudio(audioBlob);
+            if (compressed && compressed.size > 0) {
+              finalBlob = compressed;
+              fileName = compressed.type.includes('wav') ? 'voice.wav' : (compressed.type.includes('mp4') ? 'voice.mp4' : 'voice.webm');
+            }
+          } catch (compErr) {
+            console.warn('Audio compression fallback:', compErr);
+            fileName = audioBlob.type.includes('mp4') ? 'voice.mp4' : 'voice.webm';
+          }
+
           const formData = new FormData();
-          formData.append('audio', compressedBlob, 'voice.wav');
+          formData.append('audio', finalBlob, fileName);
           const response = await authFetch('/api/transcribe', { method: 'POST', body: formData });
           if (response.ok) {
             const data = await response.json();
@@ -241,37 +278,55 @@ function AppInner() {
                 setVoiceDialogueOpen(false);
                 handleSubmit(null, spokenText);
               } else {
-                setInput(prev => (prev.trim() + ' ' + spokenText).trim());
+                setInput(prev => {
+                  const base = prev.startsWith('🎙️') ? '' : prev.trim();
+                  return (base ? `${base} ` : '') + spokenText;
+                });
               }
             } else {
               setInput('');
               if (isDialogueLoop) setVoiceDialogueOpen(false);
-              alert('没有听清您的说话，请再试一次 🎤');
+              alert('没有听清您的说话，请靠近麦克风再试一次 🎤');
             }
           } else {
             setInput('');
             if (isDialogueLoop) setVoiceDialogueOpen(false);
-            alert('语音识别失败，请手动输入');
+            alert('语音识别服务响应异常，请手动输入');
           }
         } catch (err) {
           setInput('');
           if (isDialogueLoop) setVoiceDialogueOpen(false);
-          alert('语音识别网络错误');
+          alert('语音识别网络异常，请重试');
         } finally {
           setIsLoading(false);
         }
       };
+
       recorder.start();
       setIsListening(true);
       if (isDialogueLoop) setVoiceDialogueMode('listening');
+
+      // Auto-stop after 15 seconds to prevent unbounded recording
+      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          stopVoiceRecording();
+        }
+      }, 15000);
+
     } catch (err) {
-      alert('无法启动麦克风录音，请确保已授予麦克风使用权限 🎙️');
+      console.error('Mic recording error:', err);
+      alert('无法启动麦克风录音，请确保在手机【系统设置 -> 应用权限】中已授予【麦克风/录音】权限 🎙️');
       setIsListening(false);
       setVoiceDialogueOpen(false);
     }
   }, []);
 
   const stopVoiceRecording = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
@@ -554,12 +609,11 @@ function AppInner() {
         }}
         isLightMode={isLightMode}
         onThemeToggle={() => setIsLightMode(!isLightMode)}
-        onSettingsOpen={() => setShowSettings(true)}
+        onOpenAdminConsole={handleOpenAdminConsole}
         onOpenGamification={() => setShowGamification(true)}
         onOpenManipulatives={() => setShowManipulatives(true)}
         onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
         onOpenMembership={() => setShowMembershipModal(true)}
-        onOpenPoster={() => setShowPosterModal(true)}
       />
 
       {/* Action buttons */}
@@ -741,15 +795,13 @@ function AppInner() {
           </div>
         </div>
       )}
-      <SettingsModal
-        isOpen={showSettings} onClose={() => setShowSettings(false)}
-        backendUrl={backendUrl} onSaveBackendUrl={setBackendUrl}
-        apiToken={apiToken} onSaveApiToken={setApiToken}
-        socraticLevel={socraticLevel} onSocraticToggle={(level) => setSocraticLevel(level)}
-        autoRead={autoRead} onAutoReadToggle={() => setAutoRead(!autoRead)}
-        currentProfileId={currentProfileId}
-        currentProfileEdition={currentProfile.edition}
-        onEditionChange={handleEditionChange}
+      <AdminConsoleModal
+        isOpen={showAdminConsole}
+        onClose={() => setShowAdminConsole(false)}
+        backendUrl={backendUrl}
+        onSaveBackendUrl={setBackendUrl}
+        apiToken={apiToken}
+        onSaveApiToken={setApiToken}
       />
 
       {/* Weekly Report Modal */}
@@ -864,12 +916,6 @@ function AppInner() {
         onClose={() => setShowMembershipModal(false)}
       />
 
-      <ParentSharePosterModal
-        isOpen={showPosterModal}
-        onClose={() => setShowPosterModal(false)}
-        studentName={currentProfile?.name || '曾练'}
-        grade={currentProfile?.grade || '八年级'}
-      />
 
       <PrivacyConsentModal
         isOpen={showPrivacyConsent}

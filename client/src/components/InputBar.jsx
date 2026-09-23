@@ -97,6 +97,46 @@ const InputBar = React.memo(function InputBar({
         </div>
       )}
 
+      {/* 实时录音动态指示卡 */}
+      {isListening && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          padding: '8px 16px',
+          marginBottom: '6px',
+          borderRadius: '20px',
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(220, 38, 38, 0.15))',
+          border: '1px solid rgba(239, 68, 68, 0.45)',
+          color: '#fca5a5',
+          fontSize: '0.85rem',
+          animation: 'pulse 1.5s infinite'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', background: '#ef4444' }} />
+            <span style={{ fontWeight: 600 }}>🎤 正在聆听中... 请对准手机清晰说话</span>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleVoice}
+            style={{
+              padding: '4px 14px',
+              borderRadius: '12px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)'
+            }}
+          >
+            ✓ 说完了，发送
+          </button>
+        </div>
+      )}
+
       {previewImage && (
         <div className="image-preview-bar" role="status" aria-label="图片预览">
           <img src={previewImage} alt="上传的题目预览" className="preview-thumb" />

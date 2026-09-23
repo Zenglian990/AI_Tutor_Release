@@ -587,20 +587,48 @@ router.post('/grade-variation', async (req, res) => {
   }
 });
 
+// Helper to detect audio MIME type via magic bytes
+function detectAudioMimeType(buffer, fallbackMime = 'audio/webm') {
+  if (!buffer || buffer.length < 4) return fallbackMime;
+
+  // WebM: 0x1A 0x45 0xDF 0xA3
+  if (buffer[0] === 0x1A && buffer[1] === 0x45 && buffer[2] === 0xDF && buffer[3] === 0xA3) {
+    return 'audio/webm';
+  }
+  // RIFF .... WAVE
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WAVE') {
+    return 'audio/wav';
+  }
+  // OGG: OggS
+  if (buffer.toString('ascii', 0, 4) === 'OggS') {
+    return 'audio/ogg';
+  }
+  // MP3: ID3 or MPEG sync
+  if (buffer.toString('ascii', 0, 3) === 'ID3' || (buffer[0] === 0xFF && (buffer[1] & 0xE0) === 0xE0)) {
+    return 'audio/mp3';
+  }
+  // MP4 / M4A / AAC: ftyp
+  if (buffer.length >= 12) {
+    const chunk = buffer.toString('ascii', 4, 12);
+    if (chunk.includes('ftyp') || chunk.includes('M4A ') || chunk.includes('mp42') || chunk.includes('isom')) {
+      return 'audio/aac';
+    }
+  }
+
+  // Normalize fallback MIME types for Gemini API compatibility
+  if (fallbackMime === 'audio/x-m4a' || fallbackMime === 'audio/m4a' || fallbackMime === 'audio/mp4') {
+    return 'audio/aac';
+  }
+  if (fallbackMime === 'audio/mpeg') {
+    return 'audio/mp3';
+  }
+  return fallbackMime;
+}
+
 // Transcribe audio
 router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, async (req, res) => {
   try {
     const audioBuffer = req.file?.buffer;
-    let mimeType = req.file?.mimetype || 'audio/webm';
-
-    // Normalize MIME types for Gemini API compatibility
-    if (mimeType === 'audio/x-m4a' || mimeType === 'audio/m4a' || mimeType === 'audio/mp4') {
-      mimeType = 'audio/aac';
-    }
-    if (mimeType === 'audio/mpeg') {
-      mimeType = 'audio/mp3';
-    }
-
     if (!audioBuffer) return res.status(400).json({ error: '没有提供音频文件' });
 
     // Validate audio file size
@@ -608,6 +636,7 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
       return res.status(400).json({ error: '音频文件不能超过 10MB' });
     }
 
+    const mimeType = detectAudioMimeType(audioBuffer, req.file?.mimetype || 'audio/webm');
     const base64Audio = audioBuffer.toString('base64');
 
     const prompt = `请精确地将这段音频中的儿童语音内容转录为中文字幕文本。
@@ -616,14 +645,20 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
 2. 不要编造内容，如果完全听不清或没有声音，请只返回一个空字符串。
 3. 自动纠正明显的普通话或粤语拼写、发音语病，保持语句通顺。`;
 
+    const clientCustomKey = req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'];
+    const fetchHeaders = { 'Content-Type': 'application/json' };
+    if (clientCustomKey && String(clientCustomKey).trim()) {
+      fetchHeaders['x-gemini-api-key'] = String(clientCustomKey).trim();
+    }
+
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: fetchHeaders,
       body: JSON.stringify({
         contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: base64Audio } }, { text: prompt }] }],
         generationConfig: { temperature: 0.0, maxOutputTokens: 1024 }
       })
-    }, 8, 90000);
+    }, 8, 90000, 'gemini-2.5-flash', true); // skipDeepSeek = true
 
     const data = await response.json();
     if (data.error) {
@@ -631,7 +666,7 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
       return res.status(500).json({ error: '语音转录服务异常', details: NODE_ENV === 'development' ? data.error.message : undefined });
     }
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-    logger.info(`[Speech to Text] Transcribed ${text.length} chars`);
+    logger.info(`[Speech to Text] Transcribed ${text.length} chars (detected mime: ${mimeType})`);
     res.json({ text });
   } catch (e) {
     logger.error('Transcription Error:', e);

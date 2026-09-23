@@ -124,7 +124,8 @@ async function authFetch(path, options = {}) {
                        relativePath.startsWith('/api/test-paper') ||
                        relativePath.startsWith('/api/homework') ||
                        relativePath.startsWith('/api/config') ||
-                       relativePath.startsWith('/api/tts');
+                       relativePath.startsWith('/api/tts') ||
+                       relativePath.startsWith('/api/transcribe');
 
     if (isLlmRoute) {
       const customGeminiKey = localStorage.getItem('ai_tutor_gemini_key');
@@ -155,6 +156,9 @@ async function authFetch(path, options = {}) {
           formFields[key] = value;
         } else if (value instanceof File) {
           fileFields.push(`${key}:${value.name}:${value.size}`);
+        } else if (value instanceof Blob) {
+          const defaultName = key === 'audio' ? 'voice.wav' : (key === 'image' ? 'image.jpg' : `${key}.bin`);
+          fileFields.push(`${key}:${defaultName}:${value.size}`);
         }
       }
       formFieldsStr = JSON.stringify(formFields);

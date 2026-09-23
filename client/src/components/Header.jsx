@@ -93,7 +93,7 @@ export default function Header({
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
   onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
-  onOpenMembership, onOpenPoster
+  onOpenMembership, onOpenPoster, onOpenAdminConsole
 }) {
   const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, membershipStatus } = useAppStore();
   const isVip = membershipStatus?.is_vip;
@@ -282,7 +282,6 @@ export default function Header({
 
         <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
 
-        {/* 快捷工具小图标组 (勋章、海报、墨水屏、主题、设置) */}
         {onOpenGamification && (
           <button
             onClick={onOpenGamification}
@@ -291,17 +290,6 @@ export default function Header({
             aria-label="学霸段位勋章"
           >
             👑
-          </button>
-        )}
-
-        {onOpenPoster && (
-          <button
-            onClick={onOpenPoster}
-            className="header-btn-icon"
-            title="生成家长朋友圈高转化宣传海报"
-            aria-label="生成家长宣传海报"
-          >
-            📣
           </button>
         )}
 
@@ -325,12 +313,17 @@ export default function Header({
         </button>
 
         <button
-          onClick={onSettingsOpen}
+          onClick={onOpenAdminConsole || onSettingsOpen}
           className="header-btn-icon"
-          title="系统设置"
-          aria-label="打开系统设置"
+          title="曾先生专属管理控制台 (凭安全PIN码开启)"
+          aria-label="打开管理员专属控制台"
+          style={{
+            borderColor: 'rgba(234, 179, 8, 0.4)',
+            color: '#fbbf24',
+            background: 'rgba(234, 179, 8, 0.1)'
+          }}
         >
-          ⚙️
+          🛡️
         </button>
       </div>
     </header>
