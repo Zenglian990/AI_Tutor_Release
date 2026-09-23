@@ -21,6 +21,12 @@ router.get('/config/providers', (req, res) => {
     : '';
   const deepseekConfigured = Boolean(process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim());
 
+  const typesafeKey = (process.env.TYPESAFE_API_KEY || config.TYPESAFE_API_KEY || '').trim();
+  const typesafeConfigured = Boolean(typesafeKey);
+  const maskedTypesafeKey = typesafeConfigured
+    ? `${typesafeKey.slice(0, 4)}***${typesafeKey.slice(-4)}`
+    : '';
+
   res.json({
     gemini: {
       configured: geminiConfigured,
@@ -33,6 +39,12 @@ router.get('/config/providers', (req, res) => {
       apiUrl: process.env.DEEPSEEK_API_URL || config.DEEPSEEK_API_URL,
       defaultModel: process.env.DEEPSEEK_CHAT_MODEL || config.DEEPSEEK_CHAT_MODEL,
       maskedKey: deepseekConfigured ? `${process.env.DEEPSEEK_API_KEY.slice(0, 4)}***${process.env.DEEPSEEK_API_KEY.slice(-4)}` : ''
+    },
+    jev: {
+      configured: typesafeConfigured,
+      enabled: process.env.JEV_ENABLED === 'true' || config.JEV_ENABLED === true,
+      confidenceThreshold: parseFloat(process.env.JEV_CONFIDENCE_THRESHOLD || config.JEV_CONFIDENCE_THRESHOLD || '0.85'),
+      maskedKey: maskedTypesafeKey
     },
     proxyUrl: config.proxyUrl || null
   });
@@ -76,7 +88,7 @@ router.post('/config/update-keys', (req, res) => {
       }
     }
 
-    const { deepseekApiKey, deepseekApiUrl, deepseekChatModel, geminiApiKey } = req.body || {};
+    const { deepseekApiKey, deepseekApiUrl, deepseekChatModel, geminiApiKey, typesafeApiKey, jevEnabled, jevConfidenceThreshold } = req.body || {};
 
     let updatedCount = 0;
 
@@ -112,6 +124,41 @@ router.post('/config/update-keys', (req, res) => {
         if (typeof unmarkInvalidKey === 'function') unmarkInvalidKey(cleanKey);
       } catch (e) {}
 
+      updatedCount++;
+    }
+
+    if (typeof typesafeApiKey === 'string') {
+      const cleanKey = typesafeApiKey.trim();
+      updateEnvFile('TYPESAFE_API_KEY', cleanKey);
+      try {
+        const jev = require('../services/jevDecisionService');
+        if (cleanKey) {
+          const { TypeSafeClient } = require('@typesafe-ai/sdk');
+          jev.setClient(new TypeSafeClient({ apiKey: cleanKey }));
+        } else {
+          jev.setClient(null);
+        }
+      } catch (e) {}
+      updatedCount++;
+    }
+
+    if (typeof jevEnabled === 'boolean' || typeof jevEnabled === 'string') {
+      const enabledVal = String(jevEnabled) === 'true';
+      updateEnvFile('JEV_ENABLED', enabledVal ? 'true' : 'false');
+      try {
+        const jev = require('../services/jevDecisionService');
+        jev.enabled = enabledVal;
+      } catch (e) {}
+      updatedCount++;
+    }
+
+    if (jevConfidenceThreshold !== undefined && !isNaN(parseFloat(jevConfidenceThreshold))) {
+      const thresholdVal = parseFloat(jevConfidenceThreshold);
+      updateEnvFile('JEV_CONFIDENCE_THRESHOLD', String(thresholdVal));
+      try {
+        const jev = require('../services/jevDecisionService');
+        jev.confidenceThreshold = thresholdVal;
+      } catch (e) {}
       updatedCount++;
     }
 
@@ -220,6 +267,29 @@ router.post('/config/test-llm', async (req, res) => {
         model: testModel,
         latencyMs,
         message: `Gemini 连接成功！(延迟: ${latencyMs}ms)`
+      });
+    } else if (provider === 'jev' || provider === 'typesafe') {
+      const keyToUse = (apiKey || process.env.TYPESAFE_API_KEY || config.TYPESAFE_API_KEY || '').trim();
+      if (!keyToUse) {
+        return res.status(400).json({ success: false, error: '缺少 TypeSafe (Jev) API Key' });
+      }
+
+      const { TypeSafeClient, noul } = require('@typesafe-ai/sdk');
+      const testClient = new TypeSafeClient({ apiKey: keyToUse });
+      const result = await testClient.systemOne({
+        state: '中国中小学智能教辅系统连通性测试',
+        questions: {
+          ping: noul('这是一次正常的系统连通性心跳检测吗？')
+        }
+      }, { timeout: 10000 });
+
+      const latencyMs = Date.now() - start;
+      return res.json({
+        success: true,
+        provider: 'jev',
+        model: result.model || 'jev-latest',
+        latencyMs,
+        message: `Jev 系统一决策模型连接成功！(极速决策: ${latencyMs}ms)`
       });
     } else {
       return res.status(400).json({ success: false, error: '未知的提供商类型' });

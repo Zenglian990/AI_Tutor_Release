@@ -37,6 +37,12 @@ export default function SettingsModal({
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiTestStatus, setGeminiTestStatus] = useState(null);
 
+  // TypeSafe Jev Decision Engine State
+  const [typesafeKey, setTypesafeKey] = useState(() => localStorage.getItem('ai_tutor_typesafe_key') || '');
+  const [jevEnabled, setJevEnabled] = useState(() => localStorage.getItem('ai_tutor_jev_enabled') !== 'false');
+  const [showTypesafeKey, setShowTypesafeKey] = useState(false);
+  const [jevTestStatus, setJevTestStatus] = useState(null);
+
   // App Update & Version State
   const [updateCheckStatus, setUpdateCheckStatus] = useState(null);
 
@@ -54,6 +60,9 @@ export default function SettingsModal({
         if (data) {
           setServerProviderInfo(data);
           if (data.deepseek?.apiUrl) setDeepseekUrl(data.deepseek.apiUrl);
+          if (data.jev?.enabled !== undefined && localStorage.getItem('ai_tutor_jev_enabled') === null) {
+            setJevEnabled(data.jev.enabled);
+          }
         }
       })
       .catch(() => {});
@@ -87,9 +96,15 @@ export default function SettingsModal({
     if (deepseekUrl.trim()) {
       localStorage.setItem('ai_tutor_deepseek_url', deepseekUrl.trim());
     }
+    if (typesafeKey.trim()) {
+      localStorage.setItem('ai_tutor_typesafe_key', typesafeKey.trim());
+    } else {
+      localStorage.removeItem('ai_tutor_typesafe_key');
+    }
+    localStorage.setItem('ai_tutor_jev_enabled', jevEnabled ? 'true' : 'false');
 
-    // Persist DeepSeek or Gemini key to server if entered
-    if (geminiKey.trim() || deepseekKey.trim() || deepseekUrl.trim()) {
+    // Persist DeepSeek, Gemini, or Jev key to server if entered
+    if (geminiKey.trim() || deepseekKey.trim() || deepseekUrl.trim() || typesafeKey.trim() || jevEnabled !== undefined) {
       try {
         await authFetch('/api/config/update-keys', {
           method: 'POST',
@@ -97,7 +112,9 @@ export default function SettingsModal({
           body: JSON.stringify({
             geminiApiKey: geminiKey.trim() || undefined,
             deepseekApiKey: deepseekKey.trim() || undefined,
-            deepseekApiUrl: deepseekUrl.trim() || undefined
+            deepseekApiUrl: deepseekUrl.trim() || undefined,
+            typesafeApiKey: typesafeKey.trim() || undefined,
+            jevEnabled: jevEnabled
           })
         });
       } catch (err) {
@@ -227,6 +244,47 @@ export default function SettingsModal({
       }
     } catch (err) {
       setGeminiTestStatus({
+        testing: false,
+        success: false,
+        message: `❌ 测试异常: ${err.message}`
+      });
+    }
+  };
+
+  // Ping test Jev / TypeSafe provider
+  const handleTestJev = async () => {
+    setJevTestStatus({ testing: true });
+    try {
+      const payload = {
+        provider: 'jev',
+        apiKey: typesafeKey.trim() || undefined
+      };
+
+      const targetBase = url.trim() || '';
+      const testEndpoint = targetBase ? `${targetBase.replace(/\/+$/, '')}/api/config/test-llm` : '/api/config/test-llm';
+
+      const res = await authFetch(testEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setJevTestStatus({
+          testing: false,
+          success: true,
+          message: `⚡ ${data.message || 'Jev 决策模型连通正常！'}`
+        });
+      } else {
+        setJevTestStatus({
+          testing: false,
+          success: false,
+          message: `❌ 连通失败: ${data.error || '无法访问'} ${data.details ? '(' + data.details + ')' : ''}`
+        });
+      }
+    } catch (err) {
+      setJevTestStatus({
         testing: false,
         success: false,
         message: `❌ 测试异常: ${err.message}`
@@ -571,6 +629,91 @@ export default function SettingsModal({
             {geminiTestStatus && !geminiTestStatus.testing && (
               <span style={{ fontSize: '0.8rem', color: geminiTestStatus.success ? '#34d399' : '#f87171' }}>
                 {geminiTestStatus.message}
+              </span>
+            )}
+          </div>
+
+          {/* 🧠 Jev (TypeSafe) 系统一决策引擎配置 */}
+          <div style={{
+            background: 'rgba(249, 115, 22, 0.12)', border: '1px solid rgba(249, 115, 22, 0.3)',
+            borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fb923c' }}>
+                🧠 Jev 系统一决策引擎 (TypeSafe 70ms 意图路由 / 智能护栏)
+              </span>
+              {serverProviderInfo?.jev?.configured && (
+                <span style={{ fontSize: '0.75rem', background: '#ea580c', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>
+                  {serverProviderInfo.jev.enabled ? '已激活 (超速决策)' : '已配置 (已暂停)'}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.85rem', color: 'white', fontWeight: 500 }}>启用 Jev 决策分流加速</span>
+                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>自动识别简单记忆题、拦截脱纲闲聊，节省 50% 大模型 Token 消耗</span>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+                <input
+                  type="checkbox"
+                  checked={jevEnabled}
+                  onChange={e => setJevEnabled(e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: jevEnabled ? '#ea580c' : '#475569',
+                  borderRadius: '22px', transition: '.3s'
+                }}>
+                  <span style={{
+                    position: 'absolute', content: '""', height: '16px', width: '16px', left: jevEnabled ? '20px' : '3px', bottom: '3px',
+                    backgroundColor: 'white', borderRadius: '50%', transition: '.3s'
+                  }} />
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>TypeSafe API Key (Jev 决策密钥)</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type={showTypesafeKey ? 'text' : 'password'}
+                  placeholder={serverProviderInfo?.jev?.maskedKey || '输入 sk-typesafe... (不填保留现有Key)'}
+                  value={typesafeKey}
+                  onChange={e => setTypesafeKey(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', fontSize: '0.85rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowTypesafeKey(!showTypesafeKey)}
+                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer' }}
+                >
+                  {showTypesafeKey ? '🙈' : '👁️'}
+                </button>
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>
+                由 TypeSafe AI 提供的 System One 极速决策引擎，输入 state 直接返回结构化路由与打分。
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+              <button
+                type="button"
+                onClick={handleTestJev}
+                disabled={jevTestStatus?.testing}
+                style={{
+                  padding: '6px 12px', borderRadius: '6px', border: 'none',
+                  background: '#ea580c', color: 'white', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer'
+                }}
+              >
+                {jevTestStatus?.testing ? '⏳ 测试连通性中...' : '⚡ 诊断 Jev 连通性'}
+              </button>
+            </div>
+
+            {jevTestStatus && !jevTestStatus.testing && (
+              <span style={{ fontSize: '0.8rem', color: jevTestStatus.success ? '#34d399' : '#f87171' }}>
+                {jevTestStatus.message}
               </span>
             )}
           </div>
