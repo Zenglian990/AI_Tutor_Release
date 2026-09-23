@@ -3,7 +3,7 @@
  * Wraps TypeSafe AI's Jev "System One" model for K-9 tutoring logic.
  */
 
-const { TypeSafeClient, Choice, Noul, Score } = require('@typesafe-ai/sdk');
+const { TypeSafeClient, choice, noul, score } = require('@typesafe-ai/sdk');
 const logger = require('./logger');
 const config = require('../config');
 
@@ -13,7 +13,12 @@ class JevDecisionService {
         this.confidenceThreshold = parseFloat(process.env.JEV_CONFIDENCE_THRESHOLD || config.jevConfidenceThreshold || '0.7');
         
         if (this.enabled) {
-            this.client = new TypeSafeClient();
+            try {
+                this.client = new TypeSafeClient();
+            } catch (err) {
+                logger.warn('[Jev] TypeSafeClient initialization failed (check TYPESAFE_API_KEY):', err.message);
+                this.client = null;
+            }
         } else {
             this.client = null;
         }
@@ -31,7 +36,36 @@ class JevDecisionService {
      * @returns {boolean} True if enabled
      */
     isEnabled() {
-        return this.enabled;
+        return this.enabled && this.client !== null;
+    }
+
+    /**
+     * Set a custom client (useful for unit testing and dependency injection)
+     * @param {Object} customClient 
+     */
+    setClient(customClient) {
+        this.client = customClient;
+        this.enabled = customClient !== null;
+    }
+
+    /**
+     * Internal helper to execute System One calls across official SDK and mock clients
+     */
+    async _callSystemOne(state, questions) {
+        if (!this.client) {
+            throw new Error('TypeSafe client is not initialized');
+        }
+
+        if (typeof this.client.systemOne === 'function') {
+            const res = await this.client.systemOne({ state, questions });
+            return res.answers || res;
+        }
+
+        if (typeof this.client.ask === 'function') {
+            return await this.client.ask(state, questions);
+        }
+
+        throw new Error('TypeSafe client has neither systemOne nor ask method');
     }
 
     /**
@@ -82,36 +116,54 @@ class JevDecisionService {
             };
 
             const questions = {
-                route: new Choice(['factual_recall', 'socratic_guidance', 'calculation_step', 'cross_subject', 'off_topic'], {
-                    instructions: '判断学生问题的类型，用于路由到最合适的处理策略。factual_recall=事实记忆类（定义/概念/背诵），socratic_guidance=需要引导式思考的理解题，calculation_step=计算解题类，cross_subject=跨学科综合题，off_topic=与学科教学无关的话题'
+                route: choice('判断学生问题的类型，用于路由到最合适的处理策略', {
+                    factual_recall: '事实记忆类（定义/概念/背诵）',
+                    socratic_guidance: '需要引导式思考的理解题',
+                    calculation_step: '计算解题类',
+                    cross_subject: '跨学科综合题',
+                    off_topic: '与学科教学无关的话题'
                 }),
-                difficulty: new Score({
-                    min: 1,
-                    max: 10,
-                    instructions: '基于该年级课程标准，评估此问题的难度等级'
-                }),
-                needs_encouragement: new Noul({
-                    instructions: '从问题的措辞和语气判断学生是否可能感到困惑或沮丧，需要给予情感鼓励'
-                })
+                difficulty: score('基于该年级课程标准，评估此问题的难度等级', [
+                    '0-未分级', '1-极度简单', '2-基础', '3-容易', '4-中下', '5-中等',
+                    '6-中上', '7-较难', '8-困难', '9-拔高压轴', '10-超纲'
+                ]),
+                needs_encouragement: noul('从问题的措辞和语气判断学生是否可能感到困惑或沮丧，需要给予情感鼓励')
             };
 
-            const response = await this.client.ask(state, questions);
+            const answers = await this._callSystemOne(state, questions);
             
             const latency = Date.now() - startTime;
             this._recordStat('routeQuestion', latency);
             logger.info(`[Jev] routeQuestion completed in ${latency}ms`);
 
-            // Handle standard Noul responses which might be boolean or objects with probability
-            const needsEnc = response.needs_encouragement && typeof response.needs_encouragement === 'object' 
-                ? (response.needs_encouragement.isTrue || response.needs_encouragement.value === true)
-                : !!response.needs_encouragement;
+            // Extract route
+            const routeAns = answers.route;
+            const route = typeof routeAns === 'string' ? routeAns : (routeAns?.choice || routeAns?.route || 'socratic_guidance');
+            const confidence = typeof routeAns?.confidence === 'number' ? routeAns.confidence : (answers.confidence ?? 1);
+
+            // Extract difficulty
+            const diffAns = answers.difficulty;
+            const difficulty = typeof diffAns?.score === 'number' ? Math.round(diffAns.score) : (Number(diffAns?.difficulty ?? diffAns) || 5);
+
+            // Extract needs_encouragement (handles boolean, object, or probability)
+            const encAns = answers.needs_encouragement;
+            let needsEnc = false;
+            if (typeof encAns?.noul === 'number') {
+                needsEnc = encAns.noul > 0.6;
+            } else if (typeof encAns?.probability === 'number') {
+                needsEnc = encAns.probability > 0.6;
+            } else if (encAns && typeof encAns === 'object') {
+                needsEnc = encAns.isTrue === true || encAns.value === true;
+            } else {
+                needsEnc = encAns === true;
+            }
 
             return {
-                route: response.route,
-                difficulty: response.difficulty,
+                route,
+                difficulty,
                 needsEncouragement: needsEnc,
-                confidence: response.confidence || 1,
-                rawResponse: response
+                confidence,
+                rawResponse: answers
             };
         } catch (error) {
             logger.error(`[Jev] Error in routeQuestion: ${error.message}`);
@@ -144,20 +196,17 @@ class JevDecisionService {
             };
 
             const questions = {
-                relevant: new Noul({
-                    instructions: '检索到的教材内容是否包含回答学生问题所需的关键知识点？'
-                }),
-                sufficient: new Noul({
-                    instructions: '仅凭已检索到的教材内容是否足以完整、准确地回答此问题？还是需要AI模型补充推理？'
-                }),
-                best_chunk_index: new Score({
-                    min: 0,
-                    max: Math.max(0, chunkCount - 1),
-                    instructions: '哪个检索片段与学生问题最直接相关？返回其索引编号'
-                })
+                relevant: noul('检索到的教材内容是否包含回答学生问题所需的关键知识点？'),
+                sufficient: noul('仅凭已检索到的教材内容是否足以完整、准确地回答此问题？还是需要AI模型补充推理？'),
+                best_chunk_index: score(
+                    '哪个检索片段与学生问题最直接相关？返回其索引编号',
+                    chunkCount > 0 
+                        ? Array.from({ length: Math.max(2, chunkCount) }, (_, i) => `片段 ${i}`) 
+                        : ['片段 0', '片段 1']
+                )
             };
 
-            const response = await this.client.ask(state, questions);
+            const answers = await this._callSystemOne(state, questions);
             
             const latency = Date.now() - startTime;
             this._recordStat('evaluateRetrievalQuality', latency);
@@ -165,19 +214,29 @@ class JevDecisionService {
 
             const getProb = (val) => {
                 if (typeof val === 'number') return val;
+                if (typeof val?.noul === 'number') return val.noul;
                 if (val && typeof val === 'object' && val.probability !== undefined) return val.probability;
-                if (val === true || (val && val.value === true)) return 1.0;
+                if (val === true || (val && (val.value === true || val.isTrue === true))) return 1.0;
                 return 0.0;
             };
 
-            const relProb = getProb(response.relevant);
-            const suffProb = getProb(response.sufficient);
+            const relProb = getProb(answers.relevant);
+            const suffProb = getProb(answers.sufficient);
+
+            const chunkAns = answers.best_chunk_index;
+            const bestChunkIndex = typeof chunkAns?.score === 'number' 
+                ? Math.round(chunkAns.score) 
+                : (Number(chunkAns?.best_chunk_index ?? chunkAns) || 0);
+
+            const confidence = typeof answers.relevant?.confidence === 'number' 
+                ? answers.relevant.confidence 
+                : (answers.confidence ?? 1);
 
             return {
                 isRelevant: relProb > 0.7,
                 isSufficient: suffProb > 0.8,
-                bestChunkIndex: Math.round(Number(response.best_chunk_index) || 0),
-                confidence: response.confidence || 1
+                bestChunkIndex,
+                confidence
             };
         } catch (error) {
             logger.error(`[Jev] Error in evaluateRetrievalQuality: ${error.message}`);
@@ -211,26 +270,41 @@ class JevDecisionService {
             };
 
             const questions = {
-                strategy: new Choice(['visual_decompose', 'scenario_memorize', 'mind_map', 'error_correction_loop', 'dialogue_practice', 'step_by_step_scaffold'], {
-                    instructions: '根据学生年级的心智发展阶段和近期学习表现，选择最佳教学策略。低年级(1-3)偏向visual_decompose和scenario_memorize，高年级(7-9)偏向mind_map和error_correction_loop'
+                strategy: choice('根据学生年级的心智发展阶段和近期学习表现，选择最佳教学策略', {
+                    visual_decompose: '低年级：可视化拆解与实物图像辅助',
+                    scenario_memorize: '低年级：趣味场景化记忆与口诀',
+                    mind_map: '高年级：思维导图结构化与概念图联结',
+                    error_correction_loop: '高年级：错题闭环纠正与辨析',
+                    dialogue_practice: '高年级：情景对话与苏格拉底追问',
+                    step_by_step_scaffold: '通用：分步脚手架梯级引导'
                 }),
-                hint_level: new Score({
-                    min: 1,
-                    max: 5,
-                    instructions: '应该提供多少提示？1=仅给方向性引导，5=接近给出完整答案。连续错误多时应适当提高'
-                })
+                hint_level: score('应该提供多少提示？', [
+                    '0-无提示', '1-仅给方向性引导', '2-指出关键考点', '3-分步提示中间思路', '4-给出核心步骤', '5-接近完整解法'
+                ])
             };
 
-            const response = await this.client.ask(state, questions);
+            const answers = await this._callSystemOne(state, questions);
             
             const latency = Date.now() - startTime;
             this._recordStat('selectTeachingStrategy', latency);
             logger.info(`[Jev] selectTeachingStrategy completed in ${latency}ms`);
 
+            const stratAns = answers.strategy;
+            const strategy = typeof stratAns === 'string' ? stratAns : (stratAns?.choice || stratAns?.strategy || 'step_by_step_scaffold');
+
+            const hintAns = answers.hint_level;
+            const hintLevel = typeof hintAns?.score === 'number' 
+                ? Math.round(hintAns.score) 
+                : (Number(hintAns?.hint_level ?? hintAns) || 3);
+
+            const confidence = typeof stratAns?.confidence === 'number' 
+                ? stratAns.confidence 
+                : (answers.confidence ?? 1);
+
             return {
-                strategy: response.strategy,
-                hintLevel: Math.round(Number(response.hint_level) || 3),
-                confidence: response.confidence || 1
+                strategy,
+                hintLevel,
+                confidence
             };
         } catch (error) {
             logger.error(`[Jev] Error in selectTeachingStrategy: ${error.message}`);
@@ -264,18 +338,12 @@ class JevDecisionService {
             };
 
             const questions = {
-                age_appropriate: new Noul({
-                    instructions: '回答内容是否完全适合该年龄段的中小学生？无暴力、色情、政治敏感或其他不当内容？'
-                }),
-                educationally_sound: new Noul({
-                    instructions: '回答在教育学和学科知识上是否正确？不会误导学生？'
-                }),
-                gives_direct_answer: new Noul({
-                    instructions: '是否直接给出了最终答案或完整解题过程，而没有引导学生独立思考？'
-                })
+                age_appropriate: noul('回答内容是否完全适合该年龄段的中小学生？无暴力、色情、政治敏感或其他不当内容？'),
+                educationally_sound: noul('回答在教育学和学科知识上是否正确？不会误导学生？'),
+                gives_direct_answer: noul('是否直接给出了最终答案或完整解题过程，而没有引导学生独立思考？')
             };
 
-            const response = await this.client.ask(state, questions);
+            const answers = await this._callSystemOne(state, questions);
             
             const latency = Date.now() - startTime;
             this._recordStat('checkOutputSafety', latency);
@@ -283,26 +351,31 @@ class JevDecisionService {
 
             const getProb = (val) => {
                 if (typeof val === 'number') return val;
+                if (typeof val?.noul === 'number') return val.noul;
                 if (val && typeof val === 'object' && val.probability !== undefined) return val.probability;
-                if (val === true || (val && val.value === true)) return 1.0;
+                if (val === true || (val && (val.value === true || val.isTrue === true))) return 1.0;
                 return 0.0;
             };
 
-            const ageProb = getProb(response.age_appropriate);
-            const edProb = getProb(response.educationally_sound);
-            const directProb = getProb(response.gives_direct_answer);
+            const ageProb = getProb(answers.age_appropriate);
+            const edProb = getProb(answers.educationally_sound);
+            const directProb = getProb(answers.gives_direct_answer);
 
             const safe = ageProb > 0.9;
             const educationallySound = edProb > 0.85;
             const tooDirectAnswer = directProb > 0.7;
             const shouldRewrite = tooDirectAnswer && gradeNum <= 6;
 
+            const confidence = typeof answers.age_appropriate?.confidence === 'number' 
+                ? answers.age_appropriate.confidence 
+                : (answers.confidence ?? 1);
+
             return {
                 safe,
                 educationallySound,
                 tooDirectAnswer,
                 shouldRewrite,
-                confidence: response.confidence || 1
+                confidence
             };
         } catch (error) {
             logger.error(`[Jev] Error in checkOutputSafety: ${error.message}`);

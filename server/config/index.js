@@ -26,6 +26,9 @@ const API_KEYS = (() => {
     const key = process.env[keyName];
     if (key && key.trim()) keys.push(key.trim());
   }
+  if (keys.length === 0 && isTestEnv) {
+    keys.push('test-mock-gemini-key');
+  }
   return keys;
 })();
 
