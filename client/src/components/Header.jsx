@@ -107,13 +107,25 @@ export default function Header({
   const currentProfile = profiles.find(p => p.id === currentProfileId) || { edition: '人教版' };
   const selectedEdition = currentProfile.edition || '人教版';
 
+  const logoClicksRef = React.useRef([]);
+  const handleLogoClick = () => {
+    const now = Date.now();
+    logoClicksRef.current = [...logoClicksRef.current.filter(t => now - t < 2500), now];
+    if (logoClicksRef.current.length >= 5) {
+      logoClicksRef.current = [];
+      if (onOpenAdminConsole) onOpenAdminConsole();
+    } else {
+      if (onClearChat) onClearChat();
+    }
+  };
+
   return (
     <header className="header" role="banner" aria-label="应用顶栏">
       {/* 1. 品牌与标题 (Left) */}
       <div className="header-left">
         <div
           className="header-icon"
-          onClick={onClearChat}
+          onClick={handleLogoClick}
           title="点击清空当前对话"
           role="button"
           tabIndex={0}
@@ -313,17 +325,12 @@ export default function Header({
         </button>
 
         <button
-          onClick={onOpenAdminConsole || onSettingsOpen}
+          onClick={onSettingsOpen}
           className="header-btn-icon"
-          title="曾先生专属管理控制台 (凭安全PIN码开启)"
-          aria-label="打开管理员专属控制台"
-          style={{
-            borderColor: 'rgba(234, 179, 8, 0.4)',
-            color: '#fbbf24',
-            background: 'rgba(234, 179, 8, 0.1)'
-          }}
+          title="基础偏好设置 (教材版本·语音偏好·教学风格)"
+          aria-label="打开基础偏好设置"
         >
-          🛡️
+          ⚙️
         </button>
       </div>
     </header>

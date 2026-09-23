@@ -609,6 +609,7 @@ function AppInner() {
         }}
         isLightMode={isLightMode}
         onThemeToggle={() => setIsLightMode(!isLightMode)}
+        onSettingsOpen={() => setShowSettings(true)}
         onOpenAdminConsole={handleOpenAdminConsole}
         onOpenGamification={() => setShowGamification(true)}
         onOpenManipulatives={() => setShowManipulatives(true)}
@@ -795,6 +796,17 @@ function AppInner() {
           </div>
         </div>
       )}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        socraticLevel={socraticLevel}
+        onSocraticToggle={(level) => setSocraticLevel(level)}
+        autoRead={autoRead}
+        onAutoReadToggle={() => setAutoRead(!autoRead)}
+        currentProfileId={currentProfileId}
+        currentProfileEdition={currentProfile.edition}
+        onEditionChange={handleEditionChange}
+      />
       <AdminConsoleModal
         isOpen={showAdminConsole}
         onClose={() => setShowAdminConsole(false)}
