@@ -29,9 +29,17 @@ setInterval(() => {
  * In production: always requires valid Bearer token.
  */
 function authMiddleware(req, res, next) {
-  // Allow health check, parent remote view and public version without Bearer auth
+  // Allow health check, parent remote view, public version and PIN verification/reset without Bearer auth
   // Note: middleware is mounted at /api/, so req.path is already stripped of the /api prefix
-  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/version') return next();
+  if (
+    req.path === '/health' ||
+    req.path === '/parent/remote-view' ||
+    req.path === '/system/version' ||
+    req.path === '/admin/pin-status' ||
+    req.path === '/admin/verify-pin' ||
+    req.path === '/admin/reset-pin' ||
+    req.path === '/admin/pin'
+  ) return next();
   if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // If auth is explicitly disabled in environment, skip

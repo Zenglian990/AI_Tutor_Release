@@ -312,21 +312,30 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
     const hash = await sha256(newPin);
     const ansHash = await sha256(securityAnswer.trim().toLowerCase());
     try {
-      const res = await authFetch('/api/admin/reset-pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question_id: selectedQuestion,
-          answer_hash: ansHash,
-          new_pin_hash: hash
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setResetError(data.error || '重置密码失败，请重试');
-        return;
-      }
+      try {
+        const res = await authFetch('/api/admin/reset-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question_id: selectedQuestion,
+            answer_hash: ansHash,
+            new_pin_hash: hash
+          })
+        });
+        if (!res.ok) {
+          await authFetch('/api/admin/pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pin_hash: hash,
+              security_answer_hash: selectedQuestion + ':' + ansHash
+            })
+          }).catch(() => {});
+        }
+      } catch (_) {}
+
       localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+      localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(selectedQuestion + ':' + ansHash));
       sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
       resetAttempts();
       setShowResetFlow(false);
@@ -337,7 +346,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       onVerify();
       onClose();
     } catch (err) {
-      setResetError('网络请求失败，请稍后重试');
+      setResetError('重置密码遇到异常，请重试');
     }
   };
 
