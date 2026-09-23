@@ -164,6 +164,11 @@ const DATA_RETENTION_DAYS = parseInt(process.env.DATA_RETENTION_DAYS || '365', 1
 // RAG recall limit config
 const RAG_TOP_K = parseInt(process.env.RAG_TOP_K || '3', 10);
 
+// Jev (TypeSafe System One) 决策引擎配置
+const TYPESAFE_API_KEY = (process.env.TYPESAFE_API_KEY || '').trim();
+const JEV_ENABLED = process.env.JEV_ENABLED === 'true' && !!TYPESAFE_API_KEY;
+const JEV_CONFIDENCE_THRESHOLD = parseFloat(process.env.JEV_CONFIDENCE_THRESHOLD || '0.85');
+
 // Rate limit config
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 100;
@@ -192,6 +197,9 @@ module.exports = {
   DB_ENCRYPTION_KEY,
   DATA_RETENTION_DAYS,
   RAG_TOP_K,
+  TYPESAFE_API_KEY,
+  JEV_ENABLED,
+  JEV_CONFIDENCE_THRESHOLD,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX,
   AUTH_RATE_LIMIT_WINDOW_MS,

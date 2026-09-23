@@ -8,6 +8,7 @@ const { getStudentCognitiveMemory, formatStudentMemoryForPrompt } = require('../
 const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('../services/knowledgeGraph');
 const { NODE_ENV, RAG_TOP_K } = require('../config');
 const logger = require('../services/logger');
+const jev = require('../services/jevDecisionService');
 
 // POST /api/chat — main chat endpoint with SSE streaming
 router.post('/chat', async (req, res) => {
@@ -93,8 +94,9 @@ router.post('/chat', async (req, res) => {
     const slicedHistory = Array.isArray(history) ? history.slice(-10) : [];
     let studentMemoryStr = '';
     let graphRAGStr = '';
+    let memory = null;
     try {
-      const memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
+      memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
       studentMemoryStr = formatStudentMemoryForPrompt(memory);
 
       // GraphRAG Root-Cause Prerequisite Tracing
@@ -107,7 +109,82 @@ router.post('/chat', async (req, res) => {
     }
 
     const fullContextMemory = `${studentMemoryStr}${graphRAGStr}`;
-    let prompt = getChatPrompt(query, correctedResults, slicedHistory, grade, subject, socratic, fullContextMemory);
+
+    // ── Jev Decision Layer ──────────────────────────────────────────
+    // Fast (~70ms) structured decisions before hitting the LLM
+    let jevDecision = null;
+    let jevRetrievalEval = null;
+    let jevStrategy = null;
+
+    if (jev.isEnabled() && !isGreeting && !isShortFollowUp) {
+      try {
+        // 1) Route: classify question intent
+        jevDecision = await jev.routeQuestion(query, grade, subject);
+        logger.info(`[Jev Route] ${query.slice(0, 30)}... → ${jevDecision.route} (confidence: ${jevDecision.confidence})`);
+
+        // Off-topic interception — politely refuse non-educational queries
+        if (jevDecision.route === 'off_topic' && jevDecision.confidence >= 0.85) {
+          logger.info(`[Jev] Off-topic interception for: "${query.slice(0, 50)}"`);
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          res.flushHeaders();
+          res.write(`data: ${JSON.stringify({ sources: [] })}\n\n`);
+          res.write(`data: ${JSON.stringify({ text: '😊 这个问题好像不属于我们的课堂范围哦～我是你的专属学科辅导老师，咱们还是聊聊学习上的问题吧！有什么不懂的题目尽管问我～' })}\n\n`);
+          res.write('data: [DONE]\n\n');
+          return res.end();
+        }
+
+        // 2) Evaluate RAG retrieval quality (only if we have results)
+        if (correctedResults.length > 0) {
+          jevRetrievalEval = await jev.evaluateRetrievalQuality(query, correctedResults);
+          logger.info(`[Jev RAG Eval] relevant=${jevRetrievalEval.isRelevant}, sufficient=${jevRetrievalEval.isSufficient}`);
+        }
+
+        // 3) Select teaching strategy based on grade + student memory
+        const memoryForJev = {
+          recentAccuracy: memory?.topWeakTags?.length > 0 ? 'has_weak_points' : 'unknown',
+          consecutiveErrors: memory?.totalMistakes || 0,
+          weakPoints: memory?.recentWeakPoints?.join('、') || 'none'
+        };
+        jevStrategy = await jev.selectTeachingStrategy(grade, jevDecision.route, memoryForJev);
+        logger.info(`[Jev Strategy] strategy=${jevStrategy.strategy}, hintLevel=${jevStrategy.hintLevel}`);
+
+      } catch (jevErr) {
+        logger.warn('[Jev] Decision layer error (falling back to default flow):', jevErr.message);
+        // Graceful degradation: continue with original flow
+      }
+    }
+
+    // Build Jev context enrichment for prompt
+    let jevContextStr = '';
+    if (jevDecision && !jevDecision.fallback) {
+      jevContextStr += `\n【Jev 智能决策参考（本段信息用于指导你的回答策略，不要对学生提及）】：\n`;
+      jevContextStr += `- 问题类型路由：${jevDecision.route}（置信度：${(jevDecision.confidence * 100).toFixed(0)}%）\n`;
+      jevContextStr += `- 估算难度：${jevDecision.difficulty}/10\n`;
+      if (jevDecision.needsEncouragement) {
+        jevContextStr += `- ⚠️ 检测到学生可能感到困惑或沮丧，请在回答开头给予温暖的情感鼓励\n`;
+      }
+      if (jevRetrievalEval && !jevRetrievalEval.fallback) {
+        jevContextStr += `- 教材检索相关性：${jevRetrievalEval.isRelevant ? '✅ 命中' : '⚠️ 未命中'}`;
+        jevContextStr += `，充分性：${jevRetrievalEval.isSufficient ? '✅ 足够' : '需要你补充推理'}\n`;
+      }
+      if (jevStrategy && !jevStrategy.fallback) {
+        const strategyNames = {
+          visual_decompose: '可视化拆解（适合低年级）',
+          scenario_memorize: '场景化记忆（适合低年级）',
+          mind_map: '思维导图结构化（适合高年级）',
+          error_correction_loop: '错题闭环纠正',
+          dialogue_practice: '情景对话练习',
+          step_by_step_scaffold: '分步脚手架引导'
+        };
+        jevContextStr += `- 推荐教学策略：${strategyNames[jevStrategy.strategy] || jevStrategy.strategy}\n`;
+        jevContextStr += `- 提示等级：${jevStrategy.hintLevel}/5（1=仅给方向，5=接近完整答案）\n`;
+      }
+    }
+
+    const enrichedContextMemory = `${fullContextMemory}${jevContextStr}`;
+    let prompt = getChatPrompt(query, correctedResults, slicedHistory, grade, subject, socratic, enrichedContextMemory);
 
     // Intercept Active Chapter Start Action
     if (query.startsWith('[ACTION_START_CHAPTER]')) {
