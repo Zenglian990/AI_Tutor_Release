@@ -52,6 +52,8 @@ export default function A4PrintModal({
   const [twoColumn, setTwoColumn] = useState(false); // standard single column or dual column exam format
   const [exportingImage, setExportingImage] = useState(false);
   const [exportSuccessMsg, setExportSuccessMsg] = useState('');
+  const [copySuccessMsg, setCopySuccessMsg] = useState('');
+  const [previewModalImg, setPreviewModalImg] = useState(null);
   const [showGate, setShowGate] = useState(false);
   const [orgName, setOrgName] = useState('曾先生智慧私教中心');
   const [showOrgInput, setShowOrgInput] = useState(false);
@@ -123,6 +125,11 @@ export default function A4PrintModal({
   const suggestedTime = Math.max(15, Math.min(60, displayQuestions.length * 8));
 
   const handlePrint = () => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (isMobile) {
+      handleExportImage();
+      return;
+    }
     window.print();
   };
 
@@ -132,6 +139,34 @@ export default function A4PrintModal({
       setShowGate(true);
     } else {
       setPrintMode('with_answers');
+    }
+  };
+
+  const handleCopyAllText = () => {
+    try {
+      let fullText = `【${studentName}专属私教】${gradeDisplay} ${subject}周清微测试卷\n日期：${currentDateStr}\n\n`;
+      displayQuestions.forEach((q, idx) => {
+        fullText += `第 ${idx + 1} 题（${q.score || 10}分）：\n${q.body || q.title}\n`;
+        if (printMode === 'with_answers' && q.standardAnswer) {
+          fullText += `【参考答案】：\n${q.standardAnswer}\n`;
+          if (q.keyInsight) fullText += `【名师点睛】：${q.keyInsight}\n`;
+        }
+        fullText += '\n-------------------------\n\n';
+      });
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullText);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = fullText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopySuccessMsg('📋 全卷题目已成功复制到剪贴板！可直接粘贴至微信、QQ或备忘录打印。');
+      setTimeout(() => setCopySuccessMsg(''), 5000);
+    } catch (e) {
+      alert('复制失败，请在下方预览区手动复制题目');
     }
   };
 
@@ -147,16 +182,29 @@ export default function A4PrintModal({
         logging: false
       });
       const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      const filename = `${studentName}专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
-      link.download = filename;
-      link.href = dataUrl;
-      link.click();
-      setExportSuccessMsg('🎉 高清试卷长图已成功生成并下载！可直接发送给微信好友或“爱普生/惠普/小白智慧打印”小程序快速出纸。');
+      
+      try {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const filename = `${studentName}专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
+            link.download = filename;
+            link.href = blobUrl;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+          }
+        }, 'image/png');
+      } catch (blobErr) {
+        console.warn('Blob fallback:', blobErr);
+      }
+
+      setPreviewModalImg(dataUrl);
+      setExportSuccessMsg('🎉 高清试卷长图已生成！手机用户可长按下方图片保存相册，或直接发送给微信打印小程序。');
       setTimeout(() => setExportSuccessMsg(''), 7000);
     } catch (err) {
       console.error('Export image failed:', err);
-      alert('导出长图失败，请直接使用快捷打印');
+      alert('导出长图失败，建议直接使用“复制全卷纯文本”或系统打印');
     } finally {
       setExportingImage(false);
     }
@@ -521,6 +569,28 @@ export default function A4PrintModal({
               )}
             </button>
 
+            {/* Copy All Text for WeChat / Memo */}
+            <button
+              onClick={handleCopyAllText}
+              title="复制全卷题目为纯文本，可直接粘贴到微信或备忘录"
+              style={{
+                background: '#fff',
+                color: '#0284c7',
+                border: '1px solid #7dd3fc',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.9rem'
+              }}
+            >
+              <span>📋</span>
+              <span>复制全卷纯文本</span>
+            </button>
+
             {/* Direct LAN Network Printer (IPP/RAW 9100) */}
             <button
               onClick={() => setShowNetworkPrinterModal(true)}
@@ -563,8 +633,8 @@ export default function A4PrintModal({
           </div>
         </div>
 
-        {/* Success Alert Banner for Image Export */}
-        {exportSuccessMsg && (
+        {/* Success Alert Banner for Image Export / Text Copy */}
+        {(exportSuccessMsg || copySuccessMsg) && (
           <div className="a4-no-print" style={{
             background: '#ecfdf5',
             borderBottom: '1px solid #a7f3d0',
@@ -578,10 +648,10 @@ export default function A4PrintModal({
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>✅</span>
-              <span>{exportSuccessMsg}</span>
+              <span>{exportSuccessMsg || copySuccessMsg}</span>
             </div>
             <button
-              onClick={() => setExportSuccessMsg('')}
+              onClick={() => { setExportSuccessMsg(''); setCopySuccessMsg(''); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', fontWeight: 'bold' }}
             >
               ✕
@@ -878,6 +948,13 @@ export default function A4PrintModal({
               支持连接同一局域网内的惠普(HP)、爱普生(Epson)、佳能(Canon)、得力等主流 WiFi / 网线打印机（RAW 9100 / IPP 协议）。
             </div>
 
+            {typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+              <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', fontSize: '0.82rem', color: '#1e40af', lineHeight: '1.5' }}>
+                💡 <strong>云端部署提示</strong>：您当前正在公网云端访问系统，云端容器受公网网络隔离限制，无法直接访问您家里的局域网私有 IP（如 192.168.x.x）。<br />
+                建议您直接点击上方 <strong>【导出长图】</strong>，手机长按图片保存后，使用<strong>「爱普生云打印 / 小白智慧打印 / 惠普云打印」</strong>微信小程序直接无线出纸！
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#334155' }}>
                 打印机局域网 IP 地址:
@@ -977,6 +1054,78 @@ export default function A4PrintModal({
         }}
         onClose={() => setShowGate(false)}
       />
+
+      {/* Mobile / WeChat Image Preview Overlay Modal */}
+      {previewModalImg && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.88)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 2000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '680px',
+            background: '#1e293b',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '92vh',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+            border: '1px solid #334155'
+          }}>
+            <div style={{
+              padding: '12px 18px',
+              background: '#0f172a',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #334155'
+            }}>
+              <div style={{ color: '#f8fafc', fontWeight: 700, fontSize: '0.98rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🎉 高清试卷长图已生成</span>
+              </div>
+              <button
+                onClick={() => setPreviewModalImg(null)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '12px 18px', background: '#064e3b', color: '#6ee7b7', fontSize: '0.84rem', lineHeight: '1.5' }}>
+              👉 <strong>手机出纸指南</strong>：请 <strong>长按下方试卷图片</strong> 存储到手机相册，随后打开微信，使用<strong>「文件传输助手」</strong>或<strong>「小白智慧打印 / 惠普云打印」</strong>小程序直接无线出纸！
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px', background: '#334155', display: 'flex', justifyContent: 'center' }}>
+              <img
+                src={previewModalImg}
+                alt="高清试卷预览"
+                style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', background: '#fff' }}
+              />
+            </div>
+
+            <div style={{ padding: '12px 18px', background: '#0f172a', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setPreviewModalImg(null)}
+                style={{ padding: '8px 18px', borderRadius: '8px', background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}
+              >
+                完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

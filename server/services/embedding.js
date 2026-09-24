@@ -450,7 +450,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   let lastError = null;
   
   // Security Fix: Added circuit breaker to prevent infinite loops when API is down
-  const loopLimit = Math.min(maxRetries, 3); 
+  const loopLimit = Math.min(maxRetries, 6); 
   let consecutiveErrors = 0;
 
   for (let attempt = 0; attempt < loopLimit; attempt++) {
@@ -573,6 +573,18 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
           logger.warn(`[KeyPool] Key ${maskKey(key)} quota exhausted, cooling down.`);
           continue;
         }
+
+        // On 503 (high demand) or general 429: switch between gemini-3.6-flash and gemini-2.5-flash
+        if (!isOpenAiCompatible) {
+          const alternateModel = currentModel === 'gemini-3.6-flash' ? 'gemini-2.5-flash' : 'gemini-3.6-flash';
+          logger.warn(`[KeyPool] Model '${currentModel}' returned ${response.status} (High demand/Throttled), auto-switching to alternate model '${alternateModel}'...`);
+          currentModel = alternateModel;
+          url = buildURL(currentModel);
+          keyCooldown.set(key, Date.now() + 5000);
+          await new Promise(resolve => setTimeout(resolve, 800));
+          continue;
+        }
+
         logger.warn(`API ${response.status} on key ${maskKey(key)}, cooling down and retrying (Attempt ${attempt + 1}/${loopLimit}).`);
         keyCooldown.set(key, Date.now() + 5000);
         await new Promise(resolve => setTimeout(resolve, 1500));

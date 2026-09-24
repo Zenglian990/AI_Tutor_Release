@@ -138,10 +138,37 @@ const InputBar = React.memo(function InputBar({
       )}
 
       {previewImage && (
-        <div className="image-preview-bar" role="status" aria-label="图片预览">
-          <img src={previewImage} alt="上传的题目预览" className="preview-thumb" />
-          <span className="preview-label">图片/演算草稿已准备好，点击发送即可开始名师指点</span>
-          <button className="clear-image-btn" onClick={onClearImage} title="移除图片" aria-label="移除已上传的图片">✕</button>
+        <div className="image-preview-bar" role="status" aria-label="图片预览" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '12px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+            <img src={previewImage} alt="上传的题目预览" className="preview-thumb" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
+            <span className="preview-label" style={{ fontSize: '0.85rem', color: '#93c5fd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              题目图片已就绪 ➔
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => onSubmit(null, input.trim() || '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！')}
+              disabled={isLoading}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: 'white',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.4)'
+              }}
+            >
+              🚀 立即讲题
+            </button>
+            <button className="clear-image-btn" onClick={onClearImage} title="移除图片" aria-label="移除已上传的图片" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer', padding: '4px' }}>✕</button>
+          </div>
         </div>
       )}
 

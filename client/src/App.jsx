@@ -118,6 +118,7 @@ function AppInner() {
   // Refs
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const isDirectPhotoSolveRef = useRef(false);
   const mediaRecorderRef = useRef(null);
   const recordingTimerRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -341,18 +342,6 @@ function AppInner() {
     }
   };
 
-  // Image handling
-  const handleImageSelect = e => {
-    const file = e.target.files[0]; if (!file) return;
-    if (previewImage) URL.revokeObjectURL(previewImage);
-    setImageFile(file); setPreviewImage(URL.createObjectURL(file));
-  };
-  const clearImage = () => {
-    if (previewImage) URL.revokeObjectURL(previewImage);
-    setPreviewImage(null); setImageFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const handleStartSocraticTutoring = useCallback(({ file, snippet, questionNumber }) => {
     setShowBatchGrade(false);
     setSocraticLevel('socratic');
@@ -367,19 +356,21 @@ function AppInner() {
   }, [previewImage]);
 
   // Chat submit
-  const handleSubmit = useCallback(async (e, customText) => {
+  const handleSubmit = useCallback(async (e, customText, directFile = null) => {
     if (e && e.preventDefault) e.preventDefault();
+    const activeFile = directFile || imageFile;
     const textToSubmit = (customText !== undefined && customText !== null) ? customText : input;
-    if ((!textToSubmit && !imageFile) || isLoading) return;
+    if ((!textToSubmit && !activeFile) || isLoading) return;
 
     const userQuery = textToSubmit || '请帮我解答这张图片里的题目。';
-    const hasImage = !!imageFile;
+    const hasImage = !!activeFile;
     const historyContext = messagesRef.current.slice(-20).map(m => ({ role: m.role, text: m.text }));
 
-    const newMsgs = [...messagesRef.current, { id: genMsgId(), role: 'user', text: userQuery, imageUrl: previewImage }];
+    const activePreview = directFile ? URL.createObjectURL(directFile) : previewImage;
+    const newMsgs = [...messagesRef.current, { id: genMsgId(), role: 'user', text: userQuery, imageUrl: activePreview }];
     setMessages(newMsgs);
     setInput('');
-    const currentImage = imageFile;
+    const currentImage = activeFile;
     if (previewImage) URL.revokeObjectURL(previewImage);
     setPreviewImage(null); setImageFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -521,6 +512,29 @@ function AppInner() {
       }
     } finally { setIsLoading(false); }
   }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
+
+  // Image handling
+  const handleImageSelect = useCallback(e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (previewImage) URL.revokeObjectURL(previewImage);
+    const objectUrl = URL.createObjectURL(file);
+    setImageFile(file);
+    setPreviewImage(objectUrl);
+
+    // 如果从首页“拍照讲题”入口触发，拍照/选图后立即发起智能讲题，避免用户困惑“拍完照怎么没反应”
+    if (isDirectPhotoSolveRef.current) {
+      isDirectPhotoSolveRef.current = false;
+      handleSubmit(null, '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！', file);
+    }
+  }, [previewImage, handleSubmit]);
+
+  const clearImage = useCallback(() => {
+    if (previewImage) URL.revokeObjectURL(previewImage);
+    setPreviewImage(null);
+    setImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [previewImage]);
 
   const clearChat = () => {
     setShowClearConfirm(true);
@@ -705,7 +719,10 @@ function AppInner() {
             onGradeChange={handleGradeChange}
             onSubjectChange={setSelectedSubject}
             onPersonaChange={setTutorPersona}
-            onCameraClick={() => fileInputRef.current?.click()}
+            onCameraClick={() => {
+              isDirectPhotoSolveRef.current = true;
+              fileInputRef.current?.click();
+            }}
             onReviewMistakes={() => setShowMistakes(true)}
             onOpenMap={() => setShowMap(true)}
             onOpenTest={() => setShowKnowledgeTest(true)}

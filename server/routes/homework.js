@@ -119,12 +119,16 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
 
     const options = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
+        ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {})
+      },
       body: JSON.stringify(contentsPayload)
     };
 
     logger.info(`[HomeworkBatch] Calling vision model for student ${student_name}, profile ${profile_id}...`);
-    const aiRes = await fetchWithKeyRotation(buildChatURL, options, 3, 60000, model || 'gemini-3.6-flash', true);
+    const aiRes = await fetchWithKeyRotation(buildChatURL, options, 4, 60000, model || 'gemini-3.6-flash', true);
     
     if (!aiRes.ok) {
       const errText = await aiRes.text();
