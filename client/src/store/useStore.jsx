@@ -25,20 +25,58 @@ export function formatGrade(grade) {
   return GRADE_MAP[String(grade)] || `${grade}年级`;
 }
 
-export const DEFAULT_BACKEND_URL = import.meta.env.VITE_API_URL || 'https://ai-tutor-release.onrender.com';
+function isNativeMobilePlatform() {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    window.Capacitor?.isNativePlatform?.() ||
+    window.location?.protocol === 'capacitor:' ||
+    window.location?.protocol === 'ionic:'
+  );
+}
+
+function getDefaultBackendUrl() {
+  if (typeof window !== 'undefined') {
+    // If running in a browser (localhost, LAN IP, or public domain), default to same-origin relative path
+    if (!isNativeMobilePlatform() && window.location?.origin && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      return '';
+    }
+  }
+  // For native mobile apps (Capacitor APK/IPA) or non-browser builds:
+  return import.meta.env.VITE_API_URL || 'https://ai-tutor-release.onrender.com';
+}
+
+export const DEFAULT_BACKEND_URL = getDefaultBackendUrl();
 
 /**
  * Get the full API URL for a path or return base URL if no path provided.
  * Handles:
- * 1. getApiUrl() -> returns "https://ai-tutor-release.onrender.com"
- * 2. getApiUrl('/api/chat') -> returns "https://ai-tutor-release.onrender.com/api/chat"
- * 3. getApiUrl('https://.../api/chat') -> returns "https://.../api/chat" (safe against double prefixing)
+ * 1. Web browser on localhost/server -> relative '/api/chat' or origin
+ * 2. Native mobile app -> 'https://ai-tutor-release.onrender.com/api/chat'
+ * 3. Custom backendUrl configured in localStorage
  */
 function getApiUrl(path = '') {
-  const backendUrl = localStorage.getItem('ai_tutor_backend_url') || DEFAULT_BACKEND_URL;
+  let backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
+
+  // Sanitize: If user is in browser on localhost/LAN, ignore stale cloud URL written by older versions
+  if (typeof window !== 'undefined' && !isNativeMobilePlatform()) {
+    if (backendUrl === 'https://ai-tutor-release.onrender.com' || backendUrl === 'https://ai-tutor-release.onrender.com/') {
+      backendUrl = '';
+    }
+  }
+
+  if (!backendUrl) {
+    backendUrl = getDefaultBackendUrl();
+  }
+
   const cleanBase = backendUrl ? backendUrl.replace(/\/+$/, '') : '';
 
-  if (!path) return cleanBase;
+  if (!path) {
+    if (cleanBase) return cleanBase;
+    if (typeof window !== 'undefined' && window.location?.origin && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      return window.location.origin;
+    }
+    return 'https://ai-tutor-release.onrender.com';
+  }
 
   if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {
     return path;
@@ -227,7 +265,15 @@ function loadProfiles() {
 }
 
 export function AppProvider({ children }) {
-  const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('ai_tutor_backend_url') || DEFAULT_BACKEND_URL);
+  const [backendUrl, setBackendUrl] = useState(() => {
+    const saved = localStorage.getItem('ai_tutor_backend_url');
+    if (typeof window !== 'undefined' && !isNativeMobilePlatform()) {
+      if (saved === 'https://ai-tutor-release.onrender.com' || saved === 'https://ai-tutor-release.onrender.com/') {
+        return '';
+      }
+    }
+    return saved || getDefaultBackendUrl();
+  });
   const [apiToken, setApiToken] = useState(() => {
     const encrypted = localStorage.getItem('ai_tutor_api_token');
     return decryptData(encrypted) || '';
@@ -295,8 +341,13 @@ export function AppProvider({ children }) {
   useEffect(() => { localStorage.setItem('ai_tutor_profiles', JSON.stringify(profiles)); }, [profiles]);
   useEffect(() => { localStorage.setItem('ai_tutor_active_profile', currentProfileId); }, [currentProfileId]);
   useEffect(() => { localStorage.setItem('ai_tutor_subject', selectedSubject); }, [selectedSubject]);
-  useEffect(() => { localStorage.setItem('ai_tutor_socratic_level', socraticLevel); }, [socraticLevel]);
-  useEffect(() => { localStorage.setItem('ai_tutor_backend_url', backendUrl); }, [backendUrl]);
+  useEffect(() => {
+    if (backendUrl && backendUrl !== getDefaultBackendUrl()) {
+      localStorage.setItem('ai_tutor_backend_url', backendUrl);
+    } else {
+      localStorage.removeItem('ai_tutor_backend_url');
+    }
+  }, [backendUrl]);
   useEffect(() => { 
     if (apiToken) {
       localStorage.setItem('ai_tutor_api_token', encryptData(apiToken)); 
@@ -394,4 +445,4 @@ export function useAppStore() {
   return ctx;
 }
 
-export { getApiUrl, authFetch, getApiToken, GRADE_MAP };
+export { getApiUrl, authFetch, getApiToken, GRADE_MAP, isNativeMobilePlatform, getDefaultBackendUrl };

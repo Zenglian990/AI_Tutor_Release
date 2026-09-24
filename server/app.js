@@ -81,7 +81,11 @@ function createApp() {
 
       // Explicitly reject 'null' origin to prevent sandboxed iframe exploits
       if (origin === 'null') {
-        return callback(new Error('Origin null is rejected for security.'));
+        const nullErr = new Error('Origin null is rejected for security.');
+        nullErr.status = 403;
+        nullErr.code = 'ERR_CORS_NULL';
+        nullErr.isCors = true;
+        return callback(nullErr);
       }
 
       // Allow if wildcard or explicitly configured in ALLOWED_ORIGINS
@@ -105,7 +109,11 @@ function createApp() {
       }
 
       // Block all other unauthorized external origins (e.g. arbitrary .onrender.com or .vercel.app)
-      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      const corsErr = new Error(`Origin ${origin} not allowed by CORS`);
+      corsErr.status = 403;
+      corsErr.code = 'ERR_CORS_REJECTED';
+      corsErr.isCors = true;
+      return callback(corsErr);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -194,6 +202,15 @@ function createApp() {
 
   // --- Global error handler ---
   app.use((err, req, res, _next) => {
+    const isCorsBlock = err.isCors || (err.message && (err.message.includes('not allowed by CORS') || err.message.includes('Origin null is rejected')));
+    if (isCorsBlock) {
+      logger.warn(`[CORS Blocked] ${err.message} (IP: ${req.ip || 'unknown'})`);
+      return res.status(403).json({
+        error: 'CORS 跨域安全策略拦截',
+        code: 'ERR_CORS_FORBIDDEN'
+      });
+    }
+
     logger.error('[Unhandled Error]', err);
     const status = err.status || 500;
     res.status(status).json({

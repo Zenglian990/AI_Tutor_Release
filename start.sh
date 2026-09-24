@@ -66,7 +66,7 @@ if [ ! -d "client/dist" ] || [ $FORCE_BUILD -eq 1 ]; then
     fi
     # Clean Vite cache to prevent weird build issues
     rm -rf node_modules/.vite .vite .vite-temp
-    npm run build
+    VITE_API_URL="" npm run build
     cd ..
 else
     echo "[2/3] Frontend build OK. (Run with --build to force rebuild)"

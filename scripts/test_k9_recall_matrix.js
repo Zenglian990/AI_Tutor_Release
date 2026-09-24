@@ -1,5 +1,5 @@
-const { initDB } = require('./server/db/init');
-const { performHybridSearch } = require('./server/services/search');
+const { initDB } = require('../server/db/init');
+const { performHybridSearch } = require('../server/services/search');
 
 const TEST_CASES = [
   { grade: '1_up', subject: '语文', query: '秋天 天气凉了 树叶黄了 一群大雁往南飞' },

@@ -53,4 +53,7 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .ipynb_checkpoints/
+# Temporary artifacts
+temp_apk/
+temp_*/
 *.apk

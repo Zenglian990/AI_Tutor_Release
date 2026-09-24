@@ -16,7 +16,6 @@ function isAdminRoute(path) {
 function signatureMiddleware(req, res, next) {
   // Allow health check, parent remote view (token based) and public version without signature
   if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/version') return next();
-  if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // If auth is explicitly disabled in environment, skip
   if (process.env.REQUIRE_AUTH === 'false') return next();

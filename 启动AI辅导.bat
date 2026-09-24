@@ -77,6 +77,7 @@ if "%NEED_BUILD%"=="1" (
     if exist "node_modules\.vite" rmdir /s /q "node_modules\.vite"
     if exist ".vite" rmdir /s /q ".vite"
     if exist ".vite-temp" rmdir /s /q ".vite-temp"
+    set "VITE_API_URL="
     call npm run build
     if errorlevel 1 (
         echo [ERROR] 前端构建失败！

@@ -53,7 +53,6 @@ function authMiddleware(req, res, next) {
     req.path === '/admin/reset-pin' ||
     req.path === '/admin/pin'
   ) return next();
-  if (req.path.startsWith('/assets/') || req.path === '/index.html' || req.path === '/') return next();
 
   // If auth is explicitly disabled in environment, skip
   if (process.env.REQUIRE_AUTH === 'false') return next();
