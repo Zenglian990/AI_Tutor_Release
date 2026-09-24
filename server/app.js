@@ -69,57 +69,78 @@ function createApp() {
     'http://localhost:3001',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
+    'https://ai-tutor-release.onrender.com',
+    'https://zenglian-ai-tutor.onrender.com',
     ...rawAllowed
   ]);
 
-  app.use(cors({
-    origin: (origin, callback) => {
-      // Allow non-browser server-to-server requests (no Origin header)
-      if (!origin) {
-        return callback(null, true);
-      }
+  const isAllowedOrigin = (origin, host) => {
+    // Allow non-browser server-to-server requests (no Origin header)
+    if (!origin) return true;
 
-      // Explicitly reject 'null' origin to prevent sandboxed iframe exploits
-      if (origin === 'null') {
-        const nullErr = new Error('Origin null is rejected for security.');
-        nullErr.status = 403;
-        nullErr.code = 'ERR_CORS_NULL';
-        nullErr.isCors = true;
-        return callback(nullErr);
-      }
+    // Explicitly reject 'null' origin to prevent sandboxed iframe exploits
+    if (origin === 'null') return false;
 
-      // Allow if wildcard or explicitly configured in ALLOWED_ORIGINS
-      if (process.env.ALLOWED_ORIGINS === '*' || explicitAllowed.has(origin)) {
-        return callback(null, true);
-      }
+    // Allow if wildcard or explicitly configured in ALLOWED_ORIGINS
+    if (process.env.ALLOWED_ORIGINS === '*' || explicitAllowed.has(origin)) {
+      return true;
+    }
 
-      // Allow localhost with any port (local web and dev)
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-        return callback(null, true);
-      }
+    // Same-origin check: if origin matches current host header
+    if (host) {
+      try {
+        const url = new URL(origin);
+        if (url.host === host || url.hostname === host.split(':')[0]) {
+          return true;
+        }
+      } catch (e) {}
+    }
 
-      // Allow Capacitor / Ionic local file schemas for mobile app
-      if (/^(capacitor|ionic|file):\/\//.test(origin)) {
-        return callback(null, true);
-      }
+    // Allow localhost with any port (local web and dev)
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return true;
+    }
 
-      // Allow LAN private IPs (e.g. mobile phone connecting to PC over same Wi-Fi)
-      if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
-        return callback(null, true);
-      }
+    // Allow Capacitor / Ionic local file schemas for mobile app
+    if (/^(capacitor|ionic|file):\/\//.test(origin)) {
+      return true;
+    }
 
-      // Block all other unauthorized external origins (e.g. arbitrary .onrender.com or .vercel.app)
-      const corsErr = new Error(`Origin ${origin} not allowed by CORS`);
-      corsErr.status = 403;
-      corsErr.code = 'ERR_CORS_REJECTED';
-      corsErr.isCors = true;
-      return callback(corsErr);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After'],
-    optionsSuccessStatus: 200,
-    maxAge: 86400
+    // Allow LAN private IPs (e.g. mobile phone connecting to PC over same Wi-Fi)
+    if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+      return true;
+    }
+
+    return false;
+  };
+
+  app.use(cors((req, callback) => {
+    const origin = req.header('Origin');
+    const host = req.get('host');
+    const allowed = isAllowedOrigin(origin, host);
+
+    if (allowed) {
+      return callback(null, {
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After'],
+        optionsSuccessStatus: 200,
+        maxAge: 86400
+      });
+    }
+
+    // If request is for static assets or non-API routes, do NOT block pipeline with 403 error
+    if (!req.path.startsWith('/api/')) {
+      return callback(null, { origin: false });
+    }
+
+    // Block unauthorized cross-origin API requests
+    const corsErr = new Error(`Origin ${origin} not allowed by CORS`);
+    corsErr.status = 403;
+    corsErr.code = 'ERR_CORS_REJECTED';
+    corsErr.isCors = true;
+    return callback(corsErr);
   }));
   app.use(express.json({
     limit: MAX_BODY_SIZE,

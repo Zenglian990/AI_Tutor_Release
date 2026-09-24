@@ -176,3 +176,20 @@ test('Config Security: POST /api/config/update-keys requires master authorizatio
     process.env.REQUIRE_AUTH = previousAuth;
   }
 });
+
+// Test 8: CORS allows legitimate onrender domains and does not block static assets
+test('CORS: allows legitimate onrender domains and does not block non-api assets', async () => {
+  // 1. Legitimate cloud domain on API
+  const resCloud = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'https://ai-tutor-release.onrender.com' }
+  });
+  assert.strictEqual(resCloud.status, 200);
+  assert.strictEqual(resCloud.headers.get('access-control-allow-origin'), 'https://ai-tutor-release.onrender.com');
+
+  // 2. Non-API asset does not fail with 403 when arbitrary origin is provided
+  const resAsset = await fetch(`${baseUrl}/`, {
+    headers: { 'Origin': 'https://arbitrary-malicious-app.onrender.com' }
+  });
+  assert.notStrictEqual(resAsset.status, 403);
+});
+
