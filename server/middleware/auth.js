@@ -35,13 +35,15 @@ function isAdminRoute(path) {
   return ADMIN_ROUTES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
 }
 
+const { isVerifiedAdminRequest } = require('../utils/adminAuth');
+
 /**
  * Token-based authentication middleware with brute-force protection.
  * In dev mode: optionally skip auth.
- * In production: strictly enforces token for admin/management operations,
+ * In production: strictly enforces token or parent PIN for admin/management operations,
  * while allowing unauthenticated student learning features.
  */
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   // Allow health check, parent remote view, public version and PIN verification/reset without Bearer auth
   // Note: middleware is mounted at /api/, so req.path is already stripped of the /api prefix
   if (
@@ -65,6 +67,15 @@ function authMiddleware(req, res, next) {
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
   const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || clientIp === 'localhost';
   const isTargetAdmin = isAdminRoute(req.path);
+
+  // If target is an admin route, check whether authorized by verified parent/owner PIN or token
+  if (isTargetAdmin) {
+    const isAdmin = await isVerifiedAdminRequest(req);
+    if (isAdmin) {
+      authFailures.delete(clientIp);
+      return next();
+    }
+  }
 
   // If not an admin route, allow access if the client didn't send a token (student learning mode)
   // unless REQUIRE_AUTH is explicitly 'true'
@@ -119,7 +130,8 @@ function authMiddleware(req, res, next) {
   if (token && typeof token === 'string') {
     const tokenBuf = Buffer.from(token);
     for (const expected of candidateTokens) {
-      if (token.length === expected.length && crypto.timingSafeEqual(tokenBuf, Buffer.from(expected))) {
+      const expectedBuf = Buffer.from(expected);
+      if (tokenBuf.length === expectedBuf.length && crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
         isMatch = true;
         break;
       }

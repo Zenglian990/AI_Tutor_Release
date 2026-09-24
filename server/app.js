@@ -213,10 +213,11 @@ function createApp() {
 
     logger.error('[Unhandled Error]', err);
     const status = err.status || 500;
+    const isDevOrTest = NODE_ENV === 'development' || NODE_ENV === 'test' || process.env.NODE_ENV === 'test';
     res.status(status).json({
-      error: status === 500 ? '内部服务器错误' : err.message,
+      error: status === 500 ? (err.message ? `内部服务器错误: ${err.message}` : '内部服务器错误') : err.message,
       code: err.code || (status === 500 ? 'ERR_INTERNAL' : 'ERR_BAD_REQUEST'),
-      details: NODE_ENV === 'development' ? err.stack : undefined
+      details: isDevOrTest ? err.stack : undefined
     });
   });
 

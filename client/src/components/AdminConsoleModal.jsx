@@ -380,7 +380,8 @@ export default function AdminConsoleModal({
       if (res.ok && data.success) {
         setJevTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'Jev 决策引擎连接正常！'}` });
       } else {
-        setJevTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}` });
+        const detailText = data.details ? ` (${data.details})` : '';
+        setJevTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
       }
     } catch (e) {
       setJevTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
@@ -403,7 +404,8 @@ export default function AdminConsoleModal({
       if (res.ok && data.success) {
         setGeminiTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'Gemini 连通正常！'}` });
       } else {
-        setGeminiTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}` });
+        const detailText = data.details ? ` (${data.details})` : '';
+        setGeminiTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
       }
     } catch (e) {
       setGeminiTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
@@ -426,7 +428,8 @@ export default function AdminConsoleModal({
       if (res.ok && data.success) {
         setDeepseekTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'DeepSeek 连通正常！'}` });
       } else {
-        setDeepseekTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}` });
+        const detailText = data.details ? ` (${data.details})` : '';
+        setDeepseekTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
       }
     } catch (e) {
       setDeepseekTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
@@ -436,7 +439,8 @@ export default function AdminConsoleModal({
   const handleTestServer = async () => {
     setServerHealthStatus({ testing: true });
     try {
-      const res = await fetch(`${getApiUrl()}/api/health`);
+      const targetBase = (url.trim() || getApiUrl()).replace(/\/+$/, '');
+      const res = await fetch(`${targetBase}/api/health`);
       if (res.ok) {
         const d = await res.json();
         setServerHealthStatus({ testing: false, success: true, message: `🟢 服务器在线，状态: ${d.status || 'OK'}` });

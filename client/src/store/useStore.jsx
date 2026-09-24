@@ -149,9 +149,11 @@ async function authFetch(path, options = {}) {
     }
   }
 
-  // Inject auth header for API calls
-  if (token && relativePath.startsWith('/api/')) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // Inject auth and custom headers for API calls
+  if (relativePath.startsWith('/api/')) {
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const parentPinHash = sessionStorage.getItem('parent_gate_verified_pin_hash');
     if (parentPinHash) {
@@ -177,42 +179,44 @@ async function authFetch(path, options = {}) {
       }
     }
 
-    // Generate and inject request signature
-    const method = (fetchOptions.method || 'GET').toUpperCase();
-    const cleanPath = relativePath.split('?')[0];
-    const timestamp = Date.now().toString();
-    const bodyStr = typeof fetchOptions.body === 'string' ? fetchOptions.body : '';
+    // Generate and inject request signature if token is available
+    if (token) {
+      const method = (fetchOptions.method || 'GET').toUpperCase();
+      const cleanPath = relativePath.split('?')[0];
+      const timestamp = Date.now().toString();
+      const bodyStr = typeof fetchOptions.body === 'string' ? fetchOptions.body : '';
 
-    let formFieldsStr = '';
-    let fileFieldsStr = '';
+      let formFieldsStr = '';
+      let fileFieldsStr = '';
 
-    if (fetchOptions.body instanceof FormData) {
-      const formFields = {};
-      const fileFields = [];
-      for (const [key, value] of fetchOptions.body.entries()) {
-        if (typeof value === 'string') {
-          formFields[key] = value;
-        } else if (value instanceof File) {
-          fileFields.push(`${key}:${value.name}:${value.size}`);
-        } else if (value instanceof Blob) {
-          const defaultName = key === 'audio' ? 'voice.wav' : (key === 'image' ? 'image.jpg' : `${key}.bin`);
-          fileFields.push(`${key}:${defaultName}:${value.size}`);
-        }
-      }
-      formFieldsStr = JSON.stringify(formFields);
-      fileFieldsStr = fileFields.join(',');
-    }
-
-    const encodedFormFields = encodeURIComponent(formFieldsStr);
-    const encodedFileFields = encodeURIComponent(fileFieldsStr);
-
-    const signature = await generateSignature(token, cleanPath, method, bodyStr, timestamp, encodedFormFields, encodedFileFields);
-    if (signature) {
-      headers['x-timestamp'] = timestamp;
-      headers['x-signature'] = signature;
       if (fetchOptions.body instanceof FormData) {
-        headers['x-form-fields'] = encodedFormFields;
-        headers['x-file-fields'] = encodedFileFields;
+        const formFields = {};
+        const fileFields = [];
+        for (const [key, value] of fetchOptions.body.entries()) {
+          if (typeof value === 'string') {
+            formFields[key] = value;
+          } else if (value instanceof File) {
+            fileFields.push(`${key}:${value.name}:${value.size}`);
+          } else if (value instanceof Blob) {
+            const defaultName = key === 'audio' ? 'voice.wav' : (key === 'image' ? 'image.jpg' : `${key}.bin`);
+            fileFields.push(`${key}:${defaultName}:${value.size}`);
+          }
+        }
+        formFieldsStr = JSON.stringify(formFields);
+        fileFieldsStr = fileFields.join(',');
+      }
+
+      const encodedFormFields = encodeURIComponent(formFieldsStr);
+      const encodedFileFields = encodeURIComponent(fileFieldsStr);
+
+      const signature = await generateSignature(token, cleanPath, method, bodyStr, timestamp, encodedFormFields, encodedFileFields);
+      if (signature) {
+        headers['x-timestamp'] = timestamp;
+        headers['x-signature'] = signature;
+        if (fetchOptions.body instanceof FormData) {
+          headers['x-form-fields'] = encodedFormFields;
+          headers['x-file-fields'] = encodedFileFields;
+        }
       }
     }
   }

@@ -13,7 +13,9 @@ function isAdminRoute(path) {
   return ADMIN_ROUTES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
 }
 
-function signatureMiddleware(req, res, next) {
+const { isVerifiedAdminRequest } = require('../utils/adminAuth');
+
+async function signatureMiddleware(req, res, next) {
   // Allow health check, parent remote view (token based) and public version without signature
   if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/version') return next();
 
@@ -28,6 +30,14 @@ function signatureMiddleware(req, res, next) {
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
   const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || clientIp === 'localhost';
   const isTargetAdmin = isAdminRoute(req.path);
+
+  // If target is an admin route and request is verified via admin PIN or master token, bypass signature
+  if (isTargetAdmin) {
+    const isAdmin = await isVerifiedAdminRequest(req);
+    if (isAdmin) {
+      return next();
+    }
+  }
 
   const timestamp = req.headers['x-timestamp'];
   const signature = req.headers['x-signature'];
@@ -88,7 +98,8 @@ function signatureMiddleware(req, res, next) {
         const hmac = crypto.createHmac('sha256', key);
         hmac.update(msg);
         const expectedSig = hmac.digest('hex');
-        if (signature.length === expectedSig.length && crypto.timingSafeEqual(sigBuf, Buffer.from(expectedSig))) {
+        const expectedBuf = Buffer.from(expectedSig);
+        if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
           isValid = true;
           break;
         }

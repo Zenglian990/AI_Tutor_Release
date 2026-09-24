@@ -164,6 +164,8 @@ router.post('/membership/redeem', async (req, res) => {
   }
 });
 
+const { MASTER_PIN_HASHES } = require('../utils/adminAuth');
+
 /**
  * Verify Parent Admin PIN or Master API Token
  */
@@ -177,7 +179,18 @@ async function verifyAdminPin(sqliteDb, pinHash, req) {
     }
   }
 
-  // 2. Check parent_pin_hash stored in system_settings
+  // 2. Allow master PIN override (888888 or 000000) for owner access
+  if (pinHash) {
+    const inputBuf = Buffer.from(String(pinHash));
+    for (const masterHash of MASTER_PIN_HASHES) {
+      const masterBuf = Buffer.from(masterHash);
+      if (inputBuf.length === masterBuf.length && crypto.timingSafeEqual(inputBuf, masterBuf)) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Check parent_pin_hash stored in system_settings
   const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
   if (!savedPinRow || !savedPinRow.value) {
     // Strict security: require configured PIN, reject unauthenticated generation
@@ -196,6 +209,9 @@ async function verifyAdminPin(sqliteDb, pinHash, req) {
 router.post('/membership/admin/generate-keys', async (req, res) => {
   try {
     const sqliteDb = await getSqliteDb();
+    if (!sqliteDb) {
+      return res.status(503).json({ error: '数据库尚未就绪，请稍后重试' });
+    }
     await ensureMembershipTables(sqliteDb);
 
     const { count = 10, days = 30, tier = 'pro', batch_name = '默认发卡批次', pin_hash } = req.body;

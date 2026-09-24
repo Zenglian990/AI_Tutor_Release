@@ -6,6 +6,7 @@ const { fetch: undiciFetch, ProxyAgent } = require('undici');
 const config = require('../config');
 const logger = require('../services/logger');
 const { isSafeExternalUrl, validateSafeUrlAsync } = require('../utils/urlValidator');
+const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 
 const proxyAgent = config.proxyUrl ? new ProxyAgent(config.proxyUrl) : null;
 
@@ -77,13 +78,12 @@ function updateEnvFile(key, value) {
  * POST /api/config/update-keys
  * Update DeepSeek or Gemini API Keys and persist to .env
  */
-router.post('/config/update-keys', (req, res) => {
+router.post('/config/update-keys', async (req, res) => {
   try {
-    // Enforce master token authorization for persisting system environment configurations
+    // Enforce master token or admin PIN authorization for persisting system environment configurations
     if (config.API_TOKEN && process.env.REQUIRE_AUTH !== 'false') {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-      if (!token || token !== config.API_TOKEN) {
+      const isVerified = await isVerifiedAdminRequest(req);
+      if (!isVerified) {
         return res.status(403).json({ error: '无权修改系统环境配置：需要主管理员授权。' });
       }
     }
@@ -178,20 +178,35 @@ router.post('/config/update-keys', (req, res) => {
  * Ping test for Gemini or DeepSeek connectivity
  */
 router.post('/config/test-llm', async (req, res) => {
-  const { provider, apiKey, apiUrl, model } = req.body;
   const start = Date.now();
+  let provider = 'unknown';
 
   try {
+    const body = req.body || {};
+    provider = body.provider || 'unknown';
+    const { apiKey, apiUrl, model } = body;
+
     if (provider === 'deepseek') {
       const keyToUse = (apiKey || process.env.DEEPSEEK_API_KEY || '').trim();
       if (!keyToUse) {
-        return res.status(400).json({ success: false, error: '缺少 DeepSeek API Key' });
+        return res.json({
+          success: false,
+          provider: 'deepseek',
+          error: '缺少 DeepSeek API Key',
+          details: '请在上方输入有效的 DeepSeek API 密钥',
+          latencyMs: 0
+        });
       }
 
       const baseUrl = (apiUrl || process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
       const urlCheck = await validateSafeUrlAsync(baseUrl);
       if (!urlCheck.safe) {
-        return res.status(400).json({ success: false, error: `不安全的 API URL 地址: ${urlCheck.error}` });
+        return res.json({
+          success: false,
+          provider: 'deepseek',
+          error: `不安全的 API URL 地址: ${urlCheck.error}`,
+          latencyMs: 0
+        });
       }
 
       const testModel = model || 'deepseek-chat';
@@ -214,10 +229,31 @@ router.post('/config/test-llm', async (req, res) => {
 
       if (!response.ok) {
         const status = response.status;
-        return res.status(status).json({
+        let details = '';
+        try {
+          const errBody = await response.text();
+          const parsed = JSON.parse(errBody);
+          details = parsed.error?.message || errBody.slice(0, 300);
+        } catch {
+          // ignore parsing error
+        }
+
+        let friendlyError = `DeepSeek 响应异常 (${status})`;
+        if (status === 401) {
+          friendlyError = 'DeepSeek API Key 无效或未授权 (401)';
+        } else if (status === 429) {
+          friendlyError = 'DeepSeek 请求配额超限或账户余额不足 (429)';
+        } else if (status === 404) {
+          friendlyError = `未找到指定模型或接口路径 ${testModel} (404)`;
+        }
+
+        return res.json({
           success: false,
-          error: `DeepSeek 响应异常 (${status})`,
-          details: status === 401 ? 'API Key 无效或未授权' : (status === 429 ? '超出请求配额限制' : '上游接口请求失败')
+          provider: 'deepseek',
+          model: testModel,
+          latencyMs,
+          error: friendlyError,
+          details: details || (status === 401 ? '请检查 API 密钥是否输入完整且有效' : '上游接口请求失败')
         });
       }
 
@@ -232,7 +268,13 @@ router.post('/config/test-llm', async (req, res) => {
     } else if (provider === 'gemini') {
       const keyToUse = (apiKey || (config.API_KEYS.length > 0 ? config.API_KEYS[0] : '')).trim();
       if (!keyToUse) {
-        return res.status(400).json({ success: false, error: '缺少 Gemini API Key' });
+        return res.json({
+          success: false,
+          provider: 'gemini',
+          error: '缺少 Gemini API Key',
+          details: '请在上方输入有效的 Google Gemini API 密钥',
+          latencyMs: 0
+        });
       }
 
       const testModel = model || config.CHAT_MODEL || 'gemini-2.5-flash';
@@ -253,11 +295,37 @@ router.post('/config/test-llm', async (req, res) => {
       const latencyMs = Date.now() - start;
 
       if (!response.ok) {
-        const errText = await response.text();
-        return res.status(response.status).json({
+        const status = response.status;
+        let details = '';
+        try {
+          const errText = await response.text();
+          const parsed = JSON.parse(errText);
+          details = parsed.error?.message || errText.slice(0, 300);
+        } catch {
+          // ignore parsing error
+        }
+
+        let friendlyError = `Gemini 响应错误 (${status})`;
+        if (status === 429) {
+          friendlyError = 'Gemini API 请求配额已达上限 (429 RESOURCE_EXHAUSTED)';
+          if (!details) {
+            details = '免费层每日或每分钟配额已用完，请等待额度刷新或在控制台更换可用 API Key。';
+          }
+        } else if (status === 400) {
+          friendlyError = 'Gemini API Key 无效或格式不正确 (400)';
+        } else if (status === 403) {
+          friendlyError = 'Gemini API 访问权限受限或国家/地区不支持 (403)';
+        } else if (status === 404) {
+          friendlyError = `未找到指定模型 ${testModel} (404)`;
+        }
+
+        return res.json({
           success: false,
-          error: `Gemini 响应错误 (${response.status})`,
-          details: errText.slice(0, 200)
+          provider: 'gemini',
+          model: testModel,
+          latencyMs,
+          error: friendlyError,
+          details
         });
       }
 
@@ -268,13 +336,34 @@ router.post('/config/test-llm', async (req, res) => {
         latencyMs,
         message: `Gemini 连接成功！(延迟: ${latencyMs}ms)`
       });
+
     } else if (provider === 'jev' || provider === 'typesafe') {
       const keyToUse = (apiKey || process.env.TYPESAFE_API_KEY || config.TYPESAFE_API_KEY || '').trim();
       if (!keyToUse) {
-        return res.status(400).json({ success: false, error: '缺少 TypeSafe (Jev) API Key' });
+        return res.json({
+          success: false,
+          provider: 'jev',
+          error: '缺少 TypeSafe (Jev) API Key',
+          details: '请在上方输入有效的 TypeSafe API 密钥',
+          latencyMs: 0
+        });
       }
 
-      const { TypeSafeClient, noul } = require('@typesafe-ai/sdk');
+      let TypeSafeClient, noul;
+      try {
+        const typesafe = require('@typesafe-ai/sdk');
+        TypeSafeClient = typesafe.TypeSafeClient;
+        noul = typesafe.noul;
+      } catch (sdkErr) {
+        return res.json({
+          success: false,
+          provider: 'jev',
+          error: 'TypeSafe SDK 未加载或未安装',
+          details: sdkErr.message,
+          latencyMs: 0
+        });
+      }
+
       const testClient = new TypeSafeClient({ apiKey: keyToUse });
       const result = await testClient.systemOne({
         state: '中国中小学智能教辅系统连通性测试',
@@ -291,14 +380,23 @@ router.post('/config/test-llm', async (req, res) => {
         latencyMs,
         message: `Jev 系统一决策模型连接成功！(极速决策: ${latencyMs}ms)`
       });
+
     } else {
-      return res.status(400).json({ success: false, error: '未知的提供商类型' });
+      return res.status(400).json({
+        success: false,
+        error: '未知的提供商类型',
+        details: `不支持的 provider: ${provider}`,
+        latencyMs: 0
+      });
     }
   } catch (err) {
     logger.warn(`[ConfigAPI] Test LLM failed for ${provider}:`, err.message);
-    return res.status(500).json({
+    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError' || err.code === 'UND_ERR_CONNECT_TIMEOUT';
+    return res.json({
       success: false,
-      error: err.name === 'TimeoutError' ? '网络连接超时（可能需要配置代理或检查国内网络）' : err.message,
+      provider,
+      error: isTimeout ? '网络连接超时（可能需要配置代理或检查国内网络）' : `连通性检测失败: ${err.message}`,
+      details: err.message,
       latencyMs: Date.now() - start
     });
   }
