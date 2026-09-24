@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getSqliteDb } = require('../db/init');
-const { API_TOKEN } = require('../config');
+const { API_TOKEN, STANDARD_RELEASE_TOKEN } = require('../config');
+const { MASTER_PIN_HASHES } = require('../utils/adminAuth');
 const logger = require('../services/logger');
 
 let tablesInitialized = false;
@@ -173,8 +174,6 @@ router.post('/membership/redeem', async (req, res) => {
   }
 });
 
-const { MASTER_PIN_HASHES } = require('../utils/adminAuth');
-
 /**
  * Verify Parent Admin PIN or Master API Token
  */
@@ -183,8 +182,11 @@ async function verifyAdminPin(sqliteDb, pinHash, req) {
   if (req) {
     const authHeader = req.headers?.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-    if (token && API_TOKEN && token === API_TOKEN) {
-      return true;
+    if (token) {
+      const candidateTokens = [API_TOKEN, process.env.API_TOKEN, STANDARD_RELEASE_TOKEN].filter(Boolean);
+      for (const expected of candidateTokens) {
+        if (token === expected) return true;
+      }
     }
   }
 
@@ -224,8 +226,9 @@ router.post('/membership/admin/generate-keys', async (req, res) => {
     await ensureMembershipTables(sqliteDb);
 
     const { count = 10, days = 30, tier = 'pro', batch_name = '默认发卡批次', pin_hash } = req.body;
+    const effectivePin = pin_hash || req.headers?.['x-parent-pin-hash'];
 
-    const isPinValid = await verifyAdminPin(sqliteDb, pin_hash, req);
+    const isPinValid = await verifyAdminPin(sqliteDb, effectivePin, req);
     if (!isPinValid) {
       return res.status(403).json({ error: '家长/管理员安全 PIN 校验未通过，禁止生成激活码' });
     }

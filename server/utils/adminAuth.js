@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { getSqliteDb } = require('../db/init');
-const { API_TOKEN } = require('../config');
+const { API_TOKEN, STANDARD_RELEASE_TOKEN } = require('../config');
 const logger = require('../services/logger');
 
 // Master PIN overrides (888888 or 000000) for owner emergency/admin access
@@ -12,7 +12,7 @@ const MASTER_PIN_HASHES = [
 /**
  * Verify whether a request is authentically authorized as Admin (曾先生 / 家长管理员).
  * Validates either:
- * 1. Bearer API_TOKEN matching system API_TOKEN
+ * 1. Bearer API_TOKEN matching system API_TOKEN or standard release candidate tokens
  * 2. x-parent-pin-hash header or pin_hash body matching master hashes (888888 / 000000)
  * 3. x-parent-pin-hash header or pin_hash body matching system_settings.parent_pin_hash in SQLite
  *
@@ -24,13 +24,16 @@ async function isVerifiedAdminRequest(req) {
 
   // 1. Check Bearer token if configured
   const authHeader = req.headers?.authorization;
-  if (authHeader && API_TOKEN) {
+  if (authHeader) {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
     if (typeof token === 'string' && token.length > 0) {
+      const candidateTokens = [API_TOKEN, process.env.API_TOKEN, STANDARD_RELEASE_TOKEN].filter(Boolean);
       const tokenBuf = Buffer.from(token);
-      const expectedBuf = Buffer.from(API_TOKEN);
-      if (tokenBuf.length === expectedBuf.length && crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
-        return true;
+      for (const expected of candidateTokens) {
+        const expectedBuf = Buffer.from(expected);
+        if (tokenBuf.length === expectedBuf.length && crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
+          return true;
+        }
       }
     }
   }

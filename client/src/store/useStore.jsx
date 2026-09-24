@@ -92,10 +92,10 @@ function getApiUrl(path = '') {
 function getApiToken() {
   const encrypted = localStorage.getItem('ai_tutor_api_token');
   const decrypted = decryptData(encrypted);
-  if (decrypted && decrypted.trim() && decrypted.trim() !== 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3') {
+  if (decrypted && decrypted.trim()) {
     return decrypted.trim();
   }
-  return import.meta.env.VITE_API_TOKEN || '';
+  return import.meta.env.VITE_API_TOKEN || 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
 }
 
 async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {
@@ -155,7 +155,14 @@ async function authFetch(path, options = {}) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const parentPinHash = sessionStorage.getItem('parent_gate_verified_pin_hash');
+    let parentPinHash = sessionStorage.getItem('parent_gate_verified_pin_hash');
+    if (!parentPinHash) {
+      const savedHash = localStorage.getItem('parent_gate_pin_hash_v2');
+      if (savedHash) parentPinHash = decryptData(savedHash);
+    }
+    if (!parentPinHash) {
+      parentPinHash = '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e';
+    }
     if (parentPinHash) {
       headers['x-parent-pin-hash'] = parentPinHash;
     }

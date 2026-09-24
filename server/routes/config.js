@@ -277,8 +277,8 @@ router.post('/config/test-llm', async (req, res) => {
         });
       }
 
-      const testModel = model || config.CHAT_MODEL || 'gemini-3.6-flash';
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${keyToUse}`;
+      let testModel = model || config.CHAT_MODEL || 'gemini-2.5-flash';
+      let url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${keyToUse}`;
 
       const fetchOptions = {
         method: 'POST',
@@ -291,7 +291,21 @@ router.post('/config/test-llm', async (req, res) => {
       };
       if (proxyAgent) fetchOptions.dispatcher = proxyAgent;
 
-      const response = await undiciFetch(url, fetchOptions);
+      let response = await undiciFetch(url, fetchOptions);
+
+      // Mutual fallback between 2.5 and 3.6 if rate-limited or unavailable
+      if (!response.ok && (response.status === 429 || response.status === 503 || response.status === 404)) {
+        const fallbackModel = testModel === 'gemini-2.5-flash' ? 'gemini-3.6-flash' : 'gemini-2.5-flash';
+        const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${keyToUse}`;
+        try {
+          const fallbackRes = await undiciFetch(fallbackUrl, fetchOptions);
+          if (fallbackRes.ok) {
+            response = fallbackRes;
+            testModel = fallbackModel;
+          }
+        } catch (_) {}
+      }
+
       const latencyMs = Date.now() - start;
 
       if (!response.ok) {

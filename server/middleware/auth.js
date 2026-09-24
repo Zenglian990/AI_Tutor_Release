@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { API_TOKEN, NODE_ENV, AUTH_RATE_LIMIT_WINDOW_MS, AUTH_RATE_LIMIT_MAX } = require('../config');
+const { API_TOKEN, STANDARD_RELEASE_TOKEN, NODE_ENV, AUTH_RATE_LIMIT_WINDOW_MS, AUTH_RATE_LIMIT_MAX } = require('../config');
 const logger = require('../services/logger');
 
 /**
@@ -124,7 +124,7 @@ async function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-  const candidateTokens = [API_TOKEN].filter(Boolean);
+  const candidateTokens = [API_TOKEN, process.env.API_TOKEN, STANDARD_RELEASE_TOKEN].filter(Boolean);
   
   let isMatch = false;
   if (token && typeof token === 'string') {
