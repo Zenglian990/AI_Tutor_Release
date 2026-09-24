@@ -46,10 +46,7 @@ function createApp() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        // unsafe-inline needed for Vite-built SPA inline styles; unsafe-eval removed in production
-        scriptSrc: NODE_ENV === 'development'
-          ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
-          : ["'self'"], // Security fix: Removed 'unsafe-inline' for production
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
         fontSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],

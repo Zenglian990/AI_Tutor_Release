@@ -8,7 +8,7 @@ const logger = require('../services/logger');
 let tablesInitialized = false;
 
 async function ensureMembershipTables(db) {
-  if (tablesInitialized) return;
+  if (!db || tablesInitialized) return;
   await db.exec(`
     CREATE TABLE IF NOT EXISTS memberships (
       profile_id TEXT PRIMARY KEY,
@@ -46,6 +46,15 @@ function generateKeyCode(prefix = 'VIP') {
 router.get('/membership/status', async (req, res) => {
   try {
     const sqliteDb = await getSqliteDb();
+    if (!sqliteDb) {
+      return res.json({
+        profile_id: req.query.profile_id || 'default',
+        tier: 'free',
+        is_vip: false,
+        expire_at: null,
+        days_remaining: 0
+      });
+    }
     await ensureMembershipTables(sqliteDb);
 
     const profileId = req.query.profile_id || 'default';
