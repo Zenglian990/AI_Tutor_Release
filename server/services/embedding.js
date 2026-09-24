@@ -62,7 +62,8 @@ async function checkKeysHealth() {
   logger.info('[HealthCheck] Starting Gemini API keys validation...');
   for (const key of API_KEYS) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODEL}:generateContent?key=${key}`;
+      const modelToPing = CHAT_MODEL || 'gemini-3.6-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToPing}:generateContent?key=${key}`;
       const payload = {
         contents: [{ parts: [{ text: 'ping' }] }],
         generationConfig: { maxOutputTokens: 1 }
@@ -83,10 +84,17 @@ async function checkKeysHealth() {
       clearTimeout(timeoutId);
 
       if (res.status === 400 || res.status === 403) {
-        logger.error(`[HealthCheck] Key ${maskKey(key)} is INVALID (status ${res.status}). Marking as disabled.`);
-        invalidKeys.add(key);
-        keyLastUsed.delete(key);
-        keyCooldown.delete(key);
+        let errBody = '';
+        try { errBody = await res.text(); } catch {}
+        const isRealAuthError = /API_KEY_INVALID|API key not valid|CONSUMER_SUSPENDED|PERMISSION_DENIED/i.test(errBody);
+        if (isRealAuthError) {
+          logger.error(`[HealthCheck] Key ${maskKey(key)} is INVALID (status ${res.status}). Marking as disabled.`);
+          invalidKeys.add(key);
+          keyLastUsed.delete(key);
+          keyCooldown.delete(key);
+        } else {
+          logger.warn(`[HealthCheck] Key ${maskKey(key)} returned ${res.status} (${errBody.slice(0, 100)}), key remains enabled.`);
+        }
       } else {
         if (invalidKeys.has(key)) {
           logger.info(`[HealthCheck] Key ${maskKey(key)} recovered. Re-enabling.`);
@@ -381,9 +389,9 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   }
   // Remap deprecated Gemini models (e.g. 2.0-flash, 1.5-flash, 2.5-flash-lite) to modern configured model
   if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel.includes('gemini-2.5-flash-lite')) {
-    rawModel = CHAT_MODEL || 'gemini-2.5-flash';
+    rawModel = CHAT_MODEL || 'gemini-3.6-flash';
   }
-  const selectedModel = rawModel;
+  let currentModel = rawModel;
 
   // Auto-detect image / multimodal parts
   let hasImage = false;
@@ -402,15 +410,15 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   } catch (e) {}
 
   // Check if directly routing to domestic / OpenAI-compatible models (DeepSeek, Qwen-VL, GLM-4V, etc.)
-  const isOpenAiCompatible = selectedModel.toLowerCase().includes('deepseek') ||
-                             selectedModel.toLowerCase().includes('qwen') ||
-                             selectedModel.toLowerCase().includes('glm') ||
-                             selectedModel.toLowerCase().includes('step-');
-  const url = buildURL(selectedModel);
+  const isOpenAiCompatible = currentModel.toLowerCase().includes('deepseek') ||
+                             currentModel.toLowerCase().includes('qwen') ||
+                             currentModel.toLowerCase().includes('glm') ||
+                             currentModel.toLowerCase().includes('step-');
+  let url = buildURL(currentModel);
   const urlType = url.includes('streamGenerateContent') ? 'stream' : (url.includes('embedContent') ? 'embed' : 'chat');
 
   if (isOpenAiCompatible && (urlType === 'chat' || urlType === 'stream')) {
-    return await fetchDeepSeek(urlType, options, selectedModel);
+    return await fetchDeepSeek(urlType, options, currentModel);
   }
 
   // Fallback check: if request has image and the fallback model CANNOT see images, skip text-only fallback
@@ -543,12 +551,24 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       lastError = new Error(`API error ${response.status}: ${body}`);
 
       if (response.status === 404) {
-        logger.error(`[KeyPool] Model not found (404) for model '${selectedModel}'. Check model configuration.`);
-        throw new Error(`MODEL_NOT_FOUND: Model '${selectedModel}' is not supported or not found.`);
+        if (currentModel !== 'gemini-3.6-flash' && !isOpenAiCompatible) {
+          logger.warn(`[KeyPool] Model '${currentModel}' not found (404), auto-fallback to 'gemini-3.6-flash'...`);
+          currentModel = 'gemini-3.6-flash';
+          url = buildURL(currentModel);
+          continue;
+        }
+        logger.error(`[KeyPool] Model not found (404) for model '${currentModel}'. Check model configuration.`);
+        throw new Error(`MODEL_NOT_FOUND: Model '${currentModel}' is not supported or not found.`);
       }
 
       if (response.status === 429 || response.status === 503) {
         if (/quota/i.test(body)) {
+          if (currentModel !== 'gemini-3.6-flash' && !isOpenAiCompatible) {
+            logger.info(`[KeyPool] Model '${currentModel}' quota exhausted, auto-fallback to 'gemini-3.6-flash'...`);
+            currentModel = 'gemini-3.6-flash';
+            url = buildURL(currentModel);
+            continue;
+          }
           keyCooldown.set(key, Date.now() + 60_000);
           logger.warn(`[KeyPool] Key ${maskKey(key)} quota exhausted, cooling down.`);
           continue;

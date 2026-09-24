@@ -658,7 +658,7 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
         contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: base64Audio } }, { text: prompt }] }],
         generationConfig: { temperature: 0.0, maxOutputTokens: 1024 }
       })
-    }, 8, 90000, 'gemini-2.5-flash', true); // skipDeepSeek = true
+    }, 8, 90000, 'gemini-3.6-flash', true); // skipDeepSeek = true
 
     const data = await response.json();
     if (data.error) {

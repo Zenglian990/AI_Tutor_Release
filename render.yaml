@@ -21,9 +21,9 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: CHAT_MODEL
-        value: gemini-2.5-flash
+        value: gemini-3.6-flash
       - key: DEFAULT_PROVIDER
-        value: deepseek
+        value: gemini
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: DEEPSEEK_API_URL

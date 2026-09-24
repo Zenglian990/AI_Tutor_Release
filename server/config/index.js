@@ -10,7 +10,7 @@ const isTestEnv = process.env.NODE_ENV === 'test' ||
   process.argv.some(arg => arg.includes('test'));
 const NODE_ENV = process.env.NODE_ENV || (isTestEnv ? 'test' : 'production');
 const EMBED_MODEL = process.env.EMBED_MODEL || 'gemini-embedding-2';
-const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-2.5-flash';
+const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-3.6-flash';
 const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 const DEEPSEEK_CHAT_MODEL = process.env.DEEPSEEK_CHAT_MODEL || 'deepseek-chat';

@@ -397,7 +397,7 @@ export default function AdminConsoleModal({
         body: JSON.stringify({
           provider: 'gemini',
           apiKey: geminiKey.trim() || undefined,
-          model: 'gemini-2.5-flash'
+          model: 'gemini-3.6-flash'
         })
       });
       const data = await res.json();
