@@ -405,7 +405,7 @@ export default function SettingsModal({
           }}
         >
           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-            曾练专属私教 v1.3.2 · 人教版 1-9 年级
+            曾练专属私教 v1.3.4 · 人教版 1-9 年级
           </div>
           <button
             type="button"

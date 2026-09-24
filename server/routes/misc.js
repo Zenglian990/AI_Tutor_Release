@@ -93,14 +93,14 @@ router.get('/system/network-info', (req, res) => {
 // GET /api/system/version — Version and update info for client apps
 router.get('/system/version', (req, res) => {
   res.json({
-    version: '1.3.1',
-    buildDate: '2026-09-21',
+    version: '1.3.4',
+    buildDate: '2026-09-24',
     appName: '曾练专属私教',
     minAppVersion: '1.0.0',
     hasUpdate: false,
     updateType: 'pwa_hot_update',
-    apkFileName: 'ZengLian_AI_Tutor_v1.3.1.apk',
-    releaseNotes: '升级全机型适配的高保真独立语音通道与秒级流式朗读 (TTS Engine)，彻底消除无声与延迟问题'
+    apkFileName: 'ZengLian_AI_Tutor_v1.3.4.apk',
+    releaseNotes: '智能学习规划免令牌放行、曾先生管理后台万能特权密码开门、基础偏好与商业变现控制台彻底分层'
   });
 });
 
