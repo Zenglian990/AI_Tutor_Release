@@ -51,6 +51,7 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.4.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.3.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.2.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.1.apk
@@ -61,36 +62,39 @@ jobs:
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_v1.3.3
-          path: ./ZengLian_AI_Tutor_v1.3.3.apk
+          name: ZengLian_AI_Tutor_v1.3.4
+          path: ./ZengLian_AI_Tutor_v1.3.4.apk
           retention-days: 30
 
-      - name: Create or Update v1.3.3 Latest Release
+      - name: Create or Update v1.3.4 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.3.3
-          name: "曾练专属私教 v1.3.3 - 基础偏好设置与曾先生管理后台彻底剥离 (最新发布)"
+          tag_name: v1.3.4
+          name: "曾练专属私教 v1.3.4 - 智能规划免令牌与管理员万能密码直达 (最新发布)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 📱 曾练专属私教 v1.3.3 (Build 2026.09.23)
+            ## 📱 曾练专属私教 v1.3.4 (Build 2026.09.24)
 
-            - ⚙️ **纯净基础设置彻底剥离**：
-              - 顶栏恢复无密码的 **⚙️ 基础偏好设置** 窗口，普通学生与家长可自由切换教材版本（人教/北师大/苏教等）、语音朗读开关、三位名师形象（智多星/聪聪狮/晓晴姐）、护眼墨水屏与界面语言；
-              - 彻底移除普通设置中混杂的所有商业发卡、微信二维码海报及底层大模型密钥，保持学生端纯粹专注。
-            - 🔒 **曾先生专属管理后台完全隐藏**：
-              - 顶栏完全移除 `🛡️` 盾牌按钮，普通用户无任何管理员痕迹感知；
-              - 仅曾先生本人可通过**连续快速点击左上角【🎓】图标 5 次**暗号呼出管理认证，进入专属变现发卡、营销裂变与 AI 密钥中枢。
-            - 📱 **原生 Android 深度适配**：版本升级为 v1.3.3 (versionCode 6)，支持无缝覆盖安装更新。
+            - 🎯 **智能学习规划全面免密放行**：
+              - 彻底解决“生成规划失败: 需要身份验证”问题。将普通学生学习接口（智能规划、AI伴读、错题本、名校模考等）与管理员敏感接口（模型Key配置、发卡等）进行严格权限分层，普通学生端完全免令牌顺畅使用。
+            - 🔑 **曾先生管理后台万能密码与一键找回**：
+              - 密码框支持输入万能特权密码 `888888` 或 `000000` 秒级直达；
+              - 密码框下方内置“⚡ 忘记密码？一键重置为 888888 并开门”通道，一键解锁。
+            - ⚙️ **纯净基础设置与暗号 5 击激活**：
+              - 顶栏无密码齿轮设置专供学生/家长偏好调节；
+              - 连续点击左上角【🎓】图标 5 次唤出曾先生专属变现与AI控制中枢。
+            - 📱 **原生 Android 深度适配**：版本升级为 v1.3.4 (versionCode 7)，支持无缝覆盖安装更新。
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.3.apk`** 直接下载；
+            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.4.apk`** 直接下载；
             2. 在安卓手机或平板文件管理器中打开该 APK 进行安装（或直接覆盖更新）；
             3. 安装完成后，手机桌面上将出现 **【曾练专属私教】** 应用图标，点开即用！
           files: |
+            ./ZengLian_AI_Tutor_v1.3.4.apk
             ./ZengLian_AI_Tutor_v1.3.3.apk
             ./ZengLian_AI_Tutor_v1.3.2.apk
             ./ZengLian_AI_Tutor_v1.3.1.apk

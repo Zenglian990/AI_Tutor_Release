@@ -1,6 +1,18 @@
 const crypto = require('crypto');
 const { API_TOKEN, NODE_ENV } = require('../config');
 
+const ADMIN_ROUTES = [
+  '/system/network-info',
+  '/config/update-keys',
+  '/config/test-llm',
+  '/config/keys',
+  '/membership/admin'
+];
+
+function isAdminRoute(path) {
+  return ADMIN_ROUTES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
+}
+
 function signatureMiddleware(req, res, next) {
   // Allow health check, parent remote view (token based) and public version without signature
   if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/version') return next();
@@ -9,18 +21,31 @@ function signatureMiddleware(req, res, next) {
   // If auth is explicitly disabled in environment, skip
   if (process.env.REQUIRE_AUTH === 'false') return next();
 
-  // In development, optionally skip signature if REQUIRE_AUTH is not set
   const currentEnv = process.env.NODE_ENV || NODE_ENV;
+
+  // In development or test, optionally skip signature if REQUIRE_AUTH is not set
   if ((currentEnv === 'development' || currentEnv === 'test') && !process.env.REQUIRE_AUTH) return next();
 
-  // For localhost connections we bypass ONLY if explicitly enabled in development
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-  if (currentEnv === 'development' && (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
-    return next();
-  }
+  const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || clientIp === 'localhost';
+  const isTargetAdmin = isAdminRoute(req.path);
 
   const timestamp = req.headers['x-timestamp'];
   const signature = req.headers['x-signature'];
+
+  // If not an admin route, allow access if no signature was provided
+  if (!isTargetAdmin && process.env.REQUIRE_AUTH !== 'true') {
+    if (!timestamp && !signature) {
+      return next();
+    }
+  }
+
+  // Allow loopback non-admin access without signature
+  if (isLoopback && !isTargetAdmin) {
+    if (!timestamp && !signature) {
+      return next();
+    }
+  }
 
   if (!timestamp || !signature) {
     return res.status(401).json({ error: '认证请求签名缺失，拒绝访问。' });

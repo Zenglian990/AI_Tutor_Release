@@ -23,10 +23,23 @@ setInterval(() => {
   }
 }, FAILURE_CLEANUP_INTERVAL).unref();
 
+const ADMIN_ROUTES = [
+  '/system/network-info',
+  '/config/update-keys',
+  '/config/test-llm',
+  '/config/keys',
+  '/membership/admin'
+];
+
+function isAdminRoute(path) {
+  return ADMIN_ROUTES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
+}
+
 /**
  * Token-based authentication middleware with brute-force protection.
  * In dev mode: optionally skip auth.
- * In production: always requires valid Bearer token.
+ * In production: strictly enforces token for admin/management operations,
+ * while allowing unauthenticated student learning features.
  */
 function authMiddleware(req, res, next) {
   // Allow health check, parent remote view, public version and PIN verification/reset without Bearer auth
@@ -45,16 +58,28 @@ function authMiddleware(req, res, next) {
   // If auth is explicitly disabled in environment, skip
   if (process.env.REQUIRE_AUTH === 'false') return next();
 
-  // In development, optionally skip auth
   const currentEnv = process.env.NODE_ENV || NODE_ENV;
+
+  // In test/dev mode without explicit REQUIRE_AUTH, skip auth
   if ((currentEnv === 'development' || currentEnv === 'test') && !process.env.REQUIRE_AUTH) return next();
 
-  // Brute-force check per IP
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+  const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || clientIp === 'localhost';
+  const isTargetAdmin = isAdminRoute(req.path);
 
-  // Allow local requests without token ONLY if explicitly enabled for development
-  if (currentEnv === 'development' && (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') && process.env.LOCAL_DEV_BYPASS === 'true') {
-    return next();
+  // If not an admin route, allow access if the client didn't send a token (student learning mode)
+  // unless REQUIRE_AUTH is explicitly 'true'
+  if (!isTargetAdmin && process.env.REQUIRE_AUTH !== 'true') {
+    if (!req.headers.authorization) {
+      return next();
+    }
+  }
+
+  // Allow loopback non-admin access without token
+  if (isLoopback && !isTargetAdmin) {
+    if (!req.headers.authorization) {
+      return next();
+    }
   }
   const now = Date.now();
   let failureEntry = authFailures.get(clientIp);

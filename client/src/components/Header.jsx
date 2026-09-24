@@ -110,12 +110,11 @@ export default function Header({
   const logoClicksRef = React.useRef([]);
   const handleLogoClick = () => {
     const now = Date.now();
-    logoClicksRef.current = [...logoClicksRef.current.filter(t => now - t < 2500), now];
-    if (logoClicksRef.current.length >= 5) {
+    const recentClicks = [...logoClicksRef.current.filter(t => now - t < 2500), now];
+    logoClicksRef.current = recentClicks;
+    if (recentClicks.length >= 5) {
       logoClicksRef.current = [];
       if (onOpenAdminConsole) onOpenAdminConsole();
-    } else {
-      if (onClearChat) onClearChat();
     }
   };
 
@@ -126,11 +125,11 @@ export default function Header({
         <div
           className="header-icon"
           onClick={handleLogoClick}
-          title="点击清空当前对话"
+          title="曾练专属私教"
           role="button"
           tabIndex={0}
-          aria-label="清空当前对话"
-          onKeyDown={e => e.key === 'Enter' && onClearChat()}
+          aria-label="应用图标"
+          onKeyDown={e => e.key === 'Enter' && onClearChat && onClearChat()}
         >
           🎓
         </div>

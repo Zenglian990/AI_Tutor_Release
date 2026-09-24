@@ -523,9 +523,7 @@ function AppInner() {
   }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
 
   const clearChat = () => {
-    setGateAction(() => () => setShowClearConfirm(true));
-    setGateReason('清空当前对话历史');
-    setGateOpen(true);
+    setShowClearConfirm(true);
   };
 
   const handlePlayTTS = useCallback((text, onStart, onEnd) => {

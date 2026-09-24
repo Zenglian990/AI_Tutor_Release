@@ -199,6 +199,18 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
         }
       } else {
         const hash = await sha256(newPinVal);
+        // Master PIN override (888888 or 000000) for owner instant access
+        if (newPinVal === '888888' || newPinVal === '000000') {
+          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+          localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+          resetAttempts();
+          setTimeout(() => {
+            onVerify();
+            onClose();
+          }, 150);
+          return;
+        }
+
         try {
           const verifyRes = await authFetch('/api/admin/verify-pin', {
             method: 'POST',
@@ -348,6 +360,29 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
     } catch (err) {
       setResetError('重置密码遇到异常，请重试');
     }
+  };
+
+  const handleDirectResetToDefault = async () => {
+    const defaultPin = '888888';
+    const hash = await sha256(defaultPin);
+    const ansHash = await sha256('default');
+    try {
+      await authFetch('/api/admin/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin_hash: hash, security_answer_hash: 'mother_name:' + ansHash })
+      }).catch(() => {});
+    } catch (_) {}
+    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+    sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+    resetAttempts();
+    setShowResetFlow(false);
+    setIsSettingUp(false);
+    setPin('');
+    setFirstPin('');
+    alert('✅ 密码已重置为 888888，并已为您开门！');
+    onVerify();
+    onClose();
   };
 
   const isLockedOut = lockedUntil > Date.now();
@@ -568,19 +603,18 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
 
               <div className="gate-footer">
                 {!isSettingUp && (
-                  <p className="tip-text" style={{ marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={handleStartReset}
-                      style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}
+                      onClick={handleDirectResetToDefault}
+                      style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '8px', padding: '6px 14px', color: '#34d399', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 600 }}
                     >
-                      🔄 忘记密码？重置
+                      ⚡ 忘记密码？一键重置为 888888 并开门
                     </button>
-                  </p>
+                  </div>
                 )}
                 <p className="tip-text">
-                  💡 提示：安全锁使用加密存储，保护孩子的错题本数据及防沉迷设置。
-                  连续{MAX_ATTEMPTS}次错误将锁定{LOCKOUT_DURATION_MS / 1000}秒。
+                  💡 提示：管理员万能应急密码为 888888。
                 </p>
               </div>
             </>
@@ -690,6 +724,13 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                 />
                 <button onClick={handleSetNewPin} style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}>
                   ✅ 确认重置密码
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDirectResetToDefault}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.03)', color: '#34d399', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  ⚡ 直接重置为 888888 并开门
                 </button>
               </div>
             )}
