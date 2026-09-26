@@ -431,6 +431,19 @@ function AppInner() {
       let sources = [];
       let isFirstChunk = true;
 
+      let updatePending = false;
+      let lastFlushTime = 0;
+
+      const flushUpdate = () => {
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: answerText, sources }];
+          return prev;
+        });
+        lastFlushTime = performance.now();
+        updatePending = false;
+      };
+
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
@@ -447,13 +460,23 @@ function AppInner() {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.sources) sources = parsed.sources;
                 if (parsed.text) {
-                  if (isFirstChunk) { answerText = ''; isFirstChunk = false; }
-                  answerText += parsed.text;
-                  setMessages(prev => {
-                    const lastMsg = prev[prev.length - 1];
-                    if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: answerText, sources }];
-                    return prev;
-                  });
+                  if (isFirstChunk) {
+                    answerText = '';
+                    isFirstChunk = false;
+                    answerText += parsed.text;
+                    flushUpdate(); // Instant TTFT feedback: display first token immediately
+                  } else {
+                    answerText += parsed.text;
+                    const now = performance.now();
+                    if (now - lastFlushTime > 45) {
+                      flushUpdate();
+                    } else if (!updatePending) {
+                      updatePending = true;
+                      requestAnimationFrame(() => {
+                        if (updatePending) flushUpdate();
+                      });
+                    }
+                  }
                 }
                 if (parsed.error) streamError = parsed.error;
               } catch (e) { console.warn("Error parsing SSE line:", line, e); }
@@ -462,6 +485,7 @@ function AppInner() {
           }
         }
       }
+      flushUpdate(); // Ensure complete stream content is committed to state
       syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
 
       // Proactive Spoken Question & Handover Trigger

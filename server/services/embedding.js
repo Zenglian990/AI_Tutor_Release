@@ -329,7 +329,10 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
     },
     body: JSON.stringify(deepseekPayload)
   };
-  if (proxyAgent) fetchOptions.dispatcher = proxyAgent;
+  // DeepSeek is a domestic Chinese high-speed API — connect directly for minimal latency
+  if (proxyAgent && process.env.PROXY_DEEPSEEK === 'true') {
+    fetchOptions.dispatcher = proxyAgent;
+  }
 
   const response = await undiciFetch(url, fetchOptions);
   if (!response.ok) {
@@ -387,9 +390,16 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     logger.warn(`Invalid model name format provided: ${rawModel}, falling back to default`);
     rawModel = CHAT_MODEL;
   }
+  // Canonical model aliases
+  if (rawModel === 'gemini' || rawModel === 'gemini-flash' || rawModel === 'gemini-2.5') {
+    rawModel = 'gemini-2.5-flash';
+  }
+  if (rawModel === 'deepseek' || rawModel === 'deepseek-v3') {
+    rawModel = 'deepseek-chat';
+  }
   // Remap deprecated Gemini models (e.g. 2.0-flash, 1.5-flash, 2.5-flash-lite) to modern configured model
   if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel.includes('gemini-2.5-flash-lite')) {
-    rawModel = CHAT_MODEL || 'gemini-3.6-flash';
+    rawModel = CHAT_MODEL || 'gemini-2.5-flash';
   }
   let currentModel = rawModel;
 

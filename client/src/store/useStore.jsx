@@ -315,9 +315,11 @@ export function AppProvider({ children }) {
   const [isEinkMode, setIsEinkMode] = useState(() =>
     localStorage.getItem('ai_tutor_eink_mode') === 'true'
   );
-  const [chatModel, setChatModel] = useState(() =>
-    localStorage.getItem('ai_tutor_chat_model') || 'default'
-  );
+  const [chatModel, setChatModel] = useState(() => {
+    const saved = localStorage.getItem('ai_tutor_chat_model');
+    if (!saved || saved === 'default') return 'deepseek-chat';
+    return saved;
+  });
   const [tutorPersona, setTutorPersona] = useState(() =>
     localStorage.getItem('ai_tutor_persona') || 'owl'
   );

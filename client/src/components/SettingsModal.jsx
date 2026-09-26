@@ -52,7 +52,9 @@ export default function SettingsModal({
     toggleEinkMode,
     tutorPersona,
     setTutorPersona,
-    currentProfile
+    currentProfile,
+    chatModel,
+    setChatModel
   } = useAppStore();
 
   const [ttsEngine, setTtsEngine] = useState(() => localStorage.getItem('tts_engine') || 'local');
@@ -165,6 +167,93 @@ export default function SettingsModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Section: AI 问答加速大模型 (Gemini vs DeepSeek 用户自由选择，严格执行) */}
+          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#38bdf8' }}>
+                🚀 AI 问答对话大模型引擎
+              </label>
+              <span style={{ fontSize: '0.72rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                用户自由选择 · 严格执行
+              </span>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '0 0 12px' }}>
+              根据网络环境与辅导偏好自由切换驱动大模型，系统将严格调用所选引擎：
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* DeepSeek V3 */}
+              <div
+                onClick={() => setChatModel('deepseek-chat')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  border: (chatModel === 'deepseek-chat') ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: (chatModel === 'deepseek-chat') ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <input
+                  type="radio"
+                  name="chatModelOption"
+                  checked={chatModel === 'deepseek-chat'}
+                  onChange={() => setChatModel('deepseek-chat')}
+                  style={{ marginTop: '4px', accentColor: '#38bdf8' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '0.95rem', color: (chatModel === 'deepseek-chat') ? '#38bdf8' : '#f8fafc' }}>
+                      ⚡ DeepSeek-V3（极速模式 · 国内直连推荐）
+                    </strong>
+                    <span style={{ fontSize: '0.7rem', background: '#0284c7', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                      毫秒极速
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                    国内毫秒级首字吐出，打字机超高速流式输出！中文自然语言辅导与数理逻辑极强，告别卡顿与延迟。
+                  </p>
+                </div>
+              </div>
+
+              {/* Gemini 2.5 Flash */}
+              <div
+                onClick={() => setChatModel('gemini-2.5-flash')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  border: (chatModel === 'gemini-2.5-flash') ? '1.5px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: (chatModel === 'gemini-2.5-flash') ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <input
+                  type="radio"
+                  name="chatModelOption"
+                  checked={chatModel === 'gemini-2.5-flash'}
+                  onChange={() => setChatModel('gemini-2.5-flash')}
+                  style={{ marginTop: '4px', accentColor: '#a855f7' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '0.95rem', color: (chatModel === 'gemini-2.5-flash') ? '#c084fc' : '#f8fafc' }}>
+                      🧠 Google Gemini 2.5 Flash（官方大模型 · 多模态图文）
+                    </strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                    谷歌官方大模型，已关闭长思考延迟直接极速出字，擅长复杂几何图形感知与课本全册跨学科检索。
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Section 2: AI 名师形象 */}
@@ -405,7 +494,7 @@ export default function SettingsModal({
           }}
         >
           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-            曾练专属私教 v1.3.4 · 人教版 1-9 年级
+            曾练专属私教 v1.3.7 · 人教版 1-9 年级
           </div>
           <button
             type="button"

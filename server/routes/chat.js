@@ -49,17 +49,48 @@ router.post('/chat', async (req, res) => {
 
     let results = [];
     let isQuotaExhausted = false;
-    try {
-      results = await performHybridSearch(searchQuery, grade, subject, RAG_TOP_K, edition);
-    } catch (err) {
-      logger.error("[RAG Error] Hybrid search failed:", err);
-      if (err.message === 'EMBED_QUOTA_EXHAUSTED' || err.message === 'QUOTA_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'))) {
-        isQuotaExhausted = true;
-        if (err.partialResults && Array.isArray(err.partialResults)) {
-          results = err.partialResults;
+    let memory = null;
+    let studentMemoryStr = '';
+    let graphRAGStr = '';
+
+    // Parallelize RAG Search and Student Cognitive Memory Retrieval
+    const searchPromise = (async () => {
+      if (isGreeting) return []; // Greeting skips heavy RAG search for instant response
+      try {
+        return await performHybridSearch(searchQuery, grade, subject, RAG_TOP_K, edition);
+      } catch (err) {
+        logger.error("[RAG Error] Hybrid search failed:", err);
+        if (err.message === 'EMBED_QUOTA_EXHAUSTED' || err.message === 'QUOTA_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'))) {
+          isQuotaExhausted = true;
+          if (err.partialResults && Array.isArray(err.partialResults)) {
+            return err.partialResults;
+          }
         }
+        return [];
       }
-    }
+    })();
+
+    const memoryPromise = (async () => {
+      try {
+        const mem = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
+        const memStr = formatStudentMemoryForPrompt(mem);
+        let gStr = '';
+        const diagnosis = diagnosePrerequisiteKnowledge(query, subject, mem?.recentWeakPoints);
+        if (diagnosis) {
+          gStr = formatGraphRAGPromptSection(diagnosis);
+        }
+        return { mem, memStr, gStr };
+      } catch (memErr) {
+        logger.warn('[Chat] Could not load student memory or GraphRAG:', memErr.message);
+        return { mem: null, memStr: '', gStr: '' };
+      }
+    })();
+
+    const [searchResults, memoryResult] = await Promise.all([searchPromise, memoryPromise]);
+    results = searchResults || [];
+    memory = memoryResult?.mem || null;
+    studentMemoryStr = memoryResult?.memStr || '';
+    graphRAGStr = memoryResult?.gStr || '';
 
     // Apply page offset correction and filename cleanup
     const correctedResults = results.map(r => {
@@ -92,22 +123,6 @@ router.post('/chat', async (req, res) => {
     }
 
     const slicedHistory = Array.isArray(history) ? history.slice(-10) : [];
-    let studentMemoryStr = '';
-    let graphRAGStr = '';
-    let memory = null;
-    try {
-      memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
-      studentMemoryStr = formatStudentMemoryForPrompt(memory);
-
-      // GraphRAG Root-Cause Prerequisite Tracing
-      const diagnosis = diagnosePrerequisiteKnowledge(query, subject, memory?.recentWeakPoints);
-      if (diagnosis) {
-        graphRAGStr = formatGraphRAGPromptSection(diagnosis);
-      }
-    } catch (memErr) {
-      logger.warn('[Chat] Could not load student memory or GraphRAG:', memErr.message);
-    }
-
     const fullContextMemory = `${studentMemoryStr}${graphRAGStr}`;
 
     // ── Jev Decision Layer ──────────────────────────────────────────
@@ -192,9 +207,15 @@ router.post('/chat', async (req, res) => {
       prompt = getChapterStartPrompt(chapterName, correctedResults, grade, subject);
     }
 
+    const generationConfig = {
+      temperature: 0.2,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 0 }
+    };
+
     const contentsPayload = {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+      generationConfig
     };
 
     await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id, model });

@@ -95,7 +95,7 @@ export default function Header({
   onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
   onOpenMembership, onOpenPoster, onOpenAdminConsole
 }) {
-  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, membershipStatus } = useAppStore();
+  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, membershipStatus, chatModel, setChatModel } = useAppStore();
   const isVip = membershipStatus?.is_vip;
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
   const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
@@ -289,6 +289,30 @@ export default function Header({
         >
           <span>{currentSocratic.icon}</span>
           <span className="btn-label">{currentSocratic.shortLabel}</span>
+        </button>
+
+        {/* 快速大模型引擎切换 (DeepSeek 极速 vs Gemini 深度) */}
+        <button
+          onClick={() => {
+            const nextModel = (chatModel === 'gemini-2.5-flash') ? 'deepseek-chat' : 'gemini-2.5-flash';
+            setChatModel(nextModel);
+          }}
+          className="header-btn-pill"
+          title={chatModel === 'gemini-2.5-flash'
+            ? '当前引擎：🧠 Gemini 2.5 Flash 深度模式 (点击快速切换为 ⚡ DeepSeek 极速模式)'
+            : '当前引擎：⚡ DeepSeek-V3 极速模式 (点击快速切换为 🧠 Gemini 2.5 深度模式)'}
+          aria-label="切换大模型引擎"
+          style={{
+            background: chatModel === 'gemini-2.5-flash'
+              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.15))'
+              : 'linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(6, 182, 212, 0.15))',
+            color: chatModel === 'gemini-2.5-flash' ? '#c084fc' : '#38bdf8',
+            borderColor: chatModel === 'gemini-2.5-flash' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)',
+            fontWeight: 600
+          }}
+        >
+          <span>{chatModel === 'gemini-2.5-flash' ? '🧠' : '⚡'}</span>
+          <span className="btn-label">{chatModel === 'gemini-2.5-flash' ? 'Gemini' : '极速'}</span>
         </button>
 
         <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />

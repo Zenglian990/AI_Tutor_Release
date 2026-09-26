@@ -211,7 +211,11 @@ ${contextSection}学生提问：${query}
           { text: prompt }
         ]
       }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     };
 
     // Stream response using shared SSE handler
