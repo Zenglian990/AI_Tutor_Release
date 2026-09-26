@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.4_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.4/ZengLian_AI_Tutor_v1.3.4.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.7_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-网页版即开即用-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.4)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.7)
 
 <br/>
 
@@ -18,10 +18,10 @@
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Mobile Dual](https://img.shields.io/badge/Mobile-Capacitor_Android_%26_iOS-3DDC84?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
-[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash_%26_DeepSeek-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
+[![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.3.4)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.4/ZengLian_AI_Tutor_v1.3.4.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.3.7 最新极速版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,9 +34,13 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📥 最新版安装包直链下载**：[ZengLian_AI_Tutor_v1.3.4.apk (约 8.9MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.4/ZengLian_AI_Tutor_v1.3.4.apk)
-- **📥 备用直链**：[ZengLian_AI_Tutor_v1.3.0.apk](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.0/ZengLian_AI_Tutor_v1.3.0.apk)
-- **✨ 特性**：全机型高保真独立语音通道、秒级朗读、原生 9:16 锁定竖屏全屏、零配置点开即用。
+- **📥 最新版安装包直链下载**：[ZengLian_AI_Tutor_v1.3.7.apk (约 7.4MB · 最新极速版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
+- **📥 稳定备用直链**：[ZengLian_AI_Tutor_v1.3.6.apk (约 7.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.6.apk)
+- **✨ 特性**：
+  - **⚡ 极速双引擎一键秒切**：顶栏新增【⚡ 极速 / 🧠 Gemini】胶囊按钮，国内直连首字 0.4 秒吐出；
+  - **🧠 Jev 1~9年级心智决策大脑**：本地 0 毫秒常驻分龄辅导策略注入；
+  - **全机型独立高清语音通道**、秒级朗读、原生 9:16 锁定竖屏全屏、零配置点开即用。
+  *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)
 - **🌟 方案 A（官方推荐·免签名免越狱·1秒添加至桌面）**：
@@ -98,12 +102,22 @@
 
 「曾练专属私教」摒弃了市面上传统搜题软件“直接给答案抄袭”的应试弊端，基于大语言模型与 LanceDB 精准教材向量知识库构建了真正的**“学-练-测-辅-管”全闭环 AI 私教智能体**：
 
-- 🧠 **1-9 年级分龄双模态心智引擎**：
-  - **1-3 年级（童趣萌芽模式）**：语言生动活泼、多比喻、多鼓励，保护孩子好奇心，建立专注习惯。
-  - **4-9 年级（逻辑严谨模式）**：引入思维脑图、多步推导支架、反向追问与防坑避雷，强化理性思维与几何/代数深层内功。
+- ⚡ **AI 极速双引擎（用户自主选择 · 严格执行）**：
+  - **DeepSeek-V3 极速版**：国内高速直连，首字响应（TTFT）低至 **0.4 秒**，问答干脆利落，体验行云流水。
+  - **Gemini 2.5 Flash 深度版**：原生多模态深度理解，复杂几何图形识别与大题长思维链推导更强悍。
+  - **顶栏一键秒切**：顶栏显式提供【⚡ 极速 / 🧠 Gemini】胶囊切换，严格执行用户所选模型，绝不擅自篡改。
+- 🧠 **Jev 1~9 年级心智模型决策大脑（本地零延迟常驻）**：
+  - **1-3 年级（童趣萌芽）**：生动趣味、情境背诵与具象化拆解，保护好奇心与专注习惯。
+  - **4-6 年级（条理与规范）**：强化计算验算、草稿纸规范演练与知识点分类收敛。
+  - **7-9 年级（严谨逻辑与中考攻坚）**：思维导图骨架梳理、反向追问防坑避雷、大题多步严密证明。
+  - **本地 0ms 启发式裁决**：毫秒级常驻本地，智能识别学生挫败情绪并自适应降级引导，坚决拦截跑题闲聊。
+- 🌊 **45ms 流式帧缓冲抗掉帧平滑渲染**：
+  - 前端独创基于 `requestAnimationFrame` 的 45ms 平滑渲染缓冲池，彻底解决 AI 吐字过快导致的 DOM 重绘抖动与掉帧卡顿，呈现如丝般顺滑的打字机交互体验。
+- 🖨️ **A4 纸质试卷排版与 39,114+ 母题名校题库闭环**：
+  - 内置 39,114+ 道覆盖人教版全学科的核心母题与名校模考题库，支持一键排版导出为标准 A4 考试卷与错题靶向变式卷，无缝连接线下纸笔实战。
 - 🗣️ **苏格拉底启发式交互（拒绝直接甩答案）**：
   - 遇到难题绝不直接给答案，而是通过层层递进的提问引导孩子自主思考（“你觉得第一步应该先求什么？”）。
-  - 内置语音朗读（TTS）、演练草稿纸、整页秒批、题眼与陷阱专项剖析。
+  - 内置语音朗读（TTS）、演练草稿纸、几何白板、整页秒批、题眼与陷阱专项剖析。
 - 🗺️ **游戏化知识图谱与关卡地图**：
   - 覆盖人教版 1-9 年级全学科章节图谱，将教材知识解构成探险副本。
   - 支持开启自由探索与闯关锁定，激发孩子自主通关的内生驱动力。
@@ -124,11 +138,15 @@
 
 ```mermaid
 graph TD
-    UserApp[📱 Android 原生 APK / 💻 Web 浏览器] -->|API 请求| Server(Node.js / Express 后端服务)
-    Server -->|教材向量检索| LanceDB[(LanceDB 向量知识库)]
-    Server -->|分龄 Prompt / 思维链| Gemini{Google Gemini 大模型}
+    UserApp[📱 Android 原生 APK / 💻 Web 浏览器] -->|45ms 流式帧缓冲| ClientUI[前端沉浸界面]
+    ClientUI -->|API 请求| Server(Node.js / Express 后端服务)
+    Server -->|本地零延迟 0ms 路由| JevEngine[🧠 Jev 1~9年级心智决策大脑]
+    JevEngine -->|分龄精准 Prompt / 挫败检测| ModelRouter{用户自选双引擎}
+    ModelRouter -->|⚡ 极速首字 0.4s| DeepSeek[DeepSeek-V3 引擎]
+    ModelRouter -->|🧠 深度多模态推导| Gemini[Gemini 2.5 Flash 引擎]
+    Server -->|教材与真题向量检索| LanceDB[(LanceDB 向量知识库 / 39,114+ 母题)]
     LanceDB -->|本地高速向量入库| PythonRAG[Python RAG 多模态提取管道]
-    PythonRAG -->|OCR & 结构切片| Textbooks[人教版 1-9 年级教材库]
+    PythonRAG -->|OCR & 结构切片| Textbooks[人教版 1-9 年级教材 & 名校真题]
 ```
 
 ---

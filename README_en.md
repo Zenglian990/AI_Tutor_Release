@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.4_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.4/ZengLian_AI_Tutor_v1.3.4.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.7_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.4)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.7)
 
 <br/>
 
@@ -18,10 +18,10 @@
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Mobile Dual](https://img.shields.io/badge/Mobile-Capacitor_Android_%26_iOS-3DDC84?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
-[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_Flash_%26_DeepSeek-brightgreen?style=flat-square)](https://deepmind.google/technologies/gemini/)
+[![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.3.4)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.4/ZengLian_AI_Tutor_v1.3.4.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.3.7 Latest Fast Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,9 +34,13 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.3.4.apk (~8.9MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.4/ZengLian_AI_Tutor_v1.3.4.apk)
-- **📥 Legacy Fallback**: [ZengLian_AI_Tutor_v1.3.0.apk](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.0/ZengLian_AI_Tutor_v1.3.0.apk)
-- **✨ Features**: High-fidelity universal audio channel, sub-second speech synthesis, strict 9:16 portrait lock, zero-configuration startup.
+- **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.3.7.apk (~7.4MB · Latest Ultra-Fast Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
+- **📥 Stable Fallback**: [ZengLian_AI_Tutor_v1.3.6.apk (~7.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.6.apk)
+- **✨ Features**:
+  - **⚡ Instant Dual-Engine Switching**: Top bar toggle button 【⚡ Fast / 🧠 Gemini】, mainland direct TTFT under 0.4s;
+  - **🧠 Jev K-9 Cognitive Brain**: 0ms local heuristic adaptive prompt injection based on developmental mental models;
+  - High-fidelity universal audio channel, sub-second speech synthesis, strict 9:16 portrait lock, zero-configuration startup.
+  *(Releases strictly maintain the 2 latest APK packages)*
 
 ### 🍎 2. iOS (iPhone & iPad)
 - **🌟 Method A (Recommended · Zero-Certificate · Add to Home Screen in 1s)**:
@@ -98,12 +102,22 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
 
 **ZengLian AI Tutor** eliminates the drawbacks of traditional "homework search engines" that encourage rote copying. Utilizing large language models and LanceDB textbook vector knowledge bases, it establishes a true **"Learn - Practice - Test - Guide - Manage" closed-loop tutoring agent**:
 
-- 🧠 **Dual-Modal Teaching Engines for Grades 1-9**:
-  - **Grades 1-3 (Playful Mode)**: Lively language, encouraging tone, and vivid metaphors to nurture curiosity and focus.
-  - **Grades 4-9 (Logical Mode)**: Employs mind maps, multi-step derivation scaffolding, and rigorous counter-questioning.
+- ⚡ **Dual Ultra-Fast AI Engines (User Freedom & Strict Execution)**:
+  - **DeepSeek-V3 Fast Edition**: Ultra-low Time-To-First-Token (**TTFT ~0.4s**) via domestic low-latency channels, crisp and responsive instant streaming.
+  - **Gemini 2.5 Flash Deep Edition**: Native multimodal vision processing, geometric diagram comprehension, and complex multi-step reasoning.
+  - **Instant One-Click Toggle**: Prominently accessible header capsule switch (【⚡ Fast / 🧠 Gemini】), strictly adhering to user selection without model spoofing.
+- 🧠 **Jev K-9 Cognitive Mental Engine (Zero-Latency Local Brain)**:
+  - **Grades 1-3 (Playful & Concrete)**: Engaging tone, situational recitations, visual breakdowns, focus nurturing.
+  - **Grades 4-6 (Order & Calculation Discipline)**: Structured scratchpad practice, step verification, mistake taxonomy.
+  - **Grades 7-9 (Rigorous Logic & High School Prep)**: Concept mind maps, counter-questioning, rigorous geometric/algebraic proofs.
+  - **Local 0ms Heuristic Decision**: Embedded locally with sub-millisecond execution, active frustration detection, dynamic scaffolding, and off-topic interception.
+- 🌊 **45ms RAF Smooth Streaming Buffer**:
+  - Proprietary `requestAnimationFrame`-based 45ms frame buffer, eliminating DOM jitter and frame drops during high-speed token generation for a butter-smooth typewriter experience.
+- 🖨️ **Printable A4 Exam Papers & 39,114+ National Exam Question Bank**:
+  - Built-in 39,114+ core curriculum and top-school mock exam questions, one-click export to standard A4 test papers and targeted mistake variation sheets for offline practice.
 - 🗣️ **Socratic Heuristic Tutoring**:
   - Guides students step-by-step rather than spoon-feeding final answers.
-  - Features real-time Text-to-Speech (TTS), draft scratchpad, instant full-page correction, and trap analysis.
+  - Features real-time Text-to-Speech (TTS), draft scratchpad, geometry whiteboard, instant full-page correction, and trap analysis.
 - 🗺️ **Gamified Knowledge Graph**:
   - Maps complete textbook curricula into explorable stages and dungeons with progressive locks.
 - 📒 **Mistake Closed Loop & Targeted Variation Practice**:
@@ -120,11 +134,15 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
 
 ```mermaid
 graph TD
-    UserApp[📱 Native Android APK / 💻 Web Browser] -->|API Requests| Server(Node.js / Express Server)
-    Server -->|Vector Search| LanceDB[(LanceDB Vector DB)]
-    Server -->|Age-Adaptive Prompts| Gemini{Google Gemini LLM}
+    UserApp[📱 Native Android APK / 💻 Web Browser] -->|45ms RAF Stream Buffer| ClientUI[Client Immersive UI]
+    ClientUI -->|API Requests| Server(Node.js / Express Server)
+    Server -->|Local 0ms Routing| JevEngine[🧠 Jev K-9 Cognitive Brain]
+    JevEngine -->|Grade-Adaptive Prompts / Frustration Guard| ModelRouter{User Dual-Engine Selector}
+    ModelRouter -->|⚡ Fast TTFT 0.4s| DeepSeek[DeepSeek-V3 Engine]
+    ModelRouter -->|🧠 Multimodal Deep Reasoning| Gemini[Gemini 2.5 Flash Engine]
+    Server -->|Textbooks & Exam RAG| LanceDB[(LanceDB Vector DB / 39,114+ Questions)]
     LanceDB -->|Fast Embeddings| PythonRAG[Python RAG Multimodal Ingestion]
-    PythonRAG -->|OCR & Chunking| Textbooks[1-9 Grade Textbooks Library]
+    PythonRAG -->|OCR & Chunking| Textbooks[K-9 Textbooks & National Exam Bank]
 ```
 
 ---
