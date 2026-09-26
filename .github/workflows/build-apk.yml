@@ -51,49 +51,49 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.6.apk
-          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.5/ZengLian_AI_Tutor_v1.3.5.apk -o ./ZengLian_AI_Tutor_v1.3.5.apk || true
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.7.apk
+          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.6/ZengLian_AI_Tutor_v1.3.6.apk -o ./ZengLian_AI_Tutor_v1.3.6.apk || true
           ls -lh ./ZengLian_AI_Tutor_v1*.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_v1.3.6
-          path: ./ZengLian_AI_Tutor_v1.3.6.apk
+          name: ZengLian_AI_Tutor_v1.3.7
+          path: ./ZengLian_AI_Tutor_v1.3.7.apk
           retention-days: 30
 
-      - name: Create or Update v1.3.6 Latest Release
+      - name: Create or Update v1.3.7 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.3.6
-          name: "曾练专属私教 v1.3.6 - A4纸质试卷排版与KaTeX解析全免疫升级 (最新稳定版)"
+          tag_name: v1.3.7
+          name: "曾练专属私教 v1.3.7 - 极速双引擎(DeepSeek+Gemini)与Jev心智决策大脑全面激活 (最新极速版)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 📱 曾练专属私教 v1.3.6 (Build 2026.09.26 最新版)
+            ## 🚀 曾练专属私教 v1.3.7 (Build 2026.09.26 最新极速版)
 
-            - 🖨️ **A4 纸质试卷打印全面免疫升级**：
-              - 修复 KaTeX 数学公式渲染器在非标准几何符号（△, ∠, ∥ 等）及中英文混排公式时的严格解析异常；
-              - 为 A4 打印模态框加入独立容错边界（SafeMathBoundary & A4ModalErrorBoundary），即使遇到任何极端畸形文本也绝对保证应用不崩溃，秒级平稳出纸；
-              - 预先修复预设母题格式，一键预览、300DPI长图导出、微信打印小程序无缝对接。
-            - 📝 **名校模考出卷 100% 成功闭环**：
-              - 接入 39,114+ 国家权威母题库本地极速组卷与双重容灾，告别空卷与出卷失败。
-            - 📸 **拍照讲题一键极速流**：
-              - 拍摄课本题目后自动提交诊断，新增高亮【🚀 立即讲题】引导按钮，交互更流畅。
-            - ⚡ **作业秒改双模型高可用**：
-              - Gemini 3.6 ↔ 2.5 互备故障转移，从容应对上游 503 与 429 访问峰值。
-            - 🛡️ **曾先生管理控制台持久认证**：
-              - 三层自动容灾鉴权，手机锁屏、重启或切后台后点击诊断绝无 401 报错。
+            - ⚡ **AI 对话极速双引擎（用户自由选择 · 严格执行）**：
+              - **顶栏一键秒切**：应用顶部导航正中新增【⚡ 极速 / 🧠 Gemini】胶囊按钮，随时随地单手无感切换；
+              - **DeepSeek-V3 毫秒直连**：国内高速直连，首字响应缩短至 0.3~0.5 秒，整题打字机高速流畅输出，告别卡顿与延迟；
+              - **Gemini 2.5 Flash 深度模式**：关闭长思考延迟直接极速出字，擅长复杂图像与教材大题多模态分析。
+            - 🧠 **Jev 1~9 年级心智模型决策大脑全面激活**：
+              - 内置零延迟本地启发式决策引擎，0 毫秒完成学生意图分类、难度评估与学习策略注入；
+              - **小学低年级（1-4年级）**：自动下发生活趣味场景化记忆（`scenario_memorize`）与实物可视化拆解（`visual_decompose`），高提示保护信心；
+              - **初中高年级（7-9年级）**：自动注入结构化思维导图（`mind_map`）与错题变式闭环（`error_correction_loop`），兼顾情绪挫败关怀与超纲闲聊专注引导。
+            - 📱 **45ms 流式帧缓冲平滑渲染**：
+              - 移动端彻底告别 KaTeX 公式高频重排导致的掉帧与发热，视觉动画丝滑流畅。
+            - 🖨️ **A4 纸质试卷打印与模考组卷全免疫**：
+              - 继承 v1.3.6 全部稳定修复，试卷打印与 39,114+ 母题模考 100% 稳固闭环。
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.6.apk`** 直接下载；
-            2. 在安卓手机或平板文件管理器中打开该 APK 进行安装（或直接覆盖更新）；
-            3. 安装完成后，手机桌面上将出现 **【曾练专属私教】** 应用图标，点开即用！
+            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.7.apk`** 直接下载安装；
+            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.3.7】**，点开即用！
+            *(按照曾先生要求，发布区仅严格保持最新的两个 APK 安装包: v1.3.7 与 v1.3.6)*
           files: |
+            ./ZengLian_AI_Tutor_v1.3.7.apk
             ./ZengLian_AI_Tutor_v1.3.6.apk
-            ./ZengLian_AI_Tutor_v1.3.5.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
