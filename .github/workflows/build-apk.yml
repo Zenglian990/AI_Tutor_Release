@@ -51,6 +51,7 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.6.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.5.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.4.apk
           cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.3.apk
@@ -63,39 +64,42 @@ jobs:
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_v1.3.5
-          path: ./ZengLian_AI_Tutor_v1.3.5.apk
+          name: ZengLian_AI_Tutor_v1.3.6
+          path: ./ZengLian_AI_Tutor_v1.3.6.apk
           retention-days: 30
 
-      - name: Create or Update v1.3.5 Latest Release
+      - name: Create or Update v1.3.6 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.3.5
-          name: "曾练专属私教 v1.3.5 - 模考出卷与拍照讲题全功能闭环 (最新修复版)"
+          tag_name: v1.3.6
+          name: "曾练专属私教 v1.3.6 - A4纸质试卷排版与KaTeX解析全免疫升级 (最新稳定版)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 📱 曾练专属私教 v1.3.5 (Build 2026.09.24 晚间更新)
+            ## 📱 曾练专属私教 v1.3.6 (Build 2026.09.26 最新版)
 
+            - 🖨️ **A4 纸质试卷打印全面免疫升级**：
+              - 修复 KaTeX 数学公式渲染器在非标准几何符号（△, ∠, ∥ 等）及中英文混排公式时的严格解析异常；
+              - 为 A4 打印模态框加入独立容错边界（SafeMathBoundary & A4ModalErrorBoundary），即使遇到任何极端畸形文本也绝对保证应用不崩溃，秒级平稳出纸；
+              - 预先修复预设母题格式，一键预览、300DPI长图导出、微信打印小程序无缝对接。
             - 📝 **名校模考出卷 100% 成功闭环**：
               - 接入 39,114+ 国家权威母题库本地极速组卷与双重容灾，告别空卷与出卷失败。
             - 📸 **拍照讲题一键极速流**：
               - 拍摄课本题目后自动提交诊断，新增高亮【🚀 立即讲题】引导按钮，交互更流畅。
             - ⚡ **作业秒改双模型高可用**：
               - Gemini 3.6 ↔ 2.5 互备故障转移，从容应对上游 503 与 429 访问峰值。
-            - 🖨️ **A4 试卷打印体验升级**：
-              - 新增 300DPI 全屏高清排版预览、一键复制全文试卷及微信一键打印指引。
             - 🛡️ **曾先生管理控制台持久认证**：
               - 三层自动容灾鉴权，手机锁屏、重启或切后台后点击诊断绝无 401 报错。
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.5.apk`** 直接下载；
+            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.6.apk`** 直接下载；
             2. 在安卓手机或平板文件管理器中打开该 APK 进行安装（或直接覆盖更新）；
             3. 安装完成后，手机桌面上将出现 **【曾练专属私教】** 应用图标，点开即用！
           files: |
+            ./ZengLian_AI_Tutor_v1.3.6.apk
             ./ZengLian_AI_Tutor_v1.3.5.apk
             ./ZengLian_AI_Tutor_v1.3.4.apk
             ./ZengLian_AI_Tutor_v1.3.3.apk

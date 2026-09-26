@@ -9,22 +9,52 @@ import { formatGrade, getApiUrl, authFetch } from '../store/useStore';
 import ParentalGate from './ParentalGate';
 
 /**
+ * Component-level error boundary for mathematical expression rendering.
+ * Falls back to plain text if KaTeX or Markdown parsing encounters an anomaly.
+ */
+class SafeMathBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error) {
+    console.warn('A4MathContent render error, falling back to raw text:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#111827' }}>
+          {this.props.fallbackText}
+        </span>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**
  * Safe LaTeX & Markdown renderer for A4 Paper
  */
 function A4MathContent({ content }) {
   if (!content) return null;
+  const rawText = String(content);
   return (
-    <div className="a4-math-content" style={{ lineHeight: '1.7', wordBreak: 'break-word', color: '#111827' }}>
-      <ReactMarkdown
-        remarkPlugins={[remarkMath, remarkGfm]}
-        rehypePlugins={[rehypeKatex]}
-        components={{
-          p: ({ children }) => <span style={{ display: 'inline' }}>{children}</span>
-        }}
-      >
-        {preprocessLatex(String(content))}
-      </ReactMarkdown>
-    </div>
+    <SafeMathBoundary fallbackText={rawText}>
+      <div className="a4-math-content" style={{ lineHeight: '1.7', wordBreak: 'break-word', color: '#111827' }}>
+        <ReactMarkdown
+          remarkPlugins={[remarkMath, remarkGfm]}
+          rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+          components={{
+            p: ({ children }) => <span style={{ display: 'inline' }}>{children}</span>
+          }}
+        >
+          {preprocessLatex(rawText)}
+        </ReactMarkdown>
+      </div>
+    </SafeMathBoundary>
   );
 }
 
@@ -37,7 +67,7 @@ function A4MathContent({ content }) {
  * 3. 【错题靶向筛选】：支持全卷打印与仅打印失分错题（薄弱点集中重练）
  * 4. 【标准考卷排版】：密封线、考生信息栏、赋分明细、公式级 LaTeX 排版、防反光纯白打印优化
  */
-export default function A4PrintModal({
+function A4PrintModalInner({
   isOpen,
   onClose,
   studentName = '曾练',
@@ -58,8 +88,20 @@ export default function A4PrintModal({
   const [orgName, setOrgName] = useState('曾先生智慧私教中心');
   const [showOrgInput, setShowOrgInput] = useState(false);
   const [showNetworkPrinterModal, setShowNetworkPrinterModal] = useState(false);
-  const [printerIp, setPrinterIp] = useState(() => localStorage.getItem('printer_lan_ip') || '192.168.1.200');
-  const [printerPort, setPrinterPort] = useState(() => localStorage.getItem('printer_lan_port') || '9100');
+  const [printerIp, setPrinterIp] = useState(() => {
+    try {
+      return localStorage.getItem('printer_lan_ip') || '192.168.1.200';
+    } catch {
+      return '192.168.1.200';
+    }
+  });
+  const [printerPort, setPrinterPort] = useState(() => {
+    try {
+      return localStorage.getItem('printer_lan_port') || '9100';
+    } catch {
+      return '9100';
+    }
+  });
   const [printerSending, setPrinterSending] = useState(false);
   const [printerMsg, setPrinterMsg] = useState('');
   const sheetRef = useRef(null);
@@ -90,26 +132,26 @@ export default function A4PrintModal({
       title: '压轴动点与面积变式挑战',
       body: '某动点 P 从点 A 出发沿射线 AB 运动，速度为每秒 2 个单位。若 AB = 10，当点 P 运动 t 秒时，△PAC 的面积恰好等于 △ABC 面积的一半，求运动时间 t 的所有可能值。',
       score: 12,
-      standardAnswer: '【解】点 P 在射线 AB 上运动，AP = 2t。\n因为 △PAC 与 △ABC 具有相同的底边方向且点 C 到 AB 所在直线的垂线高相同，\n所以 S_{△PAC} = \\frac{1}{2} S_{△ABC} 等价于 AP = \\frac{1}{2} AB。\n∵ AB = 10，∴ AP = 5。\n即 2t = 5 ⇒ t = 2.5 秒。',
+      standardAnswer: '【解】点 P 在射线 AB 上运动，AP = 2t。\n因为 △PAC 与 △ABC 具有相同的底边方向且点 C 到 AB 所在直线的垂线高相同，\n所以 $S_{\\triangle PAC} = \\frac{1}{2} S_{\\triangle ABC}$ 等价于 $AP = \\frac{1}{2} AB$。\n∵ AB = 10，∴ AP = 5。\n即 2t = 5 ⇒ t = 2.5 秒。',
       keyInsight: '同高模型面积比等于底边比；注意射线运动是否存在分类讨论（点P越过B点后的面积关系）。',
       status: 'wrong'
     }
   ];
 
-  const rawList = questions.length > 0 ? questions : defaultQuestions;
+  const rawList = Array.isArray(questions) && questions.length > 0 ? questions : defaultQuestions;
 
   // Normalized question objects
   const processedQuestions = rawList.map((q, idx) => ({
-    id: q.id || idx + 1,
-    questionNumber: q.questionNumber || (idx + 1),
-    title: q.title || `第 ${q.questionNumber || (idx + 1)} 题 (${q.type || '试题'})`,
-    body: q.body || q.questionSnippet || q.originalText || q.content || q.text || `题目 #${idx + 1}`,
-    score: q.score || q.maxScore || 10,
-    standardAnswer: q.standardAnswer || q.standard_answer || q.answer || '',
-    keyInsight: q.keyInsight || q.analysis || q.explanation || '',
-    mistakeReason: q.mistakeReason || '',
-    studentAnswer: q.studentAnswer || '',
-    status: q.status || 'unknown'
+    id: q?.id || idx + 1,
+    questionNumber: q?.questionNumber || (idx + 1),
+    title: q?.title || `第 ${q?.questionNumber || (idx + 1)} 题 (${q?.type || '试题'})`,
+    body: q?.body || q?.questionSnippet || q?.originalText || q?.content || q?.text || `题目 #${idx + 1}`,
+    score: q?.score || q?.maxScore || 10,
+    standardAnswer: q?.standardAnswer || q?.standard_answer || q?.answer || '',
+    keyInsight: q?.keyInsight || q?.analysis || q?.explanation || '',
+    mistakeReason: q?.mistakeReason || '',
+    studentAnswer: q?.studentAnswer || '',
+    status: q?.status || 'unknown'
   }));
 
   const wrongCount = processedQuestions.filter(q => q.status === 'wrong' || q.status === 'partial').length;
@@ -130,11 +172,21 @@ export default function A4PrintModal({
       handleExportImage();
       return;
     }
-    window.print();
+    try {
+      window.print();
+    } catch (e) {
+      console.warn('window.print failed, falling back to image export:', e);
+      handleExportImage();
+    }
   };
 
   const handleSwitchToAnswers = () => {
-    const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
+    let isAntiCheatLocked = true;
+    try {
+      isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
+    } catch {
+      isAntiCheatLocked = true;
+    }
     if (isAntiCheatLocked && printMode === 'blank_student') {
       setShowGate(true);
     } else {
@@ -1127,5 +1179,91 @@ export default function A4PrintModal({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Modal-level Error Boundary to isolate any unexpected rendering crashes,
+ * ensuring the main application never crashes into global ErrorBoundary.
+ */
+class A4ModalErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('A4PrintModal boundary caught error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      if (!this.props.isOpen) return null;
+      return (
+        <div className="a4-print-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: '28px 24px',
+            maxWidth: '460px',
+            width: '90%',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+            color: '#0f172a'
+          }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📑</div>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '1.15rem', fontWeight: 700 }}>
+              试卷打印排版加载提示
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '20px' }}>
+              试卷中部分特殊公式或样式在当前设备环境下解析异常，已为您安全隔离。您可以重新打开或使用系统快捷打印。
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  this.props.onClose?.();
+                }}
+                style={{
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '9px 24px',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                关闭窗口
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function A4PrintModal(props) {
+  if (!props.isOpen) return null;
+  return (
+    <A4ModalErrorBoundary isOpen={props.isOpen} onClose={props.onClose}>
+      <A4PrintModalInner {...props} />
+    </A4ModalErrorBoundary>
   );
 }

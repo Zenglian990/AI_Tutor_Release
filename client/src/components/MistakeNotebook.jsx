@@ -390,7 +390,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                   <div className="mistake-answer">
                     <strong>解析：</strong>
                     <div className="md-content">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{preprocessLatex(m.answer)}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(m.answer)}</ReactMarkdown>
                     </div>
                   </div>
                 ) : (
@@ -409,7 +409,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                       <div className="mistake-variation" style={{ marginTop: '24px', padding: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))', border: '1px solid rgba(96, 165, 250, 0.2)', borderLeft: '5px solid #3b82f6', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(10px)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '14px', color: '#60a5fa', fontSize: '1.05rem', textShadow: '0 0 10px rgba(96,165,250,0.2)' }}>🎯 变式提优挑战</div>
                         <div className="md-content">
-                          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{preprocessLatex(variations[m.id])}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(variations[m.id])}</ReactMarkdown>
                         </div>
                         {!variationFeedbacks[m.id] && (
                           <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -432,7 +432,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                           <div style={{ marginTop: '20px', padding: '20px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(4, 120, 87, 0.18))', border: '1px solid rgba(16, 185, 129, 0.25)', borderLeft: '5px solid #10b981', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '12px', color: '#10b981', fontSize: '1.02rem' }}>👨‍🏫 专属AI私教点评：</div>
                             <div className="md-content">
-                              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{preprocessLatex(variationFeedbacks[m.id])}</ReactMarkdown>
+                              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(variationFeedbacks[m.id])}</ReactMarkdown>
                             </div>
                           </div>
                         )}

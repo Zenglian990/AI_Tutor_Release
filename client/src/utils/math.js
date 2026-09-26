@@ -55,6 +55,10 @@ export const preprocessLatex = (text) => {
     const lines = processed.split('\n');
     const enrichedLines = lines.map(line => {
       const trimmed = line.trim();
+      // If line contains Chinese characters, it is prose with mixed formulas, NOT a standalone pure LaTeX equation!
+      if (/[\u4e00-\u9fa5]/.test(trimmed)) {
+        return line;
+      }
       if (!trimmed.includes('$') && (
         trimmed.includes('\\quad') ||
         trimmed.includes('\\text{') ||

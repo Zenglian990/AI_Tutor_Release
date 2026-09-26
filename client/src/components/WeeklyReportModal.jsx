@@ -57,7 +57,7 @@ export default function WeeklyReportModal({ isOpen, onClose, reportLoading, repo
                   <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>每周学情同步 · 家校协同反馈卡</div>
                 </div>
                 <div style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
-                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>
                     {preprocessLatex(reportData)}
                   </ReactMarkdown>
                 </div>
@@ -69,7 +69,7 @@ export default function WeeklyReportModal({ isOpen, onClose, reportLoading, repo
               </div>
 
               {/* On-Screen Report */}
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>
                 {preprocessLatex(reportData)}
               </ReactMarkdown>
             </>

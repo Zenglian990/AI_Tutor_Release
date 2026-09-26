@@ -62,7 +62,7 @@ function MathMarkdown({ content }) {
     <div className="math-markdown-container" style={{ lineHeight: '1.6', wordBreak: 'break-word' }}>
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
         components={{
           p: ({ children }) => <span style={{ display: 'inline' }}>{children}</span>
         }}

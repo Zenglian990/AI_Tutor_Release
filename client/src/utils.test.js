@@ -21,6 +21,13 @@ describe('Frontend Utils: preprocessLatex', () => {
     const output = preprocessLatex(input);
     expect(output).toBe(input);
   });
+
+  it('does not wrap Chinese prose containing raw math tokens in display math $$', () => {
+    const input = '所以 S_{△PAC} = \\frac{1}{2} S_{△ABC} 等价于 AP = \\frac{1}{2} AB。';
+    const output = preprocessLatex(input);
+    expect(output).not.toContain('$$');
+    expect(output).toBe(input);
+  });
 });
 
 describe('Frontend Utils: splitThinkingContent', () => {
