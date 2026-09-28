@@ -130,8 +130,9 @@ export default function Header({
           tabIndex={0}
           aria-label="应用图标"
           onKeyDown={e => e.key === 'Enter' && onClearChat && onClearChat()}
+          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >
-          🎓
+          <img src="/pwa-192x192.png" alt="曾练专属私教" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 2px 8px rgba(59,130,246,0.2)' }} />
         </div>
         <div className="header-brand">
           <h1>{getTranslation(language, 'app.title')}</h1>
