@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { fetchWithKeyRotation, buildChatURL } = require('./embedding');
-const { ProxyAgent, fetch: undiciFetch } = require('undici');
+const { ProxyAgent, fetch: undiciFetch, WebSocket: UndiciWebSocket } = require('undici');
 const { proxyUrl } = require('../config');
 const logger = require('./logger');
 
@@ -29,6 +29,131 @@ function splitIntoPunctuationChunks(text, maxLen = 120) {
   }
   if (current && current.trim()) chunks.push(current.trim());
   return chunks.filter(Boolean);
+}
+
+/**
+ * Edge-TTS: Ultra-realistic Microsoft Neural Voice Synthesis
+ * Voices:
+ * - zh-CN-XiaoxiaoNeural (温柔亲和女名师，低中年级首选)
+ * - zh-CN-YunxiNeural (阳光活力男名师，初中首选)
+ * - zh-CN-YunjianNeural (稳重成熟男名师)
+ */
+async function synthesizeViaEdge(text, voice = 'zh-CN-XiaoxiaoNeural') {
+  const WebSocketImpl = (typeof globalThis.WebSocket !== 'undefined') ? globalThis.WebSocket : UndiciWebSocket;
+  if (!WebSocketImpl) {
+    throw new Error('WebSocket not available in runtime');
+  }
+
+  const TRUSTED_TOKEN = '6A5AA1D4EA654B9B83E9285E2AB480F4';
+  const connId = crypto.randomUUID().replace(/-/g, '');
+  const wsUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${TRUSTED_TOKEN}&ConnectionId=${connId}`;
+
+  let selectedEdgeVoice = voice;
+  if (!selectedEdgeVoice.startsWith('zh-CN-')) {
+    selectedEdgeVoice = 'zh-CN-XiaoxiaoNeural';
+  }
+
+  return new Promise((resolve, reject) => {
+    let ws;
+    let timer = null;
+    const audioChunks = [];
+    let isFinished = false;
+
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      if (ws) {
+        try { ws.close(); } catch (e) {}
+      }
+    };
+
+    timer = setTimeout(() => {
+      if (!isFinished) {
+        isFinished = true;
+        cleanup();
+        reject(new Error('Edge TTS timeout (3500ms)'));
+      }
+    }, 3500);
+
+    try {
+      ws = new WebSocketImpl(wsUrl, {
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
+          'Origin': 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold'
+        }
+      });
+    } catch (e) {
+      cleanup();
+      return reject(e);
+    }
+
+    ws.onopen = () => {
+      const configMsg = `Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`;
+      ws.send(configMsg);
+
+      const reqId = crypto.randomUUID().replace(/-/g, '');
+      const escapedText = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      const ssmlMsg = `X-RequestId:${reqId}\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='zh-CN'><voice name='${selectedEdgeVoice}'><prosody rate='+4%' pitch='+0Hz'>${escapedText}</prosody></voice></speak>`;
+      ws.send(ssmlMsg);
+    };
+
+    ws.onmessage = async (event) => {
+      const data = event.data;
+      if (typeof data === 'string') {
+        if (data.includes('Path:turn.end')) {
+          if (!isFinished) {
+            isFinished = true;
+            cleanup();
+            if (audioChunks.length > 0) {
+              resolve(Buffer.concat(audioChunks));
+            } else {
+              reject(new Error('Edge TTS received empty audio'));
+            }
+          }
+        }
+      } else {
+        let buf;
+        if (Buffer.isBuffer(data)) {
+          buf = data;
+        } else if (data instanceof ArrayBuffer) {
+          buf = Buffer.from(data);
+        } else if (data && data.arrayBuffer) {
+          buf = Buffer.from(await data.arrayBuffer());
+        }
+        if (buf && buf.length > 2) {
+          const headerLen = buf.readUInt16BE(0);
+          if (buf.length > 2 + headerLen) {
+            const audioData = buf.subarray(2 + headerLen);
+            audioChunks.push(audioData);
+          }
+        }
+      }
+    };
+
+    ws.onerror = (err) => {
+      if (!isFinished) {
+        isFinished = true;
+        cleanup();
+        reject(err || new Error('Edge TTS WebSocket error'));
+      }
+    };
+
+    ws.onclose = () => {
+      if (!isFinished) {
+        isFinished = true;
+        cleanup();
+        if (audioChunks.length > 0) {
+          resolve(Buffer.concat(audioChunks));
+        } else {
+          reject(new Error('Edge TTS closed prematurely'));
+        }
+      }
+    };
+  });
 }
 
 async function synthesizeViaGoogle(text) {
@@ -103,6 +228,23 @@ function translateMathToChinese(formula) {
     '=': '等于',
     '<': '小于',
     '>': '大于',
+    '\\triangle': '三角形',
+    '\\angle': '角',
+    '\\cong': '全等于',
+    '\\sim': '相似于',
+    '\\parallel': '平行于',
+    '\\perp': '垂直于',
+    '\\odot': '圆',
+    '\\circ': '度',
+    '\\degree': '度',
+    '\\because': '因为',
+    '\\therefore': '所以',
+    '\\subset': '包含于',
+    '\\supset': '包含',
+    '\\in': '属于',
+    '\\notin': '不属于',
+    '\\cup': '并集',
+    '\\cap': '交集',
     // Semantic math functions — translate before the blanket \\[a-zA-Z]+ sweep
     '\\sin': '正弦',
     '\\cos': '余弦',
@@ -278,7 +420,24 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
     return ttsCache.get(cacheKey);
   }
 
-  // Tier 1: Instant Neural TTS (Google Speech, ~1s, MP3)
+  // Tier 1: Microsoft Edge Neural TTS (Natural, emotional, high-fidelity)
+  try {
+    const edgeMp3Buffer = await synthesizeViaEdge(text, voice);
+    if (edgeMp3Buffer && edgeMp3Buffer.length > 0) {
+      edgeMp3Buffer.contentType = 'audio/mp3';
+      if (ttsCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = ttsCache.keys().next().value;
+        ttsCache.delete(firstKey);
+      }
+      ttsCache.set(cacheKey, edgeMp3Buffer);
+      logger.info(`[TTS] Edge Neural TTS synthesized ${edgeMp3Buffer.length} bytes MP3 (voice: ${voice}) for: "${text.substring(0, 30)}..."`);
+      return edgeMp3Buffer;
+    }
+  } catch (err) {
+    logger.warn(`[TTS] Edge Neural TTS failed (${err.message}), falling back to Google TTS...`);
+  }
+
+  // Tier 2: Google Speech TTS (Fallback)
   try {
     const mp3Buffer = await synthesizeViaGoogle(text);
     if (mp3Buffer && mp3Buffer.length > 0) {
@@ -288,14 +447,14 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
         ttsCache.delete(firstKey);
       }
       ttsCache.set(cacheKey, mp3Buffer);
-      logger.info(`[TTS] Neural TTS synthesized ${mp3Buffer.length} bytes MP3 for: "${text.substring(0, 30)}..."`);
+      logger.info(`[TTS] Google Speech TTS synthesized ${mp3Buffer.length} bytes MP3 for: "${text.substring(0, 30)}..."`);
       return mp3Buffer;
     }
   } catch (err) {
-    logger.warn(`[TTS] Neural TTS failed (${err.message}), falling back to Gemini TTS...`);
+    logger.warn(`[TTS] Google Speech TTS failed (${err.message}), falling back to Gemini TTS...`);
   }
 
-  // Tier 2: Gemini Audio TTS (Fallback)
+  // Tier 3: Gemini Audio TTS (Fallback)
   const geminiVoice = mapVoiceToGemini(voice);
 
   const TTS_CANDIDATE_MODELS = ['gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];

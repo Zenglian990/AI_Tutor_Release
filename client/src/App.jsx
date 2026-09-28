@@ -26,6 +26,7 @@ import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
 import MembershipModal from './components/MembershipModal';
 import AdminConsoleModal from './components/AdminConsoleModal';
 import ParentSharePosterModal from './components/ParentSharePosterModal';
+import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -83,6 +84,7 @@ function AppInner() {
   const [voiceDialogueOpen, setVoiceDialogueOpen] = useState(false);
   const [voiceDialogueMode, setVoiceDialogueMode] = useState('speaking'); // 'speaking' | 'listening' | 'processing'
   const [currentFocusQuestion, setCurrentFocusQuestion] = useState('');
+  const [liveSpokenText, setLiveSpokenText] = useState('');
 
   // Macro Evolution States (Roadmap, A4 Exam, Parent Memo, Homework Batch Grade, Gamification Badges)
   const [showRoadmap, setShowRoadmap] = useState(false);
@@ -95,6 +97,8 @@ function AppInner() {
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
   const [showAdminConsole, setShowAdminConsole] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
     return localStorage.getItem('ai_tutor_minor_privacy_consented') !== 'true';
   });
@@ -122,6 +126,8 @@ function AppInner() {
   const mediaRecorderRef = useRef(null);
   const recordingTimerRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const recognitionRef = useRef(null);
+  const liveTranscriptRef = useRef('');
   const gradeRef = useRef(currentProfile.grade);
   const subjectRef = useRef(selectedSubject);
   const messagesRef = useRef(messages);
@@ -222,10 +228,56 @@ function AppInner() {
     }
   }, []);
 
-  // Enhanced Voice recording engine with timer, mime detection & error handling
+  // Dual-Engine Voice recording & Streaming STT (Web Speech API 实时出字 + MediaRecorder 服务端兜底)
   const startVoiceRecording = useCallback(async (isDialogueLoop = false) => {
     try {
       audioChunksRef.current = [];
+      liveTranscriptRef.current = '';
+      setLiveSpokenText('');
+
+      // 1. 尝试激活端侧原生 Web Speech 实时流式出字引擎 (边说边出字，0.3s 感知延迟)
+      const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+      if (SpeechRecognition) {
+        try {
+          const rec = new SpeechRecognition();
+          rec.lang = 'zh-CN';
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.maxAlternatives = 1;
+          recognitionRef.current = rec;
+
+          rec.onresult = (event) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                final += transcript;
+              } else {
+                interim += transcript;
+              }
+            }
+            const currentSpoken = (final || interim).trim();
+            if (currentSpoken) {
+              liveTranscriptRef.current = currentSpoken;
+              setLiveSpokenText(currentSpoken);
+              if (!isDialogueLoop) {
+                setInput(currentSpoken);
+              }
+            }
+          };
+
+          rec.onerror = (e) => {
+            console.warn('[STT] Native SpeechRecognition notice:', e.error);
+          };
+
+          rec.start();
+        } catch (recErr) {
+          console.warn('[STT] Native SpeechRecognition initialization warning:', recErr);
+        }
+      }
+
+      // 2. 同时启动底层 MediaRecorder 录音流（作为服务端高鲁棒兜底双引擎）
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       let options = {};
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
@@ -243,7 +295,26 @@ function AppInner() {
           clearTimeout(recordingTimerRef.current);
           recordingTimerRef.current = null;
         }
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch (e) {}
+          recognitionRef.current = null;
+        }
         stream.getTracks().forEach(track => track.stop());
+
+        // 优先检查原生实时识别流是否已捕获到字词 (0ms 极速响应，无需等待网络)
+        const instantText = liveTranscriptRef.current?.trim();
+        if (instantText && instantText.length > 0) {
+          setIsListening(false);
+          setIsLoading(false);
+          if (isDialogueLoop) {
+            setVoiceDialogueOpen(false);
+            handleSubmit(null, instantText, null, true);
+          } else {
+            setInput(instantText);
+          }
+          return;
+        }
+
         const mime = options.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mime });
         if (audioBlob.size < 300) {
@@ -277,7 +348,7 @@ function AppInner() {
               const spokenText = data.text.trim();
               if (isDialogueLoop) {
                 setVoiceDialogueOpen(false);
-                handleSubmit(null, spokenText);
+                handleSubmit(null, spokenText, null, true);
               } else {
                 setInput(prev => {
                   const base = prev.startsWith('🎙️') ? '' : prev.trim();
@@ -328,6 +399,10 @@ function AppInner() {
       clearTimeout(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+      recognitionRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
@@ -356,7 +431,7 @@ function AppInner() {
   }, [previewImage]);
 
   // Chat submit
-  const handleSubmit = useCallback(async (e, customText, directFile = null) => {
+  const handleSubmit = useCallback(async (e, customText, directFile = null, isVoiceMode = false) => {
     if (e && e.preventDefault) e.preventDefault();
     const activeFile = directFile || imageFile;
     const textToSubmit = (customText !== undefined && customText !== null) ? customText : input;
@@ -414,7 +489,8 @@ function AppInner() {
             student_name: currentProfile?.name || '',
             socratic: socraticLevel,
             edition: editionRef.current,
-            model: chatModel
+            model: chatModel,
+            voice_mode: isVoiceMode
           })
         });
       }
@@ -537,19 +613,26 @@ function AppInner() {
     } finally { setIsLoading(false); }
   }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
 
-  // Image handling
+  // Image handling with Smart Cropper (对标作业帮/小猿取景搜题)
   const handleImageSelect = useCallback(e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    if (previewImage) URL.revokeObjectURL(previewImage);
-    const objectUrl = URL.createObjectURL(file);
-    setImageFile(file);
-    setPreviewImage(objectUrl);
+    setPhotoToCrop(file);
+    setShowCropper(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
 
-    // 如果从首页“拍照讲题”入口触发，拍照/选图后立即发起智能讲题，避免用户困惑“拍完照怎么没反应”
+  const handleCropperConfirm = useCallback((croppedFile, croppedDataUrl) => {
+    setShowCropper(false);
+    setPhotoToCrop(null);
+    if (previewImage) URL.revokeObjectURL(previewImage);
+    setImageFile(croppedFile);
+    setPreviewImage(croppedDataUrl);
+
+    // 如果从首页“拍照讲题”入口触发，拍照裁剪后立即发起智能讲题，避免用户困惑“拍完照怎么没反应”
     if (isDirectPhotoSolveRef.current) {
       isDirectPhotoSolveRef.current = false;
-      handleSubmit(null, '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！', file);
+      handleSubmit(null, '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！', croppedFile);
     }
   }, [previewImage, handleSubmit]);
 
@@ -888,6 +971,7 @@ function AppInner() {
         mode={voiceDialogueMode}
         studentName={currentProfile?.name || '曾练'}
         currentQuestionText={currentFocusQuestion}
+        liveSpokenText={liveSpokenText}
         countdownSeconds={8}
         onInterrupt={() => {
           if (voiceDialogueMode === 'speaking') {
@@ -967,6 +1051,16 @@ function AppInner() {
         onClose={() => setShowMembershipModal(false)}
       />
 
+      {/* 智能拍照搜题取景框与去阴影裁剪器 (对标作业帮/小猿) */}
+      <SmartPhotoCropperModal
+        isOpen={showCropper}
+        imageFile={photoToCrop}
+        onConfirm={handleCropperConfirm}
+        onClose={() => {
+          setShowCropper(false);
+          setPhotoToCrop(null);
+        }}
+      />
 
       <PrivacyConsentModal
         isOpen={showPrivacyConsent}

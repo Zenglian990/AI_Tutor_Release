@@ -16,6 +16,13 @@ describe('Frontend Utils: preprocessLatex', () => {
     expect(output).toBe('Let $ a^2 + b^2 = c^2 $ be the equation.');
   });
 
+  it('correctly normalizes display math $$ ... $$ without breaking into broken single dollars', () => {
+    const input = '第二步：写首步公式 ✏️\n\n$$ 3\\text{千克} \\div 6 = 0.5\\text{千克} $$\n(1 个苹果的重量)';
+    const output = preprocessLatex(input);
+    expect(output).toContain('$$\n3\\text{千克} \\div 6 = 0.5\\text{千克}\n$$');
+    expect(output).not.toMatch(/(?<!\$)\$\s*\n+\s*3\\text/);
+  });
+
   it('preserves code blocks without corrupting them', () => {
     const input = '```python\nprint("\\( not math \\)")\n```';
     const output = preprocessLatex(input);
@@ -99,4 +106,36 @@ describe('Offline Socratic Engine (Pure Client-Side)', () => {
     expect(sisterRes).toContain('做完记得把草稿留存');
   });
 });
+
+import { isLowerGrade, injectPinyinToChildren } from './utils/pinyinHelper';
+
+describe('Pinyin Annotation Helper (1-3 Grade)', () => {
+  it('identifies 1-3 grades as lower grade', () => {
+    expect(isLowerGrade('1_up')).toBe(true);
+    expect(isLowerGrade('1_down')).toBe(true);
+    expect(isLowerGrade('2_up')).toBe(true);
+    expect(isLowerGrade('3_down')).toBe(true);
+    expect(isLowerGrade('一年级')).toBe(true);
+    expect(isLowerGrade('三年级上册')).toBe(true);
+    expect(isLowerGrade('7_up')).toBe(false);
+    expect(isLowerGrade('8')).toBe(false);
+    expect(isLowerGrade('9_down')).toBe(false);
+  });
+
+  it('injects ruby and rt tags to Chinese text when active', () => {
+    const res = injectPinyinToChildren('加法计算', true);
+    expect(res).not.toBeNull();
+    // React element should contain dangerouslySetInnerHTML with ruby tags
+    expect(res.props?.dangerouslySetInnerHTML?.__html).toContain('<ruby>');
+    expect(res.props?.dangerouslySetInnerHTML?.__html).toContain('<rt');
+    expect(res.props?.dangerouslySetInnerHTML?.__html).toContain('jiā');
+  });
+
+  it('leaves text unchanged when pinyin is inactive', () => {
+    const raw = '这是正常文本';
+    const res = injectPinyinToChildren(raw, false);
+    expect(res).toBe(raw);
+  });
+});
+
 

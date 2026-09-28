@@ -7,6 +7,9 @@ import { preprocessLatex } from '../utils/math'
 import DOMPurify from 'dompurify';
 import { initMermaid, sanitizeMermaid, mermaid } from '../utils/mermaid_helper';
 import { splitThinkingContent } from '../utils/thinking';
+import { useAppStore } from '../store/useStore';
+import { isLowerGrade, injectPinyinToChildren } from '../utils/pinyinHelper';
+import VariantPracticeModal from './VariantPracticeModal';
 
 initMermaid();
 
@@ -239,6 +242,12 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
     }
   };
 
+  const { currentProfile, pinyinMode, setPinyinMode, selectedGrade, selectedSubject } = useAppStore();
+  const [showVariantModal, setShowVariantModal] = useState(false);
+  const activeGrade = msg.grade || selectedGrade || currentProfile?.grade || '7_up';
+  const isPrimary = isLowerGrade(activeGrade);
+  const isPinyinActive = (pinyinMode ?? true) && isPrimary && msg.role === 'ai';
+
   const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
   const { thinking, body: cleanAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
 
@@ -301,6 +310,20 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                 remarkPlugins={[remarkMath, remarkGfm]} 
                 rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
                 components={{
+                  p({node, children, ...props}) {
+                    return (
+                      <p {...props} style={isPinyinActive ? { lineHeight: '2.1' } : {}}>
+                        {injectPinyinToChildren(children, isPinyinActive)}
+                      </p>
+                    );
+                  },
+                  li({node, children, ...props}) {
+                    return (
+                      <li {...props} style={isPinyinActive ? { lineHeight: '2.1' } : {}}>
+                        {injectPinyinToChildren(children, isPinyinActive)}
+                      </li>
+                    );
+                  },
                   h3({node, children, ...props}) {
                     const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
                     let icon = '💡';
@@ -465,6 +488,37 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                   {isPlaying ? "⏹️ 停止朗读" : isLoadingAudio ? "⏳ 正在加载语音..." : "🔊 语音朗读"}
                 </button>
               )}
+              {msg.role === 'ai' && isPrimary && (
+                <button
+                  type="button"
+                  onClick={() => setPinyinMode(p => !p)}
+                  className="tts-btn"
+                  style={{ 
+                    background: isPinyinActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.1)', 
+                    color: isPinyinActive ? '#10b981' : '#94a3b8', 
+                    borderColor: isPinyinActive ? '#10b981' : 'rgba(148, 163, 184, 0.3)' 
+                  }}
+                  title="为 1-3 年级切换汉字拼音注音（对标斑马/小猿）"
+                >
+                  {isPinyinActive ? '🔤 拼音: 开' : '🔤 拼音: 关'}
+                </button>
+              )}
+              {msg.role === 'ai' && !isStreaming && (
+                <button
+                  type="button"
+                  onClick={() => setShowVariantModal(true)}
+                  className="tts-btn"
+                  style={{ 
+                    background: 'rgba(16, 185, 129, 0.12)', 
+                    color: '#10b981', 
+                    borderColor: 'rgba(16, 185, 129, 0.4)',
+                    fontWeight: '600'
+                  }}
+                  title="基于本题核心考点，生成同类巩固与避坑拔高变式题（对标作业帮）"
+                >
+                  🎯 举一反三·变式通关
+                </button>
+              )}
             </div>
             </div>
         ) : (
@@ -491,6 +545,17 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
         </div>
       )}
       
+      {showVariantModal && (
+        <VariantPracticeModal
+          isOpen={showVariantModal}
+          onClose={() => setShowVariantModal(false)}
+          originalQuestion={displayMessageText}
+          originalAnswer={cleanAiBody}
+          grade={activeGrade}
+          subject={selectedSubject || '数学'}
+          studentName={currentProfile?.name || '曾练'}
+        />
+      )}
 
     </div>
   );

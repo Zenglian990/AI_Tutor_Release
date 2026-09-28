@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.7_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.4.0_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-网页版即开即用-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.7)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.4.0)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.3.7 最新极速版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.4.0 最新高质感版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,12 +34,14 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📥 最新版安装包直链下载**：[ZengLian_AI_Tutor_v1.3.7.apk (约 7.4MB · 最新极速版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
-- **📥 稳定备用直链**：[ZengLian_AI_Tutor_v1.3.6.apk (约 7.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.6.apk)
-- **✨ 特性**：
-  - **⚡ 极速双引擎一键秒切**：顶栏新增【⚡ 极速 / 🧠 Gemini】胶囊按钮，国内直连首字 0.4 秒吐出；
-  - **🧠 Jev 1~9年级心智决策大脑**：本地 0 毫秒常驻分龄辅导策略注入；
-  - **全机型独立高清语音通道**、秒级朗读、原生 9:16 锁定竖屏全屏、零配置点开即用。
+- **📥 最新版安装包直链下载**：[ZengLian_AI_Tutor_v1.4.0.apk (约 8.4MB · 对标作业帮/小猿重磅质感版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk)
+- **📥 稳定备用直链**：[ZengLian_AI_Tutor_v1.3.7.apk (约 7.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.3.7.apk)
+- **✨ v1.4.0 重磅特性 (全面对标作业帮与小猿搜题)**：
+  - **🎯 举一反三·变式通关流**：解答或批改错题后一键生成【同类母题巩固】+【避坑拔高变式】，即做即批，形成教学闭环；
+  - **📐 整页拍照自动分题点选**：一键识别画面所有题目外接矩形框（Bounding Box），点击任意题号直接吸附裁剪，告别繁琐手动拖拽；
+  - **✔/✘ 原卷智能批改红叉绿勾盖章**：整卷批改 100% 在原图坐标标记打勾打叉，点击红叉就地开启变式训练；
+  - **📷 零依赖真实五感反馈引擎**：内置 Web Audio 合成真实单反快门音效、闯关成功和弦音及机身触觉震动；
+  - **🎙️ Edge Neural 微软云端极高保真音色**与数学公式无损口语转译。
   *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)

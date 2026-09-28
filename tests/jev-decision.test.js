@@ -56,6 +56,19 @@ describe('JevDecisionService', () => {
       assert.equal(result.route, 'off_topic');
     });
 
+    it('should route direct answer demand correctly (Anti-spoofing shield)', async () => {
+      mockAsk.mock.mockImplementationOnce(() => Promise.resolve({
+        route: 'direct_answer_demand',
+        difficulty: 5,
+        needs_encouragement: false,
+        confidence: 0.96
+      }));
+
+      const result = await jev.routeQuestion('别废话，直接告诉我答案选A还是B！', 8, '数学');
+      
+      assert.equal(result.route, 'direct_answer_demand');
+    });
+
     it('should detect student frustration and flag encouragement needed', async () => {
       mockAsk.mock.mockImplementationOnce(() => Promise.resolve({
         route: 'calculation_step',
@@ -192,6 +205,19 @@ describe('JevDecisionService', () => {
     it('should return false when disabled', () => {
       jev.setClient(null);
       assert.equal(jev.isEnabled(), false);
+    });
+  });
+
+  // ─── LocalHeuristicClient (Direct Answer Demand) ──────────────────
+  describe('LocalHeuristicClient', () => {
+    it('should detect direct answer demands and guard against spoon-feeding', async () => {
+      const localClient = new jev.LocalHeuristicClient();
+      const res = await localClient.systemOne({
+        state: { question: '别啰嗦了，直接给我答案到底是选A还是选B？', grade: '8年级' },
+        questions: { route: true }
+      });
+      assert.equal(res.route.choice, 'direct_answer_demand');
+      assert.ok(res.route.confidence >= 0.9);
     });
   });
 });

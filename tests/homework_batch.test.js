@@ -212,3 +212,51 @@ test('Homework Batch API: auto-corrects false wrong status when reason indicates
   }
 });
 
+test('Homework Batch API: cleanly handles unreadable/blurry photo with 0 questions without synthesizing fake question', async () => {
+  currentMockVisionResponse = {
+    candidates: [{
+      content: {
+        parts: [{
+          text: JSON.stringify({
+            totalCount: 0,
+            correctCount: 0,
+            wrongCount: 0,
+            accuracyPct: 0,
+            summaryHeadline: "图片中的试卷拍摄距离较远且存在倾斜和模糊，无法清晰识别具体题目和手写答案。",
+            teacherPraise: "",
+            teacherAdvice: "请重新正对试卷平铺拍摄，确保字迹清晰、光线均匀，以便进行精准的智能批改。",
+            results: []
+          })
+        }]
+      }
+    }]
+  };
+
+  try {
+    const png1x1 = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082', 'hex');
+    const boundary = '----WebKitFormBoundaryBatchTest3' + Math.random().toString(36).substring(2);
+    let body = `--${boundary}\r\nContent-Disposition: form-data; name="student_name"\r\n\r\n曾练\r\n--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="hw.png"\r\nContent-Type: image/png\r\n\r\n`;
+
+    const payload = Buffer.concat([
+      Buffer.from(body, 'utf-8'),
+      png1x1,
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8')
+    ]);
+
+    const res = await fetch(`${baseUrl}/api/homework/batch-grade`, {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+      body: payload
+    });
+
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.totalCount, 0);
+    assert.strictEqual(data.results.length, 0);
+    assert.ok(data.summaryHeadline.includes('无法清晰识别'));
+    assert.strictEqual(data.autoArchivedCount, 0);
+  } finally {
+    currentMockVisionResponse = null;
+  }
+});
+

@@ -234,4 +234,103 @@ ${contextSection}学生提问：${query}
   }
 });
 
+// POST /api/vision/detect-questions
+// 对标小猿搜题：整页拍图自动分题与多题目外接框快速检测
+router.post('/detect-questions', upload.single('image'), async (req, res) => {
+  try {
+    const imageBuffer = req.file?.buffer;
+    const mimeType = req.file?.mimetype || 'image/jpeg';
+    if (!imageBuffer) {
+      return res.status(400).json({ error: '请上传需要分题检测的整页照片' });
+    }
+
+    const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
+    const { extractAndParseJson } = require('../utils/jsonParser');
+
+    const base64Image = imageBuffer.toString('base64');
+
+    const prompt = `你是一位专业的教育视觉版面分析专家（对标小猿搜题/作业帮多题自动框选系统）。
+请仔细观察这张试卷或作业整页图片，识别出画面中出现的所有独立题目（如第1题、第2题、第3题...或者各个大题、小题）。
+针对每一道题目，估算其在整张图片中的归一化矩形包围框（Bounding Box），坐标范围均为 0.0 到 1.0 之间：
+- x: 题目左上角横坐标 (0.0 表示最左侧，1.0 表示最右侧)
+- y: 题目左上角纵坐标 (0.0 表示最顶部，1.0 表示最底部)
+- width: 题目的宽度 (0.0 到 1.0)
+- height: 题目的高度 (0.0 到 1.0)
+
+【严格输出纯 JSON 格式，绝不允许带有任何额外开场白】：
+{
+  "total_questions": 2,
+  "question_boxes": [
+    {
+      "id": 1,
+      "title": "第 1 题",
+      "snippet": "题目开头简述（15字以内）",
+      "box": { "x": 0.05, "y": 0.06, "width": 0.90, "height": 0.22 }
+    }
+  ]
+}`;
+
+    const contentsPayload = {
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: mimeType, data: base64Image } },
+          { text: prompt }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048
+      }
+    };
+
+    const response = await fetchWithKeyRotation(buildChatURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contentsPayload)
+    }, 2, 60000);
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = extractAndParseJson(rawText);
+
+    if (parsed && Array.isArray(parsed.question_boxes) && parsed.question_boxes.length > 0) {
+      // 坐标范围合法性消毒 (确保 0 <= val <= 1)
+      const sanitizedBoxes = parsed.question_boxes.map((q, idx) => {
+        const b = q.box || {};
+        let x = Math.max(0, Math.min(1, Number(b.x) || 0.05));
+        let y = Math.max(0, Math.min(1, Number(b.y) || 0.05));
+        let w = Math.max(0.05, Math.min(1 - x, Number(b.width) || 0.9));
+        let h = Math.max(0.05, Math.min(1 - y, Number(b.height) || 0.2));
+        return {
+          id: q.id || (idx + 1),
+          title: q.title || `第 ${idx + 1} 题`,
+          snippet: q.snippet || '题目内容',
+          box: { x, y, width: w, height: h }
+        };
+      });
+
+      return res.json({
+        success: true,
+        question_boxes: sanitizedBoxes
+      });
+    }
+
+    // 默认兜底：若未识别出多题，返回一个居中的标准选框
+    return res.json({
+      success: true,
+      question_boxes: [
+        {
+          id: 1,
+          title: "整题选区",
+          snippet: "单题聚焦",
+          box: { x: 0.05, y: 0.08, width: 0.9, height: 0.84 }
+        }
+      ]
+    });
+  } catch (err) {
+    logger.error('Detect questions error:', err);
+    res.status(500).json({ error: '自动分题识别失败，请使用手动框选' });
+  }
+});
+
 module.exports = router;

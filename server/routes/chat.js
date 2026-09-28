@@ -13,7 +13,7 @@ const jev = require('../services/jevDecisionService');
 // POST /api/chat — main chat endpoint with SSE streaming
 router.post('/chat', async (req, res) => {
   try {
-    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name } = req.body;
+    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode } = req.body;
     if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
     if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
 
@@ -177,6 +177,9 @@ router.post('/chat', async (req, res) => {
       jevContextStr += `\n【Jev 智能决策参考（本段信息用于指导你的回答策略，不要对学生提及）】：\n`;
       jevContextStr += `- 问题类型路由：${jevDecision.route}（置信度：${(jevDecision.confidence * 100).toFixed(0)}%）\n`;
       jevContextStr += `- 估算难度：${jevDecision.difficulty}/10\n`;
+      if (jevDecision.route === 'direct_answer_demand') {
+        jevContextStr += `- ⚠️ 防套答案坚固护栏触发：学生在催促直接给最终答案或选项。严禁直接告知答案或选项字母！请以亲切幽默且坚定的名师口吻拒绝直接给答案（如‘老师进不了考场，咱们花30秒攻破第一步，你一定能自己做出来！’），并抛出草稿纸上的第一步动笔设问引导他。\n`;
+      }
       if (jevDecision.needsEncouragement) {
         jevContextStr += `- ⚠️ 检测到学生可能感到困惑或沮丧，请在回答开头给予温暖的情感鼓励\n`;
       }
@@ -198,7 +201,12 @@ router.post('/chat', async (req, res) => {
       }
     }
 
-    const enrichedContextMemory = `${fullContextMemory}${jevContextStr}`;
+    let voiceModeStr = '';
+    if (voice_mode) {
+      voiceModeStr = `\n【🚨 面对面语音交流特别指令（对标真人名师口头辅导）】：\n当前学生正在与你进行【口语实时对话互动】！你的回答将直接合成为语音播放。\n1. 严禁输出长篇大论、Markdown复杂排版、大面积公式罗列！\n2. 每次开口只能讲 1~3 句话（严格控制在 35~55 字以内），口吻亲切自然、充满启发。\n3. 结尾必须抛出一个关键设问或第一步动笔支架，引导学生开口作答。\n`;
+    }
+
+    const enrichedContextMemory = `${fullContextMemory}${jevContextStr}${voiceModeStr}`;
     let prompt = getChatPrompt(query, correctedResults, slicedHistory, grade, subject, socratic, enrichedContextMemory);
 
     // Intercept Active Chapter Start Action

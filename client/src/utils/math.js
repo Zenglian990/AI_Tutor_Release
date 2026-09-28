@@ -13,50 +13,38 @@ export const preprocessLatex = (text) => {
       return part; // Skip replacements inside code blocks
     }
     
-    let processed = part
-      .replace(/\\\[/g, () => '\n$$\n') // Replace \[ with \n$$\n
-      .replace(/\\\]/g, () => '\n$$\n') // Replace \] with \n$$\n
-      .replace(/\\\(/g, () => '$')      // Replace \( with $
-      .replace(/\\\)/g, () => '$');     // Replace \) with $
+    let processed = part;
 
-    // 1. Separate $$ from preceding text on same line (e.g. "得到: $$" -> "得到:\n\n$$")
-    processed = processed.replace(/([^\n$])\s*\$\$/g, '$1\n\n$$');
-    // 2. Separate $$ from following text on same line (e.g. "$$ 结果" -> "$$\n\n结果")
-    processed = processed.replace(/\$\$\s*([^\n$])/g, '$$\n\n$1');
+    // 1. Convert display math \[ ... \] to clean \n\n$$\n...\n$$\n\n
+    processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`);
 
-    // 3. Normalize educational card headers into standardized Markdown h3 cards
+    // 2. Convert inline math \( ... \) to $ ... $
     processed = processed
-      .replace(/^#{0,4}\s*(?:🎯\s*)?(?:\*\*|【)?(?:经典母题模型挑战|母题挑战|挑战题|母题模型挑战)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 🎯【经典母题模型挑战】\n\n')
-      .replace(/^#{0,4}\s*(?:✏️\s*)?(?:\*\*|【)?(?:第一步[：:]\s*动笔设问支架|动笔设问支架|动笔支架|设问支架|第一步动笔支架)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### ✏️【第一步：动笔设问支架】\n\n')
-      .replace(/^#{0,4}\s*(?:🎯\s*)?(?:\*\*|【)?(?:题眼穿透|核心题眼)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 🎯【题眼穿透】\n\n')
-      .replace(/^#{0,4}\s*(?:💡\s*)?(?:\*\*|【)?(?:步骤拆解与锦囊|步骤拆解|解题锦囊)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 💡【步骤拆解与锦囊】\n\n')
-      .replace(/^#{0,4}\s*(?:🔥\s*)?(?:\*\*|【)?(?:母题举一反三|举一反三微练过关|举一反三|微练习题|微练习|同类微练)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 🔥【举一反三微练过关】\n\n');
+      .replace(/\\\(/g, () => '$')
+      .replace(/\\\)/g, () => '$');
 
-    // 4. Ensure list items have clean spacing so CommonMark parsers don't print raw asterisks
-    const rawLines = processed.split('\n');
-    const fixedLines = [];
-    for (let i = 0; i < rawLines.length; i++) {
-      const line = rawLines[i];
+    // 3. Fallback for stray \[ or \]
+    processed = processed
+      .replace(/\\\[/g, () => '\n$$\n')
+      .replace(/\\\]/g, () => '\n$$\n');
+
+    // 4. Detect standalone lines that look like raw LaTeX formulas but lack $ or $$
+    // e.g. "a-2 = 0 \quad \text{且} \quad b+3 = 0" or "3\text{千克} \div 6 = 0.5\text{千克}"
+    const rawFormulaLines = processed.split('\n');
+    let insideDisplayMath = false;
+    const enrichedLines = rawFormulaLines.map(line => {
       const trimmed = line.trim();
-      const isBullet = /^(?:[*+-]|\d+\.)\s+/.test(trimmed);
-      if (isBullet && i > 0) {
-        const prevTrimmed = rawLines[i - 1].trim();
-        const prevIsBullet = /^(?:[*+-]|\d+\.)\s+/.test(prevTrimmed);
-        if (prevTrimmed !== '' && !prevIsBullet && !prevTrimmed.startsWith('#')) {
-          fixedLines.push(''); // insert blank line before new list block
-        }
+      if (trimmed === '$$') {
+        insideDisplayMath = !insideDisplayMath;
+        return line;
       }
-      fixedLines.push(line);
-    }
-    processed = fixedLines.join('\n');
+      if (insideDisplayMath) {
+        return line;
+      }
 
-    // 5. Detect standalone lines that look like raw LaTeX formulas but lack $ or $$
-    // e.g. "a-2 = 0 \quad \text{且} \quad b+3 = 0" or "\triangle ABC \cong \triangle A'B'C'"
-    const lines = processed.split('\n');
-    const enrichedLines = lines.map(line => {
-      const trimmed = line.trim();
-      // If line contains Chinese characters, it is prose with mixed formulas, NOT a standalone pure LaTeX equation!
-      if (/[\u4e00-\u9fa5]/.test(trimmed)) {
+      // If line contains Chinese characters OUTSIDE of \text{...}, it is prose with mixed formulas
+      const nonMathText = trimmed.replace(/\\text\{[^}]*\}/g, '');
+      if (/[\u4e00-\u9fa5]/.test(nonMathText)) {
         return line;
       }
       if (!trimmed.includes('$') && (
@@ -86,18 +74,53 @@ export const preprocessLatex = (text) => {
         trimmed.includes('\\beta') ||
         trimmed.includes('\\theta')
       )) {
-        // Wrap raw math line in display block
         return `\n$$\n${trimmed}\n$$\n`;
       }
       return line;
     });
     processed = enrichedLines.join('\n');
 
-    // 6. Balance unclosed $$ during streaming
+    // 5. Normalize any $$ ... $$ blocks so they are strictly clean display math:
+    // \n\n$$\n<formula>\n$$\n\n
+    // Note: NEVER use string replacement like '$$\n$1' because in JS '$$' is an escape for a single '$'!
+    processed = processed.replace(/(?<!\$)\$\$(?!\$)([\s\S]*?)(?<!\$)\$\$(?!\$)/g, (_, formula) => {
+      return `\n\n$$\n${formula.trim()}\n$$\n\n`;
+    });
+
+    // 6. Normalize educational card headers into standardized Markdown h3 cards
+    processed = processed
+      .replace(/^#{0,4}\s*(?:🎯\s*)?(?:\*\*|【)?(?:经典母题模型挑战|母题挑战|挑战题|母题模型挑战)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 🎯【经典母题模型挑战】\n\n')
+      .replace(/^#{0,4}\s*(?:✏️\s*)?(?:\*\*|【)?(?:第一步[：:]\s*动笔设问支架|动笔设问支架|动笔支架|设问支架|第一步动笔支架)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### ✏️【第一步：动笔设问支架】\n\n')
+      .replace(/^#{0,4}\s*(?:🎯\s*)?(?:\*\*|【)?(?:题眼穿透|核心题眼)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 🎯【题眼穿透】\n\n')
+      .replace(/^#{0,4}\s*(?:💡\s*)?(?:\*\*|【)?(?:步骤拆解与锦囊|步骤拆解|解题锦囊)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 💡【步骤拆解与锦囊】\n\n')
+      .replace(/^#{0,4}\s*(?:🔥\s*)?(?:\*\*|【)?(?:母题举一反三|举一反三微练过关|举一反三|微练习题|微练习|同类微练)(?:\*\*|】)?\s*[:：]?\s*$/gmi, '\n\n### 🔥【举一反三微练过关】\n\n');
+
+    // 8. Ensure list items have clean spacing so CommonMark parsers don't print raw asterisks
+    const rawLines = processed.split('\n');
+    const fixedLines = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const trimmed = line.trim();
+      const isBullet = /^(?:[*+-]|\d+\.)\s+/.test(trimmed);
+      if (isBullet && i > 0) {
+        const prevTrimmed = rawLines[i - 1].trim();
+        const prevIsBullet = /^(?:[*+-]|\d+\.)\s+/.test(prevTrimmed);
+        if (prevTrimmed !== '' && !prevIsBullet && !prevTrimmed.startsWith('#')) {
+          fixedLines.push(''); // insert blank line before new list block
+        }
+      }
+      fixedLines.push(line);
+    }
+    processed = fixedLines.join('\n');
+
+    // 9. Balance unclosed $$ during streaming
     const countDouble = (processed.match(/\$\$/g) || []).length;
     if (countDouble % 2 !== 0) {
       processed += '\n$$';
     }
+
+    // 10. Collapse excessive newlines (\n\n\n+ -> \n\n)
+    processed = processed.replace(/\n{3,}/g, '\n\n');
 
     return processed;
   }).join('');

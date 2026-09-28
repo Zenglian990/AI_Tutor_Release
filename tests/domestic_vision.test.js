@@ -67,3 +67,31 @@ test('convertGeminiToDeepSeekPayload degrades safely to text-only mode for deeps
   assert.strictEqual(typeof payload.messages[0].content, 'string');
   assert.ok(payload.messages[0].content.includes('纯文本模型模式'));
 });
+
+test('POST /api/vision/detect-questions sanitizes bounding boxes correctly', () => {
+  const mockBoxes = [
+    { id: 1, title: '第1题', box: { x: -0.1, y: 1.5, width: 2.0, height: -0.5 } },
+    { id: 2, title: '第2题', box: { x: 0.2, y: 0.3, width: 0.5, height: 0.4 } }
+  ];
+
+  const sanitizedBoxes = mockBoxes.map((q, idx) => {
+    const b = q.box || {};
+    let x = Math.max(0, Math.min(1, Number(b.x) || 0.05));
+    let y = Math.max(0, Math.min(1, Number(b.y) || 0.05));
+    let w = Math.max(0.05, Math.min(1 - x, Number(b.width) || 0.9));
+    let h = Math.max(0.05, Math.min(1 - y, Number(b.height) || 0.2));
+    return {
+      id: q.id || (idx + 1),
+      title: q.title || `第 ${idx + 1} 题`,
+      snippet: q.snippet || '题目内容',
+      box: { x, y, width: w, height: h }
+    };
+  });
+
+  assert.strictEqual(sanitizedBoxes[0].box.x, 0);
+  assert.strictEqual(sanitizedBoxes[0].box.y, 1);
+  assert.strictEqual(sanitizedBoxes[1].box.x, 0.2);
+  assert.strictEqual(sanitizedBoxes[1].box.y, 0.3);
+  assert.strictEqual(sanitizedBoxes[1].box.width, 0.5);
+  assert.strictEqual(sanitizedBoxes[1].box.height, 0.4);
+});

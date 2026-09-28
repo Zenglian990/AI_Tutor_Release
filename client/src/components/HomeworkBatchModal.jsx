@@ -6,8 +6,10 @@ import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch } from '../store/useStore';
 import { compressImage } from '../utils/image';
 import { enhanceDocumentFile, sliceQuestionsLocally, eraseTeacherRedInkFile } from '../utils/documentEnhancer';
+import { inspectImageQuality } from '../utils/imageQualityInspector';
 import { preprocessLatex } from '../utils/math';
 import A4PrintModal from './A4PrintModal';
+import VariantPracticeModal from './VariantPracticeModal';
 
 /**
  * Robust Client-Side JSON Recovery Safeguard
@@ -29,8 +31,8 @@ function recoverJsonIfEmbedded(data) {
           .replace(/,\s*([\]}])/g, '$1')
           .replace(/\\(?:([^"\\/bfnrtu])|([bft][a-zA-Z]))/g, (m, p1, p2) => (p1 ? '\\\\' + p1 : '\\\\' + p2));
         const parsed = JSON.parse(repaired);
-        if (parsed && Array.isArray(parsed.results) && parsed.results.length > 0) {
-          const total = parsed.totalCount || parsed.results.length;
+        if (parsed && Array.isArray(parsed.results)) {
+          const total = parsed.totalCount ?? parsed.results.length;
           const correct = parsed.correctCount ?? parsed.results.filter(r => r.status === 'correct').length;
           const wrong = parsed.wrongCount ?? parsed.results.filter(r => r.status === 'wrong').length;
           return {
@@ -38,7 +40,7 @@ function recoverJsonIfEmbedded(data) {
             totalCount: total,
             correctCount: correct,
             wrongCount: wrong,
-            accuracyPct: parsed.accuracyPct ?? Math.round((correct / Math.max(1, total)) * 100),
+            accuracyPct: parsed.accuracyPct ?? (total > 0 ? Math.round((correct / Math.max(1, total)) * 100) : 0),
             summaryHeadline: parsed.summaryHeadline || data.summaryHeadline,
             teacherPraise: parsed.teacherPraise || data.teacherPraise,
             teacherAdvice: parsed.teacherAdvice || data.teacherAdvice,
@@ -162,9 +164,12 @@ export default function HomeworkBatchModal({
   const [showA4Print, setShowA4Print] = useState(false);
   const [showVisualMap, setShowVisualMap] = useState(true);
   const [highlightedQNum, setHighlightedQNum] = useState(null);
+  const [activeInspectQ, setActiveInspectQ] = useState(null);
+  const [variantTargetQ, setVariantTargetQ] = useState(null);
   const [cleanedPaperUrl, setCleanedPaperUrl] = useState(null);
   const [erasingInk, setErasingInk] = useState(false);
   const [showCleanModal, setShowCleanModal] = useState(false);
+  const [qualityInfo, setQualityInfo] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -176,6 +181,20 @@ export default function HomeworkBatchModal({
     setErrorMsg('');
     setBatchResult(null);
     setFilterTab('all');
+
+    // 端侧毫秒级拍照质量与模糊度预检
+    try {
+      const objUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const q = inspectImageQuality(img);
+        setQualityInfo(q);
+        URL.revokeObjectURL(objUrl);
+      };
+      img.src = objUrl;
+    } catch (err) {
+      console.warn('[HomeworkBatch] Quality inspector error:', err);
+    }
   };
 
   const handleStartBatchGrade = async () => {
@@ -276,6 +295,8 @@ export default function HomeworkBatchModal({
     setErrorMsg('');
     setFilterTab('all');
     setHighlightedQNum(null);
+    setActiveInspectQ(null);
+    setQualityInfo(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -412,9 +433,25 @@ export default function HomeworkBatchModal({
                       alt="整页作业待批改"
                       style={{ maxHeight: '360px', maxWidth: '100%', borderRadius: '12px', objectFit: 'contain', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}
                     />
-                    <p style={{ marginTop: '12px', fontSize: '0.85rem', color: '#38bdf8' }}>
+                    <p style={{ marginTop: '12px', marginBottom: '6px', fontSize: '0.85rem', color: '#38bdf8' }}>
                       📸 已选取图片，点击可重新更换照片
                     </p>
+                    {qualityInfo && (
+                      <div style={{
+                        padding: '6px 14px',
+                        borderRadius: '12px',
+                        fontSize: '0.84rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: qualityInfo.isGood ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.2)',
+                        border: `1px solid ${qualityInfo.isGood ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.45)'}`,
+                        color: qualityInfo.isGood ? '#34d399' : '#fbbf24'
+                      }}>
+                        <span>{qualityInfo.isGood ? '✅' : '💡'}</span>
+                        <span>{qualityInfo.message}</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -530,6 +567,105 @@ export default function HomeworkBatchModal({
                       <span>开始整页智能批改</span>
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          ) : (!batchResult.results || batchResult.results.length === 0) ? (
+            /* Unclear / Empty Homework Result Guidance Card */
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '20px',
+              padding: '32px 20px',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85))',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: '16px'
+            }}>
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '50%',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem'
+              }}>
+                📷
+              </div>
+
+              <div style={{ maxWidth: '640px' }}>
+                <div style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '6px' }}>
+                  【{subject}】作业识别提醒
+                </div>
+                <h3 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', color: '#fff', fontWeight: 700, lineHeight: 1.4 }}>
+                  {batchResult.summaryHeadline || '未能在图片中识别出清晰完整的题目'}
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6' }}>
+                  {batchResult.teacherAdvice || '请重新对准试卷平铺拍摄，确保字迹清晰、光线均匀，以便 AI 名师进行精准秒批。'}
+                </p>
+              </div>
+
+              {/* 拍摄建议指南 */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                maxWidth: '600px',
+                width: '100%',
+                textAlign: 'left'
+              }}>
+                <div style={{ fontSize: '0.88rem', color: '#38bdf8', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💡</span>
+                  <span>拍摄提升小贴士（对标小猿/作业帮拍题标准）：</span>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.8' }}>
+                  <li><strong>垂直正对平铺</strong>：将试卷平铺在桌面上，手机正对试卷俯拍，避免角度过大倾斜。</li>
+                  <li><strong>光线明亮均匀</strong>：在明亮光线下拍摄，避免阴影遮挡或反光虚化。</li>
+                  <li><strong>原图直接拍摄</strong>：建议直接拍摄纸质试卷或习题册，避免使用手机截图内嵌小图。</li>
+                  <li><strong>对焦清晰稳定</strong>：轻触手机屏幕对焦，确保手写答案与印刷字体清晰锐利。</li>
+                </ul>
+              </div>
+
+              {/* 操作按钮 */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  onClick={handleReset}
+                  style={{
+                    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '12px 28px',
+                    borderRadius: '10px',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <span>📸</span>
+                  <span>重新拍照或选取作业</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    color: '#cbd5e1',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  稍后再试
                 </button>
               </div>
             </div>
@@ -754,13 +890,22 @@ export default function HomeworkBatchModal({
 
                       {/* Overlay Bounding Boxes */}
                       {(batchResult.results || []).map((q, idx) => {
+                        const total = (batchResult.results || []).length || 1;
                         const box = q.box_2d;
-                        if (!box || !Array.isArray(box) || box.length !== 4) return null;
-                        const [ymin, xmin, ymax, xmax] = box;
+                        // 智能网格兜底，确保若模型未返回box_2d时原图上依然百分之百打上红叉绿勾
+                        const [ymin, xmin, ymax, xmax] = (box && Array.isArray(box) && box.length === 4)
+                          ? box
+                          : [
+                              Math.floor((idx / total) * 880) + 40,
+                              30,
+                              Math.floor(((idx + 1) / total) * 880) + 20,
+                              970
+                            ];
+
                         const top = `${ymin / 10}%`;
                         const left = `${xmin / 10}%`;
-                        const height = `${(ymax - ymin) / 10}%`;
-                        const width = `${(xmax - xmin) / 10}%`;
+                        const height = `${Math.max(6, (ymax - ymin) / 10)}%`;
+                        const width = `${Math.max(10, (xmax - xmin) / 10)}%`;
                         const isCorrect = q.status === 'correct';
                         const isWrong = q.status === 'wrong';
                         const isHighlighted = highlightedQNum === q.questionNumber;
@@ -776,12 +921,11 @@ export default function HomeworkBatchModal({
                           <div
                             key={idx}
                             onClick={() => {
+                              setActiveInspectQ(q);
                               setHighlightedQNum(q.questionNumber);
-                              const el = document.getElementById(`q-card-${q.questionNumber}`);
-                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }}
                             onMouseEnter={() => setHighlightedQNum(q.questionNumber)}
-                            title={`第${q.questionNumber || (idx + 1)}题 (${isCorrect ? '正确' : '需订正'}) - 点击定位详析`}
+                            title={`第${q.questionNumber || (idx + 1)}题 (${isCorrect ? '正确' : '需订正'}) - 点击查看即时讲评`}
                             style={{
                               position: 'absolute',
                               top, left, width, height,
@@ -790,7 +934,7 @@ export default function HomeworkBatchModal({
                               boxShadow: isHighlighted ? '0 0 16px rgba(56, 189, 248, 0.85)' : 'none',
                               cursor: 'pointer',
                               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              zIndex: isHighlighted ? 10 : 2
+                              zIndex: isHighlighted ? 20 : 2
                             }}
                           >
                             <div style={{
@@ -809,9 +953,152 @@ export default function HomeworkBatchModal({
                             }}>
                               第{q.questionNumber || (idx + 1)}题 {isCorrect ? '✓' : '✕'}
                             </div>
+
+                            {/* 教师红笔/绿勾批改图章 (对标小猿口算与作业帮原卷打勾叉) */}
+                            <div
+                              className={`grading-stamp-badge ${isCorrect ? 'correct' : (isWrong ? 'wrong' : 'partial')}`}
+                              style={{
+                                top: '4px',
+                                right: '4px',
+                                transform: isHighlighted ? 'scale(1.2)' : 'scale(1)'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveInspectQ(q);
+                                setHighlightedQNum(q.questionNumber);
+                              }}
+                              title={`点击查看第${q.questionNumber || (idx + 1)}题即时精讲`}
+                            >
+                              {isCorrect ? '✔' : (isWrong ? '✘' : '~')}
+                            </div>
                           </div>
                         );
                       })}
+
+                      {/* 小猿级即时讲评浮层卡片 (Visual Inspect Popover) */}
+                      {activeInspectQ && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '12px',
+                          left: '12px',
+                          right: '12px',
+                          maxHeight: '260px',
+                          background: 'rgba(15, 23, 42, 0.94)',
+                          backdropFilter: 'blur(16px)',
+                          border: `2px solid ${activeInspectQ.status === 'correct' ? '#10b981' : '#ef4444'}`,
+                          borderRadius: '14px',
+                          padding: '14px 16px',
+                          boxShadow: '0 20px 40px rgba(0,0,0,0.75)',
+                          zIndex: 50,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          animation: 'stamp-pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '1.2rem' }}>
+                                {activeInspectQ.status === 'correct' ? '🎉' : '🔍'}
+                              </span>
+                              <strong style={{ fontSize: '0.98rem', color: activeInspectQ.status === 'correct' ? '#34d399' : '#f87171' }}>
+                                第 {activeInspectQ.questionNumber} 题 · {activeInspectQ.status === 'correct' ? '作答准确 (得分)' : '发现解题薄弱点 (需订正)'}
+                              </strong>
+                            </div>
+                            <button
+                              onClick={() => setActiveInspectQ(null)}
+                              style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer', padding: '2px 6px' }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.5' }}>
+                            <strong>原题提炼：</strong>{activeInspectQ.questionSnippet}
+                          </div>
+
+                          {activeInspectQ.status !== 'correct' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.83rem', background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '8px' }}>
+                              <div style={{ color: '#fca5a5' }}>
+                                <strong>✍️ 孩子原答：</strong>{activeInspectQ.studentAnswer || '（未作答或演算有误）'}
+                              </div>
+                              <div style={{ color: '#86efac' }}>
+                                <strong>🎯 标准答案：</strong>{activeInspectQ.standardAnswer}
+                              </div>
+                              {(activeInspectQ.reasoning || activeInspectQ.errorAnalysis) && (
+                                <div style={{ color: '#93c5fd' }}>
+                                  <strong>💡 名师批注：</strong>{activeInspectQ.reasoning || activeInspectQ.errorAnalysis}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                            <button
+                              onClick={() => {
+                                const num = activeInspectQ.questionNumber;
+                                setActiveInspectQ(null);
+                                const el = document.getElementById(`q-card-${num}`);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }}
+                              style={{
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                color: '#cbd5e1',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              📋 查看完整长解析
+                            </button>
+                            <button
+                              onClick={() => {
+                                setVariantTargetQ(activeInspectQ);
+                              }}
+                              style={{
+                                background: 'linear-gradient(135deg, #059669, #10b981)',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="针对本题考点，立即做2道同类巩固与拔高变式题（对标作业帮）"
+                            >
+                              <span>🎯</span>
+                              <span>举一反三变式通关</span>
+                            </button>
+                            <button
+                              onClick={() => handleTutorQuestion(activeInspectQ)}
+                              style={{
+                                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <span>🚀</span>
+                              <span>送入苏格拉底私教带我做</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1264,6 +1551,19 @@ export default function HomeworkBatchModal({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 举一反三·变式通关弹窗 (对标作业帮) */}
+      {variantTargetQ && (
+        <VariantPracticeModal
+          isOpen={!!variantTargetQ}
+          onClose={() => setVariantTargetQ(null)}
+          originalQuestion={variantTargetQ.questionSnippet || `第${variantTargetQ.questionNumber}题`}
+          originalAnswer={variantTargetQ.standardAnswer || variantTargetQ.stepByStepDeduction || ''}
+          grade={grade}
+          subject={subject}
+          studentName={studentName}
+        />
       )}
     </div>
   );

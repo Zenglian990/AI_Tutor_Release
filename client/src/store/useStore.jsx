@@ -324,6 +324,11 @@ export function AppProvider({ children }) {
     localStorage.getItem('ai_tutor_persona') || 'owl'
   );
 
+  const [pinyinMode, setPinyinMode] = useState(() => {
+    const saved = localStorage.getItem('ai_tutor_pinyin_mode');
+    return saved !== null ? saved === 'true' : true;
+  });
+
   const [membershipStatus, setMembershipStatus] = useState({
     tier: 'free',
     is_vip: false,
@@ -371,6 +376,7 @@ export function AppProvider({ children }) {
   useEffect(() => { localStorage.setItem('ai_tutor_language', language); }, [language]);
   useEffect(() => { localStorage.setItem('ai_tutor_chat_model', chatModel); }, [chatModel]);
   useEffect(() => { localStorage.setItem('ai_tutor_persona', tutorPersona); }, [tutorPersona]);
+  useEffect(() => { localStorage.setItem('ai_tutor_pinyin_mode', String(pinyinMode)); }, [pinyinMode]);
 
   useEffect(() => {
     localStorage.setItem('ai_tutor_theme', isLightMode ? 'light' : 'dark');
@@ -446,7 +452,8 @@ export function AppProvider({ children }) {
     getApiUrl,
     authFetch,
     language, setLanguage, t,
-    chatModel, setChatModel
+    chatModel, setChatModel,
+    pinyinMode, setPinyinMode
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

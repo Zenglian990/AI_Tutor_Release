@@ -13,6 +13,7 @@ export default function VoiceDialogueOverlay({
   mode, // 'speaking' | 'listening' | 'processing'
   studentName = '曾练',
   currentQuestionText = '',
+  liveSpokenText = '',
   countdownSeconds = 8,
   onInterrupt,
   onCancel,
@@ -108,6 +109,30 @@ export default function VoiceDialogueOverlay({
         }}>
           <strong>名师焦点设问：</strong>
           <span>{currentQuestionText}</span>
+        </div>
+      )}
+
+      {/* Real-time Streaming Speech Input Box (边说边出字) */}
+      {mode === 'listening' && liveSpokenText && (
+        <div style={{
+          background: 'rgba(56, 189, 248, 0.12)',
+          border: '1px solid rgba(56, 189, 248, 0.35)',
+          borderRadius: '12px',
+          padding: '10px 14px',
+          fontSize: '0.92rem',
+          color: '#7dd3fc',
+          lineHeight: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <div className="soundwave-indicator">
+            <span className="soundwave-bar" />
+            <span className="soundwave-bar" />
+            <span className="soundwave-bar" />
+            <span className="soundwave-bar" />
+          </div>
+          <span>“{liveSpokenText}”</span>
         </div>
       )}
 

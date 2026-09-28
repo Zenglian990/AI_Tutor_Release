@@ -31,6 +31,10 @@ class LocalHeuristicClient {
             const offTopicPattern = /(王者荣耀|和平精英|原神|英雄联盟|打游戏|玩游戏|吃鸡|段位|充值|明星八卦|娱乐八卦|今日天气|做个自我介绍|讲个笑话|买菜|炒股|基金)/i;
             const isOffTopic = offTopicPattern.test(q);
 
+            // Direct answer demand check (Anti-spoofing / anti-spoonfeeding guard for Socratic teaching)
+            const directDemandPattern = /(直接(给|告诉|说|出)(我)?答案|只要答案|选哪个|选[ABCD]|到底是几|别废话|快点说答案|答案是多少|直接报答案|直接写答案|不要过程只要答案)/i;
+            const isDirectDemand = directDemandPattern.test(q);
+
             // Factual recall check
             const factualPattern = /(定义|概念|什么是|意思是什么|背诵|默写|原文|读音|拼音|作者是谁|朝代|代表作|名句)/i;
             const isFactual = factualPattern.test(q);
@@ -43,6 +47,9 @@ class LocalHeuristicClient {
             let confidence = 0.92;
             if (isOffTopic) {
                 route = 'off_topic';
+                confidence = 0.96;
+            } else if (isDirectDemand) {
+                route = 'direct_answer_demand';
                 confidence = 0.96;
             } else if (isCalc) {
                 route = 'calculation_step';
@@ -264,6 +271,7 @@ class JevDecisionService {
                     factual_recall: '事实记忆类（定义/概念/背诵）',
                     socratic_guidance: '需要引导式思考的理解题',
                     calculation_step: '计算解题类',
+                    direct_answer_demand: '学生催促直接索要答案或选项',
                     cross_subject: '跨学科综合题',
                     off_topic: '与学科教学无关的话题'
                 }),
@@ -528,4 +536,6 @@ class JevDecisionService {
     }
 }
 
-module.exports = new JevDecisionService();
+const jevInstance = new JevDecisionService();
+jevInstance.LocalHeuristicClient = LocalHeuristicClient;
+module.exports = jevInstance;

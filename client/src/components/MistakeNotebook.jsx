@@ -62,23 +62,42 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
     }
   };
 
-  const handleSaveTags = async (mistakeId) => {
+  const ATTRIBUTION_TAGS = [
+    { label: '计算粗心', key: 'careless', icon: '🟡' },
+    { label: '审题不清', key: 'reading', icon: '🔵' },
+    { label: '公式遗忘', key: 'formula', icon: '🟣' },
+    { label: '概念盲区', key: 'concept', icon: '🔴' }
+  ];
+
+  const handleSaveTags = async (mistakeId, customTags) => {
+    const tagsToSave = customTags !== undefined ? customTags : tempTags;
     try {
       const res = await authFetch(`/api/mistakes/${mistakeId}/tags?profile_id=${currentProfileId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags: tempTags })
+        body: JSON.stringify({ tags: tagsToSave })
       });
       const data = await res.json();
       if (res.ok) {
         setMistakes(prev => prev.map(m => m.id === mistakeId ? { ...m, tags: data.tags } : m));
-        setEditingTagsId(null);
+        if (customTags === undefined) setEditingTagsId(null);
       } else {
         alert(data.error || '保存标签失败');
       }
     } catch (e) {
       alert('网络错误');
     }
+  };
+
+  const handleToggleAttributionTag = async (mistake, tagLabel) => {
+    const existingTags = mistake.tags ? mistake.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    let updatedTags;
+    if (existingTags.includes(tagLabel)) {
+      updatedTags = existingTags.filter(t => t !== tagLabel);
+    } else {
+      updatedTags = [...existingTags, tagLabel];
+    }
+    await handleSaveTags(mistake.id, updatedTags.join(','));
   };
 
   useEffect(() => {
@@ -236,34 +255,59 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           </div>
         </div>
 
-        <div className="mistake-filters no-print" style={{ padding: '15px 20px 0', display: 'flex', gap: '10px' }}>
-          <select className="grade-selector" value={filterGrade} onChange={e => setFilterGrade(e.target.value)} aria-label="筛选年级">
-            <option value="">全部年级</option>
-            {['1_up','1_down','2_up','2_down','3_up','3_down','4_up','4_down','5_up','5_down','6_up','6_down','7_up','7_down','8_up','8_down','9_up','9_down'].map(g =>
-              <option key={g} value={g}>{formatGrade(g)}</option>
-            )}
-          </select>
-          <select className="grade-selector" value={filterSubject} onChange={e => setFilterSubject(e.target.value)} aria-label="筛选学科">
-            <option value="">全部学科</option>
-            {['语文','数学','英语','物理','化学','生物','历史','地理','道德与法治'].map(s =>
-              <option key={s} value={s}>{s === '道德与法治' ? '道法' : s}</option>
-            )}
-          </select>
-          <select className="grade-selector" value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="筛选标签">
-            <option value="">全部标签</option>
-            {allTags.map(tag => (
-              <option key={tag} value={tag}>{tag}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            className="search-input"
-            aria-label="搜索错题"
-            placeholder="搜索题目或知识点关键字..."
-            value={searchWord}
-            onChange={e => setSearchWord(e.target.value)}
-            style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', outline: 'none' }}
-          />
+        <div className="mistake-filters no-print" style={{ padding: '15px 20px 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <select className="grade-selector" value={filterGrade} onChange={e => setFilterGrade(e.target.value)} aria-label="筛选年级">
+              <option value="">全部年级</option>
+              {['1_up','1_down','2_up','2_down','3_up','3_down','4_up','4_down','5_up','5_down','6_up','6_down','7_up','7_down','8_up','8_down','9_up','9_down'].map(g =>
+                <option key={g} value={g}>{formatGrade(g)}</option>
+              )}
+            </select>
+            <select className="grade-selector" value={filterSubject} onChange={e => setFilterSubject(e.target.value)} aria-label="筛选学科">
+              <option value="">全部学科</option>
+              {['语文','数学','英语','物理','化学','生物','历史','地理','道德与法治'].map(s =>
+                <option key={s} value={s}>{s === '道德与法治' ? '道法' : s}</option>
+              )}
+            </select>
+            <select className="grade-selector" value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="筛选标签">
+              <option value="">全部标签</option>
+              {allTags.map(tag => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              className="search-input"
+              aria-label="搜索错题"
+              placeholder="搜索题目或知识点关键字..."
+              value={searchWord}
+              onChange={e => setSearchWord(e.target.value)}
+              style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', outline: 'none' }}
+            />
+          </div>
+          {/* 4大失分归因快捷筛选 (对标作业帮错题本) */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>🎯 4大失分根因快筛：</span>
+            {ATTRIBUTION_TAGS.map(at => {
+              const active = filterTag === at.label;
+              return (
+                <button
+                  key={at.key}
+                  onClick={() => setFilterTag(active ? '' : at.label)}
+                  className={`attribution-chip ${at.key}`}
+                  style={{
+                    border: active ? '1.5px solid currentColor' : undefined,
+                    boxShadow: active ? '0 0 10px currentColor' : undefined,
+                    opacity: active ? 1 : 0.75
+                  }}
+                >
+                  <span>{at.icon}</span>
+                  <span>{at.label}</span>
+                  {active && <span style={{ marginLeft: '2px' }}>✕</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mistakes-list">
@@ -385,6 +429,33 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                     {deletingIds.has(m.id) ? '⏳ 删除中' : '🗑️ 删除'}
                   </button>
                 </div>
+
+                {/* 4大失分归因一键打标 (对标作业帮错因深度自省) */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', margin: '6px 0 10px 0' }} className="no-print">
+                  <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>失分根因标记：</span>
+                  {ATTRIBUTION_TAGS.map(at => {
+                    const currentTags = m.tags ? m.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+                    const hasTag = currentTags.includes(at.label);
+                    return (
+                      <button
+                        key={at.key}
+                        onClick={() => handleToggleAttributionTag(m, at.label)}
+                        className={`attribution-chip ${at.key}`}
+                        style={{
+                          opacity: hasTag ? 1 : 0.45,
+                          border: hasTag ? '1px solid currentColor' : '1px dashed rgba(255,255,255,0.2)',
+                          fontWeight: hasTag ? '700' : 'normal'
+                        }}
+                        title={`点击${hasTag ? '取消' : '添加'}【${at.label}】归因`}
+                      >
+                        <span>{at.icon}</span>
+                        <span>{at.label}</span>
+                        {hasTag && <span>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="mistake-query"><strong>问题：</strong>{m.query}</div>
                 {!testMode ? (
                   <div className="mistake-answer">

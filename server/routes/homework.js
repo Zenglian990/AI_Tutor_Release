@@ -142,7 +142,25 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
     // Extract JSON block with resilient multi-tier parser
     let parsedData = extractAndParseJson(replyText);
 
-    if (!parsedData || !Array.isArray(parsedData.results) || parsedData.results.length === 0) {
+    // If the model legitimately reported that no readable questions were identified on the image
+    if (parsedData && Array.isArray(parsedData.results) && parsedData.results.length === 0) {
+      logger.info(`[HomeworkBatch] Model legitimately reported 0 readable questions: ${parsedData.summaryHeadline}`);
+      return res.json({
+        success: true,
+        studentName: student_name,
+        totalCount: 0,
+        correctCount: 0,
+        wrongCount: 0,
+        accuracyPct: 0,
+        summaryHeadline: parsedData.summaryHeadline || '未识别到清晰卷面题目',
+        teacherPraise: parsedData.teacherPraise || '',
+        teacherAdvice: parsedData.teacherAdvice || '请重新正对试卷平铺拍摄，确保字迹清晰、光线均匀，以便进行精准的智能批改。',
+        results: [],
+        autoArchivedCount: 0
+      });
+    }
+
+    if (!parsedData || !Array.isArray(parsedData.results)) {
       logger.warn('[HomeworkBatch] JSON parser returned empty or invalid structure, raw reply sample:', replyText.substring(0, 300));
       // Fallback clean structured data (clean raw markdown fences from standardAnswer)
       const cleanReply = replyText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
