@@ -1,34 +1,37 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
+const undici = require('undici');
+
+// 关键：必须在 require('../server/app') 之前完成 undici.fetch 的 Mock！
+const originalUndiciFetch = undici.fetch;
+let currentMockResponse = null;
+
+undici.fetch = async (url, options) => {
+  const urlStr = String(url);
+  if (urlStr.includes('generativelanguage.googleapis.com') || urlStr.includes('deepseek') || urlStr.includes('chat/completions')) {
+    if (currentMockResponse) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => currentMockResponse,
+        text: async () => JSON.stringify(currentMockResponse),
+        headers: new undici.Headers()
+      };
+    }
+  }
+  return originalUndiciFetch(url, options);
+};
+
+// 在 Mock 生效之后，再加载应用模块
 const { initDB, closeDB } = require('../server/db/init');
 const { createApp } = require('../server/app');
-
-// Mock global fetch for Gemini response during test
-const originalFetch = globalThis.fetch;
-let currentMockResponse = null;
 
 test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', async (t) => {
   let server;
   let baseUrl;
 
   before(async () => {
-    globalThis.fetch = async (url, options) => {
-      const urlStr = String(url);
-      if (urlStr.includes('generativelanguage.googleapis.com')) {
-        if (currentMockResponse) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => currentMockResponse,
-            text: async () => JSON.stringify(currentMockResponse),
-            headers: new Headers()
-          };
-        }
-      }
-      return originalFetch(url, options);
-    };
-
     await initDB();
     const app = createApp();
     server = http.createServer(app);
@@ -38,19 +41,19 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
   });
 
   after(async () => {
-    globalThis.fetch = originalFetch;
+    undici.fetch = originalUndiciFetch;
     if (server) await new Promise(resolve => server.close(resolve));
     await closeDB();
   });
 
   await t.test('POST /api/mistakes/generate-variants rejects missing question', async () => {
-    const res = await fetch(`${baseUrl}/api/mistakes/generate-variants`, {
+    const res = await undici.request(`${baseUrl}/api/mistakes/generate-variants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
-    assert.strictEqual(res.status, 400);
-    const body = await res.json();
+    assert.strictEqual(res.statusCode, 400);
+    const body = await res.body.json();
     assert.match(body.error, /Missing original question/i);
   });
 
@@ -85,7 +88,7 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
       }]
     };
 
-    const res = await fetch(`${baseUrl}/api/mistakes/generate-variants`, {
+    const res = await undici.request(`${baseUrl}/api/mistakes/generate-variants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -96,8 +99,8 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
       })
     });
 
-    assert.strictEqual(res.status, 200);
-    const body = await res.json();
+    assert.strictEqual(res.statusCode, 200);
+    const body = await res.body.json();
     assert.strictEqual(body.success, true);
     assert.strictEqual(body.data.variants.length, 2);
     assert.strictEqual(body.data.variants[0].tag, "同类巩固");
@@ -121,7 +124,7 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
       }]
     };
 
-    const res = await fetch(`${baseUrl}/api/mistakes/check-variant-answer`, {
+    const res = await undici.request(`${baseUrl}/api/mistakes/check-variant-answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -132,8 +135,8 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
       })
     });
 
-    assert.strictEqual(res.status, 200);
-    const body = await res.json();
+    assert.strictEqual(res.statusCode, 200);
+    const body = await res.body.json();
     assert.strictEqual(body.success, true);
     assert.strictEqual(body.feedback.is_correct, true);
     assert.strictEqual(body.feedback.score_earned, 20);
