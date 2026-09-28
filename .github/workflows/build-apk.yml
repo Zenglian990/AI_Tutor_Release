@@ -51,49 +51,53 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.3.7.apk
-          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.6/ZengLian_AI_Tutor_v1.3.6.apk -o ./ZengLian_AI_Tutor_v1.3.6.apk || true
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./ZengLian_AI_Tutor_v1.4.0.apk
+          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk -o ./ZengLian_AI_Tutor_v1.3.7.apk || true
           ls -lh ./ZengLian_AI_Tutor_v1*.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_v1.3.7
-          path: ./ZengLian_AI_Tutor_v1.3.7.apk
+          name: ZengLian_AI_Tutor_v1.4.0
+          path: ./ZengLian_AI_Tutor_v1.4.0.apk
           retention-days: 30
 
-      - name: Create or Update v1.3.7 Latest Release
+      - name: Create or Update v1.4.0 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.3.7
-          name: "曾练专属私教 v1.3.7 - 极速双引擎(DeepSeek+Gemini)与Jev心智决策大脑全面激活 (最新极速版)"
+          tag_name: v1.4.0
+          name: "曾练专属私教 v1.4.0 - 全面对标作业帮/小猿搜题 (重磅质感升级版)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 曾练专属私教 v1.3.7 (Build 2026.09.26 最新极速版)
+            ## 🚀 曾练专属私教 v1.4.0 (对标作业帮与小猿搜题 重磅质感升级版)
 
-            - ⚡ **AI 对话极速双引擎（用户自由选择 · 严格执行）**：
-              - **顶栏一键秒切**：应用顶部导航正中新增【⚡ 极速 / 🧠 Gemini】胶囊按钮，随时随地单手无感切换；
-              - **DeepSeek-V3 毫秒直连**：国内高速直连，首字响应缩短至 0.3~0.5 秒，整题打字机高速流畅输出，告别卡顿与延迟；
-              - **Gemini 2.5 Flash 深度模式**：关闭长思考延迟直接极速出字，擅长复杂图像与教材大题多模态分析。
-            - 🧠 **Jev 1~9 年级心智模型决策大脑全面激活**：
-              - 内置零延迟本地启发式决策引擎，0 毫秒完成学生意图分类、难度评估与学习策略注入；
-              - **小学低年级（1-4年级）**：自动下发生活趣味场景化记忆（`scenario_memorize`）与实物可视化拆解（`visual_decompose`），高提示保护信心；
-              - **初中高年级（7-9年级）**：自动注入结构化思维导图（`mind_map`）与错题变式闭环（`error_correction_loop`），兼顾情绪挫败关怀与超纲闲聊专注引导。
-            - 📱 **45ms 流式帧缓冲平滑渲染**：
-              - 移动端彻底告别 KaTeX 公式高频重排导致的掉帧与发热，视觉动画丝滑流畅。
-            - 🖨️ **A4 纸质试卷打印与模考组卷全免疫**：
-              - 继承 v1.3.6 全部稳定修复，试卷打印与 39,114+ 母题模考 100% 稳固闭环。
+            - 🎯 **作业帮式 举一反三·变式母题闭环流**：
+              - 每解答一道题目或复盘错题时，一键生成【同类母题巩固】+【避坑拔高变式】2道靶向练习题；
+              - 现场即做即批，根据作答精准点拨与步骤复盘，答对即时颁发学霸经验分与通关正反馈。
+            - 📐 **小猿搜题式 整页拍照自动分题与多框点选**：
+              - 拍照整页作业后，AI 秒级识别画面所有题目外接矩形框（Bounding Box）；
+              - 点击题号标签（第1题、第2题...）裁剪框直接精准吸附，告别繁琐手动四角拉伸。
+            - ✔/✘ **作业帮式 原卷打勾打叉批改与智能坐标兜底**：
+              - 批量整卷批改 100% 在原图坐标上精准盖上红叉（✘）绿勾（✔）印章；
+              - 点击红叉即刻呼出讲评浮层，一键直通变式通关练习。
+            - 📷 **零依赖真实五感反馈引擎**：
+              - 内置 Web Audio 毫秒级合成真实单反机械快门声音与闯关和弦音；
+              - 深度接入手机机身触觉震动（Haptics）。
+            - 🎙️ **Edge Neural 微软云端极高保真音色**：
+              - 多级语音降级与理科数学/几何公式口语化平滑转译。
+            - 🧮 **数学 LaTeX 渲染底层全面修复**：
+              - 彻底解决符号溢出与行内/行间公式混淆问题。
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.3.7.apk`** 直接下载安装；
-            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.3.7】**，点开即用！
-            *(按照曾先生要求，发布区仅严格保持最新的两个 APK 安装包: v1.3.7 与 v1.3.6)*
+            1. 点击下方 Assets 列表中的 **`ZengLian_AI_Tutor_v1.4.0.apk`** 直接下载安装；
+            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.4.0】**，点开即用！
+            *(按照曾先生要求，发布区仅严格保持最新的两个 APK 安装包: v1.4.0 与 v1.3.7)*
           files: |
+            ./ZengLian_AI_Tutor_v1.4.0.apk
             ./ZengLian_AI_Tutor_v1.3.7.apk
-            ./ZengLian_AI_Tutor_v1.3.6.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
