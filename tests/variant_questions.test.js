@@ -9,13 +9,43 @@ let currentMockResponse = null;
 
 undici.fetch = async (url, options) => {
   const urlStr = String(url);
+
+  // Mock embedding calls immediately so LanceDB dimension check never fails or invalidates test keys
+  if (urlStr.includes('models/gemini-embedding-2') || urlStr.includes('embedContent')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ embedding: { values: new Array(768).fill(0.1) } }),
+      headers: new undici.Headers()
+    };
+  }
+
   if (urlStr.includes('generativelanguage.googleapis.com') || urlStr.includes('deepseek') || urlStr.includes('chat/completions')) {
     if (currentMockResponse) {
+      const text = typeof currentMockResponse === 'string'
+        ? currentMockResponse
+        : (currentMockResponse.candidates?.[0]?.content?.parts?.[0]?.text ||
+           currentMockResponse.choices?.[0]?.message?.content ||
+           JSON.stringify(currentMockResponse));
+
+      const dualResponse = {
+        candidates: [{
+          content: {
+            parts: [{ text }]
+          }
+        }],
+        choices: [{
+          message: {
+            content: text
+          }
+        }]
+      };
+
       return {
         ok: true,
         status: 200,
-        json: async () => currentMockResponse,
-        text: async () => JSON.stringify(currentMockResponse),
+        json: async () => dualResponse,
+        text: async () => JSON.stringify(dualResponse),
         headers: new undici.Headers()
       };
     }
@@ -26,12 +56,14 @@ undici.fetch = async (url, options) => {
 // 在 Mock 生效之后，再加载应用模块
 const { initDB, closeDB } = require('../server/db/init');
 const { createApp } = require('../server/app');
+const { resetKeyPool } = require('../server/services/embedding');
 
 test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', async (t) => {
   let server;
   let baseUrl;
 
   before(async () => {
+    resetKeyPool();
     await initDB();
     const app = createApp();
     server = http.createServer(app);

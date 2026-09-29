@@ -1,4 +1,5 @@
-const { ProxyAgent, fetch: undiciFetch } = require('undici');
+const undici = require('undici');
+const { ProxyAgent } = undici;
 const { API_KEYS, proxyUrl, EMBED_MODEL, CHAT_MODEL, DEEPSEEK_API_KEY, DEEPSEEK_API_URL, DEEPSEEK_CHAT_MODEL } = require('../config');
 const logger = require('./logger');
 const { logApiUsage } = require('./usage');
@@ -80,7 +81,7 @@ async function checkKeysHealth() {
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       fetchOptions.signal = controller.signal;
 
-      const res = await undiciFetch(url, fetchOptions);
+      const res = await undici.fetch(url, fetchOptions);
       clearTimeout(timeoutId);
 
       if (res.status === 400 || res.status === 403) {
@@ -334,7 +335,7 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
     fetchOptions.dispatcher = proxyAgent;
   }
 
-  const response = await undiciFetch(url, fetchOptions);
+  const response = await undici.fetch(url, fetchOptions);
   if (!response.ok) {
     const errorBody = await response.text();
     throw new Error(`DeepSeek API failed: ${response.status} ${errorBody}`);
@@ -549,7 +550,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       };
       if (proxyAgent) fetchOptions.dispatcher = proxyAgent;
 
-      const response = await undiciFetch(url, fetchOptions);
+      const response = await undici.fetch(url, fetchOptions);
       if (response.ok) {
         cleanup();
         consecutiveErrors = 0;
@@ -710,6 +711,11 @@ function unmarkInvalidKey(key) {
   }
 }
 
+function resetKeyPool() {
+  invalidKeys.clear();
+  keyCooldown.clear();
+}
+
 module.exports = {
   fetchWithKeyRotation,
   getEmbedding,
@@ -718,5 +724,6 @@ module.exports = {
   startEmbeddingCheck,
   convertGeminiToDeepSeekPayload,
   isOpenAiVisionModel,
-  unmarkInvalidKey
+  unmarkInvalidKey,
+  resetKeyPool
 };
