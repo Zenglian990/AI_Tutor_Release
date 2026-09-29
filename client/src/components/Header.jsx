@@ -155,20 +155,6 @@ export default function Header({
             {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
             <option value="ADD_NEW">➕ 新建档案...</option>
           </select>
-          <button
-            onClick={() => {
-              const currentName = currentProfile.name || '曾练';
-              const newName = window.prompt(`修改学生姓名/昵称：`, currentName);
-              if (newName && newName.trim() && newName.trim() !== currentName) {
-                onRenameProfile && onRenameProfile(currentProfileId, newName.trim());
-              }
-            }}
-            title="修改学生姓名"
-            aria-label="修改学生姓名"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '11px', color: '#94a3b8', padding: '0 2px' }}
-          >
-            ✏️
-          </button>
         </div>
 
         <div className="capsule-divider" />
@@ -178,7 +164,14 @@ export default function Header({
           <select
             className="capsule-select"
             value={selectedGrade}
-            onChange={e => onGradeChange(e.target.value)}
+            onChange={e => {
+              const val = e.target.value;
+              onGradeChange(val);
+              const gradeNum = parseInt(String(val).replace(/\D/g, '')) || 7;
+              if (gradeNum <= 3) setTutorPersona('lion');
+              else if (gradeNum <= 6) setTutorPersona('sister');
+              else setTutorPersona('owl');
+            }}
             aria-label="选择年级"
             title="切换年级教材"
           >
@@ -200,61 +193,10 @@ export default function Header({
             {getValidSubjectsForGrade(selectedGrade).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
-
-        <div className="capsule-divider" />
-
-        {/* 名师风格 */}
-        <div className="capsule-item">
-          <select
-            className="capsule-select"
-            value={tutorPersona}
-            onChange={e => setTutorPersona(e.target.value)}
-            title="切换名师/学伴风格"
-            aria-label="切换名师风格"
-          >
-            {PERSONAS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-        </div>
       </div>
 
       {/* 3. 核心功能与操作区 (Right) */}
       <div className="header-actions">
-        {/* 1-3年级趣味实物教具 */}
-        {['1', '2', '3'].some(n => String(selectedGrade).startsWith(n)) && onOpenManipulatives && (
-          <button
-            onClick={onOpenManipulatives}
-            className="header-btn-pill"
-            title="打开小学趣味积木与等式天平教具"
-            aria-label="打开小学具象实物教具"
-            style={{
-              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 88, 12, 0.15))',
-              color: '#fbbf24',
-              borderColor: 'rgba(245, 158, 11, 0.35)'
-            }}
-          >
-            <span>🎒</span>
-            <span className="btn-label">教具</span>
-          </button>
-        )}
-
-        {/* 7-9年级动点压轴沙盒 */}
-        {['7', '8', '9'].some(n => String(selectedGrade).startsWith(n)) && onOpenGeometrySandbox && (
-          <button
-            onClick={onOpenGeometrySandbox}
-            className="header-btn-pill"
-            title="打开初中动点几何与二次函数压轴沙盒"
-            aria-label="打开初中动点压轴沙盒"
-            style={{
-              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(29, 78, 216, 0.15))',
-              color: '#60a5fa',
-              borderColor: 'rgba(59, 130, 246, 0.35)'
-            }}
-          >
-            <span>📐</span>
-            <span className="btn-label">沙盒</span>
-          </button>
-        )}
-
         {/* VIP 会员与卡密激活 */}
         {onOpenMembership && (
           <button
@@ -276,7 +218,7 @@ export default function Header({
           </button>
         )}
 
-        {/* 教学模式 */}
+        {/* 教学模式 (直答 / 启发 / 苏氏提问) */}
         <button
           onClick={handleSocraticClick}
           className="header-btn-pill"
@@ -292,53 +234,9 @@ export default function Header({
           <span className="btn-label">{currentSocratic.shortLabel}</span>
         </button>
 
-        {/* 快速大模型引擎切换 (DeepSeek 极速 vs Gemini 深度) */}
-        <button
-          onClick={() => {
-            const nextModel = (chatModel === 'gemini-2.5-flash') ? 'deepseek-chat' : 'gemini-2.5-flash';
-            setChatModel(nextModel);
-          }}
-          className="header-btn-pill"
-          title={chatModel === 'gemini-2.5-flash'
-            ? '当前引擎：🧠 Gemini 2.5 Flash 深度模式 (点击快速切换为 ⚡ DeepSeek 极速模式)'
-            : '当前引擎：⚡ DeepSeek-V3 极速模式 (点击快速切换为 🧠 Gemini 2.5 深度模式)'}
-          aria-label="切换大模型引擎"
-          style={{
-            background: chatModel === 'gemini-2.5-flash'
-              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.15))'
-              : 'linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(6, 182, 212, 0.15))',
-            color: chatModel === 'gemini-2.5-flash' ? '#c084fc' : '#38bdf8',
-            borderColor: chatModel === 'gemini-2.5-flash' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)',
-            fontWeight: 600
-          }}
-        >
-          <span>{chatModel === 'gemini-2.5-flash' ? '🧠' : '⚡'}</span>
-          <span className="btn-label">{chatModel === 'gemini-2.5-flash' ? 'Gemini' : '极速'}</span>
-        </button>
-
         <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
 
-        {onOpenGamification && (
-          <button
-            onClick={onOpenGamification}
-            className="header-btn-icon"
-            title="学霸成长段位与勋章"
-            aria-label="学霸段位勋章"
-          >
-            👑
-          </button>
-        )}
-
-        <button
-          onClick={toggleEinkMode}
-          className="header-btn-icon"
-          title={isEinkMode ? '退出墨水屏护眼模式' : '进入墨水屏纸质护眼模式 (零残影·无频闪)'}
-          aria-label="纸质护眼模式切换"
-          style={{ background: isEinkMode ? '#ffffff' : undefined, color: isEinkMode ? '#000000' : undefined }}
-        >
-          📖
-        </button>
-
+        {/* 主题明暗切换 */}
         <button
           onClick={onThemeToggle}
           className="header-btn-icon"
@@ -348,10 +246,11 @@ export default function Header({
           {isLightMode ? '🌙' : '☀️'}
         </button>
 
+        {/* 基础偏好设置 */}
         <button
           onClick={onSettingsOpen}
           className="header-btn-icon"
-          title="基础偏好设置 (教材版本·语音偏好·教学风格)"
+          title="基础偏好设置 (教材版本·名师风格·大模型引擎·护眼模式)"
           aria-label="打开基础偏好设置"
         >
           ⚙️

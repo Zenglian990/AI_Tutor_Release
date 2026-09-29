@@ -16,7 +16,8 @@ const InputBar = React.memo(function InputBar({
   isSpeaking,
   onInterruptSpeech,
   onOpenScratchpad,
-  onOpenBatchGrade
+  onOpenBatchGrade,
+  hasActiveChat
 }) {
   const [localVal, setLocalVal] = useState(input);
   const textareaRef = useRef(null);
@@ -174,57 +175,59 @@ const InputBar = React.memo(function InputBar({
         </div>
       )}
 
-      <div className="quick-hints-bar" role="toolbar" aria-label="名师启发快捷支架">
-        <button
-          type="button"
-          className="quick-hint-chip"
-          title="一句话点破出题人在哪里藏了陷阱与核心突破口"
-          disabled={isLoading}
-          onClick={() => onSubmit(null, "老师，请一句话点破这道题的【核心题眼】和出题人套路陷阱！")}
-        >
-          🎯 题眼与陷阱
-        </button>
-        <button
-          type="button"
-          className="quick-hint-chip"
-          title="给草稿纸上的第一步画线或公式支架，不要直接给答案"
-          disabled={isLoading}
-          onClick={() => onSubmit(null, "老师，请给我草稿纸上的【第一步动笔支架】（辅助线画法或公式首步），引导我动手算！")}
-        >
-          ✏️ 动笔支架
-        </button>
-        <button
-          type="button"
-          className="quick-hint-chip"
-          title="出一道同类型母题考考我，检验我是否真正掌握"
-          disabled={isLoading}
-          onClick={() => onSubmit(null, "老师，请出一道同类型的【母题变式微测题】考考我，我算完发给您！")}
-        >
-          🔥 举一反三闯关
-        </button>
-        {onOpenScratchpad && (
+      {hasActiveChat && (
+        <div className="quick-hints-bar" role="toolbar" aria-label="名师启发快捷支架">
           <button
             type="button"
             className="quick-hint-chip"
-            style={{ borderColor: '#3b82f6', color: '#60a5fa' }}
-            title="打开白板草稿纸手写演算或画几何辅助线"
-            onClick={onOpenScratchpad}
+            title="一句话点破出题人在哪里藏了陷阱与核心突破口"
+            disabled={isLoading}
+            onClick={() => onSubmit(null, "老师，请一句话点破这道题的【核心题眼】和出题人套路陷阱！")}
           >
-            📝 演练草稿纸
+            🎯 题眼与陷阱
           </button>
-        )}
-        {onOpenBatchGrade && (
           <button
             type="button"
             className="quick-hint-chip"
-            style={{ borderColor: '#0ea5e9', color: '#38bdf8', background: 'rgba(14, 165, 233, 0.1)' }}
-            title="拍照上传整页作业或试卷，多题秒级识别与批改"
-            onClick={onOpenBatchGrade}
+            title="给草稿纸上的第一步画线或公式支架，不要直接给答案"
+            disabled={isLoading}
+            onClick={() => onSubmit(null, "老师，请给我草稿纸上的【第一步动笔支架】（辅助线画法或公式首步），引导我动手算！")}
           >
-            📑 整页秒批
+            ✏️ 动笔支架
           </button>
-        )}
-      </div>
+          <button
+            type="button"
+            className="quick-hint-chip"
+            title="出一道同类型母题考考我，检验我是否真正掌握"
+            disabled={isLoading}
+            onClick={() => onSubmit(null, "老师，请出一道同类型的【母题变式微测题】考考我，我算完发给您！")}
+          >
+            🔥 举一反三闯关
+          </button>
+          {onOpenScratchpad && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#3b82f6', color: '#60a5fa' }}
+              title="打开白板草稿纸手写演算或画几何辅助线"
+              onClick={onOpenScratchpad}
+            >
+              📝 演练草稿纸
+            </button>
+          )}
+          {onOpenBatchGrade && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#0ea5e9', color: '#38bdf8', background: 'rgba(14, 165, 233, 0.1)' }}
+              title="拍照上传整页作业或试卷，多题秒级识别与批改"
+              onClick={onOpenBatchGrade}
+            >
+              📑 整页秒批
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="input-container" role="form" aria-label="消息输入区域">
         <form className="input-form" onSubmit={handleFormSubmit}>

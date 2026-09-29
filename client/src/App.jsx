@@ -736,74 +736,42 @@ function AppInner() {
         onOpenMembership={() => setShowMembershipModal(true)}
       />
 
-      {/* Action buttons */}
-      <div className="action-bar no-print">
-        {messages.length > 0 && (
+      {/* 仅在对话进行中时显示轻量级返回首页条 */}
+      {messages.length > 0 && (
+        <div className="chat-nav-bar no-print" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+        }}>
           <button
             onClick={() => setShowClearConfirm(true)}
-            className="mistake-btn"
-            style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#94a3b8', background: 'rgba(255,255,255,0.04)' }}
-            title="返回今日伴学首页看板（清空当前对话）"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '16px',
+              border: '1px solid rgba(59, 130, 246, 0.35)',
+              background: 'rgba(59, 130, 246, 0.12)',
+              color: '#93c5fd',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+            title="结束当前对话，返回今日导学看板"
           >
-            🏠 今日导学
+            <span>🏠</span>
+            <span>返回今日看板</span>
           </button>
-        )}
-        <ActionButton label="🔔 错题复测" color="#f59e0b" onClick={async (btn) => {
-          const originalText = btn.innerHTML;
-          btn.innerHTML = '⏳ 正在加载...';
-          try {
-            const res = await authFetch(`/api/mistakes/review-challenge?profile_id=${currentProfileId}&grade=${currentProfile.grade}`);
-            const data = await res.json();
-            if (data.error) { alert("复习错题失败: " + data.error); }
-            else if (data.challenge) {
-              setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: data.challenge }]);
-              setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
-            } else { alert("太棒了！今天没有需要紧急复习的错题！"); }
-          } catch (e) { alert("获取错题复测失败"); }
-          finally { btn.innerHTML = originalText; }
-        }} />
-        <ActionButton label="📈 家长监工" color="#ef4444" onClick={async (btn) => {
-          setShowReportModal(true); setReportLoading(true);
-          try {
-            const res = await authFetch('/api/report/weekly', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ profile_id: currentProfileId, grade: currentProfile.grade, student_name: currentProfile.name })
-            });
-            const data = await res.json();
-            if (data.error) { alert("生成报告失败: " + data.error); }
-            setReportData(data.report || '生成报告失败');
-          } catch (e) { setReportData('网络异常'); }
-          finally { setReportLoading(false); }
-        }} />
-        <button onClick={() => { setGateAction(() => () => setShowStats(true)); setGateReason(language === 'zh-CN' ? '查看家长深度分析报表' : 'View parental progress report'); setGateOpen(true); }}
-          className="mistake-btn" style={{ borderColor: '#a78bfa', color: '#a78bfa', background: 'rgba(139, 92, 246, 0.1)' }}>📊 {language === 'zh-CN' ? '学习报表' : 'Stats Report'}</button>
-        <button onClick={() => setShowKnowledgeTest(true)}
-          className="mistake-btn" style={{ borderColor: '#ec4899', color: '#ec4899', background: 'rgba(236, 72, 153, 0.1)' }}>
-          🏛️ {language === 'zh-CN' ? '名校模考' : 'Mock Exam'}
-        </button>
-        <button onClick={() => setShowMistakes(true)} className="mistake-btn">📖 {language === 'zh-CN' ? '我的错题本' : 'Mistake Book'}</button>
-        <button onClick={() => setShowMap(true)} className="mistake-btn" style={{ borderColor: '#10b981', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>🗺️ {language === 'zh-CN' ? '学习地图' : 'Learning Map'}</button>
-        <ActionButton label="🎯 智能规划" color="#8b5cf6" onClick={async (btn) => {
-          const originalText = btn.innerHTML;
-          btn.innerHTML = '⏳ 正在生成...';
-          try {
-            const res = await authFetch('/api/active-plan/generate', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                profile_id: currentProfileId,
-                grade: currentProfile.grade,
-                subject: selectedSubject || '数学',
-                student_name: currentProfile.name,
-                edition: currentProfile.edition
-              })
-            });
-            const data = await res.json();
-            if (data.error) { alert("生成规划失败: " + data.error); }
-            else if (data.plan) { setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: data.plan }]); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100); }
-          } catch (e) { alert("生成规划失败"); }
-          finally { btn.innerHTML = originalText; }
-        }} />
-      </div>
+          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            💬 正在名师辅导中
+          </span>
+        </div>
+      )}
 
       {/* Chapter Progress Stepper */}
       <ChapterStepper
@@ -1078,20 +1046,9 @@ function AppInner() {
         onInterruptSpeech={interruptSpeech}
         onOpenScratchpad={() => setShowScratchpad(true)}
         onOpenBatchGrade={() => setShowBatchGrade(true)}
+        hasActiveChat={messages.length > 0}
       />
     </div>
-  );
-}
-
-// Small helper component to replace direct DOM manipulation
-function ActionButton({ label, color, onClick }) {
-  const btnRef = useRef(null);
-  const handleClick = () => onClick(btnRef.current);
-  return (
-    <button ref={btnRef} onClick={handleClick} className="mistake-btn"
-      style={{ borderColor: color, color, background: `${color}1a` }}>
-      {label}
-    </button>
   );
 }
 
