@@ -135,45 +135,6 @@ export default function WelcomeDashboard({
         </div>
       </div>
 
-      {/* 2. Quick 1-9 Grade Stage Switcher */}
-      <div className="stage-switch-container">
-        <div className="stage-switch-label">✨ 1-9年级学段心智模型一键切换：</div>
-        <div className="stage-switch-pills">
-          <button
-            type="button"
-            className={`stage-pill ${gradeStr.startsWith('1') || gradeStr.startsWith('2') || gradeStr.startsWith('3') ? 'active' : ''}`}
-            onClick={() => {
-              onGradeChange('3_up');
-              if (!selectedSubject) onSubjectChange('数学');
-              if (onPersonaChange) onPersonaChange('lion');
-            }}
-          >
-            🎈 小学低段 (1-3年级)
-          </button>
-          <button
-            type="button"
-            className={`stage-pill ${gradeStr.startsWith('4') || gradeStr.startsWith('5') || gradeStr.startsWith('6') ? 'active' : ''}`}
-            onClick={() => {
-              onGradeChange('5_up');
-              if (!selectedSubject) onSubjectChange('数学');
-              if (onPersonaChange) onPersonaChange('sister');
-            }}
-          >
-            📘 小学高段 (4-6年级)
-          </button>
-          <button
-            type="button"
-            className={`stage-pill ${gradeStr.startsWith('7') || gradeStr.startsWith('8') || gradeStr.startsWith('9') ? 'active' : ''}`}
-            onClick={() => {
-              onGradeChange('7_up');
-              if (!selectedSubject) onSubjectChange('数学');
-              if (onPersonaChange) onPersonaChange('owl');
-            }}
-          >
-            📐 初中阶段 (7-9年级)
-          </button>
-        </div>
-      </div>
 
       {/* 3. Primary Camera Action Card */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '20px' }}>
