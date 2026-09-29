@@ -344,26 +344,23 @@ export default function SmartPhotoCropperModal({
       display: 'flex',
       flexDirection: 'column',
       userSelect: 'none',
-      color: '#ffffff'
+      color: '#ffffff',
+      paddingTop: 'max(10px, env(safe-area-inset-top, 0px))'
     }}>
       {/* 顶部标题栏与画质预检状态 */}
       <div style={{
-        padding: '12px 18px',
+        padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
-        background: 'rgba(15, 23, 42, 0.85)',
-        flexWrap: 'wrap',
+        background: 'rgba(15, 23, 42, 0.9)',
         gap: '8px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '1.2rem' }}>📸</span>
-          <span style={{ fontWeight: 'bold', fontSize: '0.98rem', letterSpacing: '0.5px' }}>
-            智能拍题取景与透视矫正
-          </span>
-          <span style={{ fontSize: '0.72rem', background: '#2563eb', color: '#fff', padding: '2px 8px', borderRadius: '10px' }}>
-            对标作业帮/小猿
+          <span style={{ fontSize: '1.15rem' }}>📸</span>
+          <span style={{ fontWeight: 'bold', fontSize: '0.96rem', letterSpacing: '0.5px' }}>
+            拍题取景与矫正
           </span>
         </div>
 
@@ -372,10 +369,10 @@ export default function SmartPhotoCropperModal({
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.8rem',
-            padding: '4px 10px',
-            borderRadius: '12px',
+            gap: '4px',
+            fontSize: '0.78rem',
+            padding: '4px 8px',
+            borderRadius: '10px',
             background: qualityInfo.isGood ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.18)',
             border: `1px solid ${qualityInfo.isGood ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.45)'}`,
             color: qualityInfo.isGood ? '#34d399' : '#fbbf24'
@@ -386,14 +383,16 @@ export default function SmartPhotoCropperModal({
         )}
 
         <button
+          type="button"
           onClick={onClose}
           style={{
             background: 'transparent',
             border: 'none',
             color: '#94a3b8',
-            fontSize: '1.3rem',
+            fontSize: '1.25rem',
             cursor: 'pointer',
-            padding: '2px 8px'
+            padding: '4px 8px',
+            touchAction: 'manipulation'
           }}
           title="关闭"
         >
@@ -401,82 +400,91 @@ export default function SmartPhotoCropperModal({
         </button>
       </div>
 
-      {/* 模式切换选项卡 (单题框选 VS 倾斜四角透视拉平) */}
+      {/* 模式切换选项卡 (单题框选 VS 倾斜四角透视拉平 VS AI分题) */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '12px',
-        padding: '8px 16px',
-        background: 'rgba(0, 0, 0, 0.35)',
+        gap: '8px',
+        padding: '8px 12px',
+        background: 'rgba(0, 0, 0, 0.4)',
         borderBottom: '1px solid rgba(255,255,255,0.06)'
       }}>
         <button
           type="button"
           onClick={() => setCropMode('box')}
           style={{
-            background: cropMode === 'box' ? '#2563eb' : 'transparent',
+            flex: 1,
+            background: cropMode === 'box' ? '#2563eb' : 'rgba(255, 255, 255, 0.06)',
             color: cropMode === 'box' ? '#fff' : '#94a3b8',
-            border: 'none',
-            padding: '6px 14px',
+            border: cropMode === 'box' ? '1px solid #3b82f6' : '1px solid transparent',
+            padding: '6px 4px',
             borderRadius: '8px',
-            fontSize: '0.84rem',
+            fontSize: '0.82rem',
             fontWeight: 600,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            boxShadow: cropMode === 'box' ? '0 2px 8px rgba(37, 99, 235, 0.4)' : 'none'
+            justifyContent: 'center',
+            gap: '4px',
+            boxShadow: cropMode === 'box' ? '0 2px 8px rgba(37, 99, 235, 0.4)' : 'none',
+            touchAction: 'manipulation'
           }}
         >
           <span>🎯</span>
-          <span>标准矩形取景 (单题)</span>
+          <span>单题框选</span>
         </button>
 
         <button
           type="button"
           onClick={() => setCropMode('perspective')}
           style={{
-            background: cropMode === 'perspective' ? '#0ea5e9' : 'transparent',
+            flex: 1,
+            background: cropMode === 'perspective' ? '#0ea5e9' : 'rgba(255, 255, 255, 0.06)',
             color: cropMode === 'perspective' ? '#fff' : '#94a3b8',
-            border: 'none',
-            padding: '6px 14px',
+            border: cropMode === 'perspective' ? '1px solid #38bdf8' : '1px solid transparent',
+            padding: '6px 4px',
             borderRadius: '8px',
-            fontSize: '0.84rem',
+            fontSize: '0.82rem',
             fontWeight: 600,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            boxShadow: cropMode === 'perspective' ? '0 2px 8px rgba(14, 165, 233, 0.4)' : 'none'
+            justifyContent: 'center',
+            gap: '4px',
+            boxShadow: cropMode === 'perspective' ? '0 2px 8px rgba(14, 165, 233, 0.4)' : 'none',
+            touchAction: 'manipulation'
           }}
         >
           <span>📐</span>
-          <span>四角透视拉平 (解决歪斜/侧拍)</span>
+          <span>透视拉平</span>
         </button>
 
-        {/* 自动分题点选 (对标小猿搜题) */}
+        {/* 自动分题点选 */}
         <button
           type="button"
           onClick={handleAutoDetectQuestions}
           disabled={isDetecting}
           style={{
+            flex: 1,
             background: detectedQuestions.length > 0 ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(16, 185, 129, 0.15)',
             color: detectedQuestions.length > 0 ? '#fff' : '#34d399',
             border: '1px solid #10b981',
-            padding: '6px 14px',
+            padding: '6px 4px',
             borderRadius: '8px',
-            fontSize: '0.84rem',
+            fontSize: '0.82rem',
             fontWeight: 600,
             cursor: isDetecting ? 'wait' : 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            boxShadow: detectedQuestions.length > 0 ? '0 2px 8px rgba(16, 185, 129, 0.4)' : 'none'
+            justifyContent: 'center',
+            gap: '4px',
+            boxShadow: detectedQuestions.length > 0 ? '0 2px 8px rgba(16, 185, 129, 0.4)' : 'none',
+            touchAction: 'manipulation'
           }}
         >
           <span>✨</span>
-          <span>{isDetecting ? 'AI 正在极速分题...' : (detectedQuestions.length > 0 ? `已识别 ${detectedQuestions.length} 道题目 (点击切换)` : '智能分题点选 (小猿模式)')}</span>
+          <span>{isDetecting ? '分题中...' : (detectedQuestions.length > 0 ? `${detectedQuestions.length}题已分` : 'AI 分题')}</span>
         </button>
       </div>
 
@@ -509,7 +517,7 @@ export default function SmartPhotoCropperModal({
             style={{
               display: 'block',
               maxWidth: '85vw',
-              maxHeight: '62vh',
+              maxHeight: '48vh',
               objectFit: 'contain'
             }}
           />
@@ -733,34 +741,45 @@ export default function SmartPhotoCropperModal({
         </div>
       </div>
 
-      {/* 底部微调工具栏 */}
+      {/* 底部功能栏 (带完整的系统安全区域保护，远离手机 Home 键) */}
       <div style={{
-        padding: '12px 18px',
-        background: 'rgba(15, 23, 42, 0.95)',
-        borderTop: '1px solid rgba(255,255,255,0.1)',
+        paddingTop: '10px',
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+        paddingBottom: 'max(44px, calc(18px + env(safe-area-inset-bottom, 36px)))',
+        background: '#090d16',
+        borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+        boxShadow: '0 -10px 30px rgba(0, 0, 0, 0.75)',
         display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '10px'
+        flexDirection: 'column',
+        gap: '10px',
+        zIndex: 1400
       }}>
-        {/* 左侧操作组：旋转与去阴影 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {/* 第一行：快捷辅助微调工具 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px'
+        }}>
           <button
             type="button"
             onClick={() => setRotation(r => (r + 90) % 360)}
             style={{
-              padding: '7px 12px',
+              flex: 1,
+              padding: '8px 4px',
               borderRadius: '8px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#ffffff',
               fontSize: '0.82rem',
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px'
+              justifyContent: 'center',
+              gap: '4px',
+              touchAction: 'manipulation'
             }}
           >
             <span>🔄</span> 顺时针90°
@@ -770,17 +789,20 @@ export default function SmartPhotoCropperModal({
             type="button"
             onClick={() => setIsEnhanced(v => !v)}
             style={{
-              padding: '7px 12px',
+              flex: 1,
+              padding: '8px 4px',
               borderRadius: '8px',
-              background: isEnhanced ? 'linear-gradient(135deg, #0ea5e9, #0284c7)' : 'rgba(255,255,255,0.1)',
-              border: isEnhanced ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.2)',
+              background: isEnhanced ? 'linear-gradient(135deg, #0ea5e9, #0284c7)' : 'rgba(255, 255, 255, 0.08)',
+              border: isEnhanced ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.15)',
               color: '#ffffff',
               fontSize: '0.82rem',
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px'
+              justifyContent: 'center',
+              gap: '4px',
+              touchAction: 'manipulation'
             }}
           >
             <span>✨</span> {isEnhanced ? '去阴影: 开' : '去阴影: 关'}
@@ -798,33 +820,49 @@ export default function SmartPhotoCropperModal({
               ]);
             }}
             style={{
-              padding: '7px 12px',
+              flex: 1,
+              padding: '8px 4px',
               borderRadius: '8px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#cbd5e1',
               fontSize: '0.82rem',
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              touchAction: 'manipulation'
             }}
           >
-            🔲 全选重置
+            <span>🔲</span> 全选重置
           </button>
         </div>
 
-        {/* 右侧确认按钮 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* 第二行：核心操作按钮 (舒适大按键，完全避开手机底部虚拟导航栏与 Home 键) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
           <button
             type="button"
             onClick={onClose}
             style={{
-              padding: '7px 16px',
-              borderRadius: '8px',
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.2)',
+              width: '84px',
+              height: '46px',
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
               color: '#cbd5e1',
-              fontSize: '0.85rem',
-              cursor: 'pointer'
+              fontSize: '0.92rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'manipulation'
             }}
           >
             取消
@@ -835,21 +873,25 @@ export default function SmartPhotoCropperModal({
             disabled={processing}
             onClick={handleConfirmCrop}
             style={{
-              padding: '8px 20px',
-              borderRadius: '8px',
+              flex: 1,
+              height: '46px',
+              borderRadius: '12px',
               background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-              border: 'none',
+              border: '1px solid rgba(56, 189, 248, 0.5)',
               color: '#ffffff',
               fontWeight: 'bold',
-              fontSize: '0.88rem',
+              fontSize: '0.96rem',
+              letterSpacing: '0.5px',
               cursor: processing ? 'wait' : 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)'
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 16px rgba(37, 99, 235, 0.5)',
+              touchAction: 'manipulation'
             }}
           >
-            <span>{cropMode === 'perspective' ? '📐' : '✂️'}</span>
+            <span style={{ fontSize: '1.15rem' }}>{cropMode === 'perspective' ? '📐' : '✂️'}</span>
             <span>{processing ? '处理中...' : (cropMode === 'perspective' ? '透视拉平并立即讲题' : '确认取景并立即讲题')}</span>
           </button>
         </div>
