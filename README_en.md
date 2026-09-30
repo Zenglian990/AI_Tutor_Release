@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.3.7_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.1_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.3.7)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.1)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.3.7 Latest Fast Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.1 Latest Industrial Vision & Fast Voice Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,12 +34,22 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [ZengLian_AI_Tutor_v1.3.7.apk (~7.4MB · Latest Ultra-Fast Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.7.apk)
-- **📥 Stable Fallback**: [ZengLian_AI_Tutor_v1.3.6.apk (~7.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.3.7/ZengLian_AI_Tutor_v1.3.6.apk)
-- **✨ Features**:
-  - **⚡ Instant Dual-Engine Switching**: Top bar toggle button 【⚡ Fast / 🧠 Gemini】, mainland direct TTFT under 0.4s;
-  - **🧠 Jev K-9 Cognitive Brain**: 0ms local heuristic adaptive prompt injection based on developmental mental models;
-  - High-fidelity universal audio channel, sub-second speech synthesis, strict 9:16 portrait lock, zero-configuration startup.
+- **📥 Direct APK Download**: [AI_Tutor_v1.5.1.apk (~10.4MB · Industrial Vision & Fast Voice Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
+- **📥 Stable Fallback**: [ZengLian_AI_Tutor_v1.4.0.apk (~8.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk)
+- **✨ v1.5.1 Major Upgrades (Benchmarked against Zuoyebang & Xiaoyuan)**:
+  - **📸 Industrial Photo Question Search & OCR Grounding**:
+    - **5-Step Ground-Truth Vision Chain**: Mandatory transcription of original formulas (`### 📝 【原题精确还原】`) using LaTeX before derivation to eradicate hallucinated numbers or missed minus signs; seamlessly followed by clue breakdown, draftpad scaffolding, derivation, and parallel variations.
+    - **Zero-Click Layout Analysis & Question Selection Carousel**: Instant background parsing generates `[Full Page]`, `[Q1]`, `[Q2]` pill buttons for one-tap bounding box snapping.
+    - **Touch Precision Floating Loupe**: 2.2x circular magnifier hovering 70px above fingertip with green crosshairs for pixel-perfect corner adjustments without thumb obstruction.
+    - **Lossless Direct Image Pipeline**: Eliminates client-side double-compression degradation, preserving crisp mathematical superscripts and geometry lines.
+  - **🎙️ Triple-Engine Ultra-Fast Voice Input**:
+    - **Native Web Speech API**: Real-time 0-latency live streaming transcription on Android Chrome and desktop.
+    - **Voice Activity Detection (VAD)**: 900ms silence auto-cutoff for hands-free natural speaking.
+    - **0-Thinking Server Fallback**: Sub-second server STT pipeline with `thinkingBudget: 0`.
+  - **🧠 Automatic Grade-Driven Cognitive Matching**:
+    - Removed redundant manual mental model selectors; selecting grades 1-9 directly activates age-tailored pedagogical strategies (Grades 1-3 Playful, Grades 4-6 Systematic, Grades 7-9 Rigorous Logic).
+  - **📱 Gesture & Safe Area Navigation Bar Clearance**:
+    - Full edge-to-edge layout adaptation protecting action buttons from being blocked by virtual home buttons or gesture navigation bars.
   *(Releases strictly maintain the 2 latest APK packages)*
 
 ### 🍎 2. iOS (iPhone & iPad)
@@ -102,15 +112,24 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
 
 **ZengLian AI Tutor** eliminates the drawbacks of traditional "homework search engines" that encourage rote copying. Utilizing large language models and LanceDB textbook vector knowledge bases, it establishes a true **"Learn - Practice - Test - Guide - Manage" closed-loop tutoring agent**:
 
+- 📸 **Industrial Photo Question Search & OCR Grounding**:
+  - **5-Step Ground-Truth Vision Chain**: Mandatory transcription of original formulas (`### 📝 【原题精确还原】`) using LaTeX before derivation to eradicate hallucinated numbers or missed minus signs; seamlessly followed by clue breakdown, draftpad scaffolding, derivation, and parallel variations.
+  - **Zero-Click Layout Analysis & Question Selection Carousel**: Instant background parsing generates `[Full Page]`, `[Q1]`, `[Q2]` pill buttons for one-tap bounding box snapping.
+  - **Touch Precision Floating Loupe**: 2.2x circular magnifier hovering 70px above fingertip with green crosshairs for pixel-perfect corner adjustments without thumb obstruction.
+  - **Lossless Direct Image Pipeline**: Eliminates client-side double-compression degradation, preserving crisp mathematical superscripts and geometry lines.
+- 🎙️ **Triple-Engine Ultra-Fast Voice Input (Sub-Second Latency)**:
+  - **Native Web Speech API**: Real-time 0-latency live streaming transcription on Android Chrome and desktop.
+  - **Voice Activity Detection (VAD)**: 900ms silence auto-cutoff for hands-free natural speaking.
+  - **0-Thinking Server Fallback**: Sub-second server STT pipeline with `thinkingBudget: 0`.
 - ⚡ **Dual Ultra-Fast AI Engines (User Freedom & Strict Execution)**:
   - **DeepSeek-V3 Fast Edition**: Ultra-low Time-To-First-Token (**TTFT ~0.4s**) via domestic low-latency channels, crisp and responsive instant streaming.
   - **Gemini 2.5 Flash Deep Edition**: Native multimodal vision processing, geometric diagram comprehension, and complex multi-step reasoning.
   - **Instant One-Click Toggle**: Prominently accessible header capsule switch (【⚡ Fast / 🧠 Gemini】), strictly adhering to user selection without model spoofing.
-- 🧠 **Jev K-9 Cognitive Mental Engine (Zero-Latency Local Brain)**:
+- 🧠 **Jev K-9 Cognitive Mental Engine (Automatic Grade Matching)**:
   - **Grades 1-3 (Playful & Concrete)**: Engaging tone, situational recitations, visual breakdowns, focus nurturing.
   - **Grades 4-6 (Order & Calculation Discipline)**: Structured scratchpad practice, step verification, mistake taxonomy.
   - **Grades 7-9 (Rigorous Logic & High School Prep)**: Concept mind maps, counter-questioning, rigorous geometric/algebraic proofs.
-  - **Local 0ms Heuristic Decision**: Embedded locally with sub-millisecond execution, active frustration detection, dynamic scaffolding, and off-topic interception.
+  - **Zero Manual Overhead**: Automatically maps the student's selected grade to developmental strategies; embedded local 0ms heuristic engine intercepts off-topic banter and scaffold frustration.
 - 🌊 **45ms RAF Smooth Streaming Buffer**:
   - Proprietary `requestAnimationFrame`-based 45ms frame buffer, eliminating DOM jitter and frame drops during high-speed token generation for a butter-smooth typewriter experience.
 - 🖨️ **Printable A4 Exam Papers & 39,114+ National Exam Question Bank**:
@@ -124,9 +143,9 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
   - Automatically captures flawed concepts, generates parallel variations, and exports clean A4 test papers.
 - 📊 **Parent Supervision & Academic Diagnosis**:
   - Generates comprehensive weekly reports with personalized parent follow-up recommendations.
-- 📱 **Cross-Platform Access**:
+- 📱 **Cross-Platform Access & Safe Area Protection**:
   - **Web Application**: Immersive desktop multi-window experience.
-  - **Native Android APK**: Tailored for 9:16 portrait phones.
+  - **Native Android APK**: Tailored for 9:16 portrait phones with edge-to-edge gesture bar clearance.
 
 ---
 
