@@ -210,7 +210,18 @@ function splitAnswerSections(text) {
   // Only consider it a valid split if preAnswer is substantial
   if (!preAnswer) return null;
 
-  return { preAnswer, answerBody, postAnswer };
+  // Detect auxiliary line hint in preAnswer or answerBody
+  let auxLine = null;
+  const auxRegex = /(?:^|\n)(#{3,4}\s*(?:📐\s*)?【辅助线[作法|灵感|指引|提示]*】[^\n]*\n[\s\S]*?)(?=\n#{2,4}|\n###|$)/;
+  const auxMatch = preAnswer.match(auxRegex) || answerBody.match(auxRegex);
+  if (auxMatch) {
+    auxLine = auxMatch[1].trim();
+  }
+
+  // Check if text is a geometry problem
+  const isGeometry = /(?:几何|辅助线|三角形|四边形|直角|全等|相似|圆周|垂径|平分线|切线|勾股定理)/.test(text);
+
+  return { preAnswer, answerBody, postAnswer, auxLine, isGeometry };
 }
 
 const animatedIds = new Set();
@@ -289,9 +300,10 @@ const ChatMessage = React.memo(function ChatMessage({
   const activeGrade = msg.grade || selectedGrade || currentProfile?.grade || '7_up';
   const isPrimary = isLowerGrade(activeGrade);
   const isPinyinActive = (pinyinMode ?? true) && isPrimary && msg.role === 'ai';
-  const isDirectMode = socraticLevel === 'direct';
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(isDirectMode);
+  const [isAuxRevealed, setIsAuxRevealed] = useState(false);
   const [hasUnderstood, setHasUnderstood] = useState(false);
+  const [isMistakeMarked, setIsMistakeMarked] = useState(false);
 
   const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
   const { thinking, body: cleanAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
@@ -542,29 +554,87 @@ const ChatMessage = React.memo(function ChatMessage({
                             </div>
                             {!isAnswerRevealed && (
                               <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
-                                💡 老师建议：先根据上方动笔支架在草稿纸算一算，有思路了再对答案！
+                                💡 老师建议：先在草稿纸动手算一算，有思路了再对答案！
                               </div>
                             )}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setIsAnswerRevealed(r => !r)}
-                          style={{
-                            padding: '5px 14px',
-                            borderRadius: '10px',
-                            background: isAnswerRevealed ? 'rgba(148, 163, 184, 0.15)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                            color: isAnswerRevealed ? '#cbd5e1' : '#ffffff',
-                            border: 'none',
-                            fontWeight: 600,
-                            fontSize: '0.82rem',
-                            cursor: 'pointer',
-                            boxShadow: isAnswerRevealed ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.4)'
-                          }}
-                        >
-                          {isAnswerRevealed ? '▲ 折叠答案' : '👁️ 查看完整答案推导'}
-                        </button>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {/* 阶梯模式：初中几何专属【辅助线灵感锁】 */}
+                          {!isAnswerRevealed && (sections.auxLine || (!isPrimary && sections.isGeometry)) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (sections.auxLine) {
+                                  setIsAuxRevealed(a => !a);
+                                } else if (onQuickPrompt) {
+                                  onQuickPrompt("老师，上面这道几何题请先不要告诉我完整答案，请只点拨我【辅助线该怎么作、构造什么图形】？给我在草稿纸上动笔的灵感！");
+                                }
+                              }}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: '10px',
+                                background: isAuxRevealed ? 'rgba(245, 158, 11, 0.25)' : 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.15))',
+                                color: '#fbbf24',
+                                border: '1px solid rgba(245, 158, 11, 0.45)',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="仅查看几何辅助线作法，保留独立推导机会"
+                            >
+                              <span>📐</span>
+                              <span>{isAuxRevealed ? '▲ 收起辅助线' : '仅看辅助线灵感'}</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setIsAnswerRevealed(r => !r)}
+                            style={{
+                              padding: '5px 14px',
+                              borderRadius: '10px',
+                              background: isAnswerRevealed ? 'rgba(148, 163, 184, 0.15)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                              color: isAnswerRevealed ? '#cbd5e1' : '#ffffff',
+                              border: 'none',
+                              fontWeight: 600,
+                              fontSize: '0.82rem',
+                              cursor: 'pointer',
+                              boxShadow: isAnswerRevealed ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.4)'
+                            }}
+                          >
+                            {isAnswerRevealed ? '▲ 折叠答案' : '👁️ 查看完整推导'}
+                          </button>
+                        </div>
                       </div>
+
+                      {/* 辅助线提点阶梯展开区 */}
+                      {!isAnswerRevealed && isAuxRevealed && sections.auxLine && (
+                        <div style={{
+                          marginTop: '12px',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.35)',
+                          color: '#fef3c7',
+                          fontSize: '0.88rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: '#f59e0b', marginBottom: '6px' }}>
+                            <span>📐</span>
+                            <span>几何辅助线提点（已解锁）：</span>
+                          </div>
+                          {renderMarkdownBlock(sections.auxLine)}
+                          <div style={{ fontSize: '0.78rem', color: '#fbbf24', marginTop: '6px', fontStyle: 'italic' }}>
+                            💡 提示：试着在草稿纸上根据此辅助线自主推导，推导完成再点击右侧查看完整答案核对！
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 完整推导与标准答案展开区 */}
                       {isAnswerRevealed && (
                         <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
                           {renderMarkdownBlock(sections.answerBody)}
@@ -581,12 +651,19 @@ const ChatMessage = React.memo(function ChatMessage({
             <div style={{ marginTop: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {msg.role === 'ai' && onMarkMistake && (
                 <button
-                  onClick={() => onMarkMistake(msg)}
+                  onClick={() => {
+                    setIsMistakeMarked(true);
+                    onMarkMistake(msg);
+                  }}
                   className="tts-btn"
-                  style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: '#ef4444' }}
+                  style={{
+                    background: isMistakeMarked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                    color: isMistakeMarked ? '#10b981' : '#ef4444',
+                    borderColor: isMistakeMarked ? '#10b981' : '#ef4444'
+                  }}
                   title="将此题加入错题本"
                 >
-                  🚩 标记错题
+                  {isMistakeMarked ? '✅ 已入错题本' : '🚩 标记错题'}
                 </button>
               )}
               {msg.role === 'ai' && (

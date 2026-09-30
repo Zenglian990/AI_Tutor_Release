@@ -105,6 +105,31 @@ function AppInner() {
     return localStorage.getItem('ai_tutor_minor_privacy_consented') !== 'true';
   });
 
+  // Modern Non-Blocking Toast Notification & Quick Reason Tagging
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'info', id }
+  const [mistakeTagPrompt, setMistakeTagPrompt] = useState(null); // { id, query }
+
+  const showToast = useCallback((message, type = 'info', duration = 2800) => {
+    setToast({ message, type, id: Date.now() });
+    setTimeout(() => {
+      setToast(curr => (curr?.message === message ? null : curr));
+    }, duration);
+  }, []);
+
+  const handleSelectMistakeReason = useCallback(async (mistakeId, reasonTag) => {
+    try {
+      await authFetch(`/api/mistakes/${mistakeId}/reason`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reasonTag, tags: reasonTag })
+      });
+      showToast(`🎯 已标记错因：${reasonTag}`, 'success');
+      setMistakeTagPrompt(null);
+    } catch {
+      setMistakeTagPrompt(null);
+    }
+  }, [showToast]);
+
   // Subscribe to real-time TTS speaking state for Barge-in
   useEffect(() => {
     return subscribeSpeakingState(setIsSpeaking);
@@ -467,17 +492,17 @@ function AppInner() {
             } else {
               setInput('');
               if (isDialogueLoop) setVoiceDialogueOpen(false);
-              alert('没有听清您的说话，请靠近麦克风再试一次 🎤');
+              showToast('没有听清您的说话，请靠近麦克风再试一次 🎤', 'info');
             }
           } else {
             setInput('');
             if (isDialogueLoop) setVoiceDialogueOpen(false);
-            alert('语音识别服务响应异常，请手动输入');
+            showToast('语音识别服务响应异常，请重试或手动输入', 'error');
           }
         } catch (err) {
           setInput('');
           if (isDialogueLoop) setVoiceDialogueOpen(false);
-          alert('语音识别网络异常，请重试');
+          showToast('语音识别网络异常，请检查网络后重试', 'error');
         } finally {
           setIsLoading(false);
         }
@@ -497,12 +522,12 @@ function AppInner() {
 
     } catch (err) {
       console.error('Mic recording error:', err);
-      alert('无法启动麦克风录音，请确保在手机【系统设置 -> 应用权限】中已授予【麦克风/录音】权限 🎙️');
+      showToast('无法启动麦克风录音，请在手机系统设置中授予【麦克风】权限 🎙️', 'error');
       setIsListening(false);
       isListeningRef.current = false;
       setVoiceDialogueOpen(false);
     }
-  }, []);
+  }, [showToast]);
 
   const stopVoiceRecording = useCallback(() => {
     isListeningRef.current = false;
@@ -782,7 +807,7 @@ function AppInner() {
     stopTTS();
   }, []);
 
-  const handleMarkMistake = useCallback(async (msg) => {
+  const handleMarkMistake = useCallback(async (msg, customReason = null) => {
     try {
       const msgs = messagesRef.current;
       const idx = msgs.findIndex(m => m.id === msg.id);
@@ -803,15 +828,23 @@ function AppInner() {
           answer: msg.text,
           grade: gradeRef.current,
           subject: subjectRef.current,
-          profile_id: currentProfileId
+          profile_id: currentProfileId,
+          reason: customReason || '用户自主标记'
         })
       });
-      if (res.ok) alert("✅ 已成功加入错题本！");
-      else alert("❌ 加入错题本失败，请稍后重试。");
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("✅ 已成功加入错题本！", "success");
+        if (data && data.id) {
+          setMistakeTagPrompt({ id: data.id, query: (userQuery || '本题').substring(0, 36) });
+        }
+      } else {
+        showToast("❌ 加入错题本失败，请稍后重试", "error");
+      }
     } catch (e) {
-      alert("网络错误，加入错题本失败。");
+      showToast("网络连接异常，加入错题本失败", "error");
     }
-  }, [currentProfileId]);
+  }, [currentProfileId, showToast]);
 
   return (
     <div className="app-container">
@@ -826,12 +859,12 @@ function AppInner() {
         onProfileChange={onProfileChange}
         onRenameProfile={handleRenameProfile}
         onDeleteProfile={() => {
-          if (currentProfileId === 'default') { alert('默认档案不能删除。'); return; }
+          if (currentProfileId === 'default') { showToast('默认学生档案受保护，无法删除', 'info'); return; }
           setGateAction(() => () => {
             if (window.confirm(`确定要删除档案 "${currentProfile.name}" 及其所有记录吗？`)) {
               authFetch('/api/profile?profile_id=' + currentProfileId, { method: 'DELETE' })
-                .then(res => { if (!res.ok) throw new Error('删除失败'); handleDeleteProfile(currentProfileId); })
-                .catch(() => alert('删除档案失败，请稍后重试。'));
+                .then(res => { if (!res.ok) throw new Error('删除失败'); handleDeleteProfile(currentProfileId); showToast('已成功删除学生档案', 'success'); })
+                .catch(() => showToast('删除档案失败，请稍后重试', 'error'));
             }
           });
           setGateReason(`删除学生档案 "${currentProfile.name}"`);
@@ -1182,6 +1215,126 @@ function AppInner() {
         onOpenBatchGrade={() => setShowBatchGrade(true)}
         hasActiveChat={messages.length > 0}
       />
+
+      {/* 现代移动端渐隐 Toast 状态提示 (替代原生阻塞式 alert) */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '10px 20px',
+          borderRadius: '30px',
+          background: toast.type === 'error'
+            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95))'
+            : toast.type === 'success'
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95))'
+              : 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))',
+          color: '#ffffff',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          fontSize: '0.9rem',
+          fontWeight: 600,
+          pointerEvents: 'none'
+        }}>
+          <span>{toast.type === 'error' ? '❌' : toast.type === 'success' ? '✅' : '💡'}</span>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* 错题归档快速错因标签选择浮条 (三维极简标记：粗心/公式生疏/无思路) */}
+      {mistakeTagPrompt && (
+        <div style={{
+          position: 'fixed',
+          bottom: '120px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: '1px solid rgba(59, 130, 246, 0.4)',
+          borderRadius: '16px',
+          padding: '10px 14px',
+          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          maxWidth: '92%',
+          width: '380px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <span style={{ fontSize: '0.8rem', color: '#93c5fd', fontWeight: 600 }}>
+              🏷️ 请选择本题错因（自动分类错题本）：
+            </span>
+            <button
+              type="button"
+              onClick={() => setMistakeTagPrompt(null)}
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', width: '100%', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleSelectMistakeReason(mistakeTagPrompt.id, '粗心看错/算错')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                color: '#fca5a5',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              🤦‍♂️ 粗心看错
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectMistakeReason(mistakeTagPrompt.id, '公式概念生疏')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                color: '#fcd34d',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              📐 公式生疏
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectMistakeReason(mistakeTagPrompt.id, '完全毫无思路')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.35)',
+                color: '#c4b5fd',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              🤯 完全无思路
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

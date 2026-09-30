@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.2_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.3_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-网页版即开即用-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.2)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.3)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.2 学生真实心智打磨·自律防抄题版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.3 夜间拍照去阴影·错因归因·初中几何辅助线锁版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,21 +34,15 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.2.apk (约 10.4MB · 学生真实心智打磨·自律防抄题版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
-- **📥 稳定备用直链**：[AI_Tutor_v1.5.1.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
-- **✨ v1.5.2 重磅体验打磨 (沉浸模拟 1-9 年级学生真实做题心智)**：
-  - **🔒 自律防抄题·完整答案手风琴折叠锁（对标作业帮）**：
-    - 拍照搜题优先呈现【原题转录】、【考点题眼】与【草稿纸第一步动笔支架】；完整推导演算与标准答案默认进入防抄题保护折叠区，引导学生先在草稿纸上动手算，算完点击再展开，杜绝不自律抄袭！
-  - **∑ 移动端数学理化快捷符号输入栏**：
-    - 输入框左侧一键呼出快捷数学理化符号条（`+ - × ÷ = ( ) x² x³ √ π △ ∠ ⊥ ∥ ≌ ∽ ∵ ∴ ≥ ≤ ° %`），轻点秒级插入，彻底攻克手机键盘打不出数学根号、角标与几何符号的痛点。
-  - **🎒 1-9 年级全学段文案精准动态穿透**：
-    - 彻底根除 1-3 年级低段出现“中考母题”等违和文本。1-3 年级动态匹配“趣味题型点拨与单元小测”，4-6 年级匹配“期末母题与规律探究”，7-9 年级匹配“中考必考母题与名校全真模考”。
-  - **📱 移动端输入框文案净化**：
-    - 移除手机屏幕上生涩的 "(Enter 发送)" 桌面违和残留，自适应移动端触摸交互。
-  - **🍎 1-3 年级拍照解答认知自适应精简**：
-    - 针对 7-9 岁低段儿童自动分流为通俗活泼、少字精炼、生活故事（分苹果、糖果积木）比喻，避免长篇学术大论造成儿童视觉疲劳。
-  - **🌟 即时正向激励与求助反馈**：
-    - 每条 AI 解答下方新增 `[🌟 听懂了 +5经验]`（触发庆祝和弦与经验值奖励）与 `[🤔 没太懂，换个例子]`（名师即刻以生活化具象例子重讲）。
+- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.3.apk (约 10.4MB · 夜间拍照去阴影·错因归因·初中几何辅助线锁版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk)
+- **📥 稳定备用直链**：[AI_Tutor_v1.5.2.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
+- **✨ v1.5.3 重磅体验跃升 (高频痛点全面解决·方案A落地)**：
+  - **💡 拍照取景器三维试卷滤镜（原图 / 智能去阴影 / 黑白高对比增强）**：
+    - 针对学生晚间在书桌台灯下写作业、手机/手臂阴影遮挡题干、铅笔字在反光下发白的痛点，新增轻量级局部积分图去阴影与高对比黑白试卷滤镜，一键抚平阴影与纸面暗黄，白纸黑字分明，大幅提升复杂几何图与上下标公式的视觉识别精度。
+  - **📐 初中几何专属【辅助线作法灵感锁】（阶梯式提点）**：
+    - 在自律折叠锁中专设 `[📐 仅看辅助线灵感]`。初中几何压轴题卡壳时，一键仅提取辅助线作法（如“倍长中线构造全等”或“作垂直分高”），保留独立推导机会，做完后再核对完整证明。若原解答未含辅助线，一键自动定向请求名师辅助线指引。
+  - **🏷️ 告别原生阻塞式 Alert · 现代轻量 Toast & 三维错因快速归因**：
+    - 彻底消除移动端打断做题心流的原生 `window.alert()` 弹窗。点击“标记错题”后按钮秒级变为 `[✅ 已入错题本]`，顶部飘出微动效 Toast，并弹出 `[🤦‍♂️ 粗心看错]`、`[📐 公式生疏]`、`[🤯 毫无思路]` 错因胶囊，一键完成智能化错因画像沉淀。
   *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)

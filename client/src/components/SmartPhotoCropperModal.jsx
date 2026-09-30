@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { removeShadowsAndEnhance } from '../utils/documentEnhancer';
+import { removeShadowsAndEnhance, enhanceBlackAndWhite } from '../utils/documentEnhancer';
 import { inspectImageQuality } from '../utils/imageQualityInspector';
 import { warpPerspective } from '../utils/perspectiveTransform';
 import { playShutterSound } from '../utils/sensoryFeedback';
@@ -10,7 +10,7 @@ import { playShutterSound } from '../utils/sensoryFeedback';
  * 核心特性：
  * 1. 毫秒级端侧图像质量与模糊度预检（拉普拉斯方差 + 亮度检测 + 截图侦测）
  * 2. 双模式：标准矩形选单题 🎯 + 自由四角透视拉平 📐（一键消除斜拍梯形变形）
- * 3. 积分图轻量级文档去阴影增强（将发灰发暗背景还原为纯净白纸黑字）
+ * 3. 试卷三维图像增强：原图 📄 + 积分图智能去阴影 ✨ + 极高对比黑白试卷 🖨️
  * 4. 科技感激光扫描动画与即时状态反馈
  */
 export default function SmartPhotoCropperModal({
@@ -21,7 +21,7 @@ export default function SmartPhotoCropperModal({
 }) {
   const [imgObj, setImgObj] = useState(null);
   const [rotation, setRotation] = useState(0); // 0, 90, 180, 270
-  const [isEnhanced, setIsEnhanced] = useState(true); // 默认开启去阴影
+  const [filterMode, setFilterMode] = useState('enhanced'); // 'enhanced' (智能去阴影) | 'bw' (黑白高对比试卷) | 'raw' (原图)
   const [cropMode, setCropMode] = useState('box'); // 'box' (矩形) | 'perspective' (四角拉平)
   const [crop, setCrop] = useState({ x: 0.05, y: 0.08, width: 0.9, height: 0.84 }); // 归一化坐标 0-1
   const [corners, setCorners] = useState([
@@ -195,7 +195,7 @@ export default function SmartPhotoCropperModal({
     ctx.drawImage(imgObj, -drawW / 2, -drawH / 2, drawW, drawH);
     ctx.restore();
 
-    if (isEnhanced) {
+    if (filterMode === 'enhanced') {
       try {
         removeShadowsAndEnhance(canvas, {
           windowSizeRatio: 0.08,
@@ -205,8 +205,18 @@ export default function SmartPhotoCropperModal({
       } catch (err) {
         console.warn('[SmartCropper] Document enhance failed, using raw:', err);
       }
+    } else if (filterMode === 'bw') {
+      try {
+        enhanceBlackAndWhite(canvas, {
+          windowSizeRatio: 0.07,
+          darkThresholdRatio: 0.88,
+          contrast: 1.35
+        });
+      } catch (err) {
+        console.warn('[SmartCropper] B&W enhance failed, using raw:', err);
+      }
     }
-  }, [imgObj, rotation, isEnhanced]);
+  }, [imgObj, rotation, filterMode]);
 
   useEffect(() => {
     if (isOpen && imgObj) {
@@ -911,7 +921,81 @@ export default function SmartPhotoCropperModal({
         gap: '10px',
         zIndex: 1400
       }}>
-        {/* 第一行：快捷辅助微调工具 */}
+        {/* 第一行：试卷图像增强滤镜 (对标扫描全能王/作业帮滤镜体系) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '6px',
+          background: 'rgba(255, 255, 255, 0.05)',
+          padding: '4px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', padding: '0 6px', fontWeight: 600, flexShrink: 0 }}>
+            试卷滤镜:
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
+            <button
+              type="button"
+              onClick={() => setFilterMode('raw')}
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: '8px',
+                background: filterMode === 'raw' ? 'rgba(255, 255, 255, 0.22)' : 'transparent',
+                color: filterMode === 'raw' ? '#ffffff' : '#94a3b8',
+                border: filterMode === 'raw' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent',
+                fontSize: '0.78rem',
+                fontWeight: filterMode === 'raw' ? 700 : 500,
+                cursor: 'pointer',
+                touchAction: 'manipulation'
+              }}
+            >
+              📄 原图
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('enhanced')}
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: '8px',
+                background: filterMode === 'enhanced' ? 'linear-gradient(135deg, #0ea5e9, #0284c7)' : 'transparent',
+                color: '#ffffff',
+                border: filterMode === 'enhanced' ? '1px solid #38bdf8' : '1px solid transparent',
+                fontSize: '0.78rem',
+                fontWeight: filterMode === 'enhanced' ? 700 : 500,
+                cursor: 'pointer',
+                boxShadow: filterMode === 'enhanced' ? '0 2px 8px rgba(14, 165, 233, 0.4)' : 'none',
+                touchAction: 'manipulation'
+              }}
+            >
+              ✨ 智能去阴影
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('bw')}
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: '8px',
+                background: filterMode === 'bw' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent',
+                color: '#ffffff',
+                border: filterMode === 'bw' ? '1px solid #34d399' : '1px solid transparent',
+                fontSize: '0.78rem',
+                fontWeight: filterMode === 'bw' ? 700 : 500,
+                cursor: 'pointer',
+                boxShadow: filterMode === 'bw' ? '0 2px 8px rgba(16, 185, 129, 0.4)' : 'none',
+                touchAction: 'manipulation'
+              }}
+            >
+              🖨️ 黑白增强
+            </button>
+          </div>
+        </div>
+
+        {/* 第二行：旋转与选框快捷微调 */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -923,12 +1007,12 @@ export default function SmartPhotoCropperModal({
             onClick={() => setRotation(r => (r + 90) % 360)}
             style={{
               flex: 1,
-              padding: '8px 4px',
+              padding: '7px 4px',
               borderRadius: '8px',
               background: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#ffffff',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
@@ -939,29 +1023,6 @@ export default function SmartPhotoCropperModal({
             }}
           >
             <span>🔄</span> 顺时针90°
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsEnhanced(v => !v)}
-            style={{
-              flex: 1,
-              padding: '8px 4px',
-              borderRadius: '8px',
-              background: isEnhanced ? 'linear-gradient(135deg, #0ea5e9, #0284c7)' : 'rgba(255, 255, 255, 0.08)',
-              border: isEnhanced ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#ffffff',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              touchAction: 'manipulation'
-            }}
-          >
-            <span>✨</span> {isEnhanced ? '去阴影: 开' : '去阴影: 关'}
           </button>
 
           <button
@@ -977,12 +1038,12 @@ export default function SmartPhotoCropperModal({
             }}
             style={{
               flex: 1,
-              padding: '8px 4px',
+              padding: '7px 4px',
               borderRadius: '8px',
               background: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
@@ -992,7 +1053,7 @@ export default function SmartPhotoCropperModal({
               touchAction: 'manipulation'
             }}
           >
-            <span>🔲</span> 全选重置
+            <span>🔲</span> 选框满格
           </button>
         </div>
 

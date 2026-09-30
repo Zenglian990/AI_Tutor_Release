@@ -1396,3 +1396,15 @@ body.eink-mode .welcome-footer-banner {
   transform: scale(0.92);
 }
 
+@keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+

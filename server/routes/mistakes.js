@@ -37,7 +37,7 @@ router.post('/mistakes/mark', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const { query, answer, grade, subject, profile_id, source_info, tags } = req.body;
+    const { query, answer, grade, subject, profile_id, source_info, tags, reason } = req.body;
     if (!query || !answer) return res.status(400).json({ error: "Missing query or answer" });
 
     let sourceInfoStr = '[]';
@@ -49,14 +49,33 @@ router.post('/mistakes/mark', async (req, res) => {
       }
     }
 
-    await sqliteDb.run(
+    const mistakeReason = reason || '用户自主标记';
+    const result = await sqliteDb.run(
       'INSERT INTO mistakes (query, answer, grade, subject, source_info, reason, profile_id, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [encryptField(query), encryptField(answer), grade || 'unknown', subject || 'unknown', sourceInfoStr, encryptField('User manually marked'), profile_id || 'default', encryptField(tags || '')]
+      [encryptField(query), encryptField(answer), grade || 'unknown', subject || 'unknown', sourceInfoStr, encryptField(mistakeReason), profile_id || 'default', encryptField(tags || '')]
     );
-    res.json({ success: true });
+    res.json({ success: true, id: result.lastID });
   } catch (e) {
     logger.error("Mark mistake error:", e);
     res.status(500).json({ error: "Failed to mark mistake" });
+  }
+});
+
+// PATCH /api/mistakes/:id/reason
+router.patch('/mistakes/:id/reason', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { reason, tags } = req.body;
+    const { id } = req.params;
+    await sqliteDb.run(
+      'UPDATE mistakes SET reason = ?, tags = ? WHERE id = ?',
+      [encryptField(reason || '用户自主标记'), encryptField(tags || ''), id]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    logger.error("Update mistake reason error:", e);
+    res.status(500).json({ error: "Failed to update reason" });
   }
 });
 

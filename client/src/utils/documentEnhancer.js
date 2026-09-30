@@ -416,4 +416,71 @@ export function extractHandwritingMask(canvas, options = {}) {
   return maskCanvas;
 }
 
+/**
+ * 试卷黑白高对比度扫描增强 (对标扫描全能王/作业帮黑白文档模式)
+ * 基于积分图局部动态光照归一化 + 局部双向梯度二值化，滤除夜间写作业台灯阴影与纸面发黄泛光，输出高对比度黑白试卷切片
+ * 
+ * @param {HTMLCanvasElement} canvas
+ * @param {Object} options
+ * @returns {HTMLCanvasElement}
+ */
+export function enhanceBlackAndWhite(canvas, options = {}) {
+  const {
+    windowSizeRatio = 0.07,
+    darkThresholdRatio = 0.88,
+    contrast = 1.35
+  } = options;
+
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const totalPixels = width * height;
+
+  // 1. 快速提取灰度
+  const gray = new Uint8Array(totalPixels);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    gray[i] = (data[idx] * 77 + data[idx + 1] * 150 + data[idx + 2] * 29) >> 8;
+  }
+
+  // 2. 积分图计算局部均值背景
+  const integral = buildIntegralImage(gray, width, height);
+  const radius = Math.max(12, Math.floor(Math.min(width, height) * windowSizeRatio));
+
+  for (let y = 0; y < height; y++) {
+    const y1 = Math.max(0, y - radius);
+    const y2 = Math.min(height, y + radius);
+
+    for (let x = 0; x < width; x++) {
+      const x1 = Math.max(0, x - radius);
+      const x2 = Math.min(width, x + radius);
+
+      const localBg = Math.max(25, getWindowMean(integral, width, x1, y1, x2, y2));
+      const pixelIdx = (y * width + x) * 4;
+      const currentVal = gray[y * width + x];
+
+      // 局部自适应判别：若像素明显比周围纸面背景暗，则为笔迹/题干
+      const threshold = localBg * darkThresholdRatio;
+      if (currentVal < threshold) {
+        // 深色笔画：强化为深墨色（保留边缘柔和渐变，防止文字出现严重马赛克失真）
+        const diffRatio = (threshold - currentVal) / Math.max(1, threshold);
+        const strokeVal = Math.max(15, Math.floor(currentVal * (1 - diffRatio * 0.75)));
+        data[pixelIdx] = strokeVal;
+        data[pixelIdx + 1] = strokeVal;
+        data[pixelIdx + 2] = strokeVal;
+      } else {
+        // 背景纸张：直接拉平至纯净白纸（消除夜间台灯暗部投影）
+        data[pixelIdx] = 255;
+        data[pixelIdx + 1] = 255;
+        data[pixelIdx + 2] = 255;
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
 
