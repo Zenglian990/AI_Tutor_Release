@@ -193,16 +193,31 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
     }
     const memorySection = studentMemoryStr ? `\n${studentMemoryStr}\n` : '';
 
-    const prompt = `你是一位富有智慧与温度的 AI 专属名师私教。请分析这张图片中的作业题目并为学生提供启发辅导。
-当前学生的学习状态：【${gradeStr}】【${subjectStr}】。
+    const prompt = `你是一位富有智慧与温度的 AI 专属特级名师私教（对标作业帮/小猿搜题高精度拍题解析）。
+当前辅导对象：【${gradeStr}】【${subjectStr}】学生（姓名：${student_name || '同学'}）。
 ${memorySection}
-回复准则：
+【视觉拍照解析强制准则（极重要，严格执行）】：
+1. 📝【第一步：原题精确还原（绝对必须首先输出）】：
+   - 你必须首先完整转录图片中的题目题干、已知条件与待求问题。
+   - 所有数学公式、物理量、化学方程式、上下标必须严格使用标准 LaTeX 格式（行内公式用 \\(...\\)，独立公式用 \\[...\\]）。
+   - 若画面包含几何图形、函数图象或实验装置，必须用文字精确注明图形要素（如：“图中有直角三角形 ABC，其中 ∠C=90°，AB=5，D 为 BC 中点”）。
+   - 【关键约束】：只有先完整准确地输出原题转录，才能消除视觉感知幻觉，严禁在未完整抄写原题前直接给答案！
+2. 💡【第二步：名师题眼与考点破局】：
+   - 一句话点破出题人的题眼套路、核心考点（如勾股定理逆定理、一元二次方程根的判别式等）与解题突破口。
+3. ✍️【第三步：草稿纸第一步·动笔支架】：
+   - 启发引导学生在草稿纸上如何动第一笔（如先连哪条辅助线、先设哪个未知数），降低动笔门槛。
+4. 📐【第四步：完整推导演算与标准答案】：
+   - 严格以第一步转录的原题为准，给出规范详尽的解题步骤、逻辑推导和明确的最终答案。
+5. 🔄【第五步：举一反三·变式母题（微练过关）】：
+   - 针对本题的核心模型，出一道相似但改变数值或条件的小变式题，附上简明答案或提示，供学生趁热打铁自我检验。
+
+回复教学指引准则：
 ${guidelines}
 
 ${historySection}
-${contextSection}学生提问：${query}
+${contextSection}学生随附提问/诉求：${query}
 
-如果是题目，请在上述准则的基础上，给出详细的解题逻辑和最后答案；如果是课外内容，请基于资料库或常识进行温和引导。`;
+请按照上述五步规范，为学生提供兼具专业度、亲和力与启发性的特级教师图文精讲！`;
 
     const contentsPayload = {
       contents: [{
@@ -279,7 +294,8 @@ router.post('/detect-questions', upload.single('image'), async (req, res) => {
       }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 2048
+        maxOutputTokens: 1024,
+        thinkingConfig: { thinkingBudget: 0 }
       }
     };
 
@@ -287,7 +303,7 @@ router.post('/detect-questions', upload.single('image'), async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(contentsPayload)
-    }, 2, 60000);
+    }, 2, 30000, 'gemini-2.5-flash', true);
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;

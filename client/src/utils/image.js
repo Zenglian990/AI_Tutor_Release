@@ -9,7 +9,7 @@ import heic2any from 'heic2any';
  * @param {number} quality 
  * @returns {Promise<File>}
  */
-export const compressImage = async (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
+export const compressImage = async (file, maxWidth = 1600, maxHeight = 1600, quality = 0.88) => {
   let imageFile = file;
   if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
     try {

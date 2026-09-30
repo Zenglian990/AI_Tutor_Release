@@ -590,8 +590,9 @@ function AppInner() {
     try {
       if (hasImage) {
         const formData = new FormData();
-        const compressed = await compressImage(currentImage);
-        formData.append('image', compressed);
+        const isAlreadyCropped = currentImage.name?.startsWith('crop_') || currentImage.name?.startsWith('warp_');
+        const uploadImageFile = isAlreadyCropped ? currentImage : await compressImage(currentImage, 1600, 1600, 0.88);
+        formData.append('image', uploadImageFile);
         formData.append('query', userQuery);
         formData.append('history', JSON.stringify(historyContext));
         formData.append('profile_id', currentProfileId);

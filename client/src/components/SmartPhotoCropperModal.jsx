@@ -36,9 +36,11 @@ export default function SmartPhotoCropperModal({
   const [detectedQuestions, setDetectedQuestions] = useState([]);
   const [isDetecting, setIsDetecting] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState(null);
+  const [loupe, setLoupe] = useState({ visible: false, clientX: 0, clientY: 0, normX: 0, normY: 0 });
 
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const loupeCanvasRef = useRef(null);
   const dragRef = useRef({
     isDragging: false,
     handle: null,
@@ -49,12 +51,13 @@ export default function SmartPhotoCropperModal({
   });
 
   // 0. 自动分题识别 (对标小猿搜题多题一键框选)
-  const handleAutoDetectQuestions = async () => {
-    if (!imageFile || isDetecting) return;
+  const handleAutoDetectQuestions = useCallback(async (targetFile = null) => {
+    const fileToUse = targetFile || imageFile;
+    if (!fileToUse || isDetecting) return;
     setIsDetecting(true);
     try {
       const formData = new FormData();
-      formData.append('image', imageFile);
+      formData.append('image', fileToUse);
       const res = await fetch('/api/vision/detect-questions', {
         method: 'POST',
         body: formData
@@ -77,9 +80,9 @@ export default function SmartPhotoCropperModal({
     } finally {
       setIsDetecting(false);
     }
-  };
+  }, [imageFile, isDetecting]);
 
-  // 1. 加载图片文件并执行前端毫秒级画质预检
+  // 1. 加载图片文件并执行前端毫秒级画质预检与静默分题
   useEffect(() => {
     if (!isOpen || !imageFile) {
       setImgObj(null);
@@ -94,6 +97,7 @@ export default function SmartPhotoCropperModal({
       setQualityInfo(null);
       setDetectedQuestions([]);
       setSelectedQuestionId(null);
+      setLoupe({ visible: false, clientX: 0, clientY: 0, normX: 0, normY: 0 });
       return;
     }
 
@@ -116,6 +120,8 @@ export default function SmartPhotoCropperModal({
       } catch (e) {
         console.warn('[SmartCropper] Quality inspection warning:', e);
       }
+      // 毫秒级静默并发启动 AI 分题（进入即扫，对标小猿搜题）
+      handleAutoDetectQuestions(imageFile);
     };
     img.src = objectUrl;
 
@@ -123,6 +129,44 @@ export default function SmartPhotoCropperModal({
       URL.revokeObjectURL(objectUrl);
     };
   }, [isOpen, imageFile]);
+
+  // 1.5. 悬浮放大镜实时渲染
+  useEffect(() => {
+    if (loupe.visible && loupeCanvasRef.current && canvasRef.current) {
+      const lCanvas = loupeCanvasRef.current;
+      const srcCanvas = canvasRef.current;
+      const lCtx = lCanvas.getContext('2d');
+      const size = 96;
+      const zoom = 2.2;
+      const srcCenterX = Math.max(0, Math.min(srcCanvas.width, loupe.normX * srcCanvas.width));
+      const srcCenterY = Math.max(0, Math.min(srcCanvas.height, loupe.normY * srcCanvas.height));
+      const srcW = size / zoom;
+      const srcH = size / zoom;
+
+      lCtx.clearRect(0, 0, size, size);
+      lCtx.drawImage(
+        srcCanvas,
+        srcCenterX - srcW / 2,
+        srcCenterY - srcH / 2,
+        srcW,
+        srcH,
+        0,
+        0,
+        size,
+        size
+      );
+
+      // 绘制中心高亮十字准星
+      lCtx.strokeStyle = '#10b981';
+      lCtx.lineWidth = 1.5;
+      lCtx.beginPath();
+      lCtx.moveTo(size / 2 - 10, size / 2);
+      lCtx.lineTo(size / 2 + 10, size / 2);
+      lCtx.moveTo(size / 2, size / 2 - 10);
+      lCtx.lineTo(size / 2, size / 2 + 10);
+      lCtx.stroke();
+    }
+  }, [loupe]);
 
   // 2. 渲染主画布与去阴影处理
   const renderCanvas = useCallback(() => {
@@ -215,6 +259,13 @@ export default function SmartPhotoCropperModal({
           };
           return next;
         });
+        setLoupe({
+          visible: true,
+          clientX: curX,
+          clientY: curY,
+          normX: nextX,
+          normY: nextY
+        });
         return;
       }
 
@@ -246,6 +297,22 @@ export default function SmartPhotoCropperModal({
         if (curHandle.includes('s')) {
           nextH = Math.max(minSize, Math.min(1 - init.y, init.height + deltaY));
         }
+
+        // 触控悬浮放大镜微调显示
+        let loupeNormX = nextX;
+        let loupeNormY = nextY;
+        if (curHandle.includes('e')) loupeNormX = nextX + nextW;
+        else if (!curHandle.includes('w')) loupeNormX = nextX + nextW / 2;
+        if (curHandle.includes('s')) loupeNormY = nextY + nextH;
+        else if (!curHandle.includes('n')) loupeNormY = nextY + nextH / 2;
+
+        setLoupe({
+          visible: true,
+          clientX: curX,
+          clientY: curY,
+          normX: loupeNormX,
+          normY: loupeNormY
+        });
       }
 
       setCrop({
@@ -258,6 +325,7 @@ export default function SmartPhotoCropperModal({
 
     const handlePointerUp = () => {
       dragRef.current.isDragging = false;
+      setLoupe(prev => ({ ...prev, visible: false }));
       window.removeEventListener('mousemove', handlePointerMove);
       window.removeEventListener('mouseup', handlePointerUp);
       window.removeEventListener('touchmove', handlePointerMove);
@@ -488,6 +556,78 @@ export default function SmartPhotoCropperModal({
         </button>
       </div>
 
+      {/* 智能分题快捷点选胶囊栏 (小猿搜题/作业帮同款) */}
+      {(detectedQuestions.length > 0 || isDetecting) && cropMode === 'box' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          overflowX: 'auto',
+          padding: '6px 12px',
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          scrollbarWidth: 'none'
+        }}>
+          <span style={{ fontSize: '0.78rem', color: '#94a3b8', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {isDetecting ? '⚡ AI 正在扫描整页分题...' : '🎯 快捷点题：'}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedQuestionId('all');
+              setCrop({ x: 0.04, y: 0.05, width: 0.92, height: 0.90 });
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '16px',
+              border: selectedQuestionId === 'all' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
+              background: selectedQuestionId === 'all' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.06)',
+              color: selectedQuestionId === 'all' ? '#38bdf8' : '#cbd5e1',
+              fontSize: '0.76rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📄 全页
+          </button>
+          {detectedQuestions.map((q) => {
+            const isSelected = selectedQuestionId === q.id;
+            return (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => {
+                  setSelectedQuestionId(q.id);
+                  setCrop({
+                    x: Math.max(0.01, q.box.x - 0.01),
+                    y: Math.max(0.01, q.box.y - 0.01),
+                    width: Math.min(0.98, q.box.width + 0.02),
+                    height: Math.min(0.98, q.box.height + 0.02)
+                  });
+                }}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  border: isSelected ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.15)',
+                  background: isSelected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.06)',
+                  color: isSelected ? '#34d399' : '#e2e8f0',
+                  fontSize: '0.76rem',
+                  fontWeight: isSelected ? '600' : 'normal',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span>{q.title || `第 ${q.id} 题`}</span>
+                {isSelected && <span>✔</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* 中部图片编辑画布区域 */}
       <div style={{
         flex: 1,
@@ -511,6 +651,22 @@ export default function SmartPhotoCropperModal({
             overflow: 'hidden'
           }}
         >
+          {/* 激光扫描线动画 */}
+          {isDetecting && (
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              height: '3px',
+              background: 'linear-gradient(90deg, transparent, #38bdf8, #10b981, transparent)',
+              boxShadow: '0 0 15px #38bdf8, 0 0 25px #10b981',
+              animation: 'laserScan 1.6s ease-in-out infinite',
+              zIndex: 40,
+              pointerEvents: 'none'
+            }} />
+          )}
+
           {/* 底层绘制 Canvas */}
           <canvas
             ref={canvasRef}
@@ -896,6 +1052,31 @@ export default function SmartPhotoCropperModal({
           </button>
         </div>
       </div>
+
+      {/* 触控悬浮微调放大镜 (Loupe) */}
+      {loupe.visible && (
+        <div style={{
+          position: 'fixed',
+          left: Math.max(10, Math.min(window.innerWidth - 105, loupe.clientX - 48)),
+          top: Math.max(10, loupe.clientY - 115),
+          width: '96px',
+          height: '96px',
+          borderRadius: '50%',
+          overflow: 'hidden',
+          border: '3px solid #10b981',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.75)',
+          background: '#000',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}>
+          <canvas
+            ref={loupeCanvasRef}
+            width="96"
+            height="96"
+            style={{ width: '96px', height: '96px', display: 'block' }}
+          />
+        </div>
+      )}
     </div>
   );
 }
