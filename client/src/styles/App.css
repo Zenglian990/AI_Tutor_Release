@@ -1371,6 +1371,28 @@ body.eink-mode .welcome-footer-banner {
     opacity: 0.3;
   }
 }
+/* 自律防抄题·答案折叠卡片 */
+.answer-anti-peek-card {
+  transition: all 0.25s ease-in-out;
+}
+.answer-anti-peek-card:hover {
+  border-color: rgba(59, 130, 246, 0.6) !important;
+}
 
-
+/* 快捷数学理化符号条 */
+.math-symbols-scroll-bar::-webkit-scrollbar {
+  display: none;
+}
+.symbol-pill-chip {
+  transition: all 0.15s ease;
+}
+.symbol-pill-chip:hover {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+.symbol-pill-chip:active {
+  transform: scale(0.92);
+}
 

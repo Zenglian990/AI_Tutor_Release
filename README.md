@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.1_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.2_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-网页版即开即用-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.1)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.2)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.1 工业级拍照搜题&极速语音版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.2 学生真实心智打磨·自律防抄题版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,24 +34,21 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.1.apk (约 10.4MB · 工业级拍照搜题 & 极速语音版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
-- **📥 稳定备用直链**：[ZengLian_AI_Tutor_v1.4.0.apk (约 8.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk)
-- **✨ v1.5.1 重磅升级特性 (全面对标作业帮、小猿搜题与豆包)**：
-  - **📸 拍照识别与智能搜题全方位重构**：
-    - **五步视觉转录锚定（彻底杜绝看错题与数值幻觉）**：前置强制完整输出 `### 📝 【原题精确还原】`（严格使用 LaTeX 转录公式与几何拓扑），彻底避免因漏看负号或数字产生的推理偏差；随后无缝衔接 `考点与题眼锁定`、`草稿纸第一步动笔支架`、`完整推导演算` 及 `举一反三变式母题`。
-    - **开图即扫与题目胶囊一键吸附**：上传试卷即刻触发后台毫秒级 AI 排版分析，顶部动态呈现 `[📄 全页]`、`[🎯 第1题]`、`[🎯 第2题]` 快速吸附胶囊，点击任意题目秒级自动包围框选，搜题耗时大幅降低。
-    - **触控悬浮微调放大镜（Loupe）**：拖拽边角把手时，手指上方 70px 实时弹出一枚 $96 \times 96$ px、2.2 倍变焦且内嵌绿色十字准星的圆形放大镜，完美解决手机触屏上手指遮挡题目边界的痛点。
-    - **二次压缩直通拦截**：裁剪后的高清题目切片直通大模型，不再进行二次质量衰减，细小上下标与辅助线清晰锐利。
-  - **🎙️ 三引擎极速语音输入管线（亚秒级转写响应）**：
-    - **Web Speech 原生本地引擎**：支持 Android Chrome / 现代浏览器 0 延迟边说边实时上屏，字随音动。
-    - **VAD 智能静音检测**：停止说话 900ms 自动断句交割，告别手动频繁启停。
-    - **0 思考预算服务端兜底**：Gemini 2.5 Flash 注入 `thinkingBudget: 0`，录音停止后 <1 秒完成精准转写。
-  - **🧠 年级全自动智能匹配心智模型（去繁就简）**：
-    - 剔除冗余的手动心智模式选择按钮，学生选择 1-9 年级后，系统底层全自动装配对应年龄段的最佳心智认知策略（1-3年级童趣具象、4-6年级规范条理、7-9年级严谨思维导图与中考攻坚）。
-  - **📱 底部手势条与全场景安全区适配**：
-    - 针对全面屏底部手势横条与虚拟 Home 键深度适配，为弹窗确认按钮留足安全边距，操作无遮挡、按键灵敏不误触。
-  - **🎯 举一反三·变式通关流 & 原卷智能批改红叉绿勾**：
-    - 支持整页原卷红叉绿勾批改盖章，一键生成同类母题巩固与避坑拔高变式，形成完整学习闭环。
+- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.2.apk (约 10.4MB · 学生真实心智打磨·自律防抄题版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
+- **📥 稳定备用直链**：[AI_Tutor_v1.5.1.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
+- **✨ v1.5.2 重磅体验打磨 (沉浸模拟 1-9 年级学生真实做题心智)**：
+  - **🔒 自律防抄题·完整答案手风琴折叠锁（对标作业帮）**：
+    - 拍照搜题优先呈现【原题转录】、【考点题眼】与【草稿纸第一步动笔支架】；完整推导演算与标准答案默认进入防抄题保护折叠区，引导学生先在草稿纸上动手算，算完点击再展开，杜绝不自律抄袭！
+  - **∑ 移动端数学理化快捷符号输入栏**：
+    - 输入框左侧一键呼出快捷数学理化符号条（`+ - × ÷ = ( ) x² x³ √ π △ ∠ ⊥ ∥ ≌ ∽ ∵ ∴ ≥ ≤ ° %`），轻点秒级插入，彻底攻克手机键盘打不出数学根号、角标与几何符号的痛点。
+  - **🎒 1-9 年级全学段文案精准动态穿透**：
+    - 彻底根除 1-3 年级低段出现“中考母题”等违和文本。1-3 年级动态匹配“趣味题型点拨与单元小测”，4-6 年级匹配“期末母题与规律探究”，7-9 年级匹配“中考必考母题与名校全真模考”。
+  - **📱 移动端输入框文案净化**：
+    - 移除手机屏幕上生涩的 "(Enter 发送)" 桌面违和残留，自适应移动端触摸交互。
+  - **🍎 1-3 年级拍照解答认知自适应精简**：
+    - 针对 7-9 岁低段儿童自动分流为通俗活泼、少字精炼、生活故事（分苹果、糖果积木）比喻，避免长篇学术大论造成儿童视觉疲劳。
+  - **🌟 即时正向激励与求助反馈**：
+    - 每条 AI 解答下方新增 `[🌟 听懂了 +5经验]`（触发庆祝和弦与经验值奖励）与 `[🤔 没太懂，换个例子]`（名师即刻以生活化具象例子重讲）。
   *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)

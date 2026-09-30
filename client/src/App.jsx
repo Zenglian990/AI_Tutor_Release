@@ -948,6 +948,13 @@ function AppInner() {
               playTTS={handlePlayTTS}
               stopTTS={handleStopTTS}
               onMarkMistake={msg.role === 'ai' ? handleMarkMistake : undefined}
+              onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
+              onRewardExp={(exp) => {
+                try {
+                  const currentExp = parseInt(localStorage.getItem('ai_tutor_user_exp') || '0', 10);
+                  localStorage.setItem('ai_tutor_user_exp', String(currentExp + (exp || 5)));
+                } catch (e) {}
+              }}
             />
           ))
         )}

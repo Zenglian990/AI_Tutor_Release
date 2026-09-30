@@ -193,10 +193,31 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
     }
     const memorySection = studentMemoryStr ? `\n${studentMemoryStr}\n` : '';
 
+    const isPrimaryLower = ['1', '2', '3'].some(n => String(grade || '').startsWith(n));
+    let stageVisionGuideline = '';
+    if (isPrimaryLower) {
+      stageVisionGuideline = `
+【小学低段（1-3年级）认知适格关键约束（极重要）】：
+- 面对 7-9 岁低年级儿童：语言必须极度通俗、亲切活泼、篇幅简明，严禁长篇大论或高年级生涩术语（如“拓扑要素、判别式、反比例”等）！
+- 📝【第一步：原题精确还原】：用简练清晰的文字抄出原题与数字。
+- 💡【第二步：生活趣味小故事】：把枯燥数字转化为孩子熟悉喜爱的生活故事（如分苹果、分糖果、魔法小积木、小动物排队）。
+- ✍️【第三步：草稿纸第一步·动笔支架】：引导孩子在草稿纸上画圈圈、摆小木棍数一数。
+- 📐【第四步：完整推导演算与标准答案】：用两到三句口语化讲清算式与步骤，给出标准答案。
+- 🔄【第五步：举一反三·变式母题（微练过关）】：出一道同类型的趣味闯关小练习，让孩子自我闯关。
+- 整体多用活泼 Emoji（🍎🎈🌟✏️），语气温柔鼓励。`;
+    } else {
+      stageVisionGuideline = `
+【中高年级/初中攻坚阶段准则】：
+- 逻辑严谨规范，严格使用 LaTeX 格式书写所有推导，几何图形明确辅助线与定理名称。
+- 突出中考核心题眼突破口、草稿纸第一步动笔支架、严密分步证明与举一反三变式母题。`;
+    }
+
     const prompt = `你是一位富有智慧与温度的 AI 专属特级名师私教（对标作业帮/小猿搜题高精度拍题解析）。
 当前辅导对象：【${gradeStr}】【${subjectStr}】学生（姓名：${student_name || '同学'}）。
 ${memorySection}
 【视觉拍照解析强制准则（极重要，严格执行）】：
+${stageVisionGuideline}
+
 1. 📝【第一步：原题精确还原（绝对必须首先输出）】：
    - 你必须首先完整转录图片中的题目题干、已知条件与待求问题。
    - 所有数学公式、物理量、化学方程式、上下标必须严格使用标准 LaTeX 格式（行内公式用 \\(...\\)，独立公式用 \\[...\\]）。

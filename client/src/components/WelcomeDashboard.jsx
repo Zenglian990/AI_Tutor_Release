@@ -205,30 +205,68 @@ export default function WelcomeDashboard({
           <div className="action-card-cta">查看地图 →</div>
         </div>
 
-        <div
-          className="action-card exam-card"
-          onClick={() => onQuickPrompt(`老师，请针对当前【${gradeLabel} · ${subjectLabel}】，为我精讲一个中考/期末高频必考母题模型，一句话点破核心题眼，并出一道微测题考考我！`)}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="action-card-header">
-            <span className="action-card-icon">💡</span>
-            <span className="action-card-name">经典母题点拨</span>
-          </div>
-          <p className="action-card-desc">精选必考母题模型，掌握解题钥匙，举一反三</p>
-          <div className="action-card-cta">攻克母题 →</div>
-        </div>
+        {/* 动态年级母题卡片 */}
+        {(() => {
+          let motherPrompt = `老师，请针对当前【${gradeLabel} · ${subjectLabel}】，为我精讲一个中考高频必考母题模型，一句话点破核心题眼，并出一道中考模拟题考考我！`;
+          let motherTitle = '经典母题点拨';
+          let motherDesc = '精选必考母题模型，掌握解题钥匙，举一反三';
+          let motherCta = '攻克母题 →';
 
-        {onOpenTest && (
-          <div className="action-card" onClick={onOpenTest} role="button" tabIndex={0} style={{ borderColor: 'rgba(236, 72, 153, 0.4)', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(219, 39, 119, 0.05))' }}>
-            <div className="action-card-header">
-              <span className="action-card-icon">🏛️</span>
-              <span className="action-card-name" style={{ color: '#ec4899' }}>名校全真模考</span>
+          if (['1', '2', '3'].some(n => gradeStr.startsWith(n))) {
+            motherPrompt = `老师，请针对当前【${gradeLabel} · ${subjectLabel}】，用生动有趣的比喻和日常生活小例子，为我讲透一个单元必会的基础核心题型，并出一道好玩的小闯关题考考我！`;
+            motherTitle = '趣味题型点拨';
+            motherDesc = '生动比喻通俗讲透，化身小侦探轻松闯关';
+            motherCta = '趣味闯关 →';
+          } else if (['4', '5', '6'].some(n => gradeStr.startsWith(n))) {
+            motherPrompt = `老师，请针对当前【${gradeLabel} · ${subjectLabel}】，为我精讲一个期末高频考查的经典母题模型，引导我总结解题规律与草稿验算方法，并出一道微测题考考我！`;
+            motherTitle = '期末母题点拨';
+            motherDesc = '精选期末必考母题，梳理规律，举一反三';
+            motherCta = '掌握规律 →';
+          }
+
+          return (
+            <div
+              className="action-card exam-card"
+              onClick={() => onQuickPrompt(motherPrompt)}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="action-card-header">
+                <span className="action-card-icon">💡</span>
+                <span className="action-card-name">{motherTitle}</span>
+              </div>
+              <p className="action-card-desc">{motherDesc}</p>
+              <div className="action-card-cta">{motherCta}</div>
             </div>
-            <p className="action-card-desc">全真中考/期末试卷规格，沉浸式倒计时答题与名师步骤给分</p>
-            <div className="action-card-cta" style={{ color: '#ec4899' }}>进入考场 →</div>
-          </div>
-        )}
+          );
+        })()}
+
+        {onOpenTest && (() => {
+          let examTitle = '名校中考模考';
+          let examDesc = '中考真题规格沉浸式倒计时，名师步骤赋分与压轴题剖析';
+          let examCta = '进入中考考场 →';
+
+          if (['1', '2', '3'].some(n => gradeStr.startsWith(n))) {
+            examTitle = '单元模拟闯关';
+            examDesc = '课本单元随堂小测，生动评分与趣味名师讲解';
+            examCta = '开始小测 →';
+          } else if (['4', '5', '6'].some(n => gradeStr.startsWith(n))) {
+            examTitle = '名校期末模考';
+            examDesc = '名校期末全真试卷规格，沉浸式倒计时与规范解题给分';
+            examCta = '进入期末考场 →';
+          }
+
+          return (
+            <div className="action-card" onClick={onOpenTest} role="button" tabIndex={0} style={{ borderColor: 'rgba(236, 72, 153, 0.4)', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(219, 39, 119, 0.05))' }}>
+              <div className="action-card-header">
+                <span className="action-card-icon">🏛️</span>
+                <span className="action-card-name" style={{ color: '#ec4899' }}>{examTitle}</span>
+              </div>
+              <p className="action-card-desc">{examDesc}</p>
+              <div className="action-card-cta" style={{ color: '#ec4899' }}>{examCta}</div>
+            </div>
+          );
+        })()}
 
         {onOpenManipulatives && ['1', '2', '3'].some(n => gradeStr.startsWith(n)) && (
           <div className="action-card" onClick={onOpenManipulatives} role="button" tabIndex={0} style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.05))' }}>

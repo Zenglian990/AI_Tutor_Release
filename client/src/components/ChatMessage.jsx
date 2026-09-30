@@ -10,6 +10,7 @@ import { splitThinkingContent } from '../utils/thinking';
 import { useAppStore } from '../store/useStore';
 import { isLowerGrade, injectPinyinToChildren } from '../utils/pinyinHelper';
 import VariantPracticeModal from './VariantPracticeModal';
+import { playSuccessChime } from '../utils/sensoryFeedback';
 
 initMermaid();
 
@@ -181,9 +182,50 @@ function MermaidChart({ chart }) {
 
 
 
+function splitAnswerSections(text) {
+  if (!text) return null;
+  // Match headers for answer / derivation:
+  // e.g. ### 📐 【完整推导...】 or ### 📐 【第四步...】 or ### 💡【步骤拆解...】
+  const answerRegex = /(?:^|\n)(###\s*(?:📐|💡\s*【步骤拆解|【第四步|📐\s*【完整推导|【完整推导|【标准答案))/;
+  const match = text.match(answerRegex);
+  if (!match) return null;
+
+  const splitIdx = match.index + (match[0].startsWith('\n') ? 1 : 0);
+  const preAnswer = text.substring(0, splitIdx).trim();
+  const rest = text.substring(splitIdx);
+
+  // Match variation / quiz header:
+  // e.g. ### 🔄 【举一反三...】 or ### 🔥 【举一反三...】 or ### 🔄 【第五步...】
+  const varRegex = /(?:^|\n)(###\s*(?:🔄|🔥\s*【举一反三|🔄\s*【举一反三|🔥\s*【母题|【第五步))/;
+  const varMatch = rest.match(varRegex);
+
+  let answerBody = rest;
+  let postAnswer = '';
+  if (varMatch) {
+    const varIdx = varMatch.index + (varMatch[0].startsWith('\n') ? 1 : 0);
+    answerBody = rest.substring(0, varIdx).trim();
+    postAnswer = rest.substring(varIdx).trim();
+  }
+
+  // Only consider it a valid split if preAnswer is substantial
+  if (!preAnswer) return null;
+
+  return { preAnswer, answerBody, postAnswer };
+}
+
 const animatedIds = new Set();
 
-const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, isStreaming, onMarkMistake, playTTS, stopTTS }) {
+const ChatMessage = React.memo(function ChatMessage({
+  msg,
+  autoRead,
+  isLatest,
+  isStreaming,
+  onMarkMistake,
+  playTTS,
+  stopTTS,
+  onQuickPrompt,
+  onRewardExp
+}) {
   // Only play slide-in animation once per message ID
   const [animClass, setAnimClass] = useState('');
   useEffect(() => {
@@ -242,11 +284,14 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
     }
   };
 
-  const { currentProfile, pinyinMode, setPinyinMode, selectedGrade, selectedSubject } = useAppStore();
+  const { currentProfile, pinyinMode, setPinyinMode, selectedGrade, selectedSubject, socraticLevel } = useAppStore();
   const [showVariantModal, setShowVariantModal] = useState(false);
   const activeGrade = msg.grade || selectedGrade || currentProfile?.grade || '7_up';
   const isPrimary = isLowerGrade(activeGrade);
   const isPinyinActive = (pinyinMode ?? true) && isPrimary && msg.role === 'ai';
+  const isDirectMode = socraticLevel === 'direct';
+  const [isAnswerRevealed, setIsAnswerRevealed] = useState(isDirectMode);
+  const [hasUnderstood, setHasUnderstood] = useState(false);
 
   const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
   const { thinking, body: cleanAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
@@ -305,165 +350,235 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                 <span className="dot" style={{ animation: 'pulse 1s infinite' }}>⏳</span>
                 <span>AI 特级名师正在结合考点进行深度备课构思...</span>
               </div>
-            ) : (
-              <ReactMarkdown 
-                remarkPlugins={[remarkMath, remarkGfm]} 
-                rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
-                components={{
-                  p({node, children, ...props}) {
-                    return (
-                      <p {...props} style={isPinyinActive ? { lineHeight: '2.1' } : {}}>
-                        {injectPinyinToChildren(children, isPinyinActive)}
-                      </p>
-                    );
-                  },
-                  li({node, children, ...props}) {
-                    return (
-                      <li {...props} style={isPinyinActive ? { lineHeight: '2.1' } : {}}>
-                        {injectPinyinToChildren(children, isPinyinActive)}
-                      </li>
-                    );
-                  },
-                  h3({node, children, ...props}) {
-                    const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
-                    let icon = '💡';
-                    let borderColor = '#3b82f6';
-                    let bgColor = 'rgba(59, 130, 246, 0.08)';
-                    let badgeText = '知识点睛';
+            ) : (() => {
+              const renderMarkdownBlock = (rawText) => (
+                <ReactMarkdown 
+                  remarkPlugins={[remarkMath, remarkGfm]} 
+                  rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+                  components={{
+                    p({node, children, ...props}) {
+                      return (
+                        <p {...props} style={isPinyinActive ? { lineHeight: '2.1' } : {}}>
+                          {injectPinyinToChildren(children, isPinyinActive)}
+                        </p>
+                      );
+                    },
+                    li({node, children, ...props}) {
+                      return (
+                        <li {...props} style={isPinyinActive ? { lineHeight: '2.1' } : {}}>
+                          {injectPinyinToChildren(children, isPinyinActive)}
+                        </li>
+                      );
+                    },
+                    h3({node, children, ...props}) {
+                      const text = Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') : String(children || '');
+                      let icon = '💡';
+                      let borderColor = '#3b82f6';
+                      let bgColor = 'rgba(59, 130, 246, 0.08)';
+                      let badgeText = '知识点睛';
 
-                    if (text.includes('挑战') || text.includes('母题模型') || text.includes('经典母题')) {
-                      icon = '🎯';
-                      borderColor = '#f59e0b';
-                      bgColor = 'rgba(245, 158, 11, 0.12)';
-                      badgeText = '母题挑战';
-                    } else if (text.includes('题眼') || text.includes('陷阱') || text.includes('思路')) {
-                      icon = '🎯';
-                      borderColor = '#f59e0b';
-                      bgColor = 'rgba(245, 158, 11, 0.1)';
-                      badgeText = '核心题眼';
-                    } else if (text.includes('动笔') || text.includes('支架') || text.includes('设问') || text.includes('第一步')) {
-                      icon = '✏️';
-                      borderColor = '#3b82f6';
-                      bgColor = 'rgba(59, 130, 246, 0.1)';
-                      badgeText = '动笔设问';
-                    } else if (text.includes('步骤') || text.includes('锦囊') || text.includes('解析')) {
-                      icon = '💡';
-                      borderColor = '#10b981';
-                      bgColor = 'rgba(16, 185, 129, 0.1)';
-                      badgeText = '步骤拆解';
-                    } else if (text.includes('母题') || text.includes('举一反三') || text.includes('微练') || text.includes('过关') || text.includes('闯关')) {
-                      icon = '🔥';
-                      borderColor = '#8b5cf6';
-                      bgColor = 'rgba(139, 92, 246, 0.12)';
-                      badgeText = '举一反三';
-                    } else if (text.includes('易错') || text.includes('盲区') || text.includes('注意')) {
-                      icon = '⚠️';
-                      borderColor = '#ef4444';
-                      bgColor = 'rgba(239, 68, 68, 0.1)';
-                      badgeText = '易错警示';
-                    }
+                      if (text.includes('原题') || text.includes('题目')) {
+                        icon = '📝';
+                        borderColor = '#38bdf8';
+                        bgColor = 'rgba(56, 189, 248, 0.1)';
+                        badgeText = '原题还原';
+                      } else if (text.includes('挑战') || text.includes('母题模型') || text.includes('经典母题')) {
+                        icon = '🎯';
+                        borderColor = '#f59e0b';
+                        bgColor = 'rgba(245, 158, 11, 0.12)';
+                        badgeText = '母题挑战';
+                      } else if (text.includes('题眼') || text.includes('陷阱') || text.includes('思路') || text.includes('考点')) {
+                        icon = '🎯';
+                        borderColor = '#f59e0b';
+                        bgColor = 'rgba(245, 158, 11, 0.1)';
+                        badgeText = '核心题眼';
+                      } else if (text.includes('动笔') || text.includes('支架') || text.includes('设问') || text.includes('第一步')) {
+                        icon = '✏️';
+                        borderColor = '#3b82f6';
+                        bgColor = 'rgba(59, 130, 246, 0.1)';
+                        badgeText = '动笔设问';
+                      } else if (text.includes('步骤') || text.includes('锦囊') || text.includes('解析') || text.includes('推导') || text.includes('答案')) {
+                        icon = '📐';
+                        borderColor = '#10b981';
+                        bgColor = 'rgba(16, 185, 129, 0.1)';
+                        badgeText = '完整演算';
+                      } else if (text.includes('母题') || text.includes('举一反三') || text.includes('微练') || text.includes('过关') || text.includes('闯关')) {
+                        icon = '🔥';
+                        borderColor = '#8b5cf6';
+                        bgColor = 'rgba(139, 92, 246, 0.12)';
+                        badgeText = '举一反三';
+                      } else if (text.includes('易错') || text.includes('盲区') || text.includes('注意')) {
+                        icon = '⚠️';
+                        borderColor = '#ef4444';
+                        bgColor = 'rgba(239, 68, 68, 0.1)';
+                        badgeText = '易错警示';
+                      }
 
-                    return (
-                      <div 
-                        className="scaffold-card-header" 
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          fontWeight: 'bold',
-                          fontSize: '0.96rem',
-                          padding: '8px 14px',
-                          margin: '16px 0 10px 0',
-                          borderRadius: '10px',
-                          borderLeft: `4px solid ${borderColor}`,
-                          backgroundColor: bgColor,
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                          <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{icon}</span>
-                          <span {...props} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
-                        </div>
-                        <span style={{
-                          fontSize: '0.72rem',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          backgroundColor: borderColor,
-                          color: '#ffffff',
-                          fontWeight: 600,
-                          letterSpacing: '0.5px',
-                          flexShrink: 0
-                        }}>
-                          {badgeText}
-                        </span>
-                      </div>
-                    );
-                  },
-                  pre({children, ...props}) {
-                    // If the child is a MermaidChart (returned from code override), render without <pre> wrapper
-                    const child = Array.isArray(children) ? children[0] : children;
-                    if (child?.type === MermaidChart) {
-                      return <>{children}</>;
-                    }
-                    return <pre {...props}>{children}</pre>;
-                  },
-                  code({node, inline, className, children, ...props}) {
-                    const match = /language-(\w+)/.exec(className || '')
-                    if (!inline && match && match[1] === 'mermaid') {
-                      if (isStreaming) {
-                        return (
-                          <div className="mermaid-loading-placeholder">
-                            <div className="brain-icon">🧠</div>
-                            <div className="title">专属私教正在构思与绘制知识脑图...</div>
-                            <div className="subtitle">打字输出完毕后将自动呈现思维导图</div>
+                      return (
+                        <div 
+                          className="scaffold-card-header" 
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '0.96rem',
+                            padding: '8px 14px',
+                            margin: '16px 0 10px 0',
+                            borderRadius: '10px',
+                            borderLeft: `4px solid ${borderColor}`,
+                            backgroundColor: bgColor,
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{icon}</span>
+                            <span {...props} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
                           </div>
-                        )
+                          <span style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            backgroundColor: borderColor,
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            letterSpacing: '0.5px',
+                            flexShrink: 0
+                          }}>
+                            {badgeText}
+                          </span>
+                        </div>
+                      );
+                    },
+                    pre({children, ...props}) {
+                      const child = Array.isArray(children) ? children[0] : children;
+                      if (child?.type === MermaidChart) {
+                        return <>{children}</>;
                       }
-                      return <MermaidChart chart={String(children).replace(/\n$/, '')} />
+                      return <pre {...props}>{children}</pre>;
+                    },
+                    code({node, inline, className, children, ...props}) {
+                      const match = /language-(\w+)/.exec(className || '')
+                      if (!inline && match && match[1] === 'mermaid') {
+                        if (isStreaming) {
+                          return (
+                            <div className="mermaid-loading-placeholder">
+                              <div className="brain-icon">🧠</div>
+                              <div className="title">专属私教正在构思与绘制知识脑图...</div>
+                              <div className="subtitle">打字输出完毕后将自动呈现思维导图</div>
+                            </div>
+                          )
+                        }
+                        return <MermaidChart chart={String(children).replace(/\n$/, '')} />
+                      }
+                      return <code className={className} {...props}>{children}</code>
+                    },
+                    table({children, ...props}) {
+                      return (
+                        <div className="table-responsive">
+                          <table {...props}>{children}</table>
+                        </div>
+                      );
+                    },
+                    td({children, ...props}) {
+                      const renderWithHtmlLineBreaks = (val) => {
+                        if (typeof val === 'string') {
+                          if (val.includes('<br>') || val.includes('<br />')) {
+                            return val.split(/<br\s*\/?>/gi).map((text, i, arr) => (
+                              <React.Fragment key={i}>
+                                {text}
+                                {i < arr.length - 1 && <br />}
+                              </React.Fragment>
+                            ));
+                          }
+                        }
+                        if (React.isValidElement(val)) {
+                          if (val.props && val.props.children) {
+                            return React.cloneElement(val, {
+                              ...val.props,
+                              children: React.Children.map(val.props.children, renderWithHtmlLineBreaks)
+                            });
+                          }
+                        }
+                        if (Array.isArray(val)) {
+                          return val.map((item, idx) => <React.Fragment key={idx}>{renderWithHtmlLineBreaks(item)}</React.Fragment>);
+                        }
+                        return val;
+                      };
+                      return <td {...props}>{React.Children.map(children, renderWithHtmlLineBreaks)}</td>;
                     }
-                    return <code className={className} {...props}>{children}</code>
-                  },
-                  table({children, ...props}) {
-                    return (
-                      <div className="table-responsive">
-                        <table {...props}>{children}</table>
+                  }}
+                >
+                  {preprocessLatex(rawText)}
+                </ReactMarkdown>
+              );
+
+              const sections = splitAnswerSections(cleanAiBody);
+              if (sections) {
+                return (
+                  <div>
+                    {renderMarkdownBlock(sections.preAnswer)}
+
+                    {/* 自律防抄题·完整答案推导折叠手风琴 */}
+                    <div className="answer-anti-peek-card" style={{
+                      margin: '14px 0',
+                      borderRadius: '14px',
+                      background: isAnswerRevealed 
+                        ? 'rgba(16, 185, 129, 0.05)' 
+                        : 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9))',
+                      border: isAnswerRevealed 
+                        ? '1px solid rgba(16, 185, 129, 0.35)' 
+                        : '1px solid rgba(59, 130, 246, 0.4)',
+                      padding: '12px 16px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{isAnswerRevealed ? '🔓' : '🙈'}</span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.92rem', color: isAnswerRevealed ? '#34d399' : '#93c5fd' }}>
+                              {isAnswerRevealed ? '完整推导与标准答案已展开' : '完整推导与标准答案（自律防抄题保护中）'}
+                            </div>
+                            {!isAnswerRevealed && (
+                              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                                💡 老师建议：先根据上方动笔支架在草稿纸算一算，有思路了再对答案！
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsAnswerRevealed(r => !r)}
+                          style={{
+                            padding: '5px 14px',
+                            borderRadius: '10px',
+                            background: isAnswerRevealed ? 'rgba(148, 163, 184, 0.15)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                            color: isAnswerRevealed ? '#cbd5e1' : '#ffffff',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.82rem',
+                            cursor: 'pointer',
+                            boxShadow: isAnswerRevealed ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.4)'
+                          }}
+                        >
+                          {isAnswerRevealed ? '▲ 折叠答案' : '👁️ 查看完整答案推导'}
+                        </button>
                       </div>
-                    );
-                  },
-                  td({children, ...props}) {
-                    const renderWithHtmlLineBreaks = (val) => {
-                      if (typeof val === 'string') {
-                        if (val.includes('<br>') || val.includes('<br />')) {
-                          return val.split(/<br\s*\/?>/gi).map((text, i, arr) => (
-                            <React.Fragment key={i}>
-                              {text}
-                              {i < arr.length - 1 && <br />}
-                            </React.Fragment>
-                          ));
-                        }
-                      }
-                      if (React.isValidElement(val)) {
-                        if (val.props && val.props.children) {
-                          return React.cloneElement(val, {
-                            ...val.props,
-                            children: React.Children.map(val.props.children, renderWithHtmlLineBreaks)
-                          });
-                        }
-                      }
-                      if (Array.isArray(val)) {
-                        return val.map((item, idx) => <React.Fragment key={idx}>{renderWithHtmlLineBreaks(item)}</React.Fragment>);
-                      }
-                      return val;
-                    };
-                    return <td {...props}>{React.Children.map(children, renderWithHtmlLineBreaks)}</td>;
-                  }
-                }}
-              >
-                {preprocessLatex(cleanAiBody)}
-              </ReactMarkdown>
-            )}
-            <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>
+                      {isAnswerRevealed && (
+                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                          {renderMarkdownBlock(sections.answerBody)}
+                        </div>
+                      )}
+                    </div>
+
+                    {sections.postAnswer && renderMarkdownBlock(sections.postAnswer)}
+                  </div>
+                );
+              }
+              return renderMarkdownBlock(cleanAiBody);
+            })()}
+            <div style={{ marginTop: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {msg.role === 'ai' && onMarkMistake && (
                 <button
                   onClick={() => onMarkMistake(msg)}
@@ -517,6 +632,44 @@ const ChatMessage = React.memo(function ChatMessage({ msg, autoRead, isLatest, i
                   title="基于本题核心考点，生成同类巩固与避坑拔高变式题（对标作业帮）"
                 >
                   🎯 举一反三·变式通关
+                </button>
+              )}
+              {msg.role === 'ai' && !isStreaming && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasUnderstood) {
+                      setHasUnderstood(true);
+                      playSuccessChime();
+                      if (onRewardExp) onRewardExp(5);
+                    }
+                  }}
+                  className="tts-btn"
+                  style={{ 
+                    background: hasUnderstood ? 'rgba(16, 185, 129, 0.22)' : 'rgba(16, 185, 129, 0.1)', 
+                    color: '#10b981', 
+                    borderColor: '#10b981',
+                    fontWeight: 600
+                  }}
+                  title="标记我听懂了本题考点与方法"
+                >
+                  {hasUnderstood ? '🌟 听懂了 +5经验' : '👍 这一步我听懂了'}
+                </button>
+              )}
+              {msg.role === 'ai' && !isStreaming && onQuickPrompt && (
+                <button
+                  type="button"
+                  onClick={() => onQuickPrompt("老师，上面这道题我还是有点没搞懂，请换一个更生活化、通俗具象的例子或画个草图再讲讲好吗？")}
+                  className="tts-btn"
+                  style={{ 
+                    background: 'rgba(245, 158, 11, 0.1)', 
+                    color: '#f59e0b', 
+                    borderColor: 'rgba(245, 158, 11, 0.35)',
+                    fontWeight: 500
+                  }}
+                  title="如果还有疑问，让名师换一个更生活化通俗的例子讲解"
+                >
+                  🤔 没太懂，换个例子
                 </button>
               )}
             </div>

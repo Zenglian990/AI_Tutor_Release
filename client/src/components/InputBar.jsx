@@ -1,5 +1,30 @@
 import React, { useRef, useEffect, useState } from 'react';
 
+const QUICK_MATH_SYMBOLS = [
+  { label: '+', insert: '+' },
+  { label: '-', insert: '-' },
+  { label: '×', insert: '×' },
+  { label: '÷', insert: '÷' },
+  { label: '=', insert: '=' },
+  { label: '( )', insert: '()' },
+  { label: 'x²', insert: '²' },
+  { label: 'x³', insert: '³' },
+  { label: '√', insert: '√' },
+  { label: 'π', insert: 'π' },
+  { label: '△', insert: '△' },
+  { label: '∠', insert: '∠' },
+  { label: '⊥', insert: '⊥' },
+  { label: '∥', insert: '∥' },
+  { label: '≌', insert: '≌' },
+  { label: '∽', insert: '∽' },
+  { label: '∵', insert: '∵' },
+  { label: '∴', insert: '∴' },
+  { label: '≥', insert: '≥' },
+  { label: '≤', insert: '≤' },
+  { label: '°', insert: '°' },
+  { label: '%', insert: '%' },
+];
+
 const InputBar = React.memo(function InputBar({
   input,
   setInput,
@@ -20,7 +45,30 @@ const InputBar = React.memo(function InputBar({
   hasActiveChat
 }) {
   const [localVal, setLocalVal] = useState(input);
+  const [showSymbols, setShowSymbols] = useState(false);
   const textareaRef = useRef(null);
+
+  const handleInsertSymbol = (sym) => {
+    const ta = textareaRef.current;
+    const currentVal = localVal || '';
+    if (!ta) {
+      const updated = currentVal + sym;
+      setLocalVal(updated);
+      if (setInput) setInput(updated);
+      return;
+    }
+    const start = ta.selectionStart !== undefined ? ta.selectionStart : currentVal.length;
+    const end = ta.selectionEnd !== undefined ? ta.selectionEnd : currentVal.length;
+    const updated = currentVal.substring(0, start) + sym + currentVal.substring(end);
+    setLocalVal(updated);
+    if (setInput) setInput(updated);
+
+    setTimeout(() => {
+      ta.focus();
+      const newPos = sym === '()' ? start + 1 : start + sym.length;
+      ta.setSelectionRange(newPos, newPos);
+    }, 10);
+  };
 
   useEffect(() => {
     setLocalVal(input);
@@ -229,6 +277,49 @@ const InputBar = React.memo(function InputBar({
         </div>
       )}
 
+      {/* 快捷数学理化符号吸附条 */}
+      {showSymbols && (
+        <div className="math-symbols-scroll-bar" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          overflowX: 'auto',
+          padding: '6px 8px',
+          marginBottom: '6px',
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderRadius: '12px',
+          border: '1px solid rgba(59, 130, 246, 0.35)',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none'
+        }}>
+          <span style={{ fontSize: '0.75rem', color: '#60a5fa', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 600 }}>
+            ∑ 快捷符号:
+          </span>
+          {QUICK_MATH_SYMBOLS.map((item, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleInsertSymbol(item.insert)}
+              className="symbol-pill-chip"
+              style={{
+                background: 'rgba(30, 41, 59, 0.9)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                color: '#e2e8f0',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '0.86rem',
+                cursor: 'pointer',
+                flexShrink: 0,
+                fontWeight: 600,
+                userSelect: 'none'
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="input-container" role="form" aria-label="消息输入区域">
         <form className="input-form" onSubmit={handleFormSubmit}>
           <input
@@ -257,6 +348,25 @@ const InputBar = React.memo(function InputBar({
             </svg>
           </label>
 
+          {/* 左侧常用数学符号开关 */}
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setShowSymbols(s => !s)}
+            title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
+            aria-label="切换常用数学理化符号"
+            style={{
+              color: showSymbols ? '#3b82f6' : '#94a3b8',
+              fontWeight: 700,
+              fontSize: '1.05rem',
+              background: showSymbols ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
+              borderRadius: '8px',
+              border: showSymbols ? '1px solid rgba(59, 130, 246, 0.4)' : 'none'
+            }}
+          >
+            ∑
+          </button>
+
           {/* 左侧草稿白板按钮 */}
           {onOpenScratchpad && (
             <button
@@ -280,7 +390,7 @@ const InputBar = React.memo(function InputBar({
             value={localVal}
             onChange={e => setLocalVal(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? '🎤 正在聆听您的提问...' : '问问课本里的知识，上传题目或打开草稿纸… (Enter 发送)'}
+            placeholder={isListening ? '🎤 正在倾听您的提问，说完停顿将自动发送...' : '输入课本难题、公式，或拍照/语音提问…'}
             disabled={isLoading}
             maxLength={2000}
             rows={1}

@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.1_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.2_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.1)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.2)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.1 Latest Industrial Vision & Fast Voice Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.2 Student-Centered UX & Anti-Peek Guard Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,22 +34,21 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [AI_Tutor_v1.5.1.apk (~10.4MB · Industrial Vision & Fast Voice Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
-- **📥 Stable Fallback**: [ZengLian_AI_Tutor_v1.4.0.apk (~8.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk)
-- **✨ v1.5.1 Major Upgrades (Benchmarked against Zuoyebang & Xiaoyuan)**:
-  - **📸 Industrial Photo Question Search & OCR Grounding**:
-    - **5-Step Ground-Truth Vision Chain**: Mandatory transcription of original formulas (`### 📝 【原题精确还原】`) using LaTeX before derivation to eradicate hallucinated numbers or missed minus signs; seamlessly followed by clue breakdown, draftpad scaffolding, derivation, and parallel variations.
-    - **Zero-Click Layout Analysis & Question Selection Carousel**: Instant background parsing generates `[Full Page]`, `[Q1]`, `[Q2]` pill buttons for one-tap bounding box snapping.
-    - **Touch Precision Floating Loupe**: 2.2x circular magnifier hovering 70px above fingertip with green crosshairs for pixel-perfect corner adjustments without thumb obstruction.
-    - **Lossless Direct Image Pipeline**: Eliminates client-side double-compression degradation, preserving crisp mathematical superscripts and geometry lines.
-  - **🎙️ Triple-Engine Ultra-Fast Voice Input**:
-    - **Native Web Speech API**: Real-time 0-latency live streaming transcription on Android Chrome and desktop.
-    - **Voice Activity Detection (VAD)**: 900ms silence auto-cutoff for hands-free natural speaking.
-    - **0-Thinking Server Fallback**: Sub-second server STT pipeline with `thinkingBudget: 0`.
-  - **🧠 Automatic Grade-Driven Cognitive Matching**:
-    - Removed redundant manual mental model selectors; selecting grades 1-9 directly activates age-tailored pedagogical strategies (Grades 1-3 Playful, Grades 4-6 Systematic, Grades 7-9 Rigorous Logic).
-  - **📱 Gesture & Safe Area Navigation Bar Clearance**:
-    - Full edge-to-edge layout adaptation protecting action buttons from being blocked by virtual home buttons or gesture navigation bars.
+- **📥 Direct APK Download**: [AI_Tutor_v1.5.2.apk (~10.4MB · Student-Centered UX & Anti-Peek Guard Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
+- **📥 Stable Fallback**: [AI_Tutor_v1.5.1.apk (~10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.1/AI_Tutor_v1.5.1.apk)
+- **✨ v1.5.2 Major UX Polish (Simulating 1-9th Grade Real Student Mindset)**:
+  - **🔒 Anti-Peek Self-Discipline Accordion (Benchmarked against Zuoyebang)**:
+    - Photo search outputs focus on [Ground Truth OCR], [Core Clues], and [Scratchpad First Step Scaffold] first. The complete derivation and standard answer are folded behind an anti-peek accordion lock by default, encouraging students to calculate independently on scratchpad before checking.
+  - **∑ Quick Mobile Math & Science Symbol Keyboard Bar**:
+    - Tap the `∑` icon next to the input field to reveal horizontal scrollable quick symbols (`+ - × ÷ = ( ) x² x³ √ π △ ∠ ⊥ ∥ ≌ ∽ ∵ ∴ ≥ ≤ ° %`), effortlessly solving the pain point of typing mathematical and geometric symbols on touchscreens.
+  - **🎒 Full K-9 Grade-Adaptive Dynamic Copywriting**:
+    - Eliminated jarring "Zhongkao/Middle School Exam" references for Grades 1-3. Dynamically adapts cards to "Fun Problem Solving & Unit Quizzes" (Grades 1-3), "Final Exam Syntheses & Rule Discoveries" (Grades 4-6), and "Zhongkao Essential Models & Prestigious Mock Exams" (Grades 7-9).
+  - **📱 Mobile Input Bar Text Sanitization**:
+    - Removed confusing desktop "(Enter to send)" prompt on mobile soft keyboards for natural touch UX.
+  - **🍎 Early Grades (1-3) Story-Driven Explanations**:
+    - Vision solving automatically streamlines explanations into short, lively, and intuitive real-world metaphors (apples, candies, toy blocks), preventing cognitive fatigue in young children.
+  - **🌟 Instant Emotional Reinforcement & Alternative Examples**:
+    - Added `[🌟 Got it! +5 EXP]` (triggers chime and reward animation) and `[🤔 Still Confused, Show Me An Analogy]` (prompts teacher to explain with concrete everyday examples) under every AI reply.
   *(Releases strictly maintain the 2 latest APK packages)*
 
 ### 🍎 2. iOS (iPhone & iPad)
