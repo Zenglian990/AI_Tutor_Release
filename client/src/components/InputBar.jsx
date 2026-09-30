@@ -117,7 +117,7 @@ const InputBar = React.memo(function InputBar({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', maxWidth: '75%' }}>
             <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
             <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {localVal ? `🎙️ “${localVal}”` : '🎤 正在聆听中... 请对准手机清晰说话'}
+              {localVal ? `🎙️ “${localVal}”` : '🎤 正在倾听中... 说完停顿将自动发送'}
             </span>
           </div>
           <button

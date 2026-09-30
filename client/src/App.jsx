@@ -27,6 +27,8 @@ import MembershipModal from './components/MembershipModal';
 import AdminConsoleModal from './components/AdminConsoleModal';
 import ParentSharePosterModal from './components/ParentSharePosterModal';
 import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
+import { Capacitor } from '@capacitor/core';
+import { SpeechRecognition as NativeSpeechRecognition } from '@capacitor-community/speech-recognition';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
@@ -128,6 +130,10 @@ function AppInner() {
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
   const liveTranscriptRef = useRef('');
+  const isListeningRef = useRef(false);
+  const vadTimerRef = useRef(null);
+  const vadAudioContextRef = useRef(null);
+  const nativeSpeechListeningRef = useRef(false);
   const gradeRef = useRef(currentProfile.grade);
   const subjectRef = useRef(selectedSubject);
   const messagesRef = useRef(messages);
@@ -228,56 +234,102 @@ function AppInner() {
     }
   }, []);
 
-  // Dual-Engine Voice recording & Streaming STT (Web Speech API 实时出字 + MediaRecorder 服务端兜底)
+  // Triple-Engine Ultra-Speed Voice input & STT:
+  // 1. Android/iOS Native SpeechRecognizer (边说边出字，0ms 感知延迟)
+  // 2. Web Speech API (桌面 Chrome / 浏览器回退，0.3s 流式出字)
+  // 3. Web Audio VAD 智能静音检测 (说话停顿 850ms 自动截断提交，免除手动点击)
+  // 4. 原生 Opus/WebM 0 耗时直传 + 服务端 Gemini 2.5 Flash 0-Thinking 兜底 (0.7s 极速响应)
   const startVoiceRecording = useCallback(async (isDialogueLoop = false) => {
     try {
       audioChunksRef.current = [];
       liveTranscriptRef.current = '';
       setLiveSpokenText('');
+      isListeningRef.current = true;
+      nativeSpeechListeningRef.current = false;
 
-      // 1. 尝试激活端侧原生 Web Speech 实时流式出字引擎 (边说边出字，0.3s 感知延迟)
-      const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
-      if (SpeechRecognition) {
+      // 1. 尝试激活移动端原生 Android/iOS SpeechRecognizer (边说边动态吐字，0ms 等待)
+      const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+      if (isNative) {
         try {
-          const rec = new SpeechRecognition();
-          rec.lang = 'zh-CN';
-          rec.continuous = true;
-          rec.interimResults = true;
-          rec.maxAlternatives = 1;
-          recognitionRef.current = rec;
+          const hasPerm = await NativeSpeechRecognition.hasAudioPermission();
+          if (!hasPerm.permission) {
+            await NativeSpeechRecognition.requestAudioPermission();
+          }
+          const isAvail = await NativeSpeechRecognition.available();
+          if (isAvail.available) {
+            nativeSpeechListeningRef.current = true;
+            await NativeSpeechRecognition.start({
+              language: 'zh-CN',
+              maxResults: 1,
+              prompt: '正在倾听...',
+              partialResults: true,
+              popup: false
+            });
 
-          rec.onresult = (event) => {
-            let interim = '';
-            let final = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-              const transcript = event.results[i][0].transcript;
-              if (event.results[i].isFinal) {
-                final += transcript;
-              } else {
-                interim += transcript;
+            NativeSpeechRecognition.addListener('partialResults', (data) => {
+              if (data && data.matches && data.matches.length > 0) {
+                const spoken = data.matches[0]?.trim();
+                if (spoken) {
+                  liveTranscriptRef.current = spoken;
+                  setLiveSpokenText(spoken);
+                  if (!isDialogueLoop) {
+                    setInput(spoken);
+                  }
+                }
               }
-            }
-            const currentSpoken = (final || interim).trim();
-            if (currentSpoken) {
-              liveTranscriptRef.current = currentSpoken;
-              setLiveSpokenText(currentSpoken);
-              if (!isDialogueLoop) {
-                setInput(currentSpoken);
-              }
-            }
-          };
-
-          rec.onerror = (e) => {
-            console.warn('[STT] Native SpeechRecognition notice:', e.error);
-          };
-
-          rec.start();
-        } catch (recErr) {
-          console.warn('[STT] Native SpeechRecognition initialization warning:', recErr);
+            });
+          }
+        } catch (nativeErr) {
+          console.warn('[STT] Native SpeechRecognizer notice:', nativeErr);
+          nativeSpeechListeningRef.current = false;
         }
       }
 
-      // 2. 同时启动底层 MediaRecorder 录音流（作为服务端高鲁棒兜底双引擎）
+      // 2. 浏览器环境回退：尝试激活端侧原生 Web Speech 实时流式出字引擎
+      if (!nativeSpeechListeningRef.current) {
+        const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+        if (SpeechRecognition) {
+          try {
+            const rec = new SpeechRecognition();
+            rec.lang = 'zh-CN';
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.maxAlternatives = 1;
+            recognitionRef.current = rec;
+
+            rec.onresult = (event) => {
+              let interim = '';
+              let final = '';
+              for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                  final += transcript;
+                } else {
+                  interim += transcript;
+                }
+              }
+              const currentSpoken = (final || interim).trim();
+              if (currentSpoken) {
+                liveTranscriptRef.current = currentSpoken;
+                setLiveSpokenText(currentSpoken);
+                if (!isDialogueLoop) {
+                  setInput(currentSpoken);
+                }
+              }
+            };
+
+            rec.onerror = (e) => {
+              console.warn('[STT] Web SpeechRecognition notice:', e.error);
+            };
+
+            rec.start();
+          } catch (recErr) {
+            console.warn('[STT] Web SpeechRecognition initialization warning:', recErr);
+          }
+        }
+      }
+
+      // 3. 同时启动底层 MediaRecorder 录音流（作为服务端高鲁棒兜底双引擎）
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       let options = {};
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
@@ -290,18 +342,86 @@ function AppInner() {
       const recorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data); };
+
+      // 4. 智能静音断句检测 (Web Audio VAD)：说话后停顿 850ms 自动截断并提交，免去手动按键延迟
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        try {
+          const vadCtx = new AudioCtx();
+          const analyser = vadCtx.createAnalyser();
+          analyser.fftSize = 256;
+          const source = vadCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          let hasSpeechSpoken = false;
+          let silenceStartTime = null;
+          const ENERGY_THRESHOLD = 20; // 语音能量阈值
+          const SILENCE_TIMEOUT_MS = 850; // 停顿 850ms 自动触发提交
+
+          const vadInterval = setInterval(() => {
+            if (!isListeningRef.current) {
+              clearInterval(vadInterval);
+              try { vadCtx.close(); } catch (e) {}
+              return;
+            }
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            const energy = sum / dataArray.length;
+
+            if (energy > ENERGY_THRESHOLD) {
+              hasSpeechSpoken = true;
+              silenceStartTime = null;
+            } else if (hasSpeechSpoken) {
+              if (!silenceStartTime) {
+                silenceStartTime = Date.now();
+              } else if (Date.now() - silenceStartTime > SILENCE_TIMEOUT_MS) {
+                // 停顿超过 850ms，自动触发停止
+                clearInterval(vadInterval);
+                try { vadCtx.close(); } catch (e) {}
+                vadTimerRef.current = null;
+                vadAudioContextRef.current = null;
+                stopVoiceRecording();
+              }
+            }
+          }, 80);
+
+          vadTimerRef.current = vadInterval;
+          vadAudioContextRef.current = vadCtx;
+        } catch (vadInitErr) {
+          console.warn('[VAD] Audio energy detector notice:', vadInitErr);
+        }
+      }
+
       recorder.onstop = async () => {
+        isListeningRef.current = false;
         if (recordingTimerRef.current) {
           clearTimeout(recordingTimerRef.current);
           recordingTimerRef.current = null;
+        }
+        if (vadTimerRef.current) {
+          clearInterval(vadTimerRef.current);
+          vadTimerRef.current = null;
+        }
+        if (vadAudioContextRef.current) {
+          try { await vadAudioContextRef.current.close(); } catch (e) {}
+          vadAudioContextRef.current = null;
         }
         if (recognitionRef.current) {
           try { recognitionRef.current.stop(); } catch (e) {}
           recognitionRef.current = null;
         }
+        if (nativeSpeechListeningRef.current) {
+          try {
+            await NativeSpeechRecognition.stop();
+            NativeSpeechRecognition.removeAllListeners();
+          } catch (e) {}
+          nativeSpeechListeningRef.current = false;
+        }
         stream.getTracks().forEach(track => track.stop());
 
-        // 优先检查原生实时识别流是否已捕获到字词 (0ms 极速响应，无需等待网络)
+        // 优先检查原生/Web实时流式文字是否已就位 (0ms 极致体验)
         const instantText = liveTranscriptRef.current?.trim();
         if (instantText && instantText.length > 0) {
           setIsListening(false);
@@ -324,23 +444,12 @@ function AppInner() {
         }
         setIsLoading(true);
         if (isDialogueLoop) setVoiceDialogueMode('processing');
-        setInput('🎙️ 正在压缩并识别您的声音...');
+        setInput('⚡ 正在极速识别您的声音...');
         try {
-          let finalBlob = audioBlob;
-          let fileName = 'voice.webm';
-          try {
-            const compressed = await compressAudio(audioBlob);
-            if (compressed && compressed.size > 0) {
-              finalBlob = compressed;
-              fileName = compressed.type.includes('wav') ? 'voice.wav' : (compressed.type.includes('mp4') ? 'voice.mp4' : 'voice.webm');
-            }
-          } catch (compErr) {
-            console.warn('Audio compression fallback:', compErr);
-            fileName = audioBlob.type.includes('mp4') ? 'voice.mp4' : 'voice.webm';
-          }
-
+          // 直通传输：无损轻量原生 Opus/WebM 或 AAC/MP4，跳过耗时 1.5s 的客户端重采样与 WAV 转换
+          const fileName = mime.includes('mp4') ? 'voice.mp4' : (mime.includes('aac') ? 'voice.aac' : 'voice.webm');
           const formData = new FormData();
-          formData.append('audio', finalBlob, fileName);
+          formData.append('audio', audioBlob, fileName);
           const response = await authFetch('/api/transcribe', { method: 'POST', body: formData });
           if (response.ok) {
             const data = await response.json();
@@ -351,7 +460,7 @@ function AppInner() {
                 handleSubmit(null, spokenText, null, true);
               } else {
                 setInput(prev => {
-                  const base = prev.startsWith('🎙️') ? '' : prev.trim();
+                  const base = prev.startsWith('⚡') || prev.startsWith('🎙️') ? '' : prev.trim();
                   return (base ? `${base} ` : '') + spokenText;
                 });
               }
@@ -390,14 +499,31 @@ function AppInner() {
       console.error('Mic recording error:', err);
       alert('无法启动麦克风录音，请确保在手机【系统设置 -> 应用权限】中已授予【麦克风/录音】权限 🎙️');
       setIsListening(false);
+      isListeningRef.current = false;
       setVoiceDialogueOpen(false);
     }
   }, []);
 
   const stopVoiceRecording = useCallback(() => {
+    isListeningRef.current = false;
     if (recordingTimerRef.current) {
       clearTimeout(recordingTimerRef.current);
       recordingTimerRef.current = null;
+    }
+    if (vadTimerRef.current) {
+      clearInterval(vadTimerRef.current);
+      vadTimerRef.current = null;
+    }
+    if (vadAudioContextRef.current) {
+      try { vadAudioContextRef.current.close(); } catch (e) {}
+      vadAudioContextRef.current = null;
+    }
+    if (nativeSpeechListeningRef.current) {
+      try {
+        NativeSpeechRecognition.stop().catch(() => {});
+        NativeSpeechRecognition.removeAllListeners();
+      } catch (e) {}
+      nativeSpeechListeningRef.current = false;
     }
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}

@@ -639,11 +639,10 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
     const mimeType = detectAudioMimeType(audioBuffer, req.file?.mimetype || 'audio/webm');
     const base64Audio = audioBuffer.toString('base64');
 
-    const prompt = `请精确地将这段音频中的儿童语音内容转录为中文字幕文本。
-要求：
-1. 仅返回转录得到的文本内容，不要包含任何前导、后导的回复、标点符号、解释或说明。
-2. 不要编造内容，如果完全听不清或没有声音，请只返回一个空字符串。
-3. 自动纠正明显的普通话或粤语拼写、发音语病，保持语句通顺。`;
+    const prompt = `请精确将音频中的语音转录为中文文本。要求：
+1. 仅输出识别得到的纯文本内容，严禁任何前导或后导的说明、标点符号。
+2. 若无声音或听不清，仅返回空字符串。
+3. 自动纠正普通话常见同音错字，保持语句通顺完整。`;
 
     const clientCustomKey = req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'];
     const fetchHeaders = { 'Content-Type': 'application/json' };
@@ -656,9 +655,13 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
       headers: fetchHeaders,
       body: JSON.stringify({
         contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: base64Audio } }, { text: prompt }] }],
-        generationConfig: { temperature: 0.0, maxOutputTokens: 1024 }
+        generationConfig: {
+          temperature: 0.0,
+          maxOutputTokens: 96,
+          thinkingConfig: { thinkingBudget: 0 }
+        }
       })
-    }, 8, 90000, 'gemini-3.6-flash', true); // skipDeepSeek = true
+    }, 8, 30000, 'gemini-2.5-flash', true); // skipDeepSeek = true, fast STT
 
     const data = await response.json();
     if (data.error) {
