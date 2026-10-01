@@ -57,13 +57,6 @@ export const DEFAULT_BACKEND_URL = getDefaultBackendUrl();
 function getApiUrl(path = '') {
   let backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
 
-  // Sanitize: If user is in browser on localhost/LAN, ignore stale cloud URL written by older versions
-  if (typeof window !== 'undefined' && !isNativeMobilePlatform()) {
-    if (backendUrl === 'https://ai-tutor-release.onrender.com' || backendUrl === 'https://ai-tutor-release.onrender.com/') {
-      backendUrl = '';
-    }
-  }
-
   if (!backendUrl) {
     backendUrl = getDefaultBackendUrl();
   }
@@ -281,11 +274,6 @@ function loadProfiles() {
 export function AppProvider({ children }) {
   const [backendUrl, setBackendUrl] = useState(() => {
     const saved = localStorage.getItem('ai_tutor_backend_url');
-    if (typeof window !== 'undefined' && !isNativeMobilePlatform()) {
-      if (saved === 'https://ai-tutor-release.onrender.com' || saved === 'https://ai-tutor-release.onrender.com/') {
-        return '';
-      }
-    }
     return saved || getDefaultBackendUrl();
   });
   const [apiToken, setApiToken] = useState(() => {
