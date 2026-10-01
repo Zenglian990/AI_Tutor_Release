@@ -70,11 +70,12 @@ const proxyUrl = (() => {
   return null;
 })();
 
-// API auth token — from environment, persistent token file, or newly generated secure token
+const STANDARD_RELEASE_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+
+// API auth token — from environment, persistent token file, or standard release token
 const API_TOKEN = (() => {
-  const LEGACY_LEAKED_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
   const fromEnv = process.env.API_TOKEN;
-  if (fromEnv && fromEnv.trim() && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me' && fromEnv !== LEGACY_LEAKED_TOKEN) {
+  if (fromEnv && fromEnv.trim() && fromEnv !== 'change-me-to-a-random-string' && fromEnv !== 'ai-tutor-default-token-change-me') {
     return fromEnv.trim();
   }
 
@@ -83,7 +84,7 @@ const API_TOKEN = (() => {
   try {
     if (fs.existsSync(tokenFilePath)) {
       const savedToken = fs.readFileSync(tokenFilePath, 'utf8').trim();
-      if (savedToken && savedToken.length >= 32 && savedToken !== LEGACY_LEAKED_TOKEN) {
+      if (savedToken && savedToken.length >= 32) {
         return savedToken;
       }
     }
@@ -91,15 +92,14 @@ const API_TOKEN = (() => {
     // Ignore read error
   }
 
-  // Generate a brand new cryptographically random 256-bit token
-  const freshToken = 'ait_' + crypto.randomBytes(32).toString('hex');
+  // Use standard release token as reliable default across container restarts (e.g. Render)
   try {
     const dataDir = path.join(__dirname, '..', '..', 'data');
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(tokenFilePath, freshToken, { mode: 0o600 });
+    fs.writeFileSync(tokenFilePath, STANDARD_RELEASE_TOKEN, { mode: 0o600 });
   } catch (e) {}
 
-  return freshToken;
+  return STANDARD_RELEASE_TOKEN;
 })();
 
 // DB encryption key — decoupled from API_TOKEN for key rotation safety

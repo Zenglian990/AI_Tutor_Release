@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
-import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
+import { useAppStore, getApiUrl, authFetch, getApiToken, DEFAULT_API_TOKEN } from '../store/useStore';
 import { decryptData, encryptData } from '../utils/crypto_helper';
 import { ZENG_WECHAT_QR_DATA_URL } from '../assets/zeng_wechat_qr_base64.js';
 import ParentalGate from './ParentalGate';
@@ -20,12 +20,19 @@ function getAdminPinHash() {
   return MASTER_PIN_HASH;
 }
 
-function getAdminAuthHeaders() {
-  const pinHash = getAdminPinHash();
-  return {
-    'Content-Type': 'application/json',
-    'x-parent-pin-hash': pinHash
+function getAdminAuthHeaders(customToken) {
+  const tokenToUse = (customToken !== undefined && customToken !== null) ? customToken : (getApiToken() || DEFAULT_API_TOKEN);
+  const headers = {
+    'Content-Type': 'application/json'
   };
+  if (tokenToUse && String(tokenToUse).trim()) {
+    headers['Authorization'] = `Bearer ${String(tokenToUse).trim()}`;
+  }
+  const pinHash = getAdminPinHash();
+  if (pinHash && pinHash !== MASTER_PIN_HASH) {
+    headers['x-parent-pin-hash'] = pinHash;
+  }
+  return headers;
 }
 
 const loadAnyImage = (src) => new Promise((resolve) => {
@@ -302,7 +309,7 @@ export default function AdminConsoleModal({
       const pinHash = getAdminPinHash();
       const res = await authFetch('/api/membership/admin/generate-keys', {
         method: 'POST',
-        headers: getAdminAuthHeaders(),
+        headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
           count: genCount,
           days: genDays,
@@ -337,7 +344,7 @@ export default function AdminConsoleModal({
   // Tab 3: AI 决策与模型密钥配置
   // -------------------------------------------------------------
   const [url, setUrl] = useState(backendUrl || '');
-  const [token, setToken] = useState(apiToken || '');
+  const [token, setToken] = useState(() => apiToken || getApiToken() || DEFAULT_API_TOKEN);
   const [showToken, setShowToken] = useState(false);
   const [typesafeKey, setTypesafeKey] = useState(() => localStorage.getItem('ai_tutor_typesafe_key') || '');
   const [jevEnabled, setJevEnabled] = useState(() => localStorage.getItem('ai_tutor_jev_enabled') !== 'false');
@@ -390,7 +397,7 @@ export default function AdminConsoleModal({
     try {
       await authFetch('/api/config/update-keys', {
         method: 'POST',
-        headers: getAdminAuthHeaders(),
+        headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
           geminiApiKey: geminiKey.trim() || undefined,
           deepseekApiKey: deepseekKey.trim() || undefined,
@@ -412,7 +419,7 @@ export default function AdminConsoleModal({
     try {
       const res = await authFetch('/api/config/test-llm', {
         method: 'POST',
-        headers: getAdminAuthHeaders(),
+        headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
           provider: 'jev',
           apiKey: typesafeKey.trim() || undefined,
@@ -436,7 +443,7 @@ export default function AdminConsoleModal({
     try {
       const res = await authFetch('/api/config/test-llm', {
         method: 'POST',
-        headers: getAdminAuthHeaders(),
+        headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
           provider: 'gemini',
           apiKey: geminiKey.trim() || undefined,
@@ -462,7 +469,7 @@ export default function AdminConsoleModal({
     try {
       const res = await authFetch('/api/config/test-llm', {
         method: 'POST',
-        headers: getAdminAuthHeaders(),
+        headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
           provider: 'deepseek',
           apiKey: deepseekKey.trim() || undefined,
@@ -494,7 +501,7 @@ export default function AdminConsoleModal({
         return;
       }
 
-      const currentToken = token.trim();
+      const currentToken = (token || getApiToken() || DEFAULT_API_TOKEN).trim();
       if (!currentToken) {
         setServerHealthStatus({ testing: false, success: true, message: `🟡 服务器在线，但未填写访问令牌` });
         return;
@@ -922,7 +929,7 @@ export default function AdminConsoleModal({
                       if (val.trim()) localStorage.setItem('ai_tutor_gemini_key', val.trim());
                       else localStorage.removeItem('ai_tutor_gemini_key');
                     }}
-                    placeholder="输入 Google Gemini API Key (AIzaSy...)"
+                    placeholder="输入 Google Gemini API Key (留空自动使用服务器已配置的官方 Key)"
                     style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}
                   />
                   <button
@@ -973,7 +980,7 @@ export default function AdminConsoleModal({
                       if (val.trim()) localStorage.setItem('ai_tutor_deepseek_key', val.trim());
                       else localStorage.removeItem('ai_tutor_deepseek_key');
                     }}
-                    placeholder="输入 DeepSeek API Key (sk-...)"
+                    placeholder="输入 DeepSeek API Key (留空自动使用服务器已配置的官方 Key)"
                     style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}
                   />
                   <button
@@ -1026,7 +1033,17 @@ export default function AdminConsoleModal({
                   <input
                     type="text"
                     value={url}
-                    onChange={e => setUrl(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setUrl(val);
+                      if (val.trim()) {
+                        localStorage.setItem('ai_tutor_backend_url', val.trim());
+                        if (onSaveBackendUrl) onSaveBackendUrl(val.trim());
+                      } else {
+                        localStorage.removeItem('ai_tutor_backend_url');
+                        if (onSaveBackendUrl) onSaveBackendUrl('');
+                      }
+                    }}
                     placeholder="后端 API 地址 (留空为相对路径，或云端 Render 部署地址)"
                     style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                   />
@@ -1034,8 +1051,18 @@ export default function AdminConsoleModal({
                     <input
                       type={showToken ? 'text' : 'password'}
                       value={token}
-                      onChange={e => setToken(e.target.value)}
-                      placeholder="API Token (认证令牌)"
+                      onChange={e => {
+                        const val = e.target.value;
+                        setToken(val);
+                        if (val.trim()) {
+                          localStorage.setItem('ai_tutor_api_token', encryptData(val.trim()));
+                          if (onSaveApiToken) onSaveApiToken(val.trim());
+                        } else {
+                          localStorage.removeItem('ai_tutor_api_token');
+                          if (onSaveApiToken) onSaveApiToken('');
+                        }
+                      }}
+                      placeholder="API Token (留空自动使用官方标准令牌)"
                       style={{ flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                     />
                     <button
@@ -1048,6 +1075,21 @@ export default function AdminConsoleModal({
                       title={showToken ? '隐藏令牌' : '明文显示令牌'}
                     >
                       {showToken ? '隐藏' : '显示'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setToken(DEFAULT_API_TOKEN);
+                        localStorage.setItem('ai_tutor_api_token', encryptData(DEFAULT_API_TOKEN));
+                        if (onSaveApiToken) onSaveApiToken(DEFAULT_API_TOKEN);
+                      }}
+                      style={{
+                        padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                        background: '#f0fdf4', color: '#166534', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600
+                      }}
+                      title="重置为系统出厂标准官方令牌"
+                    >
+                      重置标准
                     </button>
                   </div>
                 </div>

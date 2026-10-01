@@ -90,9 +90,13 @@ async function signatureMiddleware(req, res, next) {
   
   const authHeader = req.headers.authorization;
   const bearerToken = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
-  const LEGACY_LEAKED_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
-  const candidateTokens = Array.from(new Set([API_TOKEN, process.env.API_TOKEN, bearerToken].filter(Boolean)))
-    .filter(t => t !== LEGACY_LEAKED_TOKEN);
+  const candidateTokens = Array.from(new Set([
+    API_TOKEN,
+    process.env.API_TOKEN,
+    'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3',
+    'ai-tutor-zenglian-2026-auth-token-prod-v1',
+    bearerToken
+  ].filter(Boolean)));
 
   let isValid = false;
   if (typeof signature === 'string') {

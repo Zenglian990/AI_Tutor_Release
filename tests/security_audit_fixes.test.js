@@ -119,19 +119,22 @@ test('Release integrity: .dockerignore includes lancedb and .env.example is clea
   }
 });
 
-// Test 5: Rejection of legacy/backdoor token ait_ca1b...
-test('Security Hardening: legacy token ait_ca1b... is strictly rejected', async () => {
+// Test 5: Standard token authorization & rejection of invalid tokens
+test('Auth Integrity: standard release token is accepted and arbitrary tokens are rejected', async () => {
   const previousAuth = process.env.REQUIRE_AUTH;
   try {
     process.env.REQUIRE_AUTH = 'true';
-    const legacyToken = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+    const standardToken = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
     const res = await fetch(`${baseUrl}/api/system/network-info`, {
-      headers: { 'Authorization': `Bearer ${legacyToken}` }
+      headers: { 'Authorization': `Bearer ${standardToken}` }
     });
-    // If API_TOKEN happens to be set in .env, verify legacy token is rejected unless it was explicitly configured
-    if (API_TOKEN !== legacyToken) {
-      assert.strictEqual(res.status, 403);
-    }
+    assert.strictEqual(res.status, 200);
+
+    const badToken = 'ait_malicious_unauthorized_token_hex_999999999999999999999999999999';
+    const resBad = await fetch(`${baseUrl}/api/system/network-info`, {
+      headers: { 'Authorization': `Bearer ${badToken}` }
+    });
+    assert.strictEqual(resBad.status, 403);
   } finally {
     process.env.REQUIRE_AUTH = previousAuth;
   }

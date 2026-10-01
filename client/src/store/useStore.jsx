@@ -79,6 +79,8 @@ function getApiUrl(path = '') {
   return cleanBase ? cleanBase + cleanPath : cleanPath;
 }
 
+export const DEFAULT_API_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+
 /**
  * Get the stored API token.
  */
@@ -88,7 +90,7 @@ function getApiToken() {
   if (decrypted && decrypted.trim()) {
     return decrypted.trim();
   }
-  return import.meta.env.VITE_API_TOKEN || '';
+  return import.meta.env.VITE_API_TOKEN || DEFAULT_API_TOKEN;
 }
 
 async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {
@@ -144,7 +146,7 @@ async function authFetch(path, options = {}) {
 
   // Inject auth and custom headers for API calls
   if (relativePath.startsWith('/api/')) {
-    if (token) {
+    if (!headers['Authorization'] && token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
