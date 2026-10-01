@@ -1005,7 +1005,7 @@ export default function AdminConsoleModal({
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b', marginBottom: '4px' }}>
                   🌐 后端服务器地址与访问令牌 (Cloud & Render)
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '8px', marginBottom: '8px' }}>
                   <input
                     type="text"
                     value={url}
@@ -1013,13 +1013,26 @@ export default function AdminConsoleModal({
                     placeholder="后端 API 地址 (留空为相对路径，或云端 Render 部署地址)"
                     style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                   />
-                  <input
-                    type={showToken ? 'text' : 'password'}
-                    value={token}
-                    onChange={e => setToken(e.target.value)}
-                    placeholder="API Token (认证令牌)"
-                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
-                  />
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <input
+                      type={showToken ? 'text' : 'password'}
+                      value={token}
+                      onChange={e => setToken(e.target.value)}
+                      placeholder="API Token (认证令牌)"
+                      style={{ flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(s => !s)}
+                      style={{
+                        padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                        background: '#f8fafc', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap'
+                      }}
+                      title={showToken ? '隐藏令牌' : '明文显示令牌'}
+                    >
+                      {showToken ? '隐藏' : '显示'}
+                    </button>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button
