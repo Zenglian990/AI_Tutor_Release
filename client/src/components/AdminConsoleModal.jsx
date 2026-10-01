@@ -446,7 +446,8 @@ export default function AdminConsoleModal({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setGeminiTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'Gemini 连通正常！'}` });
+        if (geminiKey.trim()) localStorage.setItem('ai_tutor_gemini_key', geminiKey.trim());
+        setGeminiTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'Gemini 连通正常！'} (已自动保存生效)` });
       } else {
         const detailText = data.details ? ` (${data.details})` : '';
         setGeminiTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
@@ -471,7 +472,9 @@ export default function AdminConsoleModal({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setDeepseekTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'DeepSeek 连通正常！'}` });
+        if (deepseekKey.trim()) localStorage.setItem('ai_tutor_deepseek_key', deepseekKey.trim());
+        if (deepseekUrl.trim()) localStorage.setItem('ai_tutor_deepseek_url', deepseekUrl.trim());
+        setDeepseekTestStatus({ testing: false, success: true, message: `⚡ ${data.message || 'DeepSeek 连通正常！'} (已自动保存生效)` });
       } else {
         const detailText = data.details ? ` (${data.details})` : '';
         setDeepseekTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
@@ -913,7 +916,12 @@ export default function AdminConsoleModal({
                   <input
                     type={showGeminiKey ? 'text' : 'password'}
                     value={geminiKey}
-                    onChange={e => setGeminiKey(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setGeminiKey(val);
+                      if (val.trim()) localStorage.setItem('ai_tutor_gemini_key', val.trim());
+                      else localStorage.removeItem('ai_tutor_gemini_key');
+                    }}
                     placeholder="输入 Google Gemini API Key (AIzaSy...)"
                     style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}
                   />
@@ -959,7 +967,12 @@ export default function AdminConsoleModal({
                   <input
                     type={showDeepseekKey ? 'text' : 'password'}
                     value={deepseekKey}
-                    onChange={e => setDeepseekKey(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setDeepseekKey(val);
+                      if (val.trim()) localStorage.setItem('ai_tutor_deepseek_key', val.trim());
+                      else localStorage.removeItem('ai_tutor_deepseek_key');
+                    }}
                     placeholder="输入 DeepSeek API Key (sk-...)"
                     style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}
                   />
@@ -986,7 +999,11 @@ export default function AdminConsoleModal({
                 <input
                   type="text"
                   value={deepseekUrl}
-                  onChange={e => setDeepseekUrl(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setDeepseekUrl(val);
+                    if (val.trim()) localStorage.setItem('ai_tutor_deepseek_url', val.trim());
+                  }}
                   placeholder="DeepSeek API 地址 (默认: https://api.deepseek.com/v1)"
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', boxSizing: 'border-box' }}
                 />

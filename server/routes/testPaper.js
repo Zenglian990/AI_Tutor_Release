@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
+
+function getClientAiHeaders(req) {
+  return {
+    'Content-Type': 'application/json',
+    ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
+    ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {}),
+    ...(req.headers['x-deepseek-api-url'] ? { 'x-deepseek-api-url': req.headers['x-deepseek-api-url'] } : {})
+  };
+}
 const { getSqliteDb } = require('../db/init');
 const logger = require('../services/logger');
 const { NODE_ENV } = require('../config');
@@ -570,11 +579,7 @@ router.post('/test-paper/generate', async (req, res) => {
     try {
       const response = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
-          ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {})
-        },
+        headers: getClientAiHeaders(req),
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
@@ -658,7 +663,7 @@ router.post('/test-paper/grade', async (req, res) => {
           const prompt = getGradePrompt(q.question, studentAns, standardAns, q.score, q.explanation, grade);
           const response = await fetchWithKeyRotation(buildChatURL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getClientAiHeaders(req),
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: { temperature: 0.1 }
@@ -716,7 +721,7 @@ router.post('/test-paper/grade', async (req, res) => {
     try {
       const reportResponse = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getClientAiHeaders(req),
         body: JSON.stringify({
           contents: [{ parts: [{ text: reportPrompt }] }],
           generationConfig: { temperature: 0.5 }
@@ -922,7 +927,7 @@ ${canonicalSummary}
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {

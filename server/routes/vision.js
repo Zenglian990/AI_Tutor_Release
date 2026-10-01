@@ -258,11 +258,18 @@ ${contextSection}学生随附提问/诉求：${query}
       }
     };
 
+    const clientHeaders = {
+      'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
+      'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
+      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
+    };
+
     // Stream response using shared SSE handler
     await streamChatToClient(contentsPayload, res, {
       query, grade, subject, sources,
       profile_id: profile_id || 'default',
-      model: model || 'gemini-3.6-flash'
+      model: model || 'gemini-3.6-flash',
+      clientHeaders
     });
   } catch (e) {
     logger.error('Vision Chat Error:', e);
@@ -326,7 +333,12 @@ router.post('/detect-questions', upload.single('image'), async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
+        ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {}),
+        ...(req.headers['x-deepseek-api-url'] ? { 'x-deepseek-api-url': req.headers['x-deepseek-api-url'] } : {})
+      },
       body: JSON.stringify(contentsPayload)
     }, 2, 30000, 'gemini-2.5-flash', true);
 

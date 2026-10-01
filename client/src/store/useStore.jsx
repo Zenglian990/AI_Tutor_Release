@@ -164,8 +164,10 @@ async function authFetch(path, options = {}) {
     }
 
     const isLlmRoute = relativePath.startsWith('/api/chat') ||
+                       relativePath.startsWith('/api/vision') ||
                        relativePath.startsWith('/api/test-paper') ||
                        relativePath.startsWith('/api/homework') ||
+                       relativePath.startsWith('/api/mistakes') ||
                        relativePath.startsWith('/api/config') ||
                        relativePath.startsWith('/api/tts') ||
                        relativePath.startsWith('/api/transcribe');
@@ -179,6 +181,11 @@ async function authFetch(path, options = {}) {
       const customDeepseekKey = localStorage.getItem('ai_tutor_deepseek_key');
       if (customDeepseekKey && customDeepseekKey.trim()) {
         headers['x-deepseek-api-key'] = customDeepseekKey.trim();
+      }
+
+      const customDeepseekUrl = localStorage.getItem('ai_tutor_deepseek_url');
+      if (customDeepseekUrl && customDeepseekUrl.trim()) {
+        headers['x-deepseek-api-url'] = customDeepseekUrl.trim();
       }
     }
 

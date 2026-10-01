@@ -122,7 +122,8 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       headers: {
         'Content-Type': 'application/json',
         ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
-        ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {})
+        ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {}),
+        ...(req.headers['x-deepseek-api-url'] ? { 'x-deepseek-api-url': req.headers['x-deepseek-api-url'] } : {})
       },
       body: JSON.stringify(contentsPayload)
     };

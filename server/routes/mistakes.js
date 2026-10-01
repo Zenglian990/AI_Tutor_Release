@@ -6,6 +6,15 @@ const logger = require('../services/logger');
 const { encryptField, decryptField } = require('../utils/crypto');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 
+function getClientAiHeaders(req) {
+  return {
+    'Content-Type': 'application/json',
+    ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
+    ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {}),
+    ...(req.headers['x-deepseek-api-url'] ? { 'x-deepseek-api-url': req.headers['x-deepseek-api-url'] } : {})
+  };
+}
+
 // GET /api/mistakes
 router.get('/mistakes', async (req, res) => {
   try {
@@ -133,7 +142,7 @@ router.get('/mistakes/review-challenge', async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.7 }
@@ -262,7 +271,7 @@ ${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.6 }
@@ -329,7 +338,7 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.3 }

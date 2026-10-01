@@ -226,7 +226,13 @@ router.post('/chat', async (req, res) => {
       generationConfig
     };
 
-    await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id, model });
+    const clientHeaders = {
+      'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
+      'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
+      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
+    };
+
+    await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id, model, clientHeaders });
 
   } catch (e) {
     logger.error("Chat Error:", e);

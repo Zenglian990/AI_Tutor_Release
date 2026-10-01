@@ -308,14 +308,16 @@ async function* translateDeepSeekStream(originalBody) {
  * Direct request to DeepSeek API when Gemini is unavailable or explicitly requested
  */
 async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
-  const currentKey = (process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
+  const clientKey = (originalOptions?.headers?.['x-deepseek-api-key'] || originalOptions?.headers?.['X-DeepSeek-Api-Key'])?.trim();
+  const currentKey = clientKey || (process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
   if (!currentKey) {
     throw new Error('All Gemini keys failed and no DEEPSEEK_API_KEY is configured for fallback.');
   }
 
-  const currentUrl = (process.env.DEEPSEEK_API_URL || DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+  const clientUrl = (originalOptions?.headers?.['x-deepseek-api-url'] || originalOptions?.headers?.['X-DeepSeek-Api-Url'])?.trim();
+  const currentUrl = (clientUrl || process.env.DEEPSEEK_API_URL || DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
   const selectedModel = modelName && modelName !== 'default' ? modelName : (process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat');
-  logger.warn(`[Gateway] Routing request to DeepSeek (${selectedModel})...`);
+  logger.info(`[Gateway] Routing request to DeepSeek (${selectedModel}) at ${currentUrl}...`);
 
   const geminiPayload = JSON.parse(originalOptions.body);
   const isStream = urlType === 'stream';
@@ -473,7 +475,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     if (modifiedOptions.signal && modifiedOptions.signal.aborted) {
       throw new DOMException('The operation was aborted.', 'AbortError');
     }
-    let key = getNextKey();
+    let key = (attempt === 0 && clientCustomKey && !invalidKeys.has(clientCustomKey)) ? clientCustomKey : getNextKey();
     if (invalidKeys.has(key) || (keyCooldown.get(key) && Date.now() <= keyCooldown.get(key))) {
       key = null;
       for (const candidate of validKeys) {

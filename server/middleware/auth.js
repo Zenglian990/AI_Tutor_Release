@@ -124,7 +124,8 @@ async function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-  const candidateTokens = [API_TOKEN, process.env.API_TOKEN].filter(Boolean);
+  const LEGACY_LEAKED_TOKEN = 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+  const candidateTokens = [API_TOKEN, process.env.API_TOKEN].filter(Boolean).filter(t => t !== LEGACY_LEAKED_TOKEN);
   
   let isMatch = false;
   if (token && typeof token === 'string') {

@@ -23,7 +23,7 @@ const STREAM_TIMEOUT_MS = 120_000; // 2 minutes max for streaming response
  * @param {string} opts.profile_id - Profile identifier
  */
 async function streamChatToClient(contentsPayload, res, opts = {}) {
-  const { query, grade, subject, sources = [], profile_id, model } = opts;
+  const { query, grade, subject, sources = [], profile_id, model, clientHeaders = {} } = opts;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -89,9 +89,13 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
   let fullAnswer = '';
 
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...clientHeaders
+    };
     const response = await fetchWithKeyRotation(buildStreamURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(contentsPayload),
       signal: abortController.signal
     }, 8, 120000, model);
