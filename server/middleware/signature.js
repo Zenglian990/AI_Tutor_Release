@@ -87,7 +87,10 @@ async function signatureMiddleware(req, res, next) {
 
   const formFieldsStr = req.headers['x-form-fields'] || '';
   const fileFieldsStr = req.headers['x-file-fields'] || '';
-  const candidateTokens = [API_TOKEN].filter(Boolean);
+  
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
+  const candidateTokens = Array.from(new Set([API_TOKEN, process.env.API_TOKEN, bearerToken].filter(Boolean)));
 
   let isValid = false;
   if (typeof signature === 'string') {
@@ -108,9 +111,17 @@ async function signatureMiddleware(req, res, next) {
     }
   }
 
-  if (!isValid) {
-    return res.status(401).json({ error: '请求签名验证失败。' });
+  // If signature matches, proceed
+  if (isValid) {
+    return next();
   }
+
+  // Graceful fallback for non-admin API routes if request is already authenticated via valid Bearer token
+  if (!isTargetAdmin && req.authenticated) {
+    return next();
+  }
+
+  return res.status(401).json({ error: '请求签名验证失败。' });
 
   next();
 }

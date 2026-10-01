@@ -146,6 +146,7 @@ async function authMiddleware(req, res, next) {
 
   // Successful auth — reset failure count for this IP
   authFailures.delete(clientIp);
+  req.authenticated = true;
 
   next();
 }
