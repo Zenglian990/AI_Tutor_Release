@@ -27,6 +27,8 @@ import MembershipModal from './components/MembershipModal';
 import AdminConsoleModal from './components/AdminConsoleModal';
 import ParentSharePosterModal from './components/ParentSharePosterModal';
 import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
+import FormulaHandbookModal from './components/FormulaHandbookModal';
+import DailyMentalMathModal from './components/DailyMentalMathModal';
 import { Capacitor } from '@capacitor/core';
 import { SpeechRecognition as NativeSpeechRecognition } from '@capacitor-community/speech-recognition';
 import { compressImage } from './utils/image';
@@ -101,8 +103,10 @@ function AppInner() {
   const [showAdminConsole, setShowAdminConsole] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [photoToCrop, setPhotoToCrop] = useState(null);
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [showMentalMathModal, setShowMentalMathModal] = useState(false);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
-    return localStorage.getItem('ai_tutor_minor_privacy_consented') !== 'true';
+    return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== '1.5.4';
   });
 
   // Modern Non-Blocking Toast Notification & Quick Reason Tagging
@@ -116,16 +120,31 @@ function AppInner() {
     }, duration);
   }, []);
 
+  const handleInsertFormula = useCallback((formulaText) => {
+    setInput(prev => (prev ? `${prev} ${formulaText}` : `请帮我深入剖析这个公式定理的考法与推导：${formulaText}`));
+    showToast('📖 已将公式填入输入框', 'info');
+  }, [showToast]);
+
+  const handleAwardExp = useCallback((expAmount, reason) => {
+    showToast(`⚡ ${reason || '口算天天练'} 结算获得 +${expAmount} EXP！`, 'success');
+  }, [showToast]);
+
   const handleSelectMistakeReason = useCallback(async (mistakeId, reasonTag) => {
     try {
-      await authFetch(`/api/mistakes/${mistakeId}/reason`, {
+      const res = await authFetch(`/api/mistakes/${encodeURIComponent(mistakeId)}/reason`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reasonTag, tags: reasonTag })
       });
-      showToast(`🎯 已标记错因：${reasonTag}`, 'success');
-      setMistakeTagPrompt(null);
+      if (res.ok) {
+        showToast(`🎯 已标记错因：${reasonTag}`, 'success');
+        setMistakeTagPrompt(null);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(`标记错因失败：${err.error || '服务器响应异常'}`, 'error');
+      }
     } catch {
+      showToast('网络连接异常，标记错因未同步', 'error');
       setMistakeTagPrompt(null);
     }
   }, [showToast]);
@@ -163,6 +182,7 @@ function AppInner() {
   const subjectRef = useRef(selectedSubject);
   const messagesRef = useRef(messages);
   const editionRef = useRef(currentProfile.edition);
+  const handleSubmitRef = useRef(null);
 
   gradeRef.current = currentProfile.grade;
   subjectRef.current = selectedSubject;
@@ -208,38 +228,50 @@ function AppInner() {
     if (!isLoading) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, isLoading]);
 
-  // Sync messages to server
+  // Sync messages to server (exclude transient offline guidance & error notices)
   const syncMessages = useCallback(async (currentMessages, explicitGrade = currentProfile.grade, explicitSubject = selectedSubject) => {
     try {
+      const persistableMessages = (currentMessages || []).filter(m => !m.isTransient && m.role !== 'system_notice');
       await authFetch('/api/chat-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile_id: currentProfileId, messages: currentMessages, grade: explicitGrade, subject: explicitSubject })
+        body: JSON.stringify({ profile_id: currentProfileId, messages: persistableMessages, grade: explicitGrade, subject: explicitSubject })
       });
     } catch (e) { console.error('Failed to sync messages:', e); }
   }, [currentProfileId, currentProfile.grade, selectedSubject]);
 
-  // Load messages on profile/subject change
+  // Load messages on profile/subject change with race-condition prevention
   useEffect(() => {
+    let isCancelled = false;
+    const activeProfileId = currentProfileId;
+    const activeGrade = currentProfile.grade;
+    const activeSubject = selectedSubject;
+
     const loadMessages = async () => {
       try {
-        const res = await authFetch(`/api/chat-history?profile_id=${currentProfileId}&grade=${currentProfile.grade}&subject=${selectedSubject}`);
+        const res = await authFetch(`/api/chat-history?profile_id=${activeProfileId}&grade=${activeGrade}&subject=${activeSubject}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.history && data.history.length > 0) {
-            setMessages(data.history);
+          if (!isCancelled) {
+            setMessages(data.history || []);
             return;
           }
         }
-      } catch (e) { console.error('Failed to load history', e); }
-      // Default to empty array so WelcomeDashboard renders when starting fresh
-      setMessages([]);
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+      if (!isCancelled) {
+        setMessages([]);
+      }
     };
     loadMessages();
     return () => {
-      if (messagesRef.current.length > 0) syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
+      isCancelled = true;
+      if (messagesRef.current.length > 0) {
+        syncMessages(messagesRef.current, activeGrade, activeSubject);
+      }
     };
-  }, [currentProfileId, currentProfile.grade, selectedSubject]);
+  }, [currentProfileId, currentProfile.grade, selectedSubject, syncMessages]);
 
   // Profile change handler (catches ADD_NEW)
   const onProfileChange = useCallback((profileId) => {
@@ -272,6 +304,8 @@ function AppInner() {
       isListeningRef.current = true;
       nativeSpeechListeningRef.current = false;
 
+      const sttLang = (selectedSubject === '英语' || subjectRef.current === '英语') ? 'en-US' : 'zh-CN';
+
       // 1. 尝试激活移动端原生 Android/iOS SpeechRecognizer (边说边动态吐字，0ms 等待)
       const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
       if (isNative) {
@@ -282,15 +316,7 @@ function AppInner() {
           }
           const isAvail = await NativeSpeechRecognition.available();
           if (isAvail.available) {
-            nativeSpeechListeningRef.current = true;
-            await NativeSpeechRecognition.start({
-              language: 'zh-CN',
-              maxResults: 1,
-              prompt: '正在倾听...',
-              partialResults: true,
-              popup: false
-            });
-
+            NativeSpeechRecognition.removeAllListeners();
             NativeSpeechRecognition.addListener('partialResults', (data) => {
               if (data && data.matches && data.matches.length > 0) {
                 const spoken = data.matches[0]?.trim();
@@ -303,6 +329,25 @@ function AppInner() {
                 }
               }
             });
+
+            await NativeSpeechRecognition.start({
+              language: sttLang,
+              maxResults: 1,
+              prompt: sttLang === 'en-US' ? 'Listening...' : '正在倾听...',
+              partialResults: true,
+              popup: false
+            });
+
+            nativeSpeechListeningRef.current = true;
+            setIsListening(true);
+            if (isDialogueLoop) setVoiceDialogueMode('listening');
+
+            // Set timeout protection for native speech
+            if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+            recordingTimerRef.current = setTimeout(() => {
+              stopVoiceRecording(isDialogueLoop);
+            }, 15000);
+            return; // Exit early to avoid concurrent getUserMedia microphone conflict on Android
           }
         } catch (nativeErr) {
           console.warn('[STT] Native SpeechRecognizer notice:', nativeErr);
@@ -316,7 +361,7 @@ function AppInner() {
         if (SpeechRecognition) {
           try {
             const rec = new SpeechRecognition();
-            rec.lang = 'zh-CN';
+            rec.lang = sttLang;
             rec.continuous = true;
             rec.interimResults = true;
             rec.maxAlternatives = 1;
@@ -529,7 +574,7 @@ function AppInner() {
     }
   }, [showToast]);
 
-  const stopVoiceRecording = useCallback(() => {
+  const stopVoiceRecording = useCallback((isDialogueLoop = false) => {
     isListeningRef.current = false;
     if (recordingTimerRef.current) {
       clearTimeout(recordingTimerRef.current);
@@ -543,7 +588,8 @@ function AppInner() {
       try { vadAudioContextRef.current.close(); } catch (e) {}
       vadAudioContextRef.current = null;
     }
-    if (nativeSpeechListeningRef.current) {
+    const wasNative = nativeSpeechListeningRef.current;
+    if (wasNative) {
       try {
         NativeSpeechRecognition.stop().catch(() => {});
         NativeSpeechRecognition.removeAllListeners();
@@ -556,6 +602,18 @@ function AppInner() {
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
+    } else if (wasNative) {
+      const instantText = liveTranscriptRef.current?.trim();
+      setIsListening(false);
+      setIsLoading(false);
+      if (instantText) {
+        if (isDialogueLoop) {
+          setVoiceDialogueOpen(false);
+          if (handleSubmitRef.current) handleSubmitRef.current(null, instantText, null, true);
+        } else {
+          setInput(instantText);
+        }
+      }
     }
     setIsListening(false);
   }, []);
@@ -590,15 +648,27 @@ function AppInner() {
 
     const userQuery = textToSubmit || '请帮我解答这张图片里的题目。';
     const hasImage = !!activeFile;
-    const historyContext = messagesRef.current.slice(-20).map(m => ({ role: m.role, text: m.text }));
+    const historyContext = messagesRef.current
+      .filter(m => !m.isTransient && m.role !== 'system_notice')
+      .slice(-20)
+      .map(m => ({ role: m.role, text: m.text }));
 
-    const activePreview = directFile ? URL.createObjectURL(directFile) : previewImage;
+    let activePreview = previewImage;
+    if (!activePreview && activeFile) {
+      activePreview = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(activeFile);
+      });
+    }
+
     const newMsgs = [...messagesRef.current, { id: genMsgId(), role: 'user', text: userQuery, imageUrl: activePreview }];
     setMessages(newMsgs);
     setInput('');
     const currentImage = activeFile;
-    if (previewImage) URL.revokeObjectURL(previewImage);
-    setPreviewImage(null); setImageFile(null);
+    setPreviewImage(null);
+    setImageFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setIsLoading(true);
 
@@ -750,20 +820,22 @@ function AppInner() {
         });
         setMessages(prev => {
           const lastMsg = prev[prev.length - 1];
-          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: offlineSocraticText }];
-          return [...prev, { id: genMsgId(), role: 'ai', text: offlineSocraticText }];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: offlineSocraticText, isTransient: true }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: offlineSocraticText, isTransient: true }];
         });
       } else {
         let errorMsg = error.message || '对不起，系统忙碌中，请稍后再试。';
         if (typeof errorMsg !== 'string') errorMsg = JSON.stringify(errorMsg);
         setMessages(prev => {
           const lastMsg = prev[prev.length - 1];
-          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg) }];
-          return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg) }];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg), isTransient: true }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg), isTransient: true }];
         });
       }
     } finally { setIsLoading(false); }
   }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
+
+  handleSubmitRef.current = handleSubmit;
 
   // Image handling with Smart Cropper (对标作业帮/小猿取景搜题)
   const handleImageSelect = useCallback(e => {
@@ -968,6 +1040,8 @@ function AppInner() {
             onOpenGamification={() => setShowGamification(true)}
             onOpenManipulatives={() => setShowManipulatives(true)}
             onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
+            onOpenMentalMath={() => setShowMentalMathModal(true)}
+            onOpenFormulaHandbook={() => setShowFormulaModal(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -1202,6 +1276,21 @@ function AppInner() {
         onAccept={() => setShowPrivacyConsent(false)}
       />
 
+      {/* 📖 中考数理化必备公式速查宝典 */}
+      <FormulaHandbookModal
+        isOpen={showFormulaModal}
+        onClose={() => setShowFormulaModal(false)}
+        onInsertFormula={handleInsertFormula}
+      />
+
+      {/* ⚡ 60秒趣味口算天天练 */}
+      <DailyMentalMathModal
+        isOpen={showMentalMathModal}
+        onClose={() => setShowMentalMathModal(false)}
+        currentGrade={Number(currentProfile?.grade) || 3}
+        onAwardExp={handleAwardExp}
+      />
+
       <InputBar
         input={input} setInput={setInput}
         isLoading={isLoading} isListening={isListening}
@@ -1213,6 +1302,7 @@ function AppInner() {
         onInterruptSpeech={interruptSpeech}
         onOpenScratchpad={() => setShowScratchpad(true)}
         onOpenBatchGrade={() => setShowBatchGrade(true)}
+        onOpenFormulaHandbook={() => setShowFormulaModal(true)}
         hasActiveChat={messages.length > 0}
       />
 

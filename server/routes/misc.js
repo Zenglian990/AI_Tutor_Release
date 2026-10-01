@@ -146,13 +146,24 @@ router.post('/chat-history', async (req, res) => {
             WHERE profile_id = ? AND grade = ? AND subject = ?
           )
         `, [profile_id, grade, subject]);
-        await sqliteDb.run('DELETE FROM chat_history WHERE profile_id = ? AND grade = ? AND subject = ?', [profile_id, grade, subject]);
+        let savedCount = 0;
         for (const msg of messages) {
+          // Security / Data hygiene: skip transient offline fallback messages
+          if (msg.isTransient) continue;
           if (msg.role !== 'system' && msg.text && msg.text.trim()) {
+            let cleanText = msg.text;
+            // Prevent oversized base64 images from bloating SQLite and corrupting multi-turn context
+            if (cleanText.includes('data:image/')) {
+              cleanText = cleanText.replace(/data:image\/[a-zA-Z0-9+.-]+;base64,[A-Za-z0-9+/=]+/g, '[题目图片]');
+            }
+            if (cleanText.length > 8000) {
+              cleanText = cleanText.slice(0, 8000) + '...[已截断]';
+            }
             const result = await sqliteDb.run('INSERT INTO chat_history (profile_id, grade, subject, role, text) VALUES (?, ?, ?, ?, ?)',
-              [profile_id, grade, subject, msg.role, encryptField(msg.text)]);
+              [profile_id, grade, subject, msg.role, encryptField(cleanText)]);
             const chat_id = result.lastID;
-            await sqliteDb.run('INSERT INTO chat_history_fts (chat_id, text) VALUES (?, ?)', [chat_id, generateFtsIndexText(msg.text)]);
+            await sqliteDb.run('INSERT INTO chat_history_fts (chat_id, text) VALUES (?, ?)', [chat_id, generateFtsIndexText(cleanText)]);
+            savedCount++;
           }
         }
         await sqliteDb.run('COMMIT');
@@ -685,10 +696,18 @@ router.post('/admin/pin', async (req, res) => {
     const { pin_hash, security_answer_hash } = req.body;
     if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
 
+    const { isWeakPinHash } = require('../utils/adminAuth');
+    if (isWeakPinHash(pin_hash)) {
+      return res.status(400).json({ error: "安全拦截：禁止使用 888888、000000、123456 等默认弱口令作为 PIN 码，请设置自定义 6 位安全密码。" });
+    }
+
     await sqliteDb.run(
       'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
       ['parent_pin_hash', pin_hash]
     );
+    // Remove needs_parent_pin_setup flag if present
+    await sqliteDb.run("DELETE FROM system_settings WHERE key = 'needs_parent_pin_setup'");
+
     if (security_answer_hash) {
       await sqliteDb.run(
         'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
@@ -710,7 +729,11 @@ const getPinStatusHandler = async (req, res) => {
 
     const pinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
     const answerRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'security_answer_hash'");
+    const needsSetupRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'needs_parent_pin_setup'");
     
+    const { isWeakPinHash } = require('../utils/adminAuth');
+    const hasValidPin = Boolean(pinRow && pinRow.value && !isWeakPinHash(pinRow.value) && !needsSetupRow);
+
     let questionId = null;
     if (answerRow && answerRow.value) {
       const parts = answerRow.value.split(':');
@@ -718,7 +741,8 @@ const getPinStatusHandler = async (req, res) => {
     }
 
     res.json({
-      has_pin: Boolean(pinRow && pinRow.value),
+      has_pin: hasValidPin,
+      needs_setup: Boolean(needsSetupRow || !hasValidPin),
       has_security_question: Boolean(answerRow && answerRow.value),
       question_id: questionId
     });
@@ -753,15 +777,16 @@ function checkPinRateLimit(req, res, next) {
     pinAttempts.clear();
   }
 
-  const entry = pinAttempts.get(ip) || { count: 0, resetTime: now + 5 * 60 * 1000 };
+  const entry = pinAttempts.get(ip) || { count: 0, resetTime: now + 15 * 60 * 1000 };
 
   if (now > entry.resetTime) {
     entry.count = 0;
-    entry.resetTime = now + 5 * 60 * 1000;
+    entry.resetTime = now + 15 * 60 * 1000;
   }
 
-  if (entry.count >= 10) {
-    return res.status(429).json({ error: "PIN 验证尝试过于频繁，已被锁定 5 分钟" });
+  // 5 failed attempts locks for 15 minutes
+  if (entry.count >= 5) {
+    return res.status(429).json({ error: "PIN 验证错误次数过多，为保障安全已锁定 15 分钟" });
   }
 
   pinAttempts.set(ip, entry);
@@ -769,7 +794,7 @@ function checkPinRateLimit(req, res, next) {
   next();
 }
 
-// POST /api/admin/verify-pin — Verify parent PIN hash server-side
+// POST /api/admin/verify-pin — Verify parent PIN hash and issue short-lived session token
 router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
@@ -777,18 +802,14 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
     const { pin_hash } = req.body;
     if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
 
-    // Master PIN override (888888 or 000000) for owner emergency access
-    const masterHashes = [
-      crypto.createHash('sha256').update('888888').digest('hex'),
-      crypto.createHash('sha256').update('000000').digest('hex')
-    ];
-    if (masterHashes.includes(pin_hash)) {
-      if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
-      return res.json({ valid: true, master_override: true });
+    const { isWeakPinHash, generateParentSessionToken } = require('../utils/adminAuth');
+    if (isWeakPinHash(pin_hash)) {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
+      return res.status(400).json({ valid: false, error: "系统已强制停用 888888、000000 等弱口令，请重设安全密码。" });
     }
 
     const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
-    if (!savedPinRow || !savedPinRow.value) {
+    if (!savedPinRow || !savedPinRow.value || isWeakPinHash(savedPinRow.value)) {
       return res.json({ valid: true, unconfigured: true });
     }
 
@@ -798,7 +819,8 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
 
     if (isValid) {
       if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
-      return res.json({ valid: true });
+      const session_token = generateParentSessionToken('admin', 1800);
+      return res.json({ valid: true, session_token, expires_in_seconds: 1800 });
     } else {
       if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
       return res.status(401).json({ valid: false, error: "密码不正确" });
@@ -806,6 +828,76 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
   } catch (e) {
     logger.error("Failed to verify parent PIN:", e);
     res.status(500).json({ error: "验证家长密码失败" });
+  }
+});
+
+// POST /api/parent/auth-session — Verify parent PIN and issue Parent-Session-Token
+router.post('/parent/auth-session', checkPinRateLimit, async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { pin_hash } = req.body;
+    if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
+
+    const { isWeakPinHash, generateParentSessionToken } = require('../utils/adminAuth');
+    if (isWeakPinHash(pin_hash)) {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
+      return res.status(400).json({ success: false, error: "系统已强制停用 888888 等默认弱口令，请重设安全密码。" });
+    }
+
+    const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
+    if (!savedPinRow || !savedPinRow.value || isWeakPinHash(savedPinRow.value)) {
+      return res.status(400).json({ success: false, unconfigured: true, error: "尚未配置家长 PIN 码，请先初始化安全密码。" });
+    }
+
+    const savedBuf = Buffer.from(String(savedPinRow.value));
+    const inputBuf = Buffer.from(String(pin_hash));
+    const isValid = savedBuf.length === inputBuf.length && crypto.timingSafeEqual(savedBuf, inputBuf);
+
+    if (isValid) {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
+      const session_token = generateParentSessionToken('admin', 1800);
+      return res.json({ success: true, session_token, expires_in_seconds: 1800 });
+    } else {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
+      return res.status(401).json({ success: false, error: "密码不正确" });
+    }
+  } catch (e) {
+    logger.error("Failed to authenticate parent session:", e);
+    res.status(500).json({ error: "认证家长会话失败" });
+  }
+});
+
+// GET /api/admin/anti-cheat — Get server-side anti-cheat status
+router.get('/admin/anti-cheat', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.json({ locked: false });
+    const row = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_anti_cheat_locked'");
+    res.json({ locked: row ? row.value === 'true' : false });
+  } catch (e) {
+    res.json({ locked: false });
+  }
+});
+
+// POST /api/admin/anti-cheat — Set server-side anti-cheat status (requires admin authorization)
+router.post('/admin/anti-cheat', async (req, res) => {
+  try {
+    const { isVerifiedAdminRequest } = require('../utils/adminAuth');
+    if (!await isVerifiedAdminRequest(req)) {
+      return res.status(403).json({ error: "无权修改防抄题监督锁：需要家长管理员认证" });
+    }
+    const { locked } = req.body;
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    await sqliteDb.run(
+      "INSERT INTO system_settings (key, value) VALUES ('parent_anti_cheat_locked', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      [locked ? 'true' : 'false']
+    );
+    res.json({ success: true, locked: !!locked });
+  } catch (e) {
+    logger.error("Failed to update anti-cheat status:", e);
+    res.status(500).json({ error: "更新防抄题设置失败" });
   }
 });
 

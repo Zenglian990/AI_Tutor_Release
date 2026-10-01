@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
-import { decryptData } from '../utils/crypto_helper';
+import { decryptData, encryptData } from '../utils/crypto_helper';
 import { ZENG_WECHAT_QR_DATA_URL } from '../assets/zeng_wechat_qr_base64.js';
 import ParentalGate from './ParentalGate';
 
@@ -357,8 +357,22 @@ export default function AdminConsoleModal({
   const [saveKeysMsg, setSaveKeysMsg] = useState({ type: '', text: '' });
 
   const handleSaveAllKeys = async () => {
-    onSaveBackendUrl(url.trim());
-    onSaveApiToken(token.trim());
+    const cleanUrl = url.trim();
+    const cleanToken = token.trim();
+    onSaveBackendUrl(cleanUrl);
+    onSaveApiToken(cleanToken);
+
+    if (cleanToken) {
+      localStorage.setItem('ai_tutor_api_token', encryptData(cleanToken));
+    } else {
+      localStorage.removeItem('ai_tutor_api_token');
+    }
+
+    if (cleanUrl) {
+      localStorage.setItem('ai_tutor_backend_url', cleanUrl);
+    } else {
+      localStorage.removeItem('ai_tutor_backend_url');
+    }
 
     if (geminiKey.trim()) localStorage.setItem('ai_tutor_gemini_key', geminiKey.trim());
     else localStorage.removeItem('ai_tutor_gemini_key');
@@ -471,12 +485,28 @@ export default function AdminConsoleModal({
     setServerHealthStatus({ testing: true });
     try {
       const targetBase = (url.trim() || getApiUrl()).replace(/\/+$/, '');
-      const res = await fetch(`${targetBase}/api/health`);
-      if (res.ok) {
-        const d = await res.json();
-        setServerHealthStatus({ testing: false, success: true, message: `🟢 服务器在线，状态: ${d.status || 'OK'}` });
+      const healthRes = await fetch(`${targetBase}/api/health`);
+      if (!healthRes.ok) {
+        setServerHealthStatus({ testing: false, success: false, message: `🔴 服务器无法响应: HTTP ${healthRes.status}` });
+        return;
+      }
+
+      const currentToken = token.trim();
+      if (!currentToken) {
+        setServerHealthStatus({ testing: false, success: true, message: `🟡 服务器在线，但未填写访问令牌` });
+        return;
+      }
+
+      const authCheckRes = await fetch(`${targetBase}/api/mistakes?profile_id=default`, {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+
+      if (authCheckRes.ok) {
+        setServerHealthStatus({ testing: false, success: true, message: `🟢 服务器在线，访问令牌校验通过！` });
+      } else if (authCheckRes.status === 403 || authCheckRes.status === 401) {
+        setServerHealthStatus({ testing: false, success: false, message: `🔴 服务器在线，但访问令牌无效 (403)` });
       } else {
-        setServerHealthStatus({ testing: false, success: false, message: `🔴 服务器响应码: ${res.status}` });
+        setServerHealthStatus({ testing: false, success: false, message: `🟡 鉴权接口响应状态: ${authCheckRes.status}` });
       }
     } catch (e) {
       setServerHealthStatus({ testing: false, success: false, message: '🔴 无法连接服务器: ' + e.message });
@@ -490,10 +520,19 @@ export default function AdminConsoleModal({
   const [showPinSetupGate, setShowPinSetupGate] = useState(false);
   const [pinChangeMsg, setPinChangeMsg] = useState('');
 
-  const handleToggleAntiCheat = () => {
+  const handleToggleAntiCheat = async () => {
     const nextVal = !antiCheatLocked;
     setAntiCheatLocked(nextVal);
     localStorage.setItem('parent_anti_cheat_locked', nextVal ? 'true' : 'false');
+    try {
+      await authFetch('/api/admin/anti-cheat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked: nextVal })
+      });
+    } catch (e) {
+      console.warn('Could not sync anti-cheat setting to backend:', e);
+    }
   };
 
   if (!isOpen) return null;

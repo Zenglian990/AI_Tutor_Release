@@ -21,7 +21,7 @@ export default class ErrorBoundary extends Component {
         body: JSON.stringify({
           message: error?.message || String(error),
           stack: error?.stack || errorInfo?.componentStack || '',
-          url: window.location.href,
+          url: window.location.origin + window.location.pathname,
           profile_id: activeProfileId
         })
       }).catch(err => console.warn('Failed to send error log to APM:', err));

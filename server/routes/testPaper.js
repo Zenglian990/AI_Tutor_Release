@@ -13,6 +13,7 @@ const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('
 const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
 const { extractAndParseJson } = require('../utils/jsonParser');
 const { sendToNetworkPrinter, formatExamForPrinter } = require('../services/printerService');
+const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 
 
 
@@ -961,6 +962,10 @@ ${canonicalSummary}
 // LAN network printer direct raw/IPP socket dispatch
 router.post('/printer/print-ipp', async (req, res) => {
   try {
+    if (!isVerifiedAdminRequest(req)) {
+      return res.status(403).json({ error: '出于网络安全防护，云端网络打印调度仅限已鉴权管理员或家长调用' });
+    }
+
     const {
       host = '192.168.1.200',
       port = 9100,

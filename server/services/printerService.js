@@ -10,6 +10,11 @@ function isSafeLocalPrinterHost(host) {
   const h = host.trim().toLowerCase();
   if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
 
+  // Explicitly deny cloud metadata (169.254.x.x), multicast, broadcast, and invalid 0.0.0.0
+  if (h.startsWith('169.254.') || h.startsWith('224.') || h.startsWith('240.') || h === '255.255.255.255' || h === '0.0.0.0') {
+    return false;
+  }
+
   // Private IPv4 ranges
   // 10.0.0.0/8
   if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
@@ -101,6 +106,16 @@ function sendToNetworkPrinter({
 
     if (!isSafeLocalPrinterHost(host)) {
       return reject(new Error('出于安全防护，仅支持连接局域网局域地址 (如 192.168.x.x, 10.x.x.x) 或本机测试'));
+    }
+
+    const numericPort = Number(port);
+    if (![9100, 631].includes(numericPort)) {
+      return reject(new Error('非授权打印端口：仅支持标准网络打印端口 9100 (RAW) 或 631 (IPP)'));
+    }
+
+    const isCloudEnv = Boolean(process.env.RENDER || (process.env.NODE_ENV === 'production' && !process.env.ALLOW_CLOUD_PRINT));
+    if (isCloudEnv && !mock && !['127.0.0.1', 'localhost', '::1'].includes(host.trim().toLowerCase())) {
+      return reject(new Error('云端托管服务实例无法直连家庭私网打印机。请在局域网内运行本地伴学服务，或勾选模拟打印预览。'));
     }
 
     const payload = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data;

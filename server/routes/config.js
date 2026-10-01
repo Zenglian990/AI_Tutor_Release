@@ -5,7 +5,7 @@ const path = require('path');
 const { fetch: undiciFetch, ProxyAgent } = require('undici');
 const config = require('../config');
 const logger = require('../services/logger');
-const { isSafeExternalUrl, validateSafeUrlAsync } = require('../utils/urlValidator');
+const { isSafeExternalUrl, validateSafeUrlAsync, isAllowedDeepseekUrl } = require('../utils/urlValidator');
 const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 
 const proxyAgent = config.proxyUrl ? new ProxyAgent(config.proxyUrl) : null;
@@ -86,6 +86,13 @@ router.post('/config/update-keys', async (req, res) => {
       if (!isVerified) {
         return res.status(403).json({ error: '无权修改系统环境配置：需要主管理员授权。' });
       }
+
+      // Security Hardening: In production (Render/Cloud), disallow remote modification unless explicitly permitted
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+      if ((process.env.NODE_ENV === 'production' || process.env.RENDER) && !isLoopback && process.env.ALLOW_REMOTE_CONFIG !== 'true') {
+        return res.status(403).json({ error: '出于系统安全防护，云端生产环境禁止外网远程动态变更服务端大模型密钥与全局配置。' });
+      }
     }
 
     const { deepseekApiKey, deepseekApiUrl, deepseekChatModel, geminiApiKey, typesafeApiKey, jevEnabled, jevConfidenceThreshold } = req.body || {};
@@ -100,6 +107,10 @@ router.post('/config/update-keys', async (req, res) => {
 
     if (typeof deepseekApiUrl === 'string' && deepseekApiUrl.trim()) {
       const cleanUrl = deepseekApiUrl.trim();
+      // Security Hardening: Enforce strict official URL whitelist to prevent LLM hijacking (SSRF/Data Exfiltration)
+      if (!isAllowedDeepseekUrl(cleanUrl)) {
+        return res.status(400).json({ error: '安全拦截：禁止将大模型接口基址指向非官方域名，防止学生数据与密钥泄露。' });
+      }
       updateEnvFile('DEEPSEEK_API_URL', cleanUrl);
       updatedCount++;
     }

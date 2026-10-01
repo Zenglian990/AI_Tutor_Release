@@ -10,7 +10,7 @@ before(async () => {
   await initDB();
   const db = await getSqliteDb();
   const crypto = require('crypto');
-  const testPinHash = crypto.createHash('sha256').update('123456').digest('hex');
+  const testPinHash = crypto.createHash('sha256').update('975312').digest('hex');
   await db.run("INSERT INTO system_settings (key, value) VALUES ('parent_pin_hash', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [testPinHash]);
 
   const app = createApp();

@@ -3,21 +3,22 @@ node_modules/
 
 # Environment (contains API keys)
 .env
+.env.*
 .env.local
 .env.*.local
+*.env
 
 # Database files
-data/lancedb/
-data/mistakes.db*
+data/
 !data/canonical_questions.db.gz
 !data/textbooks_k9_seed.json.gz
-data/textbooks/
-data/processed_pdfs.log
-data/backups/
-data/api_token
-data/db_key
-data/*.json
-data/*.jsonl
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+api_token
+db_key
 
 # Build output
 client/dist/
@@ -57,3 +58,5 @@ __pycache__/
 temp_apk/
 temp_*/
 *.apk
+*.keystore
+*.jks

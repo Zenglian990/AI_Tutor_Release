@@ -3,7 +3,6 @@
 
     <application
         android:allowBackup="false"
-        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -17,7 +16,7 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:screenOrientation="unspecified">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

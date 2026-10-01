@@ -325,6 +325,21 @@ async function runMigrations(db) {
     logger.error('Failed to cleanup old api_usage records:', e);
   }
 
+  // Security audit: Purge legacy weak PIN hashes (e.g. 888888, 000000, 123456)
+  try {
+    const pinRow = await db.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
+    if (pinRow && pinRow.value) {
+      const { isWeakPinHash } = require('../utils/adminAuth');
+      if (isWeakPinHash(pinRow.value)) {
+        await db.run("DELETE FROM system_settings WHERE key = 'parent_pin_hash'");
+        await db.run("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('needs_parent_pin_setup', '1')");
+        logger.warn('[Security] Legacy default/weak PIN hash detected and purged from system_settings.');
+      }
+    }
+  } catch (e) {
+    logger.warn('[Security] Could not verify/purge weak PIN hash:', e.message);
+  }
+
   logger.info('[Migrations] All schema migrations applied.');
 }
 

@@ -19,7 +19,9 @@ export default function WelcomeDashboard({
   onOpenBatchGrade,
   onOpenGamification,
   onOpenManipulatives,
-  onOpenGeometrySandbox
+  onOpenGeometrySandbox,
+  onOpenMentalMath,
+  onOpenFormulaHandbook
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -287,6 +289,30 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">中考动点轨迹动态推演，二次函数系数滑杆直观击穿难点</p>
             <div className="action-card-cta" style={{ color: '#60a5fa' }}>推演动点 →</div>
+          </div>
+        )}
+
+        {/* ⚡ 60秒趣味口算天天练 */}
+        {onOpenMentalMath && (
+          <div className="action-card" onClick={onOpenMentalMath} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(16, 185, 129, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">⚡</span>
+              <span className="action-card-name" style={{ color: '#38bdf8' }}>60秒趣味口算天天练</span>
+            </div>
+            <p className="action-card-desc">1-9年级自适应速算冲刺，移动端九宫格大键盘，连对暴击获EXP</p>
+            <div className="action-card-cta" style={{ color: '#38bdf8' }}>口算冲刺 →</div>
+          </div>
+        )}
+
+        {/* 📖 中考数理化必备公式定理速查宝典 */}
+        {onOpenFormulaHandbook && (
+          <div className="action-card" onClick={onOpenFormulaHandbook} role="button" tabIndex={0} style={{ borderColor: 'rgba(168, 85, 247, 0.4)', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(139, 92, 246, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">📖</span>
+              <span className="action-card-name" style={{ color: '#c084fc' }}>数理化公式定理宝典</span>
+            </div>
+            <p className="action-card-desc">代数几何、物理力电浮力、化学口诀离线秒查，一键复制提问</p>
+            <div className="action-card-cta" style={{ color: '#c084fc' }}>速查宝典 →</div>
           </div>
         )}
 

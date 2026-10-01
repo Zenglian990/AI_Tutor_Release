@@ -7,8 +7,8 @@ android {
         applicationId "com.zentutor.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
-        versionName "1.3.7"
+        versionCode 16
+        versionName "1.5.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,11 +16,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            def keystoreFile = project.hasProperty('RELEASE_STORE_FILE') ? file(RELEASE_STORE_FILE) : file('release.keystore')
+            if (keystoreFile.exists()) {
+                storeFile keystoreFile
+                storePassword project.findProperty('RELEASE_STORE_PASSWORD') ?: 'zenglian_tutor_2026'
+                keyAlias project.findProperty('RELEASE_KEY_ALIAS') ?: 'zenglian_release'
+                keyPassword project.findProperty('RELEASE_KEY_PASSWORD') ?: 'zenglian_tutor_2026'
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            def keystoreFile = project.hasProperty('RELEASE_STORE_FILE') ? file(RELEASE_STORE_FILE) : file('release.keystore')
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            debuggable false
         }
     }
 }

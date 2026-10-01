@@ -42,6 +42,7 @@ const InputBar = React.memo(function InputBar({
   onInterruptSpeech,
   onOpenScratchpad,
   onOpenBatchGrade,
+  onOpenFormulaHandbook,
   hasActiveChat
 }) {
   const [localVal, setLocalVal] = useState(input);
@@ -274,6 +275,17 @@ const InputBar = React.memo(function InputBar({
               📑 整页秒批
             </button>
           )}
+          {onOpenFormulaHandbook && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#a855f7', color: '#c084fc', background: 'rgba(168, 85, 247, 0.1)' }}
+              title="打开中考数理化必备公式定理速查宝典"
+              onClick={onOpenFormulaHandbook}
+            >
+              📖 公式宝典
+            </button>
+          )}
         </div>
       )}
 
@@ -366,6 +378,24 @@ const InputBar = React.memo(function InputBar({
           >
             ∑
           </button>
+
+          {/* 左侧数理化公式宝典按钮 */}
+          {onOpenFormulaHandbook && (
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={onOpenFormulaHandbook}
+              title="数理化必备公式定理速查宝典 (中考代数/几何/物理/化学)"
+              aria-label="打开公式宝典"
+              style={{
+                color: '#c084fc',
+                fontSize: '1.05rem',
+                fontWeight: 700
+              }}
+            >
+              📖
+            </button>
+          )}
 
           {/* 左侧草稿白板按钮 */}
           {onOpenScratchpad && (

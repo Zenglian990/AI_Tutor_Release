@@ -55,18 +55,43 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   const [tamperedToken, setTamperedToken] = useState('');
   const [tamperedError, setTamperedError] = useState('');
 
-  const handleVerifyTamperedToken = () => {
+  const handleVerifyTamperedToken = async () => {
+    const inputToken = tamperedToken.trim();
+    if (!inputToken) {
+      setTamperedError('请输入系统访问令牌');
+      return;
+    }
+
     const encrypted = localStorage.getItem('ai_tutor_api_token') || '';
     const activeToken = decryptData(encrypted) || '';
-    if (tamperedToken.trim() === activeToken && activeToken !== '') {
+    if (activeToken && inputToken === activeToken) {
       setIsTampered(false);
       setIsSettingUp(true);
       setSetupStep('pin');
       setTamperedError('');
       setTamperedToken('');
-    } else {
-      setTamperedError('系统访问令牌不正确，请重新输入或联系系统管理员。');
+      return;
     }
+
+    // Verify token with backend
+    try {
+      const checkRes = await authFetch('/api/system/network-info', {
+        headers: { 'Authorization': `Bearer ${inputToken}` }
+      });
+      if (checkRes.ok) {
+        localStorage.setItem('ai_tutor_api_token', encryptData(inputToken));
+        setIsTampered(false);
+        setIsSettingUp(true);
+        setSetupStep('pin');
+        setTamperedError('');
+        setTamperedToken('');
+        return;
+      }
+    } catch (e) {
+      console.warn('Backend token check exception:', e);
+    }
+
+    setTamperedError('系统访问令牌不正确，请重新输入或联系系统管理员。');
   };
 
   const savedPinHashEnc = localStorage.getItem(GATE_PIN_HASH_KEY);
@@ -179,6 +204,12 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
 
     if (newPinVal.length === PIN_LENGTH) {
       if (isSettingUp) {
+        if (newPinVal === '888888' || newPinVal === '000000' || newPinVal === '123456') {
+          setSetupError('安全拦截：禁止使用 888888、000000 等弱口令，请设置自定义 6 位安全密码。');
+          setPin('');
+          setFirstPin('');
+          return;
+        }
         if (!firstPin) {
           setTimeout(() => {
             setFirstPin(newPinVal);
@@ -199,18 +230,6 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
         }
       } else {
         const hash = await sha256(newPinVal);
-        // Master PIN override (888888 or 000000) for owner instant access
-        if (newPinVal === '888888' || newPinVal === '000000') {
-          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-          localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-          resetAttempts();
-          setTimeout(() => {
-            onVerify();
-            onClose();
-          }, 150);
-          return;
-        }
-
         try {
           const verifyRes = await authFetch('/api/admin/verify-pin', {
             method: 'POST',
@@ -219,6 +238,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
           });
           const verifyData = await verifyRes.json();
           if (verifyData.valid) {
+            if (verifyData.session_token) {
+              sessionStorage.setItem('parent_session_token', verifyData.session_token);
+            }
             sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
             localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
             resetAttempts();
@@ -229,7 +251,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
             return;
           }
         } catch (e) {
-          if (savedPinHash && hash === savedPinHash) {
+          if (savedPinHash && hash === savedPinHash && !['92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e', '91b4d142823f7d20c5f08df69122de43f35f057a988d9619f6d3138485c9a203'].includes(hash)) {
             sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
             resetAttempts();
             setTimeout(() => {
@@ -360,29 +382,6 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
     } catch (err) {
       setResetError('重置密码遇到异常，请重试');
     }
-  };
-
-  const handleDirectResetToDefault = async () => {
-    const defaultPin = '888888';
-    const hash = await sha256(defaultPin);
-    const ansHash = await sha256('default');
-    try {
-      await authFetch('/api/admin/pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin_hash: hash, security_answer_hash: 'mother_name:' + ansHash })
-      }).catch(() => {});
-    } catch (_) {}
-    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-    sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-    resetAttempts();
-    setShowResetFlow(false);
-    setIsSettingUp(false);
-    setPin('');
-    setFirstPin('');
-    alert('✅ 密码已重置为 888888，并已为您开门！');
-    onVerify();
-    onClose();
   };
 
   const isLockedOut = lockedUntil > Date.now();
@@ -606,16 +605,13 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={handleDirectResetToDefault}
-                      style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '8px', padding: '6px 14px', color: '#34d399', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 600 }}
+                      onClick={() => setShowResetFlow(true)}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.84rem', textDecoration: 'underline' }}
                     >
-                      ⚡ 忘记密码？一键重置为 888888 并开门
+                      忘记密码？通过密保问题重置
                     </button>
                   </div>
                 )}
-                <p className="tip-text">
-                  💡 提示：管理员万能应急密码为 888888。
-                </p>
               </div>
             </>
           )
@@ -724,13 +720,6 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                 />
                 <button onClick={handleSetNewPin} style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}>
                   ✅ 确认重置密码
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDirectResetToDefault}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.03)', color: '#34d399', cursor: 'pointer', fontSize: '0.85rem' }}
-                >
-                  ⚡ 直接重置为 888888 并开门
                 </button>
               </div>
             )}

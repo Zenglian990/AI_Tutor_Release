@@ -177,8 +177,30 @@ async function validateSafeUrlAsync(urlString) {
   }
 }
 
+/**
+ * Strict whitelist verification for DeepSeek API URL to prevent SSRF and API Key hijacking
+ * @param {string} urlString
+ * @returns {boolean}
+ */
+function isAllowedDeepseekUrl(urlString) {
+  if (typeof urlString !== 'string' || !urlString.trim()) return false;
+  try {
+    const parsed = new URL(urlString.trim());
+    if (parsed.protocol !== 'https:') return false;
+    if (parsed.hostname.toLowerCase() !== 'api.deepseek.com') return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.port && parsed.port !== '443') return false;
+    const cleanPath = parsed.pathname.replace(/\/+$/, '');
+    if (cleanPath !== '' && cleanPath !== '/v1') return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 module.exports = {
   isPrivateOrReservedIp,
   isSafeExternalUrl,
-  validateSafeUrlAsync
+  validateSafeUrlAsync,
+  isAllowedDeepseekUrl
 };

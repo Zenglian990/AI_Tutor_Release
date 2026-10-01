@@ -95,7 +95,7 @@ function getApiToken() {
   if (decrypted && decrypted.trim()) {
     return decrypted.trim();
   }
-  return import.meta.env.VITE_API_TOKEN || 'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3';
+  return import.meta.env.VITE_API_TOKEN || '';
 }
 
 async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {
@@ -155,15 +155,18 @@ async function authFetch(path, options = {}) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const parentSessionToken = sessionStorage.getItem('parent_session_token');
+    if (parentSessionToken) {
+      headers['x-parent-session-token'] = parentSessionToken;
+    }
+
     let parentPinHash = sessionStorage.getItem('parent_gate_verified_pin_hash');
     if (!parentPinHash) {
       const savedHash = localStorage.getItem('parent_gate_pin_hash_v2');
       if (savedHash) parentPinHash = decryptData(savedHash);
     }
-    if (!parentPinHash) {
-      parentPinHash = '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e';
-    }
-    if (parentPinHash) {
+    // Security hardening: Never inject weak default 888888 hash as a fallback header
+    if (parentPinHash && parentPinHash !== '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e') {
       headers['x-parent-pin-hash'] = parentPinHash;
     }
 

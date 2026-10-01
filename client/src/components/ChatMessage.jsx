@@ -300,6 +300,7 @@ const ChatMessage = React.memo(function ChatMessage({
   const activeGrade = msg.grade || selectedGrade || currentProfile?.grade || '7_up';
   const isPrimary = isLowerGrade(activeGrade);
   const isPinyinActive = (pinyinMode ?? true) && isPrimary && msg.role === 'ai';
+  const isDirectMode = socraticLevel === 'direct';
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(isDirectMode);
   const [isAuxRevealed, setIsAuxRevealed] = useState(false);
   const [hasUnderstood, setHasUnderstood] = useState(false);
@@ -594,7 +595,22 @@ const ChatMessage = React.memo(function ChatMessage({
 
                           <button
                             type="button"
-                            onClick={() => setIsAnswerRevealed(r => !r)}
+                            onClick={() => {
+                              if (isAnswerRevealed) {
+                                setIsAnswerRevealed(false);
+                                return;
+                              }
+                              const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') === 'true';
+                              const isParentVerified = Boolean(
+                                sessionStorage.getItem('parent_session_token') || 
+                                sessionStorage.getItem('parent_gate_verified_pin_hash')
+                              );
+                              if (isAntiCheatLocked && !isParentVerified) {
+                                alert('🔒 家长已开启【防抄题监督锁】。为养成独立推导演算习惯，请先在草稿纸上动手作答；如需核对最终答案，请由家长在【管理员】输入安全密码授权后展开。');
+                                return;
+                              }
+                              setIsAnswerRevealed(true);
+                            }}
                             style={{
                               padding: '5px 14px',
                               borderRadius: '10px',

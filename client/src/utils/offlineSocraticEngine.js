@@ -201,35 +201,35 @@ export function generateOfflineSocraticResponse({
   let closingPraise = '';
 
   if (persona === 'lion') {
-    headerPrefix = `🦁 **聪聪小狮子说：** 吼吼！${studentName}，看到你在探索这道【${node.name}】问题，真棒！遇到卡点别慌，离线模式下小狮子依然全程陪你闯关！🌟\n\n`;
-    encouragement = `🐾 **闯关第一步**：跟着小狮子先理清楚已知条件，我们不直接抄答案，用自己的智慧解开它！`;
-    closingPraise = `\n\n💪 **加油呀！** 在草稿纸上画一画或写下你的第一步，小狮子随时在这里陪你验证！`;
+    headerPrefix = `🦁 **聪聪小狮子说：** 吼吼！${studentName}，当前网络连接暂不可用，别慌！小狮子依然全程陪你思考！🌟\n\n`;
+    encouragement = `🐾 **第一步**：先在草稿纸上理清楚已知条件，用自己的思考解开它！`;
+    closingPraise = `\n\n💪 **加油呀！** 在草稿纸上画一画或写下你的第一步，网络恢复后可继续发送！`;
   } else if (persona === 'sister') {
-    headerPrefix = `🌸 **晓晴学姐悄悄话：** ${studentName}，这道关于【${node.name}】的题目，学姐以前也做错过呢。别着急，我们静下心来按步骤拆解，其实破题点很明显哦～ ☕\n\n`;
+    headerPrefix = `🌸 **晓晴学姐悄悄话：** ${studentName}，目前网络连接中断，但别着急，学姐先为你梳理【${node.name}】的通用解题思路～ ☕\n\n`;
     encouragement = `💡 **学姐支招**：解这类题的关键在于抓住题眼，我们先看第一步：`;
-    closingPraise = `\n\n✨ **学姐小提示**：做完记得把草稿留存，等有网了一键同步到错题本，你一定会越来越有把握的！`;
+    closingPraise = `\n\n✨ **学姐小提示**：做完记得把草稿留存，等网络恢复了一键同步，你一定会越来越有把握的！`;
   } else {
     // Default: owl (智多星博士)
-    headerPrefix = `🦉 **智多星导师·四阶苏格拉底离线导学系统**\n\n*检测到离线/端侧推理状态，已为您激活基于教材知识图谱的【${node.name}】启发式导学链：*\n\n`;
-    encouragement = `🔬 **认知引导**：不直接提供终极答案，引导自主建模与推导：`;
-    closingPraise = `\n\n🎯 **名师结语**：学而不思则罔，思而不学则殆。在草稿纸上完成第一步推导后，可继续在对话框输入你的进展！`;
+    headerPrefix = `🦉 **智多星导师 · 离线辅导指南**\n\n*提示：当前网络连接暂不可用，已为您调出【${node.name}】通用启发式解题提示：*\n\n`;
+    encouragement = `🔬 **认知引导**：请根据以下核心定理和步骤在草稿纸上尝试推导：`;
+    closingPraise = `\n\n🎯 **名师结语**：学而不思则罔，思而不学则殆。在草稿纸上完成推导后，待网络恢复可继续提问！`;
   }
 
   const formulasMarkdown = node.formulas.map(f => `- ${f}`).join('\n');
 
-  const content = `${headerPrefix}> ⚡ **[端侧离线纯本地推理引擎 · 4阶苏格拉底支架]**
+  const content = `${headerPrefix}> 💡 **[离线辅导提示 · 四阶解题支架]**
 
 ### 🔍 第 1 阶：审题显微镜与条件拆解
 ${node.stage1}
 ${encouragement}
 
 ### 📐 第 2 阶：核心知识点与定理检索
-本题的核心抓手属于 **${node.name}** 范畴，需要调用的核心定理与公式如下：
+针对 **${node.name}** 相关问题，请对照以下常用定理与公式：
 ${formulasMarkdown}
 
 ### 💡 第 3 阶：微步破题启发引导
 **${node.scaffoldQuestion}**
-*(提示：先不要急着算最后一步，试着在草稿纸上写出这个式子，或者回复我你的思考！)*
+*(提示：先在草稿纸上写出这个式子，待网络恢复后拍照或发送给老师！)*
 
 ### 🛡️ 第 4 阶：自检防错与思维反思
 ${node.reflection}${closingPraise}`;

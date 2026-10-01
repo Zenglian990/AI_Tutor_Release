@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getSqliteDb } = require('../db/init');
-const { API_TOKEN, STANDARD_RELEASE_TOKEN } = require('../config');
-const { MASTER_PIN_HASHES } = require('../utils/adminAuth');
+const { API_TOKEN } = require('../config');
+const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 const logger = require('../services/logger');
 
 let tablesInitialized = false;
@@ -178,36 +178,19 @@ router.post('/membership/redeem', async (req, res) => {
  * Verify Parent Admin PIN or Master API Token
  */
 async function verifyAdminPin(sqliteDb, pinHash, req) {
-  // 1. Allow master API_TOKEN from system administrator
-  if (req) {
-    const authHeader = req.headers?.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-    if (token) {
-      const candidateTokens = [API_TOKEN, process.env.API_TOKEN, STANDARD_RELEASE_TOKEN].filter(Boolean);
-      for (const expected of candidateTokens) {
-        if (token === expected) return true;
-      }
-    }
+  if (req && await isVerifiedAdminRequest(req)) {
+    return true;
   }
 
-  // 2. Allow master PIN override (888888 or 000000) for owner access
-  if (pinHash) {
-    const inputBuf = Buffer.from(String(pinHash));
-    for (const masterHash of MASTER_PIN_HASHES) {
-      const masterBuf = Buffer.from(masterHash);
-      if (inputBuf.length === masterBuf.length && crypto.timingSafeEqual(inputBuf, masterBuf)) {
-        return true;
-      }
-    }
-  }
+  // Check parent_pin_hash stored in system_settings
+  if (!pinHash || !sqliteDb) return false;
+  const { isWeakPinHash } = require('../utils/adminAuth');
+  if (isWeakPinHash(pinHash)) return false;
 
-  // 3. Check parent_pin_hash stored in system_settings
   const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
-  if (!savedPinRow || !savedPinRow.value) {
-    // Strict security: require configured PIN, reject unauthenticated generation
+  if (!savedPinRow || !savedPinRow.value || isWeakPinHash(savedPinRow.value)) {
     return false;
   }
-  if (!pinHash) return false;
   const savedBuf = Buffer.from(String(savedPinRow.value));
   const inputBuf = Buffer.from(String(pinHash));
   if (savedBuf.length !== inputBuf.length) return false;
