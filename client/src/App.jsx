@@ -279,9 +279,16 @@ function AppInner() {
     if (result === 'ADD_NEW') setShowAddProfile(true);
   }, [handleProfileChange]);
 
-  // Admin console handler - direct access for 曾先生
+  // Admin console gate handler (曾先生·管理员专属控制台安全密码锁)
   const handleOpenAdminConsole = useCallback(() => {
-    setShowAdminConsole(true);
+    const isVerified = sessionStorage.getItem('parent_gate_verified_pin_hash');
+    if (isVerified) {
+      setShowAdminConsole(true);
+    } else {
+      setGateAction(() => () => setShowAdminConsole(true));
+      setGateReason('进入【曾先生·管理员专属控制台】');
+      setGateOpen(true);
+    }
   }, []);
 
   // Triple-Engine Ultra-Speed Voice input & STT:

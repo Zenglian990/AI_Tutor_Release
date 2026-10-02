@@ -37,6 +37,8 @@ async function sha256(message) {
 export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏感操作' }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [setupStep, setSetupStep] = useState('pin'); // 'pin' | 'security_question'
   const [firstPin, setFirstPin] = useState('');
@@ -107,22 +109,18 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       setFirstPin('');
       setConfirmedPin('');
       setError(false);
+      setSuccess(false);
+      setIsVerifying(false);
       setLockedUntil(0);
       setSetupStep('pin');
       setSetupError('');
+      setIsTampered(false);
+      setIsSettingUp(false); // 始终默认进入密码验证模式（出厂默认：888888）
       
       // Check backend status
       authFetch('/api/admin/pin-status')
         .then(res => res.json())
         .then(data => {
-          if (data && data.has_pin === false) {
-            setIsSettingUp(true);
-            setIsTampered(false);
-          } else if (data && data.has_pin && !savedPinHash) {
-            // Backend has pin configured
-            setIsSettingUp(false);
-            setIsTampered(false);
-          }
           if (data && data.question_id) {
             setSelectedQuestion(data.question_id);
           }
@@ -143,22 +141,8 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       } else {
         setLockedUntil(0);
       }
-
-      const hasExistingData = localStorage.getItem('ai_tutor_api_token') || localStorage.getItem('ai_tutor_profiles');
-      const pinHashMissing = !savedPinHash;
-
-      if (pinHashMissing && hasExistingData) {
-        setIsTampered(false);
-        setIsSettingUp(true);
-      } else if (pinHashMissing) {
-        setIsTampered(false);
-        setIsSettingUp(true);
-      } else {
-        setIsTampered(false);
-        setIsSettingUp(false);
-      }
     }
-  }, [isOpen, savedPinHash]);
+  }, [isOpen]);
 
   // Lockout countdown timer
   useEffect(() => {
@@ -199,99 +183,120 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   };
 
   const handleKeyPress = async (num) => {
-    if (pin.length >= PIN_LENGTH || lockedUntil > Date.now()) return;
+    if (isVerifying || success || pin.length >= PIN_LENGTH || lockedUntil > Date.now()) return;
     setError(false);
     setSetupError('');
     const newPinVal = pin + num;
     setPin(newPinVal);
 
-    // 曾先生出厂专属万能 PIN 888888：无论在首次设置模式还是验证模式，均立即直接验证通行
-    if (newPinVal === MASTER_PIN) {
-      sessionStorage.setItem('parent_gate_verified_pin_hash', MASTER_PIN_HASH);
-      localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(MASTER_PIN_HASH));
-      resetAttempts();
-      setTimeout(() => {
-        onVerify();
-        onClose();
-      }, 150);
-      return;
-    }
-
     if (newPinVal.length === PIN_LENGTH) {
+      // 1. 如果在密码设置模式 (Setup Mode)
       if (isSettingUp) {
-        if (newPinVal === '000000' || newPinVal === '123456') {
-          setSetupError('安全提示：请设置 6 位安全密码（如 888888 或自定义数字）');
-          setPin('');
-          setFirstPin('');
-          return;
-        }
         if (!firstPin) {
-          setTimeout(() => {
-            setFirstPin(newPinVal);
-            setPin('');
-          }, 200);
+          // 记录第一次输入，提示再次输入以确认
+          setFirstPin(newPinVal);
+          setPin('');
+          setSetupError('已记录第一次输入，请再次输入同一密码以确认');
+          return;
         } else {
+          // 第二次确认输入
           if (newPinVal === firstPin) {
-            setConfirmedPin(newPinVal);
-            setPin('');
-            setSetupStep('security_question');
-          } else {
+            setSuccess(true);
+            const hash = await sha256(newPinVal);
+            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+            resetAttempts();
+            try {
+              await authFetch('/api/admin/pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin_hash: hash })
+              });
+            } catch (_) {}
             setTimeout(() => {
-              setError(true);
+              setIsSettingUp(false);
+              onVerify();
+              onClose();
+            }, 350);
+            return;
+          } else {
+            setError(true);
+            setSetupError('两次输入的密码不一致，请重新输入');
+            setTimeout(() => {
               setPin('');
               setFirstPin('');
-            }, 300);
+              setError(false);
+            }, 700);
+            return;
           }
         }
-      } else {
-        const hash = await sha256(newPinVal);
-        if (hash === MASTER_PIN_HASH) {
+      }
+
+      // 2. 正常密码验证模式 (Verification Mode)
+      setIsVerifying(true);
+      const hash = await sha256(newPinVal);
+
+      // (a) 检查是否为出厂万能密码 888888
+      const isMaster = (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH);
+      // (b) 检查是否与本地保存的自定义密码匹配
+      const isLocalMatch = Boolean(savedPinHash && hash === savedPinHash);
+
+      if (isMaster || isLocalMatch) {
+        setSuccess(true);
+        sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+        localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+        resetAttempts();
+        setTimeout(() => {
+          onVerify();
+          onClose();
+        }, 350);
+        return;
+      }
+
+      // (c) 检查服务端校验
+      try {
+        const verifyRes = await authFetch('/api/admin/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin_hash: hash })
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.valid) {
+          setSuccess(true);
+          if (verifyData.session_token) {
+            sessionStorage.setItem('parent_session_token', verifyData.session_token);
+          }
           sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
           localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
           resetAttempts();
           setTimeout(() => {
             onVerify();
             onClose();
-          }, 150);
+          }, 350);
           return;
         }
-        try {
-          const verifyRes = await authFetch('/api/admin/verify-pin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin_hash: hash })
-          });
-          const verifyData = await verifyRes.json();
-          if (verifyData.valid) {
-            if (verifyData.session_token) {
-              sessionStorage.setItem('parent_session_token', verifyData.session_token);
-            }
-            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-            resetAttempts();
-            setTimeout(() => {
-              onVerify();
-              onClose();
-            }, 300);
-            return;
-          }
-        } catch (e) {
-          if (savedPinHash && hash === savedPinHash) {
-            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-            resetAttempts();
-            setTimeout(() => {
-              onVerify();
-              onClose();
-            }, 300);
-            return;
-          }
+      } catch (e) {
+        // 网络或离线状态，未保存过密码则允许 888888 或首次默认进入
+        if (!savedPinHash) {
+          setSuccess(true);
+          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+          resetAttempts();
+          setTimeout(() => {
+            onVerify();
+            onClose();
+          }, 350);
+          return;
         }
-        recordFailedAttempt();
-        setTimeout(() => {
-          setError(true);
-          setPin('');
-        }, 300);
       }
+
+      // 验证未通过：保留 6 位红点震动提示 700ms，明确告知错误，绝不瞬间闪退重置
+      setIsVerifying(false);
+      setError(true);
+      recordFailedAttempt();
+      setTimeout(() => {
+        setPin('');
+        setError(false);
+      }, 700);
     }
   };
 
@@ -560,9 +565,13 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   </p>
                 ) : (
                   <p className="sub-text">
-                    {isSettingUp
-                      ? (!firstPin ? `首次使用，请设置您的 ${PIN_LENGTH} 位家长安全密码` : '请再次输入密码以确认')
-                      : `请输入 ${PIN_LENGTH} 位家长安全密码验证身份`}
+                    {success ? (
+                      <span style={{ color: '#10b981', fontWeight: 'bold' }}>✅ 密码验证通过，正在进入...</span>
+                    ) : isSettingUp ? (
+                      !firstPin ? '请设置 6 位家长安全密码' : '请再次输入同一密码以确认'
+                    ) : (
+                      '请输入 6 位家长安全密码（出厂默认：888888）'
+                    )}
                   </p>
                 )}
               </div>
@@ -572,7 +581,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   {Array.from({ length: PIN_LENGTH }, (_, idx) => (
                     <span
                       key={idx}
-                      className={`pin-dot ${pin.length > idx ? 'filled' : ''} ${error ? 'error' : ''}`}
+                      className={`pin-dot ${pin.length > idx ? 'filled' : ''} ${error ? 'error' : ''} ${success ? 'success' : ''}`}
                     />
                   ))}
                 </div>
@@ -582,8 +591,8 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   </span>
                 )}
                 {error && (
-                  <span className="error-message-text">
-                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新设置' : '⚠️ 密码不正确，可输入 888888 或点击下方一键进入'}
+                  <span className="error-message-text" style={{ color: '#ef4444', marginTop: '6px' }}>
+                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新输入' : '⚠️ 密码不正确，请重新输入（出厂默认：888888）'}
                   </span>
                 )}
               </div>
@@ -596,7 +605,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                     className="numpad-btn"
                     aria-label={`数字 ${num}`}
                     onClick={() => handleKeyPress(String(num))}
-                    disabled={isLockedOut}
+                    disabled={isLockedOut || isVerifying || success}
                   >
                     {num}
                   </button>
@@ -605,8 +614,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   type="button"
                   className="numpad-btn control-btn"
                   aria-label="清空输入"
-                  onClick={() => setPin('')}
+                  onClick={() => { setPin(''); setError(false); }}
                   title="清空"
+                  disabled={isLockedOut || isVerifying || success}
                 >
                   C
                 </button>
@@ -615,7 +625,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   className="numpad-btn"
                   aria-label="数字 0"
                   onClick={() => handleKeyPress('0')}
-                  disabled={isLockedOut}
+                  disabled={isLockedOut || isVerifying || success}
                 >
                   0
                 </button>
@@ -625,6 +635,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   aria-label="退格"
                   onClick={handleBackspace}
                   title="退格"
+                  disabled={isLockedOut || isVerifying || success}
                 >
                   ⌫
                 </button>
@@ -635,11 +646,14 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   type="button"
                   className="zeng-master-bypass-btn"
                   onClick={() => {
+                    setSuccess(true);
                     sessionStorage.setItem('parent_gate_verified_pin_hash', MASTER_PIN_HASH);
                     localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(MASTER_PIN_HASH));
                     resetAttempts();
-                    onVerify();
-                    onClose();
+                    setTimeout(() => {
+                      onVerify();
+                      onClose();
+                    }, 300);
                   }}
                   style={{
                     width: '100%',
@@ -662,14 +676,43 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
               </div>
 
               <div className="gate-footer">
-                {!isSettingUp && (
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+                {!isSettingUp ? (
+                  <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSettingUp(true);
+                        setPin('');
+                        setFirstPin('');
+                        setSetupError('');
+                        setError(false);
+                      }}
+                      style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}
+                    >
+                      ⚙️ 自定义新密码
+                    </button>
                     <button
                       type="button"
                       onClick={() => setShowResetFlow(true)}
-                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.84rem', textDecoration: 'underline' }}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}
                     >
-                      忘记密码？通过密保问题重置
+                      忘记密码？密保重置
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSettingUp(false);
+                        setPin('');
+                        setFirstPin('');
+                        setSetupError('');
+                        setError(false);
+                      }}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.82rem' }}
+                    >
+                      ← 返回密码验证
                     </button>
                   </div>
                 )}

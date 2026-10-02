@@ -588,6 +588,12 @@ body.light-mode .pin-dot {
   box-shadow: 0 0 8px #ef4444;
 }
 
+.pin-dot.success {
+  background: #10b981;
+  border-color: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
 .error-message-text {
   color: #ef4444;
   font-size: 0.75rem;

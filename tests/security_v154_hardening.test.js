@@ -36,6 +36,7 @@ before(async () => {
 after(async () => {
   if (db) {
     await db.run("DELETE FROM chat_history WHERE profile_id LIKE 'test_hygiene_%'");
+    await db.run("DELETE FROM system_settings WHERE key = 'parent_pin_hash'");
   }
   if (server) {
     await new Promise((resolve) => server.close(resolve));
