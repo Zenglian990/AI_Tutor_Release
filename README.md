@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.3_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.5_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-网页版即开即用-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.3)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.5)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.3 夜间拍照去阴影·错因归因·初中几何辅助线锁版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.5 双通道容灾·Jev决策·出厂认证版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,15 +34,19 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.3.apk (约 10.4MB · 夜间拍照去阴影·错因归因·初中几何辅助线锁版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk)
-- **📥 稳定备用直链**：[AI_Tutor_v1.5.2.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
-- **✨ v1.5.3 重磅体验跃升 (高频痛点全面解决·方案A落地)**：
-  - **💡 拍照取景器三维试卷滤镜（原图 / 智能去阴影 / 黑白高对比增强）**：
-    - 针对学生晚间在书桌台灯下写作业、手机/手臂阴影遮挡题干、铅笔字在反光下发白的痛点，新增轻量级局部积分图去阴影与高对比黑白试卷滤镜，一键抚平阴影与纸面暗黄，白纸黑字分明，大幅提升复杂几何图与上下标公式的视觉识别精度。
-  - **📐 初中几何专属【辅助线作法灵感锁】（阶梯式提点）**：
-    - 在自律折叠锁中专设 `[📐 仅看辅助线灵感]`。初中几何压轴题卡壳时，一键仅提取辅助线作法（如“倍长中线构造全等”或“作垂直分高”），保留独立推导机会，做完后再核对完整证明。若原解答未含辅助线，一键自动定向请求名师辅助线指引。
-  - **🏷️ 告别原生阻塞式 Alert · 现代轻量 Toast & 三维错因快速归因**：
-    - 彻底消除移动端打断做题心流的原生 `window.alert()` 弹窗。点击“标记错题”后按钮秒级变为 `[✅ 已入错题本]`，顶部飘出微动效 Toast，并弹出 `[🤦‍♂️ 粗心看错]`、`[📐 公式生疏]`、`[🤯 毫无思路]` 错因胶囊，一键完成智能化错因画像沉淀。
+- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.5.apk (约 10.4MB · 双通道容灾·Jev决策·出厂认证版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
+- **📥 稳定备用直链**：[AI_Tutor_v1.5.4.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.4/AI_Tutor_v1.5.4.apk)
+- **✨ v1.5.5 重磅体验跃升 (全功能旗舰级稳固闭环)**：
+  - **⚡ TypeSafe Jev System One 极速决策引擎**：
+    - 70ms 毫秒级识别与拦截闲聊问候（0 Token 消耗）；精准意图分流与 1-9 年级心智模型自动适配，智能注入启发式名师教学策略。
+  - **🤖 DeepSeek V3 / R1 与 Google Gemini 2.5 闪电双通道容灾**：
+    - 国内极速直连免翻墙（延迟低至 340ms），国际顶尖多模态视觉解题无缝互备；控制台一键测速诊断与自动保存。
+  - **🔐 出厂统一安全认证与管理后台一键重置**：
+    - 标准官方令牌（`ait_ca1b...`）出厂即通，解决冷启动令牌失效问题；管理控制台参数实时加密持久化，新增绿色【重置标准】一键恢复出厂令牌；强化家长保护防作弊门禁与安全哈希验证。
+  - **💡 拍照取景器去阴影滤镜与几何辅助线灵感锁**：
+    - 局部积分图算法消除晚间台灯阴影，白纸黑字高对比清晰识别；初中几何题一键查看辅助线作法阶梯提示，保护学生独立推导与自主思考心流。
+  - **📚 39,114+ 国家权威题库与举一反三变式母题闭环**：
+    - 人教版全学科知识图谱与真题库无缝联动；现场即做即批，错题一键生成 A4 试卷并支持局域网网络打印机一键出卷。
   *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)

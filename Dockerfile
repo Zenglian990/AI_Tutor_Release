@@ -1,4 +1,5 @@
 # ============================================================
+# ZengLian AI Tutor v1.5.5 Production Container Image
 # Stage 1: Build React Frontend
 # ============================================================
 FROM node:22-bookworm-slim AS frontend-builder

@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.3_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.5_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.3)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.5)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.3 Night Desk Shadow Removal, Reason Attribution & Geometry Auxiliary Line Lock Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.5 Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,15 +34,19 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [AI_Tutor_v1.5.3.apk (~10.4MB · Night Desk Shadow Removal, Reason Attribution & Geometry Auxiliary Line Lock Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.3/AI_Tutor_v1.5.3.apk)
-- **📥 Stable Fallback**: [AI_Tutor_v1.5.2.apk (~10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.2/AI_Tutor_v1.5.2.apk)
-- **✨ v1.5.3 Major Milestone Upgrades (Solving Real Student Bottlenecks · Plan A)**:
-  - **💡 3-Mode Smart Document Scanner Filters (Raw / Shadow Removal / High-Contrast B&W)**:
-    - Designed specifically for students doing homework at night under desk lamps where arm and phone shadows obscure questions. Integrates lightweight integral-image background normalization and high-contrast B&W paper scan enhancement, rendering crisp ink strokes on pure white paper and dramatically boosting OCR recognition for complex formulas and geometry diagrams.
-  - **📐 Junior High Geometry Dedicated Auxiliary Line Inspiration Lock (Tiered Scaffolding)**:
-    - Added dedicated `[📐 Auxiliary Line Hint]` in the anti-peek accordion. For challenging junior high geometry proofs, students can unfold only the critical auxiliary line construction hint (e.g. extending median to construct congruent triangles) to keep their independent deduction flow intact without having the whole solution spoiled.
-  - **🏷️ Zero-Blocking Modern Toast & 3D Mistake Reason Attribution**:
-    - Completely replaced disruptive system `window.alert()` modals with smooth floating Toasts. Marking a question instantly changes the button to `[✅ Saved]` and pops 3 quick reason attribution tags (`[🤦‍♂️ Misread/Careless]`, `[📐 Unfamiliar Formula]`, `[🤯 Totally Stuck]`) to build student error diagnostics.
+- **📥 Direct APK Download**: [AI_Tutor_v1.5.5.apk (~10.4MB · Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
+- **📥 Stable Fallback**: [AI_Tutor_v1.5.4.apk (~10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.4/AI_Tutor_v1.5.4.apk)
+- **✨ v1.5.5 Major Milestone Upgrades (Full-Feature Flagship Stability)**:
+  - **⚡ TypeSafe Jev System One Ultra-Fast Decision Engine**:
+    - 70ms millisecond-level intention filtering for chitchat/greeting queries (0 Token cost); adaptive dynamic prompt routing across grades 1-9.
+  - **🤖 DeepSeek V3 / R1 & Google Gemini 2.5 Flash High-Speed Dual-Channel Disaster Recovery**:
+    - Ultra-fast domestic direct connection with latency under 340ms, seamlessly backed by Gemini's world-class multimodal visual solver.
+  - **🔐 Factory-Ready Authentication & Console One-Click Reset**:
+    - Out-of-the-box standard release token validation across restarts; real-time encrypted admin credentials with instant green "Reset Standard" action.
+  - **💡 3-Mode Smart Document Scanner Filters & Geometry Auxiliary Line Lock**:
+    - Integral-image night shadow removal algorithm combined with scaffolding auxiliary line construction hints.
+  - **📚 39,114+ Canonical National Exam Bank & Closed-Loop Variant Questions**:
+    - Direct alignment with PEP textbook knowledge graphs; A4 printable exam sheets and LAN thermal/inkjet direct printing.
   *(Releases strictly maintain the 2 latest APK packages)*
 
 ### 🍎 2. iOS (iPhone & iPad)

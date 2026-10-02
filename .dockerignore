@@ -1,3 +1,4 @@
+# Docker build ignore patterns - ZengLian AI Tutor v1.5.5
 # Dependency directories
 node_modules
 client/node_modules

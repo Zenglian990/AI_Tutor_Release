@@ -1,1 +1,9 @@
-﻿scripts/* linguist-vendored
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Exclude maintenance scripts and generated datasets from GitHub language stats
+scripts/* linguist-vendored
+data/* linguist-vendored

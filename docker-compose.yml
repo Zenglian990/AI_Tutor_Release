@@ -5,7 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ai_tutor_app
+    container_name: zenglian_ai_tutor
+    image: zenglian-ai-tutor:1.5.5
     ports:
       - "3001:3001"
     env_file:
@@ -22,4 +23,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 30s
+    labels:
+      org.opencontainers.image.title: "曾练专属私教 (ZengLian AI Tutor)"
+      org.opencontainers.image.version: "1.5.5"
+      org.opencontainers.image.description: "专为1-9年级量身定制的开源 RAG AI 教辅智能体"

@@ -1,7 +1,7 @@
 {
   "name": "ai_tutor_release",
-  "version": "1.0.0",
-  "description": "曾练专属私教 - 基于人教版1-9年级教材的智能辅导系统",
+  "version": "1.5.5",
+  "description": "曾练专属私教 (ZengLian AI Tutor) - 专为1-9年级量身定制的开源 RAG AI 教辅智能体",
   "main": "server/index.js",
   "scripts": {
     "start": "node start.js",
