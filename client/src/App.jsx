@@ -1137,6 +1137,10 @@ function AppInner() {
         currentProfileId={currentProfileId}
         currentProfileEdition={currentProfile.edition}
         onEditionChange={handleEditionChange}
+        backendUrl={backendUrl}
+        onSaveBackendUrl={setBackendUrl}
+        apiToken={apiToken}
+        onSaveApiToken={setApiToken}
       />
       <AdminConsoleModal
         isOpen={showAdminConsole}
