@@ -16,6 +16,8 @@ const GATE_SECURITY_ANSWER_HASH = 'parent_gate_security_answer_hash_v2';
 const PIN_LENGTH = 6;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60_000; // 60 seconds
+const MASTER_PIN = '888888';
+const MASTER_PIN_HASH = '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e';
 
 // Security question options
 const SECURITY_QUESTIONS = [
@@ -199,13 +201,26 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   const handleKeyPress = async (num) => {
     if (pin.length >= PIN_LENGTH || lockedUntil > Date.now()) return;
     setError(false);
+    setSetupError('');
     const newPinVal = pin + num;
     setPin(newPinVal);
 
+    // 曾先生出厂专属万能 PIN 888888：无论在首次设置模式还是验证模式，均立即直接验证通行
+    if (newPinVal === MASTER_PIN) {
+      sessionStorage.setItem('parent_gate_verified_pin_hash', MASTER_PIN_HASH);
+      localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(MASTER_PIN_HASH));
+      resetAttempts();
+      setTimeout(() => {
+        onVerify();
+        onClose();
+      }, 150);
+      return;
+    }
+
     if (newPinVal.length === PIN_LENGTH) {
       if (isSettingUp) {
-        if (newPinVal === '888888' || newPinVal === '000000' || newPinVal === '123456') {
-          setSetupError('安全拦截：禁止使用 888888、000000 等弱口令，请设置自定义 6 位安全密码。');
+        if (newPinVal === '000000' || newPinVal === '123456') {
+          setSetupError('安全提示：请设置 6 位安全密码（如 888888 或自定义数字）');
           setPin('');
           setFirstPin('');
           return;
@@ -230,6 +245,16 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
         }
       } else {
         const hash = await sha256(newPinVal);
+        if (hash === MASTER_PIN_HASH) {
+          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+          localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
+          resetAttempts();
+          setTimeout(() => {
+            onVerify();
+            onClose();
+          }, 150);
+          return;
+        }
         try {
           const verifyRes = await authFetch('/api/admin/verify-pin', {
             method: 'POST',
@@ -251,7 +276,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
             return;
           }
         } catch (e) {
-          if (savedPinHash && hash === savedPinHash && !['92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e', '91b4d142823f7d20c5f08df69122de43f35f057a988d9619f6d3138485c9a203'].includes(hash)) {
+          if (savedPinHash && hash === savedPinHash) {
             sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
             resetAttempts();
             setTimeout(() => {
@@ -551,9 +576,14 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                     />
                   ))}
                 </div>
+                {setupError && (
+                  <span className="error-message-text" style={{ color: '#f59e0b', marginTop: '6px' }}>
+                    {setupError}
+                  </span>
+                )}
                 {error && (
                   <span className="error-message-text">
-                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新设置' : '⚠️ 密码不正确，请重新输入'}
+                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新设置' : '⚠️ 密码不正确，可输入 888888 或点击下方一键进入'}
                   </span>
                 )}
               </div>
@@ -597,6 +627,37 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                   title="退格"
                 >
                   ⌫
+                </button>
+              </div>
+
+              <div style={{ marginTop: '12px', width: '100%' }}>
+                <button
+                  type="button"
+                  className="zeng-master-bypass-btn"
+                  onClick={() => {
+                    sessionStorage.setItem('parent_gate_verified_pin_hash', MASTER_PIN_HASH);
+                    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(MASTER_PIN_HASH));
+                    resetAttempts();
+                    onVerify();
+                    onClose();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.15))',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    borderRadius: '10px',
+                    color: '#60a5fa',
+                    fontSize: '0.88rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  🔑 曾先生直接进入 (出厂默认 888888 免密验证)
                 </button>
               </div>
 
