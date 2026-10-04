@@ -548,28 +548,46 @@ body {
     margin-right: 14px !important;
   }
 
-  /* 底部输入框安全区域适配 */
+  /* 底部输入框安全区域适配与防误触 (防止与 Android 系统导航键/Home键冲突) */
+  .input-container,
   .input-bar {
-    padding-top: 6px !important;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
-    padding-left: max(10px, env(safe-area-inset-left)) !important;
-    padding-right: max(10px, env(safe-area-inset-right)) !important;
-    gap: 6px;
+    padding-top: 8px !important;
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+    padding-bottom: max(22px, env(safe-area-inset-bottom, 22px)) !important;
+    margin-bottom: 10px !important;
+    background: rgba(15, 23, 42, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
   }
 
+  .input-form {
+    padding: 8px 10px 8px 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .chat-textarea,
   .chat-input {
-    font-size: 0.9rem;
-    padding: 8px 12px;
+    font-size: 0.95rem !important;
+    padding: 4px 6px !important;
+    min-height: 36px !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
   }
 
+  .icon-btn,
   .input-action-btn {
-    width: 36px;
-    height: 36px;
+    width: 36px !important;
+    height: 36px !important;
   }
 
   .send-btn {
-    width: 38px;
-    height: 38px;
+    width: 36px !important;
+    height: 36px !important;
   }
 
   /* 欢迎看版在 9:16 屏幕下紧凑贴合 */

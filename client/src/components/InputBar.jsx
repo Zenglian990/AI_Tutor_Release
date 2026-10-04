@@ -346,75 +346,7 @@ const InputBar = React.memo(function InputBar({
             aria-hidden="true"
           />
 
-          {/* 左侧工具按钮：拍照 */}
-          <label
-            htmlFor="image-upload"
-            className="icon-btn camera-btn"
-            title="拍照或上传题目图片"
-            aria-label="拍照或上传题目图片"
-            style={isLoading ? { pointerEvents: 'none', opacity: 0.4 } : {}}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-          </label>
-
-          {/* 左侧常用数学符号开关 */}
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => setShowSymbols(s => !s)}
-            title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
-            aria-label="切换常用数学理化符号"
-            style={{
-              color: showSymbols ? '#3b82f6' : '#94a3b8',
-              fontWeight: 700,
-              fontSize: '1.05rem',
-              background: showSymbols ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
-              borderRadius: '8px',
-              border: showSymbols ? '1px solid rgba(59, 130, 246, 0.4)' : 'none'
-            }}
-          >
-            ∑
-          </button>
-
-          {/* 左侧数理化公式宝典按钮 */}
-          {onOpenFormulaHandbook && (
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={onOpenFormulaHandbook}
-              title="数理化必备公式定理速查宝典 (中考代数/几何/物理/化学)"
-              aria-label="打开公式宝典"
-              style={{
-                color: '#c084fc',
-                fontSize: '1.05rem',
-                fontWeight: 700
-              }}
-            >
-              📖
-            </button>
-          )}
-
-          {/* 左侧草稿白板按钮 */}
-          {onOpenScratchpad && (
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={onOpenScratchpad}
-              title="打开演练草稿纸 (手写几何/竖式草稿)"
-              aria-label="打开草稿纸"
-              style={{ color: '#38bdf8' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </button>
-          )}
-
-          {/* 中间自适应输入框 */}
+          {/* 顶层：全宽自适应水平输入框 (彻底杜绝狭窄挤压导致的竖排文字) */}
           <textarea
             ref={textareaRef}
             value={localVal}
@@ -430,38 +362,114 @@ const InputBar = React.memo(function InputBar({
             className="chat-textarea"
           />
 
-          {/* 右侧工具按钮：语音输入 & 发送 */}
-          <button
-            type="button"
-            className={`icon-btn voice-btn ${isListening ? 'listening' : ''}`}
-            onClick={() => {
-              if (isSpeaking && onInterruptSpeech) {
-                onInterruptSpeech();
-              }
-              onToggleVoice();
-            }}
-            title={isListening ? '点击停止' : (isSpeaking ? '打断讲解并语音提问' : '按下说话')}
-            aria-label={isListening ? '停止录音' : '开始语音输入'}
-            disabled={isLoading}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-          </button>
+          {/* 底层：操作工具栏 (左侧辅助学习工具，右侧语音与发送，人机工学双端适配) */}
+          <div className="input-actions-bar">
+            <div className="input-actions-left">
+              {/* 拍照或上传题目图片 */}
+              <label
+                htmlFor="image-upload"
+                className="icon-btn camera-btn"
+                title="拍照或上传题目图片"
+                aria-label="拍照或上传题目图片"
+                style={isLoading ? { pointerEvents: 'none', opacity: 0.4 } : {}}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </label>
 
-          <button
-            type="submit"
-            disabled={(!localVal.trim() && !previewImage) || isLoading}
-            aria-label="发送消息"
-            title="发送消息"
-            className="send-btn"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
+              {/* 常用数学理化符号开关 */}
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setShowSymbols(s => !s)}
+                title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
+                aria-label="切换常用数学理化符号"
+                style={{
+                  color: showSymbols ? '#3b82f6' : '#94a3b8',
+                  fontWeight: 700,
+                  fontSize: '1.05rem',
+                  background: showSymbols ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
+                  borderRadius: '10px',
+                  border: showSymbols ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent'
+                }}
+              >
+                ∑
+              </button>
+
+              {/* 数理化公式定理速查宝典 */}
+              {onOpenFormulaHandbook && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={onOpenFormulaHandbook}
+                  title="数理化必备公式定理速查宝典 (中考代数/几何/物理/化学)"
+                  aria-label="打开公式宝典"
+                  style={{
+                    color: '#c084fc',
+                    fontSize: '1.05rem',
+                    fontWeight: 700
+                  }}
+                >
+                  📖
+                </button>
+              )}
+
+              {/* 演练草稿纸 (手写几何/竖式草稿) */}
+              {onOpenScratchpad && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={onOpenScratchpad}
+                  title="打开演练草稿纸 (手写几何/竖式草稿)"
+                  aria-label="打开草稿纸"
+                  style={{ color: '#38bdf8' }}
+                >
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="input-actions-right">
+              {/* 语音输入 */}
+              <button
+                type="button"
+                className={`icon-btn voice-btn ${isListening ? 'listening' : ''}`}
+                onClick={() => {
+                  if (isSpeaking && onInterruptSpeech) {
+                    onInterruptSpeech();
+                  }
+                  onToggleVoice();
+                }}
+                title={isListening ? '点击停止' : (isSpeaking ? '打断讲解并语音提问' : '按下说话')}
+                aria-label={isListening ? '停止录音' : '开始语音输入'}
+                disabled={isLoading}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+
+              {/* 发送按钮 */}
+              <button
+                type="submit"
+                disabled={(!localVal.trim() && !previewImage) || isLoading}
+                aria-label="发送消息"
+                title="发送消息"
+                className="send-btn"
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </>

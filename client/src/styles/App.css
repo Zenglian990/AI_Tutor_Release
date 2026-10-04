@@ -365,21 +365,27 @@ body.light-mode .table-responsive tr:hover {
 }
 
 .input-container {
-  padding: 20px 24px;
+  padding: 12px 18px;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+  margin-bottom: 8px;
   border-top: 1px solid var(--glass-border);
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  flex-shrink: 0;
 }
 
 .input-form {
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  background: rgba(0, 0, 0, 0.2);
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.28);
   border: 1px solid var(--glass-border);
-  border-radius: 28px;
-  padding: 6px 10px;
+  border-radius: 18px;
+  padding: 8px 12px 6px 12px;
   transition: border-color 0.3s, box-shadow 0.3s;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .input-form:focus-within {
@@ -387,9 +393,11 @@ body.light-mode .table-responsive tr:hover {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-/* 多行文本输入 */
+/* 多行全宽文本输入 (水平书写，绝不挤压成竖列) */
 .chat-textarea {
-  flex: 1;
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
   background: transparent;
   border: none;
   outline: none;
@@ -397,17 +405,25 @@ body.light-mode .table-responsive tr:hover {
   font-size: 1rem;
   font-family: inherit;
   line-height: 1.5;
-  padding: 8px 12px;
+  padding: 4px 6px;
   resize: none;
-  min-height: 24px;
-  max-height: 120px;
+  min-height: 38px;
+  max-height: 130px;
   overflow-y: auto;
-  align-self: center;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.35);
   font-size: 0.95rem;
+}
+
+body.light-mode .input-form {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 body.light-mode .chat-textarea {
@@ -415,17 +431,43 @@ body.light-mode .chat-textarea {
 }
 
 body.light-mode .chat-textarea::placeholder {
-  color: rgba(0,0,0,0.4);
+  color: rgba(0,0,0,0.45);
 }
 
-/* 发送按钮 - 独立在底部右侧 */
+/* 输入框底部动作条布局 */
+.input-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.input-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.input-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* 发送按钮 */
 .send-btn {
   background: var(--accent-color);
   color: white;
   border: none;
   border-radius: 99px;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -471,8 +513,8 @@ body.light-mode .chat-textarea::placeholder {
   border: 1px solid var(--glass-border);
   color: var(--text-secondary);
   border-radius: 99px;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   display: flex;
   justify-content: center;
   align-items: center;
