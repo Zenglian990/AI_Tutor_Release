@@ -6,7 +6,9 @@ const { streamChatToClient } = require('../services/stream');
 const { getPromptGuidelines, GRADE_ALIASES, correctPageOffset } = require('../prompts/guidelines');
 const { performHybridSearch } = require('../services/search');
 const { getStudentCognitiveMemory, formatStudentMemoryForPrompt } = require('../services/studentMemory');
-const { NODE_ENV, RAG_TOP_K } = require('../config');
+const { isOpenAiVisionModel } = require('../services/embedding');
+const config = require('../config');
+const { NODE_ENV, RAG_TOP_K } = config;
 const logger = require('../services/logger');
 const { verifyMultipartIntegrity } = require('../middleware/signature');
 
@@ -136,38 +138,48 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
 
     let results = [];
     let isQuotaExhausted = false;
-    try {
-      results = await performHybridSearch(query, grade, subject, RAG_TOP_K, edition);
+    
+    // Check if query is a generic boilerplate prompt (e.g. "老师请帮我讲讲这道题", "这道题怎么做")
+    // When a student takes a picture, generic queries MUST NOT be used for vector similarity search,
+    // otherwise LanceDB will match completely unrelated textbook chapters and poison the LLM context.
+    const isGenericQuery = !query || 
+      query.trim().length < 8 || 
+      /^(请帮我(详细)?讲讲|老师(，| )?请帮我|这(道)?题怎么做|帮我做(一)?下|详细讲讲这道题)/.test(query.trim());
 
-      // Apply page offset correction and filename cleanup
-      const correctedResults = results.map(r => {
-        const { source, page } = correctPageOffset(r.source, r.page);
-        return {
-          ...r,
-          source,
-          page
-        };
-      });
+    if (!isGenericQuery) {
+      try {
+        results = await performHybridSearch(query, grade, subject, RAG_TOP_K, edition);
 
-      sources = correctedResults.map(r => ({
-        source: r.source,
-        page: r.page || '未知',
-        text_snippet: r.text ? (r.text.length > 100 ? r.text.substring(0, 100) + '...' : r.text) : "无文本"
-      }));
-      contextString = correctedResults.map((c, i) => `参考资料 ${i + 1}: [${c.source}] 第 ${c.page} 页\n${c.text ? c.text.substring(0, 800) : ''}`).join('\n\n');
-    } catch (e) {
-      logger.error('RAG hybrid search failed for vision:', e);
-      if (e.message === 'EMBED_QUOTA_EXHAUSTED' || e.message === 'QUOTA_EXHAUSTED' || (e.message && e.message.includes('Quota exceeded'))) {
-        isQuotaExhausted = true;
+        // Apply page offset correction and filename cleanup
+        const correctedResults = results.map(r => {
+          const { source, page } = correctPageOffset(r.source, r.page);
+          return {
+            ...r,
+            source,
+            page
+          };
+        });
+
+        sources = correctedResults.map(r => ({
+          source: r.source,
+          page: r.page || '未知',
+          text_snippet: r.text ? (r.text.length > 100 ? r.text.substring(0, 100) + '...' : r.text) : "无文本"
+        }));
+        contextString = correctedResults.map((c, i) => `参考资料 ${i + 1}: [${c.source}] 第 ${c.page} 页\n${c.text ? c.text.substring(0, 800) : ''}`).join('\n\n');
+      } catch (e) {
+        logger.error('RAG hybrid search failed for vision:', e);
+        if (e.message === 'EMBED_QUOTA_EXHAUSTED' || e.message === 'QUOTA_EXHAUSTED' || (e.message && e.message.includes('Quota exceeded'))) {
+          isQuotaExhausted = true;
+        }
       }
-    }
 
-    if (isQuotaExhausted) {
-      sources.push({
-        source: "系统提示",
-        page: 0,
-        text_snippet: "⚠️ 警告：AI 教材关联服务（Embedding）额度已耗尽，当前回答将无法结合教材内容，仅使用 AI 本地知识库解答。"
-      });
+      if (isQuotaExhausted) {
+        sources.push({
+          source: "系统提示",
+          page: 0,
+          text_snippet: "⚠️ 警告：AI 教材关联服务（Embedding）额度已耗尽，当前回答将无法结合教材内容，仅使用 AI 本地知识库解答。"
+        });
+      }
     }
 
     const slicedHistory = history.slice(-10);
@@ -264,11 +276,22 @@ ${contextSection}学生随附提问/诉求：${query}
       'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
     };
 
+    // Auto-switch to vision model if requested model lacks vision capability (e.g. DeepSeek-V3, DeepSeek-R1)
+    const isVisionCapable = model && (
+      model.toLowerCase().includes('gemini') || 
+      isOpenAiVisionModel(model)
+    );
+    const visionModel = isVisionCapable ? model : (config.CHAT_MODEL || 'gemini-2.5-flash');
+
+    if (model && !isVisionCapable) {
+      logger.info(`[Vision Route] Requested model '${model}' is text-only. Automatically routed to multimodal vision model '${visionModel}'.`);
+    }
+
     // Stream response using shared SSE handler
     await streamChatToClient(contentsPayload, res, {
       query, grade, subject, sources,
       profile_id: profile_id || 'default',
-      model: model || 'gemini-3.6-flash',
+      model: visionModel,
       clientHeaders
     });
   } catch (e) {

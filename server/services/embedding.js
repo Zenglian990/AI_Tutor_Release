@@ -422,6 +422,17 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     }
   } catch (e) {}
 
+  // Auto-route: If payload contains an image, the model MUST have vision capability!
+  // If the current requested model is text-only (e.g. DeepSeek-V3, DeepSeek-R1, Qwen-Turbo),
+  // automatically switch to a multimodal vision model (Gemini 2.5 Flash) to avoid hallucinations and blindness.
+  if (hasImage && !isOpenAiVisionModel(currentModel)) {
+    const isGeminiVision = currentModel.toLowerCase().includes('gemini');
+    if (!isGeminiVision) {
+      logger.info(`[Model Router] Current model '${currentModel}' lacks vision capability, but request contains image. Auto-switching to multimodal vision model '${CHAT_MODEL || 'gemini-2.5-flash'}'.`);
+      currentModel = CHAT_MODEL || 'gemini-2.5-flash';
+    }
+  }
+
   // Check if directly routing to domestic / OpenAI-compatible models (DeepSeek, Qwen-VL, GLM-4V, etc.)
   const isOpenAiCompatible = currentModel.toLowerCase().includes('deepseek') ||
                              currentModel.toLowerCase().includes('qwen') ||

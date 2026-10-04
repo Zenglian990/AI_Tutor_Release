@@ -695,8 +695,18 @@ function AppInner() {
         if (gradeRef.current) formData.append('grade', gradeRef.current);
         if (subjectRef.current) formData.append('subject', subjectRef.current);
         formData.append('socratic', socraticLevel);
-        if (editionRef.current) formData.append('edition', editionRef.current);
-        formData.append('model', chatModel);
+        // Auto-switch to vision model if current chatModel lacks vision capability (e.g. DeepSeek-V3 is text-only)
+        const isVisionCapable = chatModel && (
+          chatModel.includes('gemini') || 
+          chatModel.includes('vl') || 
+          chatModel.includes('vision') || 
+          chatModel.includes('glm-4v')
+        );
+        const visionModel = isVisionCapable ? chatModel : 'gemini-2.5-flash';
+        formData.append('model', visionModel);
+        if (!isVisionCapable) {
+          showToast('📷 检测到拍照解题，已自动切换为视觉多模态大模型 (Gemini 2.5 Flash)', 'info', 2500);
+        }
         response = await authFetch('/api/chat-vision', { method: 'POST', body: formData });
       } else {
         response = await authFetch('/api/chat', {
