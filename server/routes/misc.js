@@ -92,15 +92,16 @@ router.get('/system/network-info', (req, res) => {
 
 // GET /api/system/version — Version and update info for client apps
 router.get('/system/version', (req, res) => {
+  const pkg = require('../../package.json');
   res.json({
-    version: '1.3.4',
-    buildDate: '2026-09-24',
+    version: pkg.version || '1.5.5',
+    buildDate: '2026-10-04',
     appName: '曾练专属私教',
     minAppVersion: '1.0.0',
     hasUpdate: false,
     updateType: 'pwa_hot_update',
-    apkFileName: 'ZengLian_AI_Tutor_v1.3.4.apk',
-    releaseNotes: '智能学习规划免令牌放行、曾先生管理后台万能特权密码开门、基础偏好与商业变现控制台彻底分层'
+    apkFileName: `AI_Tutor_v${pkg.version || '1.5.5'}.apk`,
+    releaseNotes: '支持大模型拍照识题视觉智能自动路由、修复张冠李戴幻觉、新增系统设置模型密钥与令牌直接配置'
   });
 });
 
