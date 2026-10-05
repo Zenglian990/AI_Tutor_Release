@@ -606,6 +606,18 @@ body {
     padding: 14px !important;
     border-radius: 14px !important;
   }
+
+  /* 移动端弹窗安全区域与防触碰底部系统导航键 */
+  .modal-overlay {
+    padding: 10px 10px !important;
+    padding-bottom: max(env(safe-area-inset-bottom, 24px), 42px) !important;
+  }
+
+  .modal-content {
+    width: 96% !important;
+    max-height: calc(100dvh - max(env(safe-area-inset-bottom, 24px), 42px) - 24px) !important;
+    border-radius: 18px !important;
+  }
 }
 
 /* 针对 Capacitor Android 原生容器强制 100% 满屏 */

@@ -1449,4 +1449,35 @@ body.eink-mode .welcome-footer-banner {
   }
 }
 
+/* ==========================================================================
+   全局通用弹窗遮罩与人机工程学安全边距 (适配全面屏及手机底部 Home 键/手势条防误触)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 99999 !important;
+  padding: 12px 14px !important;
+  padding-bottom: max(env(safe-area-inset-bottom, 24px), 36px) !important;
+  box-sizing: border-box !important;
+}
+
+.modal-content {
+  box-sizing: border-box !important;
+  max-height: calc(100dvh - max(env(safe-area-inset-bottom, 24px), 36px) - 36px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+
+
 

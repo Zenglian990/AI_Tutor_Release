@@ -1107,8 +1107,8 @@ function AppInner() {
       <ParentalGate isOpen={gateOpen} reason={gateReason} onVerify={async () => { if (gateAction) { try { await gateAction(); } catch (e) { console.error('Gate action failed:', e); } } }} onClose={() => { setGateOpen(false); setGateAction(null); }} />
       <AddProfileModal isOpen={showAddProfile} onClose={() => setShowAddProfile(false)} onConfirm={handleAddProfile} />
       {showClearConfirm && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '24px', borderRadius: '20px', background: 'var(--bg-secondary, #1e293b)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'white' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧹</div>
             <h2 style={{ marginBottom: '12px' }}>清空对话历史</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>

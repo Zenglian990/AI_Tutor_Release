@@ -275,13 +275,38 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        height: '100dvh',
+        background: 'rgba(15, 23, 42, 0.82)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 99999,
+        padding: '12px 14px',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 24px), 36px)',
+        boxSizing: 'border-box'
+      }}
+    >
       <div
         className="modal-content"
         style={{
           maxWidth: '640px',
-          width: '94%',
-          maxHeight: '90vh',
+          width: '95%',
+          maxHeight: 'calc(100dvh - max(env(safe-area-inset-bottom, 24px), 36px) - 40px)',
           display: 'flex',
           flexDirection: 'column',
           padding: '0',
@@ -289,8 +314,9 @@ export default function SettingsModal({
           overflow: 'hidden',
           background: 'var(--bg-secondary, #1e293b)',
           color: 'var(--text-primary, #f8fafc)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.55)',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.65)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxSizing: 'border-box'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1149,30 +1175,39 @@ export default function SettingsModal({
         {/* Footer */}
         <div
           style={{
-            padding: '14px 24px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '12px 18px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'rgba(0, 0, 0, 0.25)'
+            background: 'rgba(15, 23, 42, 0.95)',
+            flexShrink: 0,
+            gap: '10px',
+            flexWrap: 'wrap'
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-            曾练专属私教 v1.5.5 · 人教版 1-9 年级全科
+          <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>曾练专属私教 v1.5.5</span>
+            <span style={{ opacity: 0.7 }}>· 人教版全科</span>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '8px 18px',
+                padding: '9px 18px',
                 borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                background: 'rgba(255, 255, 255, 0.06)',
                 color: '#cbd5e1',
                 fontWeight: 600,
                 fontSize: '0.88rem',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                minHeight: '42px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               取消
@@ -1181,7 +1216,7 @@ export default function SettingsModal({
               type="button"
               onClick={handleSave}
               style={{
-                padding: '8px 24px',
+                padding: '9px 24px',
                 borderRadius: '10px',
                 border: 'none',
                 background: saveToast ? '#10b981' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
@@ -1190,7 +1225,13 @@ export default function SettingsModal({
                 fontSize: '0.9rem',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: saveToast ? '0 0 15px rgba(16, 185, 129, 0.5)' : '0 4px 12px rgba(59, 130, 246, 0.3)'
+                boxShadow: saveToast ? '0 0 15px rgba(16, 185, 129, 0.5)' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+                touchAction: 'manipulation',
+                minHeight: '42px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
               }}
             >
               {saveToast ? '✅ 已保存生效' : '💾 保存并应用设置'}
