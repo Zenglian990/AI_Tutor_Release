@@ -1,10 +1,75 @@
 import React, { useState, useMemo } from 'react';
+import katex from 'katex';
 
 /**
  * FormulaHandbookModal
  * 中考数理化必备公式与定理速查宝典 (离线秒开 · 0 Token 消耗 · 零网络延迟)
  * 专为中小学生尤其是 7-9 年级攻坚冲刺设计
  */
+
+function FormulaDisplay({ formula }) {
+  const renderedHtml = useMemo(() => {
+    if (!formula) return null;
+    if (formula.includes('\n')) return null;
+    const chineseChars = (formula.match(/[\u4e00-\u9fa5]/g) || []).length;
+    if (chineseChars > 0 && chineseChars / formula.length > 0.35) {
+      return null;
+    }
+    const hasMath = /\\[a-zA-Z]+|\^|_|=|<|>|\+|-|\/|\*/.test(formula);
+    if (!hasMath) return null;
+    try {
+      return katex.renderToString(formula, {
+        displayMode: true,
+        throwOnError: false,
+        strict: false
+      });
+    } catch {
+      return null;
+    }
+  }, [formula]);
+
+  if (renderedHtml) {
+    return (
+      <div
+        className="formula-katex-box"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        style={{
+          fontSize: '1.05rem',
+          color: '#f8fafc',
+          background: 'rgba(0, 0, 0, 0.4)',
+          padding: '8px 14px',
+          borderRadius: '10px',
+          margin: '4px 0',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '44px'
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      style={{
+        fontSize: '0.92rem',
+        color: '#fde047',
+        background: 'rgba(0, 0, 0, 0.35)',
+        padding: '8px 12px',
+        borderRadius: '10px',
+        margin: '4px 0',
+        whiteSpace: 'pre-wrap',
+        lineHeight: 1.6,
+        fontWeight: 500
+      }}
+    >
+      {formula}
+    </div>
+  );
+}
 
 const FORMULA_DATABASE = {
   math: [
@@ -42,8 +107,8 @@ const FORMULA_DATABASE = {
     {
       category: '⭕ 圆的性质与面积公式',
       items: [
-        { name: '垂径定理', formula: '\\text{垂直于弦的直径平分这条弦，并且平分弦所对的两条弧}', desc: '常构造直角三角形利用勾股定理: r^2 = d^2 + (l/2)^2' },
-        { name: '圆周角与圆心角', formula: '\\text{同弧所对圆周角等于它所对圆心角的一半}', desc: '直径所对的圆周角是直角 (90°)' },
+        { name: '垂径定理', formula: 'r^2 = d^2 + \\left(\\frac{l}{2}\\right)^2', desc: '垂直于弦的直径平分弦及所对弧，常构造Rt△: r² = d² + (l/2)²' },
+        { name: '圆周角与圆心角', formula: '\\angle \\text{圆心角} = 2 \\angle \\text{圆周角}', desc: '同弧所对圆心角等于圆周角的2倍，直径所对圆周角是直角 (90°)' },
         { name: '弧长公式', formula: 'l = \\frac{n\\pi r}{180}', desc: 'n为圆心角度数，r为半径' },
         { name: '扇形面积公式', formula: 'S = \\frac{n\\pi r^2}{360} = \\frac{1}{2}lr', desc: '利用弧长l或圆心角n快速求扇形面积' }
       ]
@@ -156,21 +221,25 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(10, 15, 29, 0.85)',
-      backdropFilter: 'blur(12px)',
-      zIndex: 9999,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '16px',
-      color: '#ffffff'
-    }}>
+    <div
+      className="modal-overlay"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(10, 15, 29, 0.85)',
+        backdropFilter: 'blur(12px)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 24px), 36px)',
+        color: '#ffffff'
+      }}
+    >
       <div style={{
         background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.96))',
         border: '1px solid rgba(59, 130, 246, 0.35)',
@@ -392,19 +461,7 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
                           )}
                         </div>
                       </div>
-                      <div style={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.88rem',
-                        color: '#facc15',
-                        background: 'rgba(0, 0, 0, 0.35)',
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        margin: '2px 0',
-                        overflowX: 'auto',
-                        whiteSpace: 'pre-wrap'
-                      }}>
-                        {item.formula}
-                      </div>
+                      <FormulaDisplay formula={item.formula} />
                       <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
                         💡 {item.desc}
                       </div>
@@ -418,27 +475,30 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
 
         {/* Footer */}
         <div style={{
-          padding: '10px 18px',
+          padding: '12px 18px',
           background: 'rgba(15, 23, 42, 0.8)',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: '0.78rem',
-          color: '#64748b'
+          color: '#64748b',
+          flexShrink: 0
         }}>
           <span>按 ESC 键或点击右上角可快速关闭</span>
           <button
             type="button"
             onClick={onClose}
             style={{
-              padding: '5px 14px',
+              padding: '6px 16px',
+              minHeight: '40px',
               borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.08)',
+              background: 'rgba(255, 255, 255, 0.1)',
               color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
               cursor: 'pointer',
-              fontWeight: 600
+              fontWeight: 600,
+              touchAction: 'manipulation'
             }}
           >
             关闭速查
