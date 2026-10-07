@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
 import { ZENG_WECHAT_QR_DATA_URL } from '../assets/zeng_wechat_qr_base64.js';
+import { saveOrShareImage } from '../utils/nativeShare';
 
 // Reliable image loader that handles synchronous completion and cached Base64 data URLs
 const loadAnyImage = (src) => new Promise((resolve) => {
@@ -300,14 +301,17 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
     }
   }, [isOpen, drawPoster]);
 
-  const handleDownloadPoster = () => {
+  const handleDownloadPoster = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `曾先生智慧私教_家长推荐海报_${template}.png`;
-    link.href = dataUrl;
-    link.click();
+    const filename = `曾先生智慧私教_家长推荐海报_${template}.png`;
+    await saveOrShareImage({
+      dataUrl,
+      filename,
+      title: '曾先生智慧私教 · 家长推荐海报',
+      text: '发现了一款超棒的中小学1-9年级AI深度辅导神器，推荐给各位家长朋友！'
+    });
   };
 
   if (!isOpen) return null;

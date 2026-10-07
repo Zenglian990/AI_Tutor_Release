@@ -3,6 +3,7 @@ import { authFetch, formatGrade, useAppStore } from '../store/useStore';
 import CanvasBarChart from './CanvasBarChart';
 import ShareCard from './ShareCard';
 import html2canvas from 'html2canvas';
+import { saveOrShareImage } from '../utils/nativeShare';
 
 export default function StatsDashboard({ currentProfileId, profiles, onClose }) {
   const [stats, setStats] = useState(null);
@@ -129,7 +130,20 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
             </div>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button onClick={() => setShareImageUrl(null)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'white', cursor: 'pointer' }}>关闭</button>
-              <a href={shareImageUrl} download={`${profileName}_AI私教周报.png`} style={{ padding: '8px 20px', borderRadius: '8px', background: '#3b82f6', color: 'white', textDecoration: 'none', fontWeight: 'bold', cursor: 'pointer' }}>💾 下载图片</a>
+              <button
+                type="button"
+                onClick={() => {
+                  saveOrShareImage({
+                    dataUrl: shareImageUrl,
+                    filename: `${profileName}_AI私教周报.png`,
+                    title: `${profileName}的伴读周报`,
+                    text: `${profileName}的最新AI私教学习报表，请查收！`
+                  });
+                }}
+                style={{ padding: '8px 20px', borderRadius: '8px', background: '#3b82f6', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                📲 保存相册 / 分享
+              </button>
             </div>
           </div>
         </div>

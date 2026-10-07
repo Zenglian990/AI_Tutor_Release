@@ -4,6 +4,7 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import html2canvas from 'html2canvas';
+import { saveOrShareImage } from '../utils/nativeShare';
 import { preprocessLatex } from '../utils/math';
 import { formatGrade, getApiUrl, authFetch } from '../store/useStore';
 import ParentalGate from './ParentalGate';
@@ -234,25 +235,18 @@ function A4PrintModalInner({
         logging: false
       });
       const dataUrl = canvas.toDataURL('image/png');
-      
-      try {
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const blobUrl = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            const filename = `${studentName}专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
-            link.download = filename;
-            link.href = blobUrl;
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-          }
-        }, 'image/png');
-      } catch (blobErr) {
-        console.warn('Blob fallback:', blobErr);
-      }
+      const filename = `${studentName}专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
+
+      // Native Android file saving / system share sheet (with web fallback)
+      await saveOrShareImage({
+        dataUrl,
+        filename,
+        title: `${studentName}专属私教试卷`,
+        text: `这是为${studentName}定制的${subject}专属提分试卷，请查收`
+      });
 
       setPreviewModalImg(dataUrl);
-      setExportSuccessMsg('🎉 高清试卷长图已生成！手机用户可长按下方图片保存相册，或直接发送给微信打印小程序。');
+      setExportSuccessMsg('🎉 高清试卷长图已生成！可直接保存到手机相册或分享给微信打印。');
       setTimeout(() => setExportSuccessMsg(''), 7000);
     } catch (err) {
       console.error('Export image failed:', err);
@@ -1168,6 +1162,21 @@ function A4PrintModalInner({
             </div>
 
             <div style={{ padding: '12px 18px', background: '#0f172a', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const filename = `${studentName}专属私教_${subject}_${printMode === 'blank_student' ? '空白重练卷' : '答案详析卷'}_${new Date().toLocaleDateString('zh-CN').replace(/[\/\\]/g, '-')}.png`;
+                  saveOrShareImage({
+                    dataUrl: previewModalImg,
+                    filename,
+                    title: `${studentName}专属私教试卷`,
+                    text: `这是为${studentName}定制的${subject}专属提分试卷`
+                  });
+                }}
+                style={{ padding: '8px 16px', borderRadius: '8px', background: '#10b981', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                📲 保存相册 / 分享
+              </button>
               <button
                 onClick={() => setPreviewModalImg(null)}
                 style={{ padding: '8px 18px', borderRadius: '8px', background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}

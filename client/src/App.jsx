@@ -30,6 +30,8 @@ import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
 import FormulaHandbookModal from './components/FormulaHandbookModal';
 import DailyMentalMathModal from './components/DailyMentalMathModal';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { SpeechRecognition as NativeSpeechRecognition } from '@capacitor-community/speech-recognition';
 import { compressImage } from './utils/image';
 import { compressAudio } from './utils/audio';
@@ -181,6 +183,79 @@ function AppInner() {
   const gradeRef = useRef(currentProfile.grade);
   const subjectRef = useRef(selectedSubject);
   const messagesRef = useRef(messages);
+  const lastBackPressRef = useRef(0);
+  const activeModalHandlerRef = useRef(null);
+
+  // Keep modal closing priority updated on each render
+  activeModalHandlerRef.current = () => {
+    if (showCropper) { setShowCropper(false); return true; }
+    if (showClearConfirm) { setShowClearConfirm(false); return true; }
+    if (gateOpen) { setGateOpen(false); setGateAction(null); return true; }
+    if (voiceDialogueOpen) { interruptSpeech(); stopVoiceRecording(); setVoiceDialogueOpen(false); return true; }
+    if (previewImage) { setPreviewImage(null); setImageFile(null); return true; }
+    if (showPosterModal) { setShowPosterModal(false); return true; }
+    if (showSettings) { setShowSettings(false); return true; }
+    if (showFormulaModal) { setShowFormulaModal(false); return true; }
+    if (showMentalMathModal) { setShowMentalMathModal(false); return true; }
+    if (showPrintModal) { setShowPrintModal(false); return true; }
+    if (showMistakes) { setShowMistakes(false); return true; }
+    if (showStats) { setShowStats(false); return true; }
+    if (showMap) { setShowMap(false); return true; }
+    if (showRoadmap) { setShowRoadmap(false); return true; }
+    if (showKnowledgeTest) { setShowKnowledgeTest(false); return true; }
+    if (showScratchpad) { setShowScratchpad(false); return true; }
+    if (showParentMemo) { setShowParentMemo(false); return true; }
+    if (showBatchGrade) { setShowBatchGrade(false); return true; }
+    if (showGamification) { setShowGamification(false); return true; }
+    if (showManipulatives) { setShowManipulatives(false); return true; }
+    if (showGeometrySandbox) { setShowGeometrySandbox(false); return true; }
+    if (showMembershipModal) { setShowMembershipModal(false); return true; }
+    if (showAdminConsole) { setShowAdminConsole(false); return true; }
+    if (showReportModal) { setShowReportModal(false); return true; }
+    if (showAddProfile) { setShowAddProfile(false); return true; }
+    if (showOnboarding) { setShowOnboarding(false); return true; }
+    return false;
+  };
+
+  // Android Native Hardware / Gesture Back Button & Immersion Handling
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // 1. Android Status Bar Styling
+    try {
+      StatusBar.setStyle({ style: Style.Dark });
+      StatusBar.setBackgroundColor({ color: '#0f172a' });
+    } catch (e) {
+      console.warn('StatusBar configuration notice:', e);
+    }
+
+    // 2. Android Hardware / Gesture Back Button Handling
+    let backListenerHandle = null;
+    CapApp.addListener('backButton', () => {
+      // If any overlay or modal is active, dismiss it first
+      const handled = activeModalHandlerRef.current && activeModalHandlerRef.current();
+      if (handled) return;
+
+      // When at root chat view, require double press within 2s to exit
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        CapApp.exitApp();
+      } else {
+        lastBackPressRef.current = now;
+        showToast('再按一次退出曾练专属私教', 'info', 2000);
+      }
+    }).then(handle => {
+      backListenerHandle = handle;
+    }).catch(err => {
+      console.warn('Native backButton setup notice:', err);
+    });
+
+    return () => {
+      if (backListenerHandle) {
+        backListenerHandle.remove();
+      }
+    };
+  }, [showToast]);
   const editionRef = useRef(currentProfile.edition);
   const handleSubmitRef = useRef(null);
 
