@@ -4,5 +4,8 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
+  },
+  "ios": {
+    "includePlugins": []
   }
 }
