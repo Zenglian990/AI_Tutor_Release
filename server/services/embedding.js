@@ -40,8 +40,9 @@ function getNextKey() {
   return selectedKey;
 }
 
-function buildEmbedURL() {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent`;
+function buildEmbedURL(modelName) {
+  const m = (modelName && String(modelName).includes('embedding')) ? modelName : EMBED_MODEL;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${m}:embedContent`;
 }
 
 function buildChatURL(modelName) {
@@ -63,7 +64,7 @@ async function checkKeysHealth() {
   logger.info('[HealthCheck] Starting Gemini API keys validation...');
   for (const key of API_KEYS) {
     try {
-      const modelToPing = CHAT_MODEL || 'gemini-3.6-flash';
+      const modelToPing = CHAT_MODEL || 'gemini-2.5-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToPing}:generateContent?key=${key}`;
       const payload = {
         contents: [{ parts: [{ text: 'ping' }] }],
@@ -328,6 +329,7 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept-Encoding': 'gzip, deflate, br',
       'Authorization': `Bearer ${currentKey}`
     },
     body: JSON.stringify(deepseekPayload)
@@ -394,7 +396,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     rawModel = CHAT_MODEL;
   }
   // Canonical model aliases
-  if (rawModel === 'gemini' || rawModel === 'gemini-flash' || rawModel === 'gemini-2.5') {
+  if (rawModel === 'gemini' || rawModel === 'gemini-flash' || rawModel === 'gemini-2.5' || rawModel === 'gemini-3.6-flash') {
     rawModel = 'gemini-2.5-flash';
   }
   if (rawModel === 'deepseek' || rawModel === 'deepseek-v3') {
@@ -402,7 +404,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   }
   // Remap deprecated Gemini models (e.g. 2.0-flash, 1.5-flash, 2.5-flash-lite) to modern configured model
   if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel.includes('gemini-2.5-flash-lite')) {
-    rawModel = CHAT_MODEL || 'gemini-2.5-flash';
+    rawModel = 'gemini-2.5-flash';
   }
   let currentModel = rawModel;
 
@@ -575,9 +577,15 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       lastError = new Error(`API error ${response.status}: ${body}`);
 
       if (response.status === 404) {
-        if (currentModel !== 'gemini-3.6-flash' && !isOpenAiCompatible) {
-          logger.warn(`[KeyPool] Model '${currentModel}' not found (404), auto-fallback to 'gemini-3.6-flash'...`);
-          currentModel = 'gemini-3.6-flash';
+        if (urlType === 'embed' && currentModel !== 'gemini-embedding-001') {
+          logger.warn(`[KeyPool] Embed model '${currentModel}' not found (404), auto-fallback to 'gemini-embedding-001'...`);
+          currentModel = 'gemini-embedding-001';
+          url = buildURL(currentModel);
+          continue;
+        }
+        if (urlType !== 'embed' && currentModel !== 'gemini-2.5-flash' && !isOpenAiCompatible) {
+          logger.warn(`[KeyPool] Model '${currentModel}' not found (404), auto-fallback to 'gemini-2.5-flash'...`);
+          currentModel = 'gemini-2.5-flash';
           url = buildURL(currentModel);
           continue;
         }
@@ -587,9 +595,9 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
       if (response.status === 429 || response.status === 503) {
         if (/quota/i.test(body)) {
-          if (currentModel !== 'gemini-3.6-flash' && !isOpenAiCompatible) {
-            logger.info(`[KeyPool] Model '${currentModel}' quota exhausted, auto-fallback to 'gemini-3.6-flash'...`);
-            currentModel = 'gemini-3.6-flash';
+          if (urlType !== 'embed' && currentModel !== 'gemini-2.5-flash-lite' && !isOpenAiCompatible) {
+            logger.info(`[KeyPool] Model '${currentModel}' quota exhausted, auto-fallback to 'gemini-2.5-flash-lite'...`);
+            currentModel = 'gemini-2.5-flash-lite';
             url = buildURL(currentModel);
             continue;
           }
@@ -598,9 +606,9 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
           continue;
         }
 
-        // On 503 (high demand) or general 429: switch between gemini-3.6-flash and gemini-2.5-flash
-        if (!isOpenAiCompatible) {
-          const alternateModel = currentModel === 'gemini-3.6-flash' ? 'gemini-2.5-flash' : 'gemini-3.6-flash';
+        // On 503 (high demand) or general 429: switch between gemini-2.5-flash and gemini-2.5-flash-lite
+        if (urlType !== 'embed' && !isOpenAiCompatible) {
+          const alternateModel = currentModel === 'gemini-2.5-flash' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash';
           logger.warn(`[KeyPool] Model '${currentModel}' returned ${response.status} (High demand/Throttled), auto-switching to alternate model '${alternateModel}'...`);
           currentModel = alternateModel;
           url = buildURL(currentModel);

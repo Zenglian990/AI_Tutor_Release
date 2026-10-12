@@ -226,6 +226,7 @@ router.post('/config/test-llm', async (req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br',
           'Authorization': `Bearer ${keyToUse}`
         },
         body: JSON.stringify({
