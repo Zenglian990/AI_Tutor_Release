@@ -454,17 +454,14 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
   const clientCustomKey = (options?.headers?.['x-gemini-api-key'] || options?.headers?.['X-Gemini-Api-Key'])?.trim();
   if (clientCustomKey) {
-    if (!API_KEYS.includes(clientCustomKey)) {
-      API_KEYS.unshift(clientCustomKey);
-    }
     invalidKeys.delete(clientCustomKey);
     keyCooldown.delete(clientCustomKey);
   }
 
   const modifiedOptions = options;
 
-  // Filter valid keys
-  const validKeys = API_KEYS.filter(k => !invalidKeys.has(k));
+  // Strict per-request isolation: NEVER push clientCustomKey into the shared server API_KEYS pool
+  const validKeys = clientCustomKey ? [clientCustomKey] : API_KEYS.filter(k => !invalidKeys.has(k));
 
   if (validKeys.length === 0) {
     if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek) {
@@ -684,7 +681,7 @@ function setCachedEmbedding(text, vector) {
   _embedCache.set(cleaned, vector);
 }
 
-async function getEmbedding(text) {
+async function getEmbedding(text, clientHeaders = {}) {
   const cleanedText = String(text).trim().substring(0, 1500);
   if (!cleanedText) return null;
 
@@ -697,7 +694,7 @@ async function getEmbedding(text) {
   try {
     const response = await fetchWithKeyRotation(buildEmbedURL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(clientHeaders || {}) },
       body: JSON.stringify({
         model: `models/${EMBED_MODEL}`,
         content: { parts: [{ text: cleanedText }] },

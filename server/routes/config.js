@@ -87,6 +87,15 @@ router.post('/config/update-keys', async (req, res) => {
         return res.status(403).json({ error: '无权修改系统环境配置：需要主管理员授权。' });
       }
 
+      // Security Hardening: In cloud public mode, never persist user keys into shared server .env or memory pool
+      if (process.env.CLOUD_PUBLIC_MODE === 'true') {
+        return res.json({
+          success: true,
+          clientOnly: true,
+          message: '密钥已安全保存在您当前设备浏览器本地（未上传云端公用池，防止他人盗用）'
+        });
+      }
+
       // Security Hardening: In production (Render/Cloud), disallow remote modification unless explicitly permitted
       const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
       const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';

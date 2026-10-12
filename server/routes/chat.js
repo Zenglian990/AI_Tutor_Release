@@ -53,11 +53,17 @@ router.post('/chat', async (req, res) => {
     let studentMemoryStr = '';
     let graphRAGStr = '';
 
+    const clientHeaders = {
+      'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
+      'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
+      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
+    };
+
     // Parallelize RAG Search and Student Cognitive Memory Retrieval
     const searchPromise = (async () => {
       if (isGreeting) return []; // Greeting skips heavy RAG search for instant response
       try {
-        return await performHybridSearch(searchQuery, grade, subject, RAG_TOP_K, edition);
+        return await performHybridSearch(searchQuery, grade, subject, RAG_TOP_K, edition, clientHeaders);
       } catch (err) {
         logger.error("[RAG Error] Hybrid search failed:", err);
         if (err.message === 'EMBED_QUOTA_EXHAUSTED' || err.message === 'QUOTA_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'))) {
@@ -224,12 +230,6 @@ router.post('/chat', async (req, res) => {
     const contentsPayload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig
-    };
-
-    const clientHeaders = {
-      'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
-      'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
-      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
     };
 
     await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id, model, clientHeaders });

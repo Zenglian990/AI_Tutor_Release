@@ -135,7 +135,7 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
  * @param {number} limit - Max number of RAG chunks to return
  * @returns {Promise<Array>}
  */
-async function performHybridSearch(query, grade, subject, limit = 3, edition) {
+async function performHybridSearch(query, grade, subject, limit = 3, edition, clientHeaders = {}) {
   const table = getTable();
   if (!table) {
     logger.warn('[SearchService] LanceDB table not ready. Falling back to canonical questions.');
@@ -146,7 +146,7 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition) {
     let queryVector = null;
     let isQuotaExhausted = false;
     try {
-      queryVector = await getEmbedding(query);
+      queryVector = await getEmbedding(query, clientHeaders);
     } catch (embedErr) {
       if (embedErr.code === 'EMBED_QUOTA_EXHAUSTED' || embedErr.message === 'EMBED_QUOTA_EXHAUSTED') {
         isQuotaExhausted = true;

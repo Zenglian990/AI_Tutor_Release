@@ -213,10 +213,15 @@ def bootstrap_ai_tutor(force_pull: bool = False):
                 pass
 
         env_srv = os.environ.copy()
+        for k in list(env_srv.keys()):
+            if k.startswith("GEMINI_API_KEY") or k.startswith("DEEPSEEK_API_KEY"):
+                env_srv.pop(k, None)
+        if (WORK_DIR / ".env").exists():
+            (WORK_DIR / ".env").unlink(missing_ok=True)
         env_srv["PORT"] = str(NODE_PORT)
         env_srv["NODE_ENV"] = "production"
         env_srv["ALLOWED_ORIGINS"] = "*"
-        env_srv["ALLOW_REMOTE_CONFIG"] = "true"
+        env_srv["CLOUD_PUBLIC_MODE"] = "true"
         env_srv["CHAT_MODEL"] = os.getenv("CHAT_MODEL", "gemini-2.5-flash")
         env_srv["EMBED_MODEL"] = os.getenv("EMBED_MODEL", "gemini-embedding-001")
 
