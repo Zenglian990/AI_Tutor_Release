@@ -253,6 +253,8 @@ router.post('/config/test-llm', async (req, res) => {
         let friendlyError = `DeepSeek 响应异常 (${status})`;
         if (status === 401) {
           friendlyError = 'DeepSeek API Key 无效或未授权 (401)';
+        } else if (status === 402) {
+          friendlyError = 'DeepSeek 账户余额不足 (402 Insufficient Balance)，请充值或直接使用上方已连通的 Gemini 通道';
         } else if (status === 429) {
           friendlyError = 'DeepSeek 请求配额超限或账户余额不足 (429)';
         } else if (status === 404) {
