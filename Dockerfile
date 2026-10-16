@@ -11,8 +11,8 @@ ENV PORT=8080
 # Copy backend dependency declarations
 COPY package*.json ./
 
-# Install production dependencies (native build tools pre-installed in node:22-bookworm guarantee sqlite3 & lancedb succeed)
-RUN npm install --omit=dev
+# Install production dependencies and compile sqlite3 natively for Node 22 to fix ERR_DLOPEN_FAILED
+RUN npm install --omit=dev && npm rebuild sqlite3 --build-from-source
 
 # Copy pre-built frontend distribution
 COPY client/dist ./client/dist
