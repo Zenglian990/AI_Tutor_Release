@@ -1,21 +1,12 @@
 # ============================================================
 # ZengLian AI Tutor v1.5.5 Production Container Image
-# Production Server Runtime (Ubuntu 24.04 LTS - Native GLIBC 2.39)
+# Official Node.js 22 LTS (Debian Bookworm) - Native GLIBC
 # ============================================================
-FROM ubuntu:24.04
+FROM node:22-bookworm-slim
 WORKDIR /app
 
-ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
 ENV PORT=8080
-
-# Install official Node.js 22 LTS on Ubuntu 24.04
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy backend dependency declarations
 COPY package*.json ./
