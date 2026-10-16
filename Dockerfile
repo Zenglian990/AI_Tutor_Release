@@ -1,28 +1,13 @@
 # ============================================================
 # ZengLian AI Tutor v1.5.5 Production Container Image
-# Stage 1: Build React Frontend
-# ============================================================
-FROM node:22-bookworm-slim AS frontend-builder
-WORKDIR /app/client
-
-ENV NODE_OPTIONS="--max-old-space-size=400"
-
-COPY client/package*.json ./
-RUN npm ci || npm install --legacy-peer-deps
-
-COPY client/ ./
-RUN npm run build
-
-# ============================================================
-# Stage 2: Production Server Runtime (Ubuntu 24.04 LTS - Native GLIBC 2.39)
+# Production Server Runtime (Ubuntu 24.04 LTS - Native GLIBC 2.39)
 # ============================================================
 FROM ubuntu:24.04
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
-ENV PORT=3001
-ENV NODE_OPTIONS="--max-old-space-size=384"
+ENV PORT=8080
 
 # Install official Node.js 22 LTS on Ubuntu 24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -35,8 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy backend dependency declarations
 COPY package*.json ./
 
-# Install production dependencies (prebuilt binaries run natively on Ubuntu 24.04)
-RUN npm ci --omit=dev || npm install --omit=dev
+# Install production dependencies
+RUN npm install --omit=dev
+
+# Copy pre-built frontend distribution
+COPY client/dist ./client/dist
 
 # Copy server source code, maintenance scripts, and data definitions
 COPY server/ ./server/
@@ -47,15 +35,11 @@ COPY data/ ./data/
 RUN mkdir -p data/lancedb logs
 
 # Pre-build LanceDB and canonical questions database during Docker image build
-# (Build environment has ample RAM; pre-populating databases ensures runtime starts in <1s with ~80MB RAM)
 RUN node scripts/seed_demo_data.js \
     && node -e "const { initDB, closeDB } = require('./server/db/init'); (async () => { await initDB(); await closeDB(); })()" \
     && rm -f data/textbooks_k9_seed.json.gz
 
-# Copy built frontend from Stage 1 for static hosting
-COPY --from=frontend-builder /app/client/dist ./client/dist
-
-EXPOSE 3001
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD node scripts/health-check.js || exit 1

@@ -3,8 +3,8 @@
 node_modules
 client/node_modules
 
-# Build outputs
-client/dist
+# Build outputs (pre-built client/dist is included for zero-build fast deploys)
+# client/dist
 
 # Environment and sensitive configuration
 .env

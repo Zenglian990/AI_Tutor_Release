@@ -21,7 +21,7 @@ api_token
 db_key
 
 # Build output
-client/dist/
+# client/dist/
 client/.vite/
 client/.vite-temp/
 
