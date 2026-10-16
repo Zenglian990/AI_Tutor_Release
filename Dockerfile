@@ -1,8 +1,8 @@
 # ============================================================
 # ZengLian AI Tutor v1.5.5 Production Container Image
-# Official Node.js 22 LTS (Debian Bookworm) - Native GLIBC
+# Official Node.js 22 LTS (Debian Bookworm - with native C++ build tools)
 # ============================================================
-FROM node:22-bookworm-slim
+FROM node:22-bookworm
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -11,7 +11,7 @@ ENV PORT=8080
 # Copy backend dependency declarations
 COPY package*.json ./
 
-# Install production dependencies
+# Install production dependencies (native build tools pre-installed in node:22-bookworm guarantee sqlite3 & lancedb succeed)
 RUN npm install --omit=dev
 
 # Copy pre-built frontend distribution
@@ -24,11 +24,6 @@ COPY data/ ./data/
 
 # Ensure runtime directories exist
 RUN mkdir -p data/lancedb logs
-
-# Pre-build LanceDB and canonical questions database during Docker image build
-RUN node scripts/seed_demo_data.js \
-    && node -e "const { initDB, closeDB } = require('./server/db/init'); (async () => { await initDB(); await closeDB(); })()" \
-    && rm -f data/textbooks_k9_seed.json.gz
 
 EXPOSE 8080
 
