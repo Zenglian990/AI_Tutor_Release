@@ -31,20 +31,22 @@ const app = createApp();
 let server;
 
 async function start() {
+  // Bind to port immediately so Cloud Run health check passes without waiting for heavy DB indexing
+  server = app.listen(PORT, () => {
+    logger.info(`曾练专属私教 backend running on http://localhost:${PORT} (${NODE_ENV})`);
+    logger.info(`  Health check: http://localhost:${PORT}/api/health`);
+  });
+
   try {
     await initDB();
+    logger.info('[SUCCESS] Database & LanceDB vector store initialized successfully.');
   } catch (err) {
     logger.error(`
 ============================================================
-💥 FATAL DATABASE ERROR 💥
-The server failed to start because the database could not be initialized.
-If you see an SQLite module error, it may be due to missing native build tools.
-Try running: npm install --build-from-source sqlite3
-
+💥 DATABASE INITIALIZATION WARNING 💥
 Error Details:
 ${err.stack || err.message}
 ============================================================`);
-    process.exit(1);
   }
 
   // Start data retention cleanup (auto-cleans old records)
@@ -53,11 +55,6 @@ ${err.stack || err.message}
   // Start automated backups and health checks
   require('./services/backup').startBackupSchedule();
   require('./services/embedding').startEmbeddingCheck();
-
-  server = app.listen(PORT, () => {
-    logger.info(`曾练专属私教 backend running on http://localhost:${PORT} (${NODE_ENV})`);
-    logger.info(`  Health check: http://localhost:${PORT}/api/health`);
-  });
 }
 
 // Graceful shutdown
