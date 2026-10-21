@@ -180,16 +180,23 @@ test('Config Security: POST /api/config/update-keys requires master authorizatio
   }
 });
 
-// Test 8: CORS allows legitimate onrender domains and does not block static assets
-test('CORS: allows legitimate onrender domains and does not block non-api assets', async () => {
-  // 1. Legitimate cloud domain on API
+// Test 8: CORS allows legitimate cloud domains (Google Cloud Run & Render) and does not block static assets
+test('CORS: allows legitimate onrender and google cloud run domains and does not block non-api assets', async () => {
+  // 1. Legitimate Google Cloud Run domain on API
+  const resGCloud = await fetch(`${baseUrl}/api/health`, {
+    headers: { 'Origin': 'https://ai-tutor-79709693345.asia-east1.run.app' }
+  });
+  assert.strictEqual(resGCloud.status, 200);
+  assert.strictEqual(resGCloud.headers.get('access-control-allow-origin'), 'https://ai-tutor-79709693345.asia-east1.run.app');
+
+  // 2. Legitimate cloud domain on API
   const resCloud = await fetch(`${baseUrl}/api/health`, {
     headers: { 'Origin': 'https://ai-tutor-release.onrender.com' }
   });
   assert.strictEqual(resCloud.status, 200);
   assert.strictEqual(resCloud.headers.get('access-control-allow-origin'), 'https://ai-tutor-release.onrender.com');
 
-  // 2. Non-API asset does not fail with 403 when arbitrary origin is provided
+  // 3. Non-API asset does not fail with 403 when arbitrary origin is provided
   const resAsset = await fetch(`${baseUrl}/`, {
     headers: { 'Origin': 'https://arbitrary-malicious-app.onrender.com' }
   });

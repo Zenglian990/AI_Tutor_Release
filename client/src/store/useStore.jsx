@@ -42,7 +42,7 @@ function getDefaultBackendUrl() {
     }
   }
   // For native mobile apps (Capacitor APK/IPA) or non-browser builds:
-  return import.meta.env.VITE_API_URL || 'https://ai-tutor-release.onrender.com';
+  return import.meta.env.VITE_API_URL || 'https://ai-tutor-79709693345.asia-east1.run.app';
 }
 
 export const DEFAULT_BACKEND_URL = getDefaultBackendUrl();
@@ -51,11 +51,15 @@ export const DEFAULT_BACKEND_URL = getDefaultBackendUrl();
  * Get the full API URL for a path or return base URL if no path provided.
  * Handles:
  * 1. Web browser on localhost/server -> relative '/api/chat' or origin
- * 2. Native mobile app -> 'https://ai-tutor-release.onrender.com/api/chat'
- * 3. Custom backendUrl configured in localStorage
+ * 2. Native mobile app -> 'https://ai-tutor-79709693345.asia-east1.run.app/api/chat'
+ * 3. Custom backendUrl configured in localStorage (auto-migrating legacy Render URLs)
  */
 function getApiUrl(path = '') {
   let backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
+  if (backendUrl && (backendUrl.includes('onrender.com') || backendUrl.includes('render.com'))) {
+    backendUrl = 'https://ai-tutor-79709693345.asia-east1.run.app';
+    localStorage.setItem('ai_tutor_backend_url', backendUrl);
+  }
 
   if (!backendUrl) {
     backendUrl = getDefaultBackendUrl();
@@ -68,7 +72,7 @@ function getApiUrl(path = '') {
     if (typeof window !== 'undefined' && window.location?.origin && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
       return window.location.origin;
     }
-    return 'https://ai-tutor-release.onrender.com';
+    return 'https://ai-tutor-79709693345.asia-east1.run.app';
   }
 
   if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {

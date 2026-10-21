@@ -9,7 +9,7 @@
 
 [![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.5_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
-[![Online Web](https://img.shields.io/badge/🌐_云端免安装-网页版即开即用-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
+[![Online Web](https://img.shields.io/badge/🌐_云端免安装-谷歌云亚太极速直达-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
 [![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.5)
 
 <br/>
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.5 双通道容灾·Jev决策·出厂认证版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 云端体验**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.5 双通道容灾·Jev决策·出厂认证版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -51,7 +51,7 @@
 
 ### 🍎 2. 苹果端 (iPhone / iPad)
 - **🌟 方案 A（官方推荐·免签名免越狱·1秒添加至桌面）**：
-  1. 使用 iPhone / iPad 自带的 **Safari 浏览器** 打开云端地址：[https://ai-tutor-release.onrender.com](https://ai-tutor-release.onrender.com)
+  1. 使用 iPhone / iPad 自带的 **Safari 浏览器** 打开谷歌云高可用集群地址：[https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)
   2. 点击 Safari 底部中央的 **【分享按钮 📤】**；
   3. 下滑选择 **【添加到主屏幕】** ➔ 点击右上角 **【添加】**；
   4. 手机桌面上立即生成 **【曾练专属私教】** 独立 App 图标，全屏沉浸运行，自带原生高清拍照拍题答疑与麦克风！
@@ -60,7 +60,7 @@
   - 可使用爱思助手、AltStore、Sideloadly 或企业证书导入 iPhone 安装。
 
 ### 💻 3. 电脑桌面端 (Windows / Mac / Linux)
-- 浏览器直接访问：[https://ai-tutor-release.onrender.com](https://ai-tutor-release.onrender.com)
+- 浏览器直接访问谷歌云端：[https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)
 - 支持电脑大屏护眼阅读、键盘快捷输入、A4 错题集一键打印预览（`Ctrl+P`）与局域网网络打印机一键出卷。
 
 ---

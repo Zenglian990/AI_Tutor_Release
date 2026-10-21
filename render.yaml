@@ -15,7 +15,7 @@ services:
       - key: API_TOKEN
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://zenglian-ai-tutor.onrender.com,https://ai-tutor-release.onrender.com,http://localhost:5173
+        value: https://ai-tutor-79709693345.asia-east1.run.app,https://zenglian-ai-tutor.onrender.com,https://ai-tutor-release.onrender.com,http://localhost:5173
       - key: REQUIRE_AUTH
         value: "true"
       - key: GEMINI_API_KEY

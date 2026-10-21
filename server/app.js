@@ -66,6 +66,7 @@ function createApp() {
     'http://localhost:3001',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
+    'https://ai-tutor-79709693345.asia-east1.run.app',
     'https://ai-tutor-release.onrender.com',
     'https://zenglian-ai-tutor.onrender.com',
     ...rawAllowed

@@ -36,7 +36,7 @@ jobs:
         run: |
           cd client
           npm install
-          VITE_API_URL=https://ai-tutor-release.onrender.com npm run build
+          VITE_API_URL=https://ai-tutor-79709693345.asia-east1.run.app npm run build
           npx cap sync android
 
       - name: Make Gradle wrapper executable

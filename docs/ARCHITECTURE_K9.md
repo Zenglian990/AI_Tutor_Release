@@ -9,7 +9,7 @@
 ```mermaid
 graph TD
     subgraph ClientLayer["🖥️ 跨平台终端接入层"]
-        PWA["🌐 响应式 Web / PWA (Render & Local)"]
+        PWA["🌐 响应式 Web / PWA (Google Cloud Run & Local)"]
         AndroidApp["🤖 Capacitor 原生 Android APK"]
         iOSApp["🍎 iOS Safari 沉浸式 WebApp"]
     end
@@ -86,7 +86,7 @@ graph TD
 
 ## 🔐 4. 工业级安全与出厂统一认证
 
-- **标准官方令牌机制 (`ait_ca1b...`)**：容器重启（Render/Docker）令牌永不脱节，开箱即用免二次配置；
+- **标准官方令牌机制 (`ait_ca1b...`)**：容器重启（Google Cloud Run/Render/Docker）令牌永不脱节，开箱即用免二次配置；
 - **前端实时加密持久化**：管理控制台所有配置采用本地 AES 安全存储，并提供一键【重置标准】保护机制；
 - **防作弊模式 (Anti-Cheat Mode)**：家长可一键开启自律答题锁，隐藏一键解答入口，强制走阶梯启发模式。
 

@@ -34,13 +34,17 @@ test('Same-Origin Resolution: browser on localhost uses relative same-origin', (
         return '';
       }
     }
-    return 'https://ai-tutor-release.onrender.com';
+    return 'https://ai-tutor-79709693345.asia-east1.run.app';
   }
 
   function getApiUrl(path = '') {
     let backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
+    if (backendUrl && (backendUrl.includes('onrender.com') || backendUrl.includes('render.com'))) {
+      backendUrl = 'https://ai-tutor-79709693345.asia-east1.run.app';
+      localStorage.setItem('ai_tutor_backend_url', backendUrl);
+    }
     if (typeof window !== 'undefined' && !isNativeMobilePlatform()) {
-      if (backendUrl === 'https://ai-tutor-release.onrender.com' || backendUrl === 'https://ai-tutor-release.onrender.com/') {
+      if (backendUrl === 'https://ai-tutor-79709693345.asia-east1.run.app' || backendUrl === 'https://ai-tutor-79709693345.asia-east1.run.app/' || backendUrl.includes('onrender.com')) {
         backendUrl = '';
       }
     }
@@ -53,7 +57,7 @@ test('Same-Origin Resolution: browser on localhost uses relative same-origin', (
       if (typeof window !== 'undefined' && window.location?.origin && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
         return window.location.origin;
       }
-      return 'https://ai-tutor-release.onrender.com';
+      return 'https://ai-tutor-79709693345.asia-east1.run.app';
     }
     if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {
       return path;
@@ -108,11 +112,15 @@ test('Same-Origin Resolution: native Capacitor app falls back to cloud', () => {
         return '';
       }
     }
-    return 'https://ai-tutor-release.onrender.com';
+    return 'https://ai-tutor-79709693345.asia-east1.run.app';
   }
 
   function getApiUrl(path = '') {
     let backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
+    if (backendUrl && (backendUrl.includes('onrender.com') || backendUrl.includes('render.com'))) {
+      backendUrl = 'https://ai-tutor-79709693345.asia-east1.run.app';
+      localStorage.setItem('ai_tutor_backend_url', backendUrl);
+    }
     if (!backendUrl) {
       backendUrl = getDefaultBackendUrl();
     }
@@ -126,6 +134,6 @@ test('Same-Origin Resolution: native Capacitor app falls back to cloud', () => {
   }
 
   assert.equal(isNativeMobilePlatform(), true);
-  assert.equal(getDefaultBackendUrl(), 'https://ai-tutor-release.onrender.com');
-  assert.equal(getApiUrl('/api/chat'), 'https://ai-tutor-release.onrender.com/api/chat');
+  assert.equal(getDefaultBackendUrl(), 'https://ai-tutor-79709693345.asia-east1.run.app');
+  assert.equal(getApiUrl('/api/chat'), 'https://ai-tutor-79709693345.asia-east1.run.app/api/chat');
 });

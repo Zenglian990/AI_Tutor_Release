@@ -1027,7 +1027,7 @@ export default function AdminConsoleModal({
                 padding: '16px 20px', marginBottom: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
               }}>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b', marginBottom: '4px' }}>
-                  🌐 后端服务器地址与访问令牌 (Cloud & Render)
+                  🌐 后端服务器地址与访问令牌 (Cloud & Google Cloud Run)
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '8px', marginBottom: '8px' }}>
                   <input
@@ -1044,7 +1044,7 @@ export default function AdminConsoleModal({
                         if (onSaveBackendUrl) onSaveBackendUrl('');
                       }
                     }}
-                    placeholder="后端 API 地址 (留空为相对路径，或云端 Render 部署地址)"
+                    placeholder="后端 API 地址 (如: https://ai-tutor-79709693345.asia-east1.run.app)"
                     style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                   />
                   <div style={{ display: 'flex', gap: '4px' }}>

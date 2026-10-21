@@ -9,7 +9,7 @@
 
 [![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.5_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
-[![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Instant_Access-blue?style=for-the-badge)](https://ai-tutor-release.onrender.com)
+[![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Google_Cloud_Run-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
 [![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.5)
 
 <br/>
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.5 Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-release.onrender.com)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.5 Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -51,7 +51,7 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
 
 ### 🍎 2. iOS (iPhone & iPad)
 - **🌟 Method A (Recommended · Zero-Certificate · Add to Home Screen in 1s)**:
-  1. Open Safari on your iPhone/iPad and visit: [https://ai-tutor-release.onrender.com](https://ai-tutor-release.onrender.com)
+  1. Open Safari on your iPhone/iPad and visit Google Cloud Run: [https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)
   2. Tap the **Share button 📤** at the bottom of Safari;
   3. Scroll down and tap **"Add to Home Screen"** ➔ Tap **"Add"** at top right;
   4. The **【曾练专属私教】** native App icon appears on your home screen with immersive full-screen UX and camera support!
@@ -60,7 +60,7 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
   - Install via AltStore, Sideloadly, or Apple Enterprise Certificate.
 
 ### 💻 3. PC Desktop (Windows / Mac / Linux)
-- Direct browser access: [https://ai-tutor-release.onrender.com](https://ai-tutor-release.onrender.com)
+- Direct browser access: [https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)
 - Large eye-protection display, keyboard shortcuts, one-click A4 test paper printing preview (`Ctrl+P`), and LAN network printer integration.
 
 ---

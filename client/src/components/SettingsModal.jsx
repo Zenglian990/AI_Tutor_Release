@@ -1107,7 +1107,7 @@ export default function SettingsModal({
                   </span>
                 </div>
                 <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 10px', lineHeight: 1.4 }}>
-                  留空默认为当前同源相对路径；打包为原生移动端 App 或跨域局域网时，可填写云端 Render 或内网 IP 地址。
+                  留空默认为当前同源相对路径；打包为原生移动端 App 或跨域局域网时，可填写谷歌云或内网 IP 地址。
                 </p>
 
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1115,7 +1115,7 @@ export default function SettingsModal({
                     type="text"
                     value={localBackendUrl}
                     onChange={(e) => setLocalBackendUrl(e.target.value)}
-                    placeholder="如: https://ai-tutor-release.onrender.com (留空为同源)"
+                    placeholder="如: https://ai-tutor-79709693345.asia-east1.run.app (留空为同源)"
                     style={{
                       flex: 1,
                       minWidth: 0,
