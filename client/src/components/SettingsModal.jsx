@@ -81,6 +81,18 @@ export default function SettingsModal({
   const [showDeepseekKey, setShowDeepseekKey] = useState(false);
   const [deepseekTestStatus, setDeepseekTestStatus] = useState(null);
 
+  const [siliconflowKey, setSiliconflowKey] = useState(() => localStorage.getItem('ai_tutor_siliconflow_key') || '');
+  const [showSiliconflowKey, setShowSiliconflowKey] = useState(false);
+  const [siliconflowTestStatus, setSiliconflowTestStatus] = useState(null);
+
+  const [dashscopeKey, setDashscopeKey] = useState(() => localStorage.getItem('ai_tutor_dashscope_key') || '');
+  const [showDashscopeKey, setShowDashscopeKey] = useState(false);
+  const [dashscopeTestStatus, setDashscopeTestStatus] = useState(null);
+
+  const [zhipuKey, setZhipuKey] = useState(() => localStorage.getItem('ai_tutor_zhipu_key') || '');
+  const [showZhipuKey, setShowZhipuKey] = useState(false);
+  const [zhipuTestStatus, setZhipuTestStatus] = useState(null);
+
   const [localApiToken, setLocalApiToken] = useState(() => {
     return propApiToken || getApiToken() || '';
   });
@@ -99,10 +111,16 @@ export default function SettingsModal({
       setGeminiKey(localStorage.getItem('ai_tutor_gemini_key') || '');
       setDeepseekKey(localStorage.getItem('ai_tutor_deepseek_key') || '');
       setDeepseekUrl(localStorage.getItem('ai_tutor_deepseek_url') || 'https://api.deepseek.com/v1');
+      setSiliconflowKey(localStorage.getItem('ai_tutor_siliconflow_key') || '');
+      setDashscopeKey(localStorage.getItem('ai_tutor_dashscope_key') || '');
+      setZhipuKey(localStorage.getItem('ai_tutor_zhipu_key') || '');
       setLocalApiToken(propApiToken || getApiToken() || '');
       setLocalBackendUrl(propBackendUrl !== undefined ? propBackendUrl : (localStorage.getItem('ai_tutor_backend_url') || ''));
       setGeminiTestStatus(null);
       setDeepseekTestStatus(null);
+      setSiliconflowTestStatus(null);
+      setDashscopeTestStatus(null);
+      setZhipuTestStatus(null);
       setServerHealthStatus(null);
     }
   }, [isOpen, currentProfileEdition, propApiToken, propBackendUrl]);
@@ -170,6 +188,90 @@ export default function SettingsModal({
       }
     } catch (e) {
       setDeepseekTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
+    }
+  };
+
+  const handleTestSiliconFlow = async () => {
+    setSiliconflowTestStatus({ testing: true });
+    try {
+      const tokenToUse = (localApiToken.trim() || getApiToken() || DEFAULT_API_TOKEN).trim();
+      const headers = { 'Content-Type': 'application/json' };
+      if (tokenToUse) headers['Authorization'] = `Bearer ${tokenToUse}`;
+
+      const res = await authFetch('/api/config/test-llm', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          provider: 'siliconflow',
+          apiKey: siliconflowKey.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (siliconflowKey.trim()) localStorage.setItem('ai_tutor_siliconflow_key', siliconflowKey.trim());
+        setSiliconflowTestStatus({ testing: false, success: true, message: `⚡ ${data.message || '硅基流动 (SiliconFlow) 连通正常！'} (响应: ${data.latencyMs}ms)` });
+      } else {
+        const detailText = data.details ? ` (${data.details})` : '';
+        setSiliconflowTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
+      }
+    } catch (e) {
+      setSiliconflowTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
+    }
+  };
+
+  const handleTestDashScope = async () => {
+    setDashscopeTestStatus({ testing: true });
+    try {
+      const tokenToUse = (localApiToken.trim() || getApiToken() || DEFAULT_API_TOKEN).trim();
+      const headers = { 'Content-Type': 'application/json' };
+      if (tokenToUse) headers['Authorization'] = `Bearer ${tokenToUse}`;
+
+      const res = await authFetch('/api/config/test-llm', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          provider: 'dashscope',
+          apiKey: dashscopeKey.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (dashscopeKey.trim()) localStorage.setItem('ai_tutor_dashscope_key', dashscopeKey.trim());
+        setDashscopeTestStatus({ testing: false, success: true, message: `⚡ ${data.message || '阿里百炼 (DashScope) 连通正常！'} (响应: ${data.latencyMs}ms)` });
+      } else {
+        const detailText = data.details ? ` (${data.details})` : '';
+        setDashscopeTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
+      }
+    } catch (e) {
+      setDashscopeTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
+    }
+  };
+
+  const handleTestZhipu = async () => {
+    setZhipuTestStatus({ testing: true });
+    try {
+      const tokenToUse = (localApiToken.trim() || getApiToken() || DEFAULT_API_TOKEN).trim();
+      const headers = { 'Content-Type': 'application/json' };
+      if (tokenToUse) headers['Authorization'] = `Bearer ${tokenToUse}`;
+
+      const res = await authFetch('/api/config/test-llm', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          provider: 'zhipu',
+          apiKey: zhipuKey.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (zhipuKey.trim()) localStorage.setItem('ai_tutor_zhipu_key', zhipuKey.trim());
+        setZhipuTestStatus({ testing: false, success: true, message: `⚡ ${data.message || '智谱 AI (BigModel) 连通正常！'} (响应: ${data.latencyMs}ms)` });
+      } else {
+        const detailText = data.details ? ` (${data.details})` : '';
+        setZhipuTestStatus({ testing: false, success: false, message: `❌ 失败: ${data.error || '连通失败'}${detailText}` });
+      }
+    } catch (e) {
+      setZhipuTestStatus({ testing: false, success: false, message: '❌ 网络异常: ' + e.message });
     }
   };
 
@@ -241,6 +343,30 @@ export default function SettingsModal({
     const trimmedDeepseekUrl = deepseekUrl.trim();
     if (trimmedDeepseekUrl) {
       localStorage.setItem('ai_tutor_deepseek_url', trimmedDeepseekUrl);
+    }
+
+    // 5.1 SiliconFlow Key
+    const trimmedSf = siliconflowKey.trim();
+    if (trimmedSf) {
+      localStorage.setItem('ai_tutor_siliconflow_key', trimmedSf);
+    } else {
+      localStorage.removeItem('ai_tutor_siliconflow_key');
+    }
+
+    // 5.2 DashScope Key
+    const trimmedDs = dashscopeKey.trim();
+    if (trimmedDs) {
+      localStorage.setItem('ai_tutor_dashscope_key', trimmedDs);
+    } else {
+      localStorage.removeItem('ai_tutor_dashscope_key');
+    }
+
+    // 5.3 Zhipu Key
+    const trimmedZp = zhipuKey.trim();
+    if (trimmedZp) {
+      localStorage.setItem('ai_tutor_zhipu_key', trimmedZp);
+    } else {
+      localStorage.removeItem('ai_tutor_zhipu_key');
     }
 
     // 6. API Token
@@ -478,6 +604,151 @@ export default function SettingsModal({
                   根据网络环境与辅导偏好自由切换驱动大模型，系统将严格调用所选引擎：
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Qwen 2.5 VL 72B (SiliconFlow) */}
+                  <div
+                    onClick={() => setChatModel('Qwen/Qwen2.5-VL-72B-Instruct')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="chatModelOption"
+                      checked={chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct'}
+                      onChange={() => setChatModel('Qwen/Qwen2.5-VL-72B-Instruct')}
+                      style={{ marginTop: '4px', accentColor: '#10b981' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? '#34d399' : '#f8fafc' }}>
+                          🎯 通义千问 Qwen2.5-VL-72B（视觉旗舰 · 拍照解题顶级推荐）
+                        </strong>
+                        <span style={{ fontSize: '0.7rem', background: '#059669', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          多模态SOTA
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                        开源顶级视觉多模态大模型（硅基流动直连），中小学数理几何图形解析、草稿纸手写体与排版 OCR 识别率极佳，国内免翻墙首选！
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Qwen 2.5 VL 7B (SiliconFlow) */}
+                  <div
+                    onClick={() => setChatModel('Qwen/Qwen2.5-VL-7B-Instruct')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? '1.5px solid #06b6d4' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="chatModelOption"
+                      checked={chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct'}
+                      onChange={() => setChatModel('Qwen/Qwen2.5-VL-7B-Instruct')}
+                      style={{ marginTop: '4px', accentColor: '#06b6d4' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? '#22d3ee' : '#f8fafc' }}>
+                          ⚡ 通义千问 Qwen2.5-VL-7B（视觉轻量 · 极速出字）
+                        </strong>
+                        <span style={{ fontSize: '0.7rem', background: '#0891b2', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          毫秒响应
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                        轻量级视觉大模型，响应速度极快，适合日常作业批改与基础题目快速辅导。
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* DashScope Qwen2.5-VL */}
+                  <div
+                    onClick={() => setChatModel('qwen2.5-vl-72b-instruct')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: (chatModel === 'qwen2.5-vl-72b-instruct') ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: (chatModel === 'qwen2.5-vl-72b-instruct') ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="chatModelOption"
+                      checked={chatModel === 'qwen2.5-vl-72b-instruct'}
+                      onChange={() => setChatModel('qwen2.5-vl-72b-instruct')}
+                      style={{ marginTop: '4px', accentColor: '#f59e0b' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'qwen2.5-vl-72b-instruct') ? '#fbbf24' : '#f8fafc' }}>
+                          🏢 阿里百炼通义千问 Qwen2.5-VL（官方通道 · 深度适配教材）
+                        </strong>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                        阿里巴巴百炼官方大模型，专为中小学教材与考题深度调优，语境理解更地道。
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Zhipu GLM-4V */}
+                  <div
+                    onClick={() => setChatModel('glm-4v-flash')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: (chatModel === 'glm-4v-flash') ? '1.5px solid #ec4899' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: (chatModel === 'glm-4v-flash') ? 'rgba(236, 72, 153, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="chatModelOption"
+                      checked={chatModel === 'glm-4v-flash'}
+                      onChange={() => setChatModel('glm-4v-flash')}
+                      style={{ marginTop: '4px', accentColor: '#ec4899' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'glm-4v-flash') ? '#f472b6' : '#f8fafc' }}>
+                          🌸 智谱 GLM-4V-Flash（免费极速 · 中文多模态）
+                        </strong>
+                        <span style={{ fontSize: '0.7rem', background: '#db2777', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          完全免费
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                        智谱 AI 开放平台面向开发者的永久免费多模态视觉模型，图文理解迅速。
+                      </p>
+                    </div>
+                  </div>
+
                   {/* DeepSeek V3 */}
                   <div
                     onClick={() => setChatModel('deepseek-chat')}
@@ -503,14 +774,14 @@ export default function SettingsModal({
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <strong style={{ fontSize: '0.95rem', color: (chatModel === 'deepseek-chat') ? '#38bdf8' : '#f8fafc' }}>
-                          ⚡ DeepSeek-V3（极速模式 · 国内直连推荐）
+                          ⚡ DeepSeek-V3（纯文本模式 · 深度推理解答）
                         </strong>
                         <span style={{ fontSize: '0.7rem', background: '#0284c7', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                          毫秒极速
+                          文字极速
                         </span>
                       </div>
                       <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                        国内毫秒级首字吐出，打字机超高速流式输出！中文自然语言辅导与数理逻辑极强，告别卡顿与延迟。
+                        国内毫秒级首字吐出，超强数理思维链！注：若拍题，系统将智能无缝调用您配置的视觉大模型。
                       </p>
                     </div>
                   </div>
@@ -540,11 +811,11 @@ export default function SettingsModal({
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <strong style={{ fontSize: '0.95rem', color: (chatModel === 'gemini-2.5-flash') ? '#c084fc' : '#f8fafc' }}>
-                          🧠 Google Gemini 2.5 Flash（官方大模型 · 多模态图文）
+                          🧠 Google Gemini 2.5 Flash（国际顶流 · 多模态图文）
                         </strong>
                       </div>
                       <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                        谷歌官方大模型，已关闭长思考延迟直接极速出字，擅长复杂几何图形感知与课本全册跨学科检索。
+                        谷歌官方大模型，擅长跨学科全局知识检索与国际化思维启发。（国内环境需网络代理）
                       </p>
                     </div>
                   </div>
@@ -801,6 +1072,291 @@ export default function SettingsModal({
                     在此配置的模型密钥与访问令牌在本地安全加密保存，并在智能问答、拍照解题和试卷分析中立即生效。留空时将自动使用云端默认官方密钥。
                   </div>
                 </div>
+              </div>
+
+              {/* Card 0: 硅基流动 SiliconFlow API 密钥 (国产多模态首选) */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(16, 185, 129, 0.25)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>⚡ 硅基流动 (SiliconFlow) API 密钥【国内多模态推荐】</span>
+                  </label>
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                    Qwen2.5-VL · 免翻墙直连
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 10px', lineHeight: 1.4 }}>
+                  国内首推多模态引擎！支持通义千问 Qwen2.5-VL 视觉大模型与 DeepSeek-V3，极速识别数学公式、几何图形与草稿纸动笔支架。
+                </p>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type={showSiliconflowKey ? 'text' : 'password'}
+                    value={siliconflowKey}
+                    onChange={(e) => setSiliconflowKey(e.target.value)}
+                    placeholder="输入硅基流动 API Key (如 sk-...)"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#f8fafc',
+                      fontSize: '0.85rem',
+                      fontFamily: 'monospace',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSiliconflowKey(!showSiliconflowKey)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      color: '#cbd5e1',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {showSiliconflowKey ? '隐藏' : '显示'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestSiliconFlow}
+                    disabled={siliconflowTestStatus?.testing}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      color: '#ffffff',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: siliconflowTestStatus?.testing ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {siliconflowTestStatus?.testing ? '测速中...' : '⚡ 诊断 SiliconFlow'}
+                  </button>
+                </div>
+
+                {siliconflowTestStatus?.message && (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      background: siliconflowTestStatus.success ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: siliconflowTestStatus.success ? '#4ade80' : '#f87171',
+                      border: siliconflowTestStatus.success ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                    }}
+                  >
+                    {siliconflowTestStatus.message}
+                  </div>
+                )}
+              </div>
+
+              {/* Card 0.1: 阿里百炼 DashScope API 密钥 */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(245, 158, 11, 0.25)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🏢 阿里百炼 (DashScope) API 密钥</span>
+                  </label>
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                    通义千问官方 · 教材深度融合
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 10px', lineHeight: 1.4 }}>
+                  用于直连阿里巴巴官方通义千问 Qwen-VL 与 Qwen-Plus 旗舰大模型。
+                </p>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type={showDashscopeKey ? 'text' : 'password'}
+                    value={dashscopeKey}
+                    onChange={(e) => setDashscopeKey(e.target.value)}
+                    placeholder="输入阿里百炼 API Key (如 sk-...)"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#f8fafc',
+                      fontSize: '0.85rem',
+                      fontFamily: 'monospace',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDashscopeKey(!showDashscopeKey)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      color: '#cbd5e1',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {showDashscopeKey ? '隐藏' : '显示'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestDashScope}
+                    disabled={dashscopeTestStatus?.testing}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: '#ffffff',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: dashscopeTestStatus?.testing ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {dashscopeTestStatus?.testing ? '测速中...' : '⚡ 诊断 DashScope'}
+                  </button>
+                </div>
+
+                {dashscopeTestStatus?.message && (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      background: dashscopeTestStatus.success ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: dashscopeTestStatus.success ? '#4ade80' : '#f87171',
+                      border: dashscopeTestStatus.success ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                    }}
+                  >
+                    {dashscopeTestStatus.message}
+                  </div>
+                )}
+              </div>
+
+              {/* Card 0.2: 智谱 AI (BigModel) API 密钥 */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(236, 72, 153, 0.25)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#f472b6', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🌸 智谱 AI (BigModel) API 密钥</span>
+                  </label>
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                    免费 GLM-4V · 高速多模态
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 10px', lineHeight: 1.4 }}>
+                  用于调用智谱 GLM-4V-Flash 免费多模态视觉模型与 GLM 系列对话。
+                </p>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type={showZhipuKey ? 'text' : 'password'}
+                    value={zhipuKey}
+                    onChange={(e) => setZhipuKey(e.target.value)}
+                    placeholder="输入智谱 API Key"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#f8fafc',
+                      fontSize: '0.85rem',
+                      fontFamily: 'monospace',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowZhipuKey(!showZhipuKey)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      color: '#cbd5e1',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {showZhipuKey ? '隐藏' : '显示'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestZhipu}
+                    disabled={zhipuTestStatus?.testing}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #ec4899, #db2777)',
+                      color: '#ffffff',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: zhipuTestStatus?.testing ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {zhipuTestStatus?.testing ? '测速中...' : '⚡ 诊断 智谱'}
+                  </button>
+                </div>
+
+                {zhipuTestStatus?.message && (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      background: zhipuTestStatus.success ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: zhipuTestStatus.success ? '#4ade80' : '#f87171',
+                      border: zhipuTestStatus.success ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                    }}
+                  >
+                    {zhipuTestStatus.message}
+                  </div>
+                )}
               </div>
 
               {/* Card 1: Google Gemini API 密钥 */}

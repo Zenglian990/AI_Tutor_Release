@@ -206,7 +206,214 @@ router.post('/config/test-llm', async (req, res) => {
     provider = body.provider || 'unknown';
     const { apiKey, apiUrl, model } = body;
 
-    if (provider === 'deepseek') {
+    if (provider === 'siliconflow') {
+      const keyToUse = (apiKey || process.env.SILICONFLOW_API_KEY || '').trim();
+      if (!keyToUse) {
+        return res.json({
+          success: false,
+          provider: 'siliconflow',
+          error: '缺少 SiliconFlow API Key',
+          details: '请在上方输入有效的硅基流动 API 密钥',
+          latencyMs: 0
+        });
+      }
+
+      const baseUrl = (apiUrl || process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
+      const urlCheck = await validateSafeUrlAsync(baseUrl);
+      if (!urlCheck.safe) {
+        return res.json({
+          success: false,
+          provider: 'siliconflow',
+          error: `不安全的 API URL 地址: ${urlCheck.error}`,
+          latencyMs: 0
+        });
+      }
+
+      const testModel = model || 'Qwen/Qwen2.5-VL-72B-Instruct';
+
+      const response = await undiciFetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Authorization': `Bearer ${keyToUse}`
+        },
+        body: JSON.stringify({
+          model: testModel,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 5
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      const latencyMs = Date.now() - start;
+
+      if (!response.ok) {
+        const status = response.status;
+        let details = '';
+        try {
+          const errBody = await response.text();
+          const parsed = JSON.parse(errBody);
+          details = parsed.error?.message || errBody.slice(0, 300);
+        } catch {}
+
+        return res.json({
+          success: false,
+          provider: 'siliconflow',
+          model: testModel,
+          latencyMs,
+          error: `SiliconFlow 响应异常 (${status})`,
+          details: details || '上游接口请求失败'
+        });
+      }
+
+      return res.json({
+        success: true,
+        provider: 'siliconflow',
+        model: testModel,
+        latencyMs,
+        message: `硅基流动 (SiliconFlow) 连通正常！(延迟: ${latencyMs}ms)`
+      });
+
+    } else if (provider === 'dashscope') {
+      const keyToUse = (apiKey || process.env.DASHSCOPE_API_KEY || '').trim();
+      if (!keyToUse) {
+        return res.json({
+          success: false,
+          provider: 'dashscope',
+          error: '缺少 DashScope API Key',
+          details: '请在上方输入有效的阿里百炼 API 密钥',
+          latencyMs: 0
+        });
+      }
+
+      const baseUrl = (apiUrl || process.env.DASHSCOPE_API_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, '');
+      const urlCheck = await validateSafeUrlAsync(baseUrl);
+      if (!urlCheck.safe) {
+        return res.json({
+          success: false,
+          provider: 'dashscope',
+          error: `不安全的 API URL 地址: ${urlCheck.error}`,
+          latencyMs: 0
+        });
+      }
+
+      const testModel = model || 'qwen2.5-vl-72b-instruct';
+
+      const response = await undiciFetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Authorization': `Bearer ${keyToUse}`
+        },
+        body: JSON.stringify({
+          model: testModel,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 5
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      const latencyMs = Date.now() - start;
+
+      if (!response.ok) {
+        const status = response.status;
+        let details = '';
+        try {
+          const errBody = await response.text();
+          const parsed = JSON.parse(errBody);
+          details = parsed.error?.message || errBody.slice(0, 300);
+        } catch {}
+
+        return res.json({
+          success: false,
+          provider: 'dashscope',
+          model: testModel,
+          latencyMs,
+          error: `阿里百炼 响应异常 (${status})`,
+          details: details || '上游接口请求失败'
+        });
+      }
+
+      return res.json({
+        success: true,
+        provider: 'dashscope',
+        model: testModel,
+        latencyMs,
+        message: `阿里百炼 (DashScope) 连通正常！(延迟: ${latencyMs}ms)`
+      });
+
+    } else if (provider === 'zhipu') {
+      const keyToUse = (apiKey || process.env.ZHIPU_API_KEY || '').trim();
+      if (!keyToUse) {
+        return res.json({
+          success: false,
+          provider: 'zhipu',
+          error: '缺少智谱 API Key',
+          details: '请在上方输入有效的智谱 AI 密钥',
+          latencyMs: 0
+        });
+      }
+
+      const baseUrl = (apiUrl || process.env.ZHIPU_API_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
+      const urlCheck = await validateSafeUrlAsync(baseUrl);
+      if (!urlCheck.safe) {
+        return res.json({
+          success: false,
+          provider: 'zhipu',
+          error: `不安全的 API URL 地址: ${urlCheck.error}`,
+          latencyMs: 0
+        });
+      }
+
+      const testModel = model || 'glm-4v-flash';
+
+      const response = await undiciFetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Authorization': `Bearer ${keyToUse}`
+        },
+        body: JSON.stringify({
+          model: testModel,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 5
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      const latencyMs = Date.now() - start;
+
+      if (!response.ok) {
+        const status = response.status;
+        let details = '';
+        try {
+          const errBody = await response.text();
+          const parsed = JSON.parse(errBody);
+          details = parsed.error?.message || errBody.slice(0, 300);
+        } catch {}
+
+        return res.json({
+          success: false,
+          provider: 'zhipu',
+          model: testModel,
+          latencyMs,
+          error: `智谱 AI 响应异常 (${status})`,
+          details: details || '上游接口请求失败'
+        });
+      }
+
+      return res.json({
+        success: true,
+        provider: 'zhipu',
+        model: testModel,
+        latencyMs,
+        message: `智谱 AI (BigModel) 连通正常！(延迟: ${latencyMs}ms)`
+      });
+
+    } else if (provider === 'deepseek') {
       const keyToUse = (apiKey || process.env.DEEPSEEK_API_KEY || '').trim();
       if (!keyToUse) {
         return res.json({

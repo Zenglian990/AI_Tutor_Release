@@ -385,6 +385,7 @@ test('Remediation S5: Student Cognitive Memory decrypts encrypted fields for pro
   const db = getSqliteDb();
 
   const testProfile = 'test_remediation_profile';
+  await db.run('DELETE FROM mistakes WHERE profile_id = ?', [testProfile]);
   const encQuery = encryptField('已知三角形内角和为180度，求角A');
   const encReason = encryptField('直角三角形判定遗漏');
   const encTags = encryptField('三角形,内角和');

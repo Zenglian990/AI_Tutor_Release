@@ -56,7 +56,12 @@ router.post('/chat', async (req, res) => {
     const clientHeaders = {
       'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
       'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
-      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
+      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || '',
+      'x-siliconflow-api-key': req.headers['x-siliconflow-api-key'] || req.headers['X-Siliconflow-Api-Key'] || '',
+      'x-dashscope-api-key': req.headers['x-dashscope-api-key'] || req.headers['X-Dashscope-Api-Key'] || '',
+      'x-zhipu-api-key': req.headers['x-zhipu-api-key'] || req.headers['X-Zhipu-Api-Key'] || '',
+      'x-openai-api-key': req.headers['x-openai-api-key'] || req.headers['X-Openai-Api-Key'] || '',
+      'x-custom-api-url': req.headers['x-custom-api-url'] || req.headers['X-Custom-Api-Url'] || ''
     };
 
     // Parallelize RAG Search and Student Cognitive Memory Retrieval

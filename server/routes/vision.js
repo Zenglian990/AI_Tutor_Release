@@ -273,7 +273,12 @@ ${contextSection}学生随附提问/诉求：${query}
     const clientHeaders = {
       'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
       'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
-      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || ''
+      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || '',
+      'x-siliconflow-api-key': req.headers['x-siliconflow-api-key'] || req.headers['X-Siliconflow-Api-Key'] || '',
+      'x-dashscope-api-key': req.headers['x-dashscope-api-key'] || req.headers['X-Dashscope-Api-Key'] || '',
+      'x-zhipu-api-key': req.headers['x-zhipu-api-key'] || req.headers['X-Zhipu-Api-Key'] || '',
+      'x-openai-api-key': req.headers['x-openai-api-key'] || req.headers['X-Openai-Api-Key'] || '',
+      'x-custom-api-url': req.headers['x-custom-api-url'] || req.headers['X-Custom-Api-Url'] || ''
     };
 
     // Auto-switch to vision model if requested model lacks vision capability (e.g. DeepSeek-V3, DeepSeek-R1)
@@ -281,7 +286,21 @@ ${contextSection}学生随附提问/诉求：${query}
       model.toLowerCase().includes('gemini') || 
       isOpenAiVisionModel(model)
     );
-    const visionModel = isVisionCapable ? model : (config.CHAT_MODEL || 'gemini-2.5-flash');
+
+    const sfKey = (clientHeaders['x-siliconflow-api-key'] || process.env.SILICONFLOW_API_KEY || '').trim();
+    const dsKey = (clientHeaders['x-dashscope-api-key'] || process.env.DASHSCOPE_API_KEY || '').trim();
+    const zpKey = (clientHeaders['x-zhipu-api-key'] || process.env.ZHIPU_API_KEY || '').trim();
+
+    let defaultVisionModel = config.CHAT_MODEL || 'gemini-2.5-flash';
+    if (sfKey) {
+      defaultVisionModel = 'Qwen/Qwen2.5-VL-72B-Instruct';
+    } else if (dsKey) {
+      defaultVisionModel = 'qwen2.5-vl-72b-instruct';
+    } else if (zpKey) {
+      defaultVisionModel = 'glm-4v-flash';
+    }
+
+    const visionModel = isVisionCapable ? model : defaultVisionModel;
 
     if (model && !isVisionCapable) {
       logger.info(`[Vision Route] Requested model '${model}' is text-only. Automatically routed to multimodal vision model '${visionModel}'.`);

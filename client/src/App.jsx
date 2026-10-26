@@ -777,10 +777,28 @@ function AppInner() {
           chatModel.includes('vision') || 
           chatModel.includes('glm-4v')
         );
-        const visionModel = isVisionCapable ? chatModel : 'gemini-2.5-flash';
+
+        let fallbackVisionModel = 'gemini-2.5-flash';
+        let fallbackDesc = 'Gemini 2.5 Flash';
+        const hasSfKey = !!(localStorage.getItem('ai_tutor_siliconflow_key') || '').trim();
+        const hasDsKey = !!(localStorage.getItem('ai_tutor_dashscope_key') || '').trim();
+        const hasZpKey = !!(localStorage.getItem('ai_tutor_zhipu_key') || '').trim();
+
+        if (hasSfKey) {
+          fallbackVisionModel = 'Qwen/Qwen2.5-VL-72B-Instruct';
+          fallbackDesc = '通义千问 Qwen2.5-VL-72B (硅基流动)';
+        } else if (hasDsKey) {
+          fallbackVisionModel = 'qwen2.5-vl-72b-instruct';
+          fallbackDesc = '通义千问 Qwen2.5-VL (阿里百炼)';
+        } else if (hasZpKey) {
+          fallbackVisionModel = 'glm-4v-flash';
+          fallbackDesc = '智谱 GLM-4V-Flash';
+        }
+
+        const visionModel = isVisionCapable ? chatModel : fallbackVisionModel;
         formData.append('model', visionModel);
         if (!isVisionCapable) {
-          showToast('📷 检测到拍照解题，已自动切换为视觉多模态大模型 (Gemini 2.5 Flash)', 'info', 2500);
+          showToast(`📷 检测到拍照解题，自动切换为视觉多模态大模型 (${fallbackDesc})`, 'info', 2500);
         }
         response = await authFetch('/api/chat-vision', { method: 'POST', body: formData });
       } else {

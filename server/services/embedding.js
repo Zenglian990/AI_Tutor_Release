@@ -122,7 +122,7 @@ function startEmbeddingCheck() {
 function isOpenAiVisionModel(modelName) {
   if (!modelName) return false;
   const m = String(modelName).toLowerCase();
-  return m.includes('vl') || m.includes('vision') || m.includes('glm-4v') || m.includes('step-1v') || m.includes('qwen-vl');
+  return m.includes('vl') || m.includes('vision') || m.includes('glm-4v') || m.includes('step-1v') || m.includes('qwen-vl') || m.includes('qwen2.5-vl');
 }
 
 /**
@@ -309,44 +309,72 @@ async function* translateDeepSeekStream(originalBody) {
  * Direct request to DeepSeek API when Gemini is unavailable or explicitly requested
  */
 async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
-  const clientKey = (originalOptions?.headers?.['x-deepseek-api-key'] || originalOptions?.headers?.['X-DeepSeek-Api-Key'])?.trim();
-  const currentKey = clientKey || (process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
-  if (!currentKey) {
-    throw new Error('All Gemini keys failed and no DEEPSEEK_API_KEY is configured for fallback.');
+  const headers = originalOptions?.headers || {};
+  const selectedModel = modelName && modelName !== 'default' ? modelName : (process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat');
+
+  const sfKey = (headers['x-siliconflow-api-key'] || headers['X-Siliconflow-Api-Key'] || process.env.SILICONFLOW_API_KEY || '').trim();
+  const dsKey = (headers['x-dashscope-api-key'] || headers['X-Dashscope-Api-Key'] || process.env.DASHSCOPE_API_KEY || '').trim();
+  const zpKey = (headers['x-zhipu-api-key'] || headers['X-Zhipu-Api-Key'] || process.env.ZHIPU_API_KEY || '').trim();
+  const deepseekKey = (headers['x-deepseek-api-key'] || headers['X-DeepSeek-Api-Key'] || process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
+  const customKey = (headers['x-openai-api-key'] || headers['X-Openai-Api-Key'] || process.env.OPENAI_API_KEY || '').trim();
+
+  let targetUrl = '';
+  let targetKey = '';
+  let providerName = 'DeepSeek';
+
+  const mLower = selectedModel.toLowerCase();
+  if (selectedModel.startsWith('Qwen/') || selectedModel.startsWith('Pro/') || (mLower.includes('qwen') && sfKey) || (sfKey && !dsKey && !deepseekKey)) {
+    providerName = 'SiliconFlow';
+    targetUrl = (headers['x-custom-api-url'] || process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
+    targetKey = sfKey || customKey || deepseekKey;
+  } else if (mLower.includes('dashscope') || (mLower.includes('qwen') && dsKey) || (dsKey && !sfKey && !deepseekKey)) {
+    providerName = 'DashScope';
+    targetUrl = (headers['x-custom-api-url'] || process.env.DASHSCOPE_API_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, '');
+    targetKey = dsKey || customKey;
+  } else if (mLower.includes('glm') || (zpKey && !sfKey && !dsKey && !deepseekKey)) {
+    providerName = 'Zhipu';
+    targetUrl = (headers['x-custom-api-url'] || process.env.ZHIPU_API_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
+    targetKey = zpKey || customKey;
+  } else {
+    providerName = 'DeepSeek';
+    const clientUrl = (headers['x-deepseek-api-url'] || headers['X-DeepSeek-Api-Url'])?.trim();
+    targetUrl = (clientUrl || process.env.DEEPSEEK_API_URL || DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+    targetKey = deepseekKey || customKey || sfKey;
   }
 
-  const clientUrl = (originalOptions?.headers?.['x-deepseek-api-url'] || originalOptions?.headers?.['X-DeepSeek-Api-Url'])?.trim();
-  const currentUrl = (clientUrl || process.env.DEEPSEEK_API_URL || DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
-  const selectedModel = modelName && modelName !== 'default' ? modelName : (process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat');
-  logger.info(`[Gateway] Routing request to DeepSeek (${selectedModel}) at ${currentUrl}...`);
+  if (!targetKey) {
+    throw new Error(`缺少 ${providerName} API Key，请在设置中配置有效密钥。`);
+  }
+
+  logger.info(`[Gateway] Routing request to ${providerName} (${selectedModel}) at ${targetUrl}...`);
 
   const geminiPayload = JSON.parse(originalOptions.body);
   const isStream = urlType === 'stream';
   const deepseekPayload = convertGeminiToDeepSeekPayload(geminiPayload, isStream, selectedModel);
 
-  const url = `${currentUrl}/chat/completions`;
+  const url = `${targetUrl}/chat/completions`;
   const fetchOptions = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept-Encoding': 'gzip, deflate, br',
-      'Authorization': `Bearer ${currentKey}`
+      'Authorization': `Bearer ${targetKey}`
     },
     body: JSON.stringify(deepseekPayload)
   };
-  // DeepSeek is a domestic Chinese high-speed API — connect directly for minimal latency
-  if (proxyAgent && process.env.PROXY_DEEPSEEK === 'true') {
+  // Domestic Chinese high-speed API — connect directly for minimal latency
+  if (proxyAgent && process.env.PROXY_DOMESTIC === 'true') {
     fetchOptions.dispatcher = proxyAgent;
   }
 
   const response = await undici.fetch(url, fetchOptions);
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`DeepSeek API failed: ${response.status} ${errorBody}`);
+    throw new Error(`${providerName} API failed: ${response.status} ${errorBody}`);
   }
 
   if (isStream) {
-    logger.info('[Gateway] Connected to DeepSeek streaming API.');
+    logger.info(`[Gateway] Connected to ${providerName} streaming API.`);
     const translatedGenerator = translateDeepSeekStream(response.body);
     return {
       ok: true,
@@ -391,7 +419,7 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
 async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs = 30000, modelName = null, skipDeepSeek = false) {
   let rawModel = modelName && modelName !== 'default' ? modelName : CHAT_MODEL;
   // Security Fix: strictly validate model name to prevent path injection
-  if (!/^[a-zA-Z0-9.-]+$/.test(rawModel)) {
+  if (!/^[a-zA-Z0-9./_-]+$/.test(rawModel)) {
     logger.warn(`Invalid model name format provided: ${rawModel}, falling back to default`);
     rawModel = CHAT_MODEL;
   }
@@ -425,13 +453,29 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   } catch (e) {}
 
   // Auto-route: If payload contains an image, the model MUST have vision capability!
-  // If the current requested model is text-only (e.g. DeepSeek-V3, DeepSeek-R1, Qwen-Turbo),
-  // automatically switch to a multimodal vision model (Gemini 2.5 Flash) to avoid hallucinations and blindness.
+  // If the current requested model is text-only (e.g. DeepSeek-V3, DeepSeek-R1),
+  // prioritize domestic high-performance vision models before falling back to Gemini.
   if (hasImage && !isOpenAiVisionModel(currentModel)) {
     const isGeminiVision = currentModel.toLowerCase().includes('gemini');
     if (!isGeminiVision) {
-      logger.info(`[Model Router] Current model '${currentModel}' lacks vision capability, but request contains image. Auto-switching to multimodal vision model '${CHAT_MODEL || 'gemini-2.5-flash'}'.`);
-      currentModel = CHAT_MODEL || 'gemini-2.5-flash';
+      const h = options?.headers || {};
+      const sfKey = (h['x-siliconflow-api-key'] || h['X-Siliconflow-Api-Key'] || process.env.SILICONFLOW_API_KEY || '').trim();
+      const dsKey = (h['x-dashscope-api-key'] || h['X-Dashscope-Api-Key'] || process.env.DASHSCOPE_API_KEY || '').trim();
+      const zpKey = (h['x-zhipu-api-key'] || h['X-Zhipu-Api-Key'] || process.env.ZHIPU_API_KEY || '').trim();
+
+      if (sfKey) {
+        currentModel = 'Qwen/Qwen2.5-VL-72B-Instruct';
+        logger.info(`[Model Router] Text model '${rawModel}' lacks vision. Auto-switched to domestic SiliconFlow vision model '${currentModel}'.`);
+      } else if (dsKey) {
+        currentModel = 'qwen2.5-vl-72b-instruct';
+        logger.info(`[Model Router] Text model '${rawModel}' lacks vision. Auto-switched to DashScope vision model '${currentModel}'.`);
+      } else if (zpKey) {
+        currentModel = 'glm-4v-flash';
+        logger.info(`[Model Router] Text model '${rawModel}' lacks vision. Auto-switched to Zhipu vision model '${currentModel}'.`);
+      } else {
+        currentModel = CHAT_MODEL || 'gemini-2.5-flash';
+        logger.info(`[Model Router] Text model '${rawModel}' lacks vision. Falling back to '${currentModel}'.`);
+      }
     }
   }
 
@@ -439,7 +483,9 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   const isOpenAiCompatible = currentModel.toLowerCase().includes('deepseek') ||
                              currentModel.toLowerCase().includes('qwen') ||
                              currentModel.toLowerCase().includes('glm') ||
-                             currentModel.toLowerCase().includes('step-');
+                             currentModel.toLowerCase().includes('step-') ||
+                             currentModel.startsWith('Qwen/') ||
+                             currentModel.startsWith('Pro/');
   let url = buildURL(currentModel);
   const urlType = url.includes('streamGenerateContent') ? 'stream' : (url.includes('embedContent') ? 'embed' : 'chat');
 

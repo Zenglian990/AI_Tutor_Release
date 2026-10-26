@@ -193,6 +193,31 @@ async function authFetch(path, options = {}) {
       if (customDeepseekUrl && customDeepseekUrl.trim()) {
         headers['x-deepseek-api-url'] = customDeepseekUrl.trim();
       }
+
+      const customSiliconflowKey = localStorage.getItem('ai_tutor_siliconflow_key');
+      if (customSiliconflowKey && customSiliconflowKey.trim()) {
+        headers['x-siliconflow-api-key'] = customSiliconflowKey.trim();
+      }
+
+      const customDashscopeKey = localStorage.getItem('ai_tutor_dashscope_key');
+      if (customDashscopeKey && customDashscopeKey.trim()) {
+        headers['x-dashscope-api-key'] = customDashscopeKey.trim();
+      }
+
+      const customZhipuKey = localStorage.getItem('ai_tutor_zhipu_key');
+      if (customZhipuKey && customZhipuKey.trim()) {
+        headers['x-zhipu-api-key'] = customZhipuKey.trim();
+      }
+
+      const customOpenaiKey = localStorage.getItem('ai_tutor_openai_key');
+      if (customOpenaiKey && customOpenaiKey.trim()) {
+        headers['x-openai-api-key'] = customOpenaiKey.trim();
+      }
+
+      const customApiUrl = localStorage.getItem('ai_tutor_custom_api_url');
+      if (customApiUrl && customApiUrl.trim()) {
+        headers['x-custom-api-url'] = customApiUrl.trim();
+      }
     }
 
     // Generate and inject request signature if token is available
