@@ -293,7 +293,7 @@ ${contextSection}学生随附提问/诉求：${query}
 
     let defaultVisionModel = config.CHAT_MODEL || 'gemini-2.5-flash';
     if (sfKey) {
-      defaultVisionModel = 'Qwen/Qwen2.5-VL-72B-Instruct';
+      defaultVisionModel = 'deepseek-ai/deepseek-vl2';
     } else if (dsKey) {
       defaultVisionModel = 'qwen2.5-vl-72b-instruct';
     } else if (zpKey) {

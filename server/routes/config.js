@@ -229,50 +229,87 @@ router.post('/config/test-llm', async (req, res) => {
         });
       }
 
-      const testModel = model || 'Qwen/Qwen2.5-VL-72B-Instruct';
+      // SiliconFlow frequently updates active models (e.g. Qwen2.5-VL-72B returns 30003 "Model disabled.")
+      // We probe candidate models in priority order: user-specified -> DeepSeek-V3 -> deepseek-vl2 -> Qwen2-VL-72B
+      const candidateModels = [
+        model,
+        'deepseek-ai/DeepSeek-V3',
+        'deepseek-ai/deepseek-vl2',
+        'Qwen/Qwen2-VL-72B-Instruct',
+        'Pro/Qwen/Qwen2-VL-7B-Instruct',
+        'Qwen/Qwen2.5-VL-72B-Instruct'
+      ].filter(Boolean);
 
-      const response = await undiciFetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Authorization': `Bearer ${keyToUse}`
-        },
-        body: JSON.stringify({
-          model: testModel,
-          messages: [{ role: 'user', content: 'hi' }],
-          max_tokens: 5
-        }),
-        signal: AbortSignal.timeout(10000)
-      });
+      let lastErrorStatus = 0;
+      let lastErrorDetails = '';
+      let successfulModel = null;
+      let latencyMs = 0;
 
-      const latencyMs = Date.now() - start;
-
-      if (!response.ok) {
-        const status = response.status;
-        let details = '';
+      for (const m of candidateModels) {
         try {
-          const errBody = await response.text();
-          const parsed = JSON.parse(errBody);
-          details = parsed.error?.message || errBody.slice(0, 300);
-        } catch {}
+          const response = await undiciFetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept-Encoding': 'gzip, deflate, br',
+              'Authorization': `Bearer ${keyToUse}`
+            },
+            body: JSON.stringify({
+              model: m,
+              messages: [{ role: 'user', content: 'hi' }],
+              max_tokens: 5
+            }),
+            signal: AbortSignal.timeout(6000)
+          });
 
+          if (response.ok) {
+            successfulModel = m;
+            latencyMs = Date.now() - start;
+            break;
+          } else {
+            lastErrorStatus = response.status;
+            try {
+              const errBody = await response.text();
+              const parsed = JSON.parse(errBody);
+              lastErrorDetails = parsed.error?.message || parsed.message || errBody.slice(0, 300);
+            } catch {
+              lastErrorDetails = `HTTP ${response.status}`;
+            }
+            // If it's 401 Unauthorized (invalid key), fail fast
+            if (response.status === 401) {
+              break;
+            }
+          }
+        } catch (e) {
+          lastErrorDetails = e.message || '网络连接超时';
+        }
+      }
+
+      if (!successfulModel) {
+        let hint = '';
+        if (lastErrorDetails.includes('Model disabled')) {
+          hint = '（平台已将该模型下线，建议使用下方官方原厂阿里百炼或智谱AI）';
+        } else if (lastErrorStatus === 401) {
+          hint = '（API Key 无效或已过期，请核对密钥）';
+        } else if (lastErrorDetails.includes('insufficient_quota') || lastErrorDetails.includes('balance')) {
+          hint = '（硅基流动账户余额不足，请充值）';
+        }
         return res.json({
           success: false,
           provider: 'siliconflow',
-          model: testModel,
-          latencyMs,
-          error: `SiliconFlow 响应异常 (${status})`,
-          details: details || '上游接口请求失败'
+          model: candidateModels[0],
+          latencyMs: Date.now() - start,
+          error: `SiliconFlow 响应异常 (${lastErrorStatus || 400})`,
+          details: `${lastErrorDetails} ${hint}`.trim()
         });
       }
 
       return res.json({
         success: true,
         provider: 'siliconflow',
-        model: testModel,
+        model: successfulModel,
         latencyMs,
-        message: `硅基流动 (SiliconFlow) 连通正常！(延迟: ${latencyMs}ms)`
+        message: `硅基流动 (SiliconFlow) 连通正常！(模型: ${successfulModel}, 延迟: ${latencyMs}ms)`
       });
 
     } else if (provider === 'dashscope') {
