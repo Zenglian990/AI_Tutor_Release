@@ -51,53 +51,50 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.5.5.apk
-          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.4/AI_Tutor_v1.5.4.apk -o ./AI_Tutor_v1.5.4.apk || curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.4.0/ZengLian_AI_Tutor_v1.4.0.apk -o ./AI_Tutor_v1.5.4.apk || true
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.6.0.apk
+          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk -o ./AI_Tutor_v1.5.5.apk || curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.4/AI_Tutor_v1.5.4.apk -o ./AI_Tutor_v1.5.5.apk || true
           ls -lh ./AI_Tutor_v1*.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.5.5
-          path: ./AI_Tutor_v1.5.5.apk
+          name: AI_Tutor_v1.6.0
+          path: ./AI_Tutor_v1.6.0.apk
           retention-days: 30
 
-      - name: Create or Update v1.5.5 Latest Release
+      - name: Create or Update v1.6.0 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.5.5
-          name: "曾练专属私教 v1.5.5 - 1-9年级全功能旗舰版 (双模型容灾·Jev意图决策·出厂认证)"
+          tag_name: v1.6.0
+          name: "曾练专属私教 v1.6.0 - 1-12年级小初高全学科旗舰版 (高考高频押题·步骤采分点·全科公式宝典)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 曾练专属私教 v1.5.5 (1-9年级全学科量身定制·全功能旗舰版)
+                        ## 🚀 曾练专属私教 v1.6.0 (1-12年级小初高全学科·全功能旗舰版)
 
-            - ⚡ **TypeSafe Jev System One 极速决策引擎**：
-              - 70ms 毫秒级拦截闲聊打招呼无意义提问（0 Token 开销）；
-              - 精准意图分流与 1-9 年级心智模型自动适配，智能注入启发式教学策略。
-            - 🤖 **DeepSeek V3 / R1 与 Google Gemini 2.5 Flash 闪电双通道容灾**：
-              - 国内极速直连免翻墙（延迟低至 340ms），国际顶尖多模态视觉解题无缝互备；
-              - 控制台一键测速诊断与自动保存。
-            - 🔐 **出厂统一安全认证与管理后台重置**：
-              - 标准官方令牌（`ait_ca1b...`）出厂即通，解决冷启动令牌失效问题；
-              - 管理控制台参数实时加密持久化，新增绿色【重置标准】一键恢复出厂令牌；
-              - 强化家长保护防作弊门禁与安全哈希验证。
-            - 💡 **拍照取景器去阴影滤镜与几何辅助线灵感锁**：
-              - 局部积分图算法消除晚间台灯阴影，白纸黑字高对比清晰识别；
-              - 初中几何题一键查看辅助线作法阶梯提示，保护学生独立推导与自主思考心流。
-            - 📚 **39,114+ 国家权威题库与举一反三变式母题闭环**：
-              - 人教版全学科知识图谱与真题库无缝联动；
-              - 现场即做即批，错题一键生成 A4 试卷并支持局域网网络打印机一键出卷。
+            - 🎓 **1-12年级小初高全学段知识图谱完整贯通**：
+              - 全面覆盖人教版高中各科教材（高中语数英物化生政史地必修与选择性必修全科目）；
+              - 17,200+ 权威教材知识切片与向量检索图谱，深度赋能高中课标学习。
+            - 🎯 **高考高频押题与必考经典母题密卷**：
+              - 适配新高考全国卷（I/II卷）、北京卷、浙江卷等各省考情与分值题型架构（数学150分/物理100分/化学100分等）；
+              - 深度押题历年极高频经典母题模型（导数极值点偏移、圆锥曲线定点定值、双导轨微元感应、化工平衡常数Kp等）。
+            - 📝 **对标高考标准之步骤采分点智能评卷**：
+              - 贯彻高考阅卷采分点量规，按步骤采分赋予过程分；
+              - 严谨识别一题多解等价推导，针对失分陷阱提供避坑点拨。
+            - 📖 **全学段核心公式定理与题型模型宝典**：
+              - 新增高中数学空间向量/解析几何/导数积分、物理电磁力学/万有引力、化学反应原理等高频模型宝典。
+            - 🛡️ **纯粹专注·回归教育本源**：
+              - 界面纯净无冗余商业卡片，保护学生解题专注度。
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.5.5.apk`** 直接下载安装；
-            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.5.5】**，点开即用！
-            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.5.5 与 v1.5.4)*
+            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.6.0.apk`** 直接下载安装；
+            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.6.0】**，点开即用！
+            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.6.0 与 v1.5.5)*
           files: |
+            ./AI_Tutor_v1.6.0.apk
             ./AI_Tutor_v1.5.5.apk
-            ./AI_Tutor_v1.5.4.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

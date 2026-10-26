@@ -72,20 +72,35 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   
   const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
   const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+  const isHighSchool = ['10', '11', '12'].includes(rawGrade);
 
   const getExamGuideAndButtonText = () => {
     const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
     const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
 
-    if (testType === 'real_exam') {
+    if (testType === 'gaokao_hit') {
       return {
-        title: `🏛️ 【${selectedRegion}】全真模考标准与作答指南：`,
-        btnText: `🏛️ 依据【${selectedRegion}】出卷并进入全真模考`,
+        title: `🎯 【${selectedRegion}】高考高频母题与押题密卷指南：`,
+        btnText: `🎯 依据【${selectedRegion}】生成高考高频押题密卷并开考`,
         desc: (
           <>
-            • <b>名校教研真题规格：</b>严格比照【{selectedRegion}】近年中考真题及名校密卷题型结构、考点分布与梯度设问。<br />
-            • <b>沉浸式全真考场：</b>提供全屏防干扰模拟考场、标准中考倒计时、右侧交互答题卡与演算草稿纸。<br />
-            • <b>中考级步骤给分评阅：</b>交卷后 AI 阅卷老师按中考阅卷标准，细拆“概念公式立意分、逻辑推导演算分、最终结论得分”，诊断提分点到每一步。
+            • <b>高考高频命题母题：</b>深度提炼历年全国高考卷高频核心模型（导数极值点偏移、圆锥曲线定点定值、电磁感应微元、化工平衡常数、遗传致死规律等）。<br />
+            • <b>新高考标准分值与时长：</b>数学/语文/英语 150分（120分钟），物理/化学/生物/政治/历史/地理 100分（75-90分钟）。<br />
+            • <b>高考级步骤给分（采分点分步得分）：</b>AI 阅卷老师严格对照高考采分点赋分，一题多解等价认可，并深度剖析常见失分陷阱。
+          </>
+        )
+      };
+    }
+
+    if (testType === 'real_exam') {
+      return {
+        title: isHighSchool ? `🏛️ 【${selectedRegion}】新高考全真模拟卷指南：` : `🏛️ 【${selectedRegion}】全真模考标准与作答指南：`,
+        btnText: isHighSchool ? `🏛️ 依据【${selectedRegion}】生成新高考模拟卷并开考` : `🏛️ 依据【${selectedRegion}】出卷并进入全真模考`,
+        desc: (
+          <>
+            • <b>名校教研真题规格：</b>严格比照【{selectedRegion}】近年{isHighSchool ? '新高考真题与九省联考大卷' : '中考真题及名校密卷'}题型结构、考点分布与梯度设问。<br />
+            • <b>沉浸式全真考场：</b>提供全屏防干扰模拟考场、标准{isHighSchool ? '高考' : '中考'}倒计时、右侧交互答题卡与演算草稿纸。<br />
+            • <b>{isHighSchool ? '高考' : '中考'}级步骤给分评阅：</b>交卷后 AI 阅卷老师按真实阅卷标准，细拆“概念公式立意分、逻辑推导演算分、最终结论得分”，诊断提分点到每一步。
           </>
         )
       };
@@ -202,6 +217,9 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       '7_up': '七年级上册', '7_down': '七年级下册',
       '8_up': '八年级上册', '8_down': '八年级下册',
       '9_up': '九年级上册', '9_down': '九年级下册',
+      '10_up': '高一上册', '10_down': '高一下册',
+      '11_up': '高二上册', '11_down': '高二下册',
+      '12_up': '高三上册', '12_down': '高三下册',
     };
     return maps[grade] || '通用年级';
   };
@@ -402,11 +420,14 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     }
   };
 
-  // 动态分值评级(小学满分 100，初中满分 150)
+  // 动态分值评级(根据学段与满分标准自适应)
   const getScoreRating = (score) => {
-    const isElementary = ['1', '2', '3', '4', '5', '6'].includes(String(currentGrade).split('_')[0]);
-    const excellentLimit = isElementary ? 90 : 135;
-    const passLimit = isElementary ? 60 : 90;
+    const rawG = String(currentGrade).split('_')[0];
+    const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawG);
+    const isHighSchool = ['10', '11', '12'].includes(rawG);
+    const is100Pts = isElementary || (isHighSchool && !['语文', '数学', '英语'].includes(selectedSubject));
+    const excellentLimit = is100Pts ? 90 : 135;
+    const passLimit = is100Pts ? 60 : 90;
 
     if (score >= excellentLimit) return { label: '👑 优秀 (特等奖)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
     if (score >= passLimit) return { label: '⭐ 及格 (通过)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
@@ -468,7 +489,15 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
               {(() => {
                 const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
                 const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
-                const scoreText = isElementary ? '考试时间：90分钟  满分：100分' : '考试时间：120分钟  满分：150分';
+                const isHighSchool = ['10', '11', '12'].includes(rawGrade);
+                let scoreText = '考试时间：120分钟  满分：150分';
+                if (isElementary) {
+                  scoreText = '考试时间：90分钟  满分：100分';
+                } else if (isHighSchool) {
+                  scoreText = ['语文', '数学', '英语'].includes(selectedSubject) 
+                    ? '考试时间：120分钟  满分：150分'
+                    : '考试时间：75-90分钟  满分：100分';
+                }
                 return (
                   <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
                     {getGradeName(currentGrade)} · {selectedSubject} （{scoreText}）
@@ -519,13 +548,20 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                 🎯 第一步：选择测试范围
               </h3>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                {[
+                {(isHighSchool ? [
+                  { id: 'gaokao_hit', label: '🎯 高考高频押题' },
                   { id: 'real_exam', label: '🏛️ 名校全真模考' },
                   { id: 'custom', label: '✨ 自定义知识点' },
                   { id: 'unit', label: '📖 单元阶段测试' },
                   { id: 'midterm', label: '📅 期中阶段大考' },
                   { id: 'final', label: '🎓 期末综合检测' }
-                ].map(type => (
+                ] : [
+                  { id: 'real_exam', label: '🏛️ 名校全真模考' },
+                  { id: 'custom', label: '✨ 自定义知识点' },
+                  { id: 'unit', label: '📖 单元阶段测试' },
+                  { id: 'midterm', label: '📅 期中阶段大考' },
+                  { id: 'final', label: '🎓 期末综合检测' }
+                ]).map(type => (
                   <button
                     key={type.id}
                     onClick={() => setTestType(type.id)}
@@ -551,16 +587,50 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                 ))}
               </div>
 
+              {testType === 'gaokao_hit' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', background: 'rgba(239, 68, 68, 0.08)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <label style={{ fontSize: '13px', color: '#f87171', fontWeight: 'bold' }}>🎯 选择高考高频命题与经典母题题源：</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      '新高考全国卷 (I卷/II卷)',
+                      '北京高考真题教研',
+                      '浙江高考综合模式',
+                      '历年高考压轴必考母题',
+                      '八省联考/九省联考教研'
+                    ].map(region => (
+                      <button
+                        key={region}
+                        type="button"
+                        onClick={() => setSelectedRegion(region)}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid',
+                          borderColor: selectedRegion === region ? '#ef4444' : 'rgba(255,255,255,0.08)',
+                          background: selectedRegion === region ? 'rgba(239, 68, 68, 0.22)' : 'rgba(255,255,255,0.02)',
+                          color: selectedRegion === region ? '#fca5a5' : '#9ca3af',
+                          fontSize: '12px',
+                          fontWeight: selectedRegion === region ? 'bold' : 'normal',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {region}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {testType === 'real_exam' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
                   <label style={{ fontSize: '13px', color: '#fbbf24', fontWeight: 'bold' }}>🏛️ 选择名校教研真题密卷题源：</label>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {[
-                      '北京海淀名校密卷',
-                      '湖北黄冈中考模考',
-                      '江苏启东实验真卷',
-                      '四川成都七中示范',
-                      '全国重点名校联考'
+                      isHighSchool ? '新高考全国一卷示范' : '北京海淀名校密卷',
+                      isHighSchool ? '华师大附中压轴精选' : '湖北黄冈中考模考',
+                      isHighSchool ? '江苏南通百校大联考' : '江苏启东实验真卷',
+                      isHighSchool ? '成都七中高三模拟卷' : '四川成都七中示范',
+                      isHighSchool ? '全国重点名校大联考' : '全国重点名校联考'
                     ].map(region => (
                       <button
                         key={region}

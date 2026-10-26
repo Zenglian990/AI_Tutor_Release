@@ -2,15 +2,15 @@
 
 # 🎓 曾练专属私教 (ZengLian AI Tutor)
 
-**国内首个专为 1-9 年级量身定制的开源 RAG AI 智能私教系统**
-*覆盖人教版 1-9 年级全学科知识库 · 双模态自适应心智教学 · 闭环提分体系*
+**国内首个专为 1-12 年级小初高全学段量身定制的开源 RAG AI 智能私教系统**
+*覆盖人教版 1-12 年级小初高全学段全学科知识库 · 双模态自适应心智教学 · 闭环提分体系*
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.5_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.0_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-谷歌云亚太极速直达-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.5)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.0)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.5.5 双通道容灾·Jev决策·出厂认证版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.6.0 双通道容灾·Jev决策·出厂认证版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,19 +34,20 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📥 最新版安装包直链下载**：[AI_Tutor_v1.5.5.apk (约 10.4MB · 双通道容灾·Jev决策·出厂认证版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
-- **📥 稳定备用直链**：[AI_Tutor_v1.5.4.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.4/AI_Tutor_v1.5.4.apk)
-- **✨ v1.5.5 重磅体验跃升 (全功能旗舰级稳固闭环)**：
-  - **⚡ TypeSafe Jev System One 极速决策引擎**：
-    - 70ms 毫秒级识别与拦截闲聊问候（0 Token 消耗）；精准意图分流与 1-9 年级心智模型自动适配，智能注入启发式名师教学策略。
-  - **🤖 DeepSeek V3 / R1 与 Google Gemini 2.5 闪电双通道容灾**：
-    - 国内极速直连免翻墙（延迟低至 340ms），国际顶尖多模态视觉解题无缝互备；控制台一键测速诊断与自动保存。
-  - **🔐 出厂统一安全认证与管理后台一键重置**：
-    - 标准官方令牌（`ait_ca1b...`）出厂即通，解决冷启动令牌失效问题；管理控制台参数实时加密持久化，新增绿色【重置标准】一键恢复出厂令牌；强化家长保护防作弊门禁与安全哈希验证。
-  - **💡 拍照取景器去阴影滤镜与几何辅助线灵感锁**：
-    - 局部积分图算法消除晚间台灯阴影，白纸黑字高对比清晰识别；初中几何题一键查看辅助线作法阶梯提示，保护学生独立推导与自主思考心流。
-  - **📚 39,114+ 国家权威题库与举一反三变式母题闭环**：
-    - 人教版全学科知识图谱与真题库无缝联动；现场即做即批，错题一键生成 A4 试卷并支持局域网网络打印机一键出卷。
+- **📦 最新版安装包直链下载**：[AI_Tutor_v1.6.0.apk (约 10.5MB · 高考高频押题·步骤采分点·全科公式宝典旗舰版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk)
+- **📦 稳定备用直链**：[AI_Tutor_v1.5.5.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
+- **✅ v1.6.0 重磅体验跃升 (1-12年级小初高全学科旗舰版)**：
+  - **🎓 1-12年级小初高全学段教材向量库贯通**：
+    - 新增全面入库人教版高中各科教材（高中语数英物化生政史地必修与选择性必修），1.7万+权威切片毫秒级精准检索。
+  - **🎯 高考高频押题与必考经典母题密卷**：
+    - 针对新高考全国卷（I/II卷）、北京卷、浙江卷等各省考情与分值题型架构（数学150分/理化100分）；
+    - 深度覆盖高考十年高频大题母题（导数极值点偏移、圆锥曲线定点定值、双导轨动量微元、化工工艺平衡常数Kp等）。
+  - **📝 严格对标高考评分标准的步骤采分点**：
+    - 落实高考阅卷采分点量规，按步骤采分赋予过程分，等价解法智能识别，提供关键失分陷阱剖析。
+  - **📖 全科核心公式定理与解题模型宝典**：
+    - 一键唤出数学空间向量/导数切线、物理万有引力/动量守恒、化学反应平衡/电化学等核心母题模型矩阵。
+  - **🛡️ 纯粹专注·教育本源**：
+    - 界面纯净无冗余商业卡片，保护专注度与深度思考心流。
   *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)
@@ -135,7 +136,7 @@
   - 遇到难题绝不直接给答案，而是通过层层递进的提问引导孩子自主思考（“你觉得第一步应该先求什么？”）。
   - 内置语音朗读（TTS）、演练草稿纸、几何白板、整页秒批、题眼与陷阱专项剖析。
 - 🗺️ **游戏化知识图谱与关卡地图**：
-  - 覆盖人教版 1-9 年级全学科章节图谱，将教材知识解构成探险副本。
+  - 覆盖人教版 1-12 年级小初高全学段全学科章节图谱，将教材知识解构成探险副本。
   - 支持开启自由探索与闯关锁定，激发孩子自主通关的内生驱动力。
 - 📒 **智能错题闭环与靶向变式卷**：
   - **错题一键收录**：智能归类知识点盲区与失分原因。
@@ -162,7 +163,7 @@ graph TD
     ModelRouter -->|🧠 深度多模态推导| Gemini[Gemini 2.5 Flash 引擎]
     Server -->|教材与真题向量检索| LanceDB[(LanceDB 向量知识库 / 39,114+ 母题)]
     LanceDB -->|本地高速向量入库| PythonRAG[Python RAG 多模态提取管道]
-    PythonRAG -->|OCR & 结构切片| Textbooks[人教版 1-9 年级教材 & 名校真题]
+    PythonRAG -->|OCR & 结构切片| Textbooks[人教版 1-12 年级小初高全学段教材 & 名校真题]
 ```
 
 ---
@@ -194,10 +195,10 @@ cd AI_Tutor_Release
   ```bash
   npm run seed:demo
   ```
-  该命令会向本地 LanceDB 自动注入 1-9 年级经典核心章节（人教版一年级数学/语文、三年级加减口算、七年级有理数、八年级勾股定理与声现象、九年级化学等），并完成 768 维向量对齐与全文检索索引构建，瞬间体验精准教材检索！
+  该命令会向本地 LanceDB 自动注入 1-12 年级小初高全学段经典核心章节（人教版一年级数学/语文、三年级加减口算、七年级有理数、八年级勾股定理与声现象、九年级化学等），并完成 768 维向量对齐与全文检索索引构建，瞬间体验精准教材检索！
 
 - **📚 方式二：全量人教版教材入库（批量 PDF 提取）**
-  如果您准备了 1-9 年级完整教材 PDF 文件：
+  如果您准备了 1-12 年级小初高全学段完整教材 PDF 文件：
   1. 安装 Python 提取依赖：
      ```bash
      pip install -r requirements.txt

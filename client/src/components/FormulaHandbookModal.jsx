@@ -120,6 +120,41 @@ const FORMULA_DATABASE = {
         { name: '45° 特殊角', formula: '\\sin 45^\\circ = \\frac{\\sqrt{2}}{2}, \\; \\cos 45^\\circ = \\frac{\\sqrt{2}}{2}, \\; \\tan 45^\\circ = 1', desc: '等腰直角三角形 1:1:√2' },
         { name: '60° 特殊角', formula: '\\sin 60^\\circ = \\frac{\\sqrt{3}}{2}, \\; \\cos 60^\\circ = \\frac{1}{2}, \\; \\tan 60^\\circ = \\sqrt{3}', desc: '30°-60°-90° 对偶三角比' }
       ]
+    },
+    {
+      category: '📐 高中立体几何与空间向量',
+      items: [
+        { name: '空间向量数量积与夹角', formula: '\\cos \\theta = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}||\\vec{b}|}', desc: '空间向量求解夹角与垂直的核心判定公式' },
+        { name: '平面法向量求解方程组', formula: '\\vec{n} \\cdot \\vec{AB} = 0, \\quad \\vec{n} \\cdot \\vec{AC} = 0', desc: '设法向量坐标 (x,y,z)，联立两不共线基底向量解方程' },
+        { name: '点到平面距离公式', formula: 'd = \\frac{|\\vec{AB} \\cdot \\vec{n}|}{|\\vec{n}|}', desc: 'AB为平面外一点到平面内任意点的向量，n为法向量' },
+        { name: '二面角向量求解公式', formula: '|\\cos \\theta| = \\frac{|\\vec{n}_1 \\cdot \\vec{n}_2|}{|\\vec{n}_1||\\vec{n}_2|}', desc: '两半平面法向量夹角对应二面角大小（注意观察锐钝）' }
+      ]
+    },
+    {
+      category: '📈 高中导数核心工具箱',
+      items: [
+        { name: '基本初等函数求导表', formula: "(x^n)' = nx^{n-1}, \\; (e^x)' = e^x, \\; (\\ln x)' = \\frac{1}{x}, \\; (\\sin x)' = \\cos x", desc: '高考导数大题计算化简基石' },
+        { name: '乘积与除法求导法则', formula: "(uv)' = u'v + uv', \\quad \\left(\\frac{u}{v}\\right)' = \\frac{u'v - uv'}{v^2}", desc: '复合求导与分式商函数求导必背' },
+        { name: '曲线切线点斜式方程', formula: "y - f(x_0) = f'(x_0)(x - x_0)", desc: "f'(x0) 为切线斜率 k，(x0, f(x0)) 为切点" },
+        { name: '极值点偏移对称构造', formula: 'F(x) = f(x) - f(2x_0 - x) \\quad (x < x_0)', desc: '构造差函数求导判断单调性，证明 x1 + x2 > 2x0' }
+      ]
+    },
+    {
+      category: '⭕ 高中解析几何圆锥曲线',
+      items: [
+        { name: '椭圆标准方程与性质', formula: '\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1, \\quad c^2 = a^2 - b^2, \\quad e = \\frac{c}{a}', desc: '焦点在x轴，离心率 0 < e < 1，通径为 2b²/a' },
+        { name: '双曲线标准方程与渐近线', formula: '\\frac{x^2}{a^2} - \\frac{y^2}{b^2} = 1, \\quad c^2 = a^2 + b^2, \\quad y = \\pm \\frac{b}{a}x', desc: '渐近线方程 y = ±(b/a)x，离心率 e > 1' },
+        { name: '抛物线标准方程与准线', formula: 'y^2 = 2px \\quad (p > 0), \\quad \\text{准线 } x = -\\frac{p}{2}', desc: '焦点 (p/2, 0)，焦半径公式 |PF| = x + p/2' },
+        { name: '弦长通用斜率公式', formula: 'L = \\sqrt{1 + k^2}|x_1 - x_2| = \\sqrt{1 + k^2}\\sqrt{(x_1+x_2)^2 - 4x_1x_2}', desc: '直线与圆锥曲线联立韦达定理直接代入' }
+      ]
+    },
+    {
+      category: '🔢 高中数列与二项式定理',
+      items: [
+        { name: '等差数列通项与求和', formula: 'a_n = a_1 + (n - 1)d, \\quad S_n = \\frac{n(a_1 + a_n)}{2} = na_1 + \\frac{n(n - 1)}{2}d', desc: '等差中项 2an = an-1 + an+1' },
+        { name: '等比数列通项与求和', formula: 'a_n = a_1 q^{n - 1}, \\quad S_n = \\frac{a_1(1 - q^n)}{1 - q} \\quad (q \\ne 1)', desc: '错位相减法求差比数列前n项和' },
+        { name: '二项式展开通项公式', formula: 'T_{r+1} = C_n^r a^{n - r} b^r', desc: '(a+b)^n 的第 r+1 项，快速求特定幂次系数与常数项' }
+      ]
     }
   ],
   physics: [
@@ -155,6 +190,31 @@ const FORMULA_DATABASE = {
         { name: '电功率四件套', formula: 'P = \\frac{W}{t} = UI = I^2 R = \\frac{U^2}{R}', desc: '纯电阻电路中均可互相代换推导' },
         { name: '焦耳定律', formula: 'Q = I^2 Rt', desc: '电流通过导体产生的热量与电流平方成正比' }
       ]
+    },
+    {
+      category: '🪐 高中万有引力与天体运动',
+      items: [
+        { name: '万有引力充当向心力', formula: 'G\\frac{Mm}{r^2} = m\\frac{v^2}{r} = m\\omega^2 r = m\\frac{4\\pi^2}{T^2}r', desc: '核心规律：高轨低速大周期，轨道半径r决定一切参量' },
+        { name: '黄金代换公式', formula: 'GM = gR^2', desc: '天体表面重力近似等于万有引力，消去天体质量M的利器' },
+        { name: '第一宇宙速度', formula: 'v_1 = \\sqrt{\\frac{GM}{R}} = \\sqrt{gR} \\approx 7.9 \\text{ km/s}', desc: '近地卫星最大环绕速度，也是发射卫星的最小发射速度' }
+      ]
+    },
+    {
+      category: '⚡ 高中动量守恒与动能定理',
+      items: [
+        { name: '动量定理', formula: 'I = F\\Delta t = \\Delta p = mv_2 - mv_1', desc: '合外力的冲量等于系统动量的变化量（注意矢量性）' },
+        { name: '动量守恒定律', formula: "m_1 v_1 + m_2 v_2 = m_1 v_1' + m_2 v_2'", desc: '系统不受外力或合外力为零时，系统总动量保持不变' },
+        { name: '动能定理', formula: 'W_\\text{合} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2', desc: '所有外力做功的代数和等于物体动能的增量' }
+      ]
+    },
+    {
+      category: '🧲 电场偏转与电磁感应微元',
+      items: [
+        { name: '带电粒子在电场偏转位移', formula: 'y = \\frac{1}{2}at^2 = \\frac{qUL^2}{2mdv_0^2}', desc: '垂直电场匀速运动，沿电场做初速度为零的匀加速运动' },
+        { name: '法拉第电磁感应定律', formula: 'E = n\\frac{\\Delta \\Phi}{\\Delta t}, \\quad E = BLv', desc: '穿过闭合回路磁通量变化产生感应电动势，棒切割' },
+        { name: '安培力冲量与电量微元法', formula: 'I_A = B\\bar{I}L\\Delta t = BqL = \\Delta p', desc: '双导轨电磁感应综合大题求位移与电荷量的核心公式' },
+        { name: '理想变压器变压变流比', formula: '\\frac{U_1}{U_2} = \\frac{n_1}{n_2}, \\quad \\frac{I_1}{I_2} = \\frac{n_2}{n_1}, \\quad P_1 = P_2', desc: '输入功率决定输出功率，副线圈负载决定原线圈电流' }
+      ]
     }
   ],
   chemistry: [
@@ -178,6 +238,28 @@ const FORMULA_DATABASE = {
         { name: '五大白色沉淀', formula: 'BaSO_4 \\downarrow, \\; AgCl \\downarrow, \\; CaCO_3 \\downarrow, \\; BaCO_3 \\downarrow, \\; Mg(OH)_2 \\downarrow', desc: '注：BaSO₄与AgCl不溶于稀硝酸！' },
         { name: '蓝色沉淀与红褐色沉淀', formula: 'Cu(OH)_2 \\downarrow \\text{ (蓝色)}, \\quad Fe(OH)_3 \\downarrow \\text{ (红褐色)}', desc: '离子检验的核心特征沉淀' },
         { name: '常见气体生成标志', formula: 'CO_2 \\uparrow \\text{ (通入澄清石灰水变浑浊)}, \\quad H_2 \\uparrow, \\quad O_2 \\uparrow \\text{ (带火星木条复燃)}', desc: '方程式中反应物无气体时，生成气体须标注气体箭头 ↑' }
+      ]
+    },
+    {
+      category: '⚖️ 化学反应速率与平衡常数 Kp',
+      items: [
+        { name: '平衡常数 K 与 Kp', formula: 'K = \\frac{[C]^c [D]^d}{[A]^a [B]^b}, \\quad K_p = \\frac{p(C)^c p(D)^d}{p(A)^a p(B)^b}', desc: 'K只受温度影响；吸热反应升温K增大，放热反应升温K减小' },
+        { name: '勒夏特列平衡移动原理', formula: '\\text{改变外界条件，平衡向减弱该改变的方向移动}', desc: '加压向气体分子数减小的方向移动，催化剂不影响平衡' }
+      ]
+    },
+    {
+      category: '💧 溶液三大守恒与沉淀溶解 Ksp',
+      items: [
+        { name: '水的离子积常数', formula: 'K_w = c(H^+) \\cdot c(OH^-) = 1.0 \\times 10^{-14} \\text{ (25℃)}', desc: '水是弱电解质，25℃纯水 c(H+)=c(OH-)=10⁻⁷ mol/L' },
+        { name: '溶液三大守恒定律', formula: '\\text{电荷守恒 / 物料守恒 / 质子守恒}', desc: '比较溶液中微粒浓度大小与配平离子反应的王牌工具' },
+        { name: '溶度积常数 Ksp 与沉淀转化', formula: 'K_{sp} = [M^{n+}]^m [A^{m-}]^n', desc: 'Q > Ksp 有沉淀析出；沉淀转化向更难溶(Ksp更小)方向进行' }
+      ]
+    },
+    {
+      category: '🔋 高中电化学原电池与电解池',
+      items: [
+        { name: '原电池与电解池电极规律', formula: '\\text{负极失电子氧化，正极得电子还原；阳极氧化，阴极还原}', desc: '原电池电子从负极流向正极；电解池阳极连电源正极' },
+        { name: '离子交换膜应用', formula: '\\text{阳离子膜仅允许阳离子通过，阴离子膜仅允许阴离子通过}', desc: '工业氯碱制烧碱与浓缩回收酸碱的现代电化学模型' }
       ]
     }
   ]

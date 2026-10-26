@@ -28,6 +28,9 @@ export default function AddProfileModal({ isOpen, onClose, onConfirm }) {
     { value: '7_up', label: '初一上册' }, { value: '7_down', label: '初一下册' },
     { value: '8_up', label: '初二上册' }, { value: '8_down', label: '初二下册' },
     { value: '9_up', label: '初三上册' }, { value: '9_down', label: '初三下册' },
+    { value: '10_up', label: '高一上册' }, { value: '10_down', label: '高一下册' },
+    { value: '11_up', label: '高二上册' }, { value: '11_down', label: '高二下册' },
+    { value: '12_up', label: '高三上册' }, { value: '12_down', label: '高三下册' },
   ];
 
   return (

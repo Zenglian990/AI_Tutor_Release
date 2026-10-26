@@ -49,3 +49,20 @@ test('RAG Where Clause — handles Humanities & Geography (人文地理) excepti
   assert.ok(geography8.includes("人文地理下册"), "Grade 8 geography filter must match 人文地理下册");
   assert.ok(!geography8.includes("人文地理上册"), "Grade 8 geography filter must NOT match 人文地理上册");
 });
+
+test('RAG Where Clause — handles High School (Grades 10-12) correctly', () => {
+  const math10 = buildLanceDBWhereClause('10_up', '数学');
+  console.log(`Grade 10 math clause: "${math10}"`);
+  assert.ok(math10.includes("高一") || math10.includes("必修一") || math10.includes("必修 第一册"));
+  assert.ok(math10.includes("数学"));
+
+  const physics11 = buildLanceDBWhereClause('11_up', '物理');
+  console.log(`Grade 11 physics clause: "${physics11}"`);
+  assert.ok(physics11.includes("高二") || physics11.includes("选择性必修 第一册"));
+  assert.ok(physics11.includes("物理"));
+
+  const chemistry12 = buildLanceDBWhereClause('12_down', '化学');
+  console.log(`Grade 12 chemistry clause: "${chemistry12}"`);
+  assert.ok(chemistry12.includes("高三") || chemistry12.includes("总复习") || chemistry12.includes("选择性必修 第三册"));
+  assert.ok(chemistry12.includes("化学"));
+});

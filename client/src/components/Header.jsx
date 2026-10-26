@@ -13,6 +13,9 @@ const GRADES = [
   { value: '7_up', label: '初一上册' }, { value: '7_down', label: '初一下册' },
   { value: '8_up', label: '初二上册' }, { value: '8_down', label: '初二下册' },
   { value: '9_up', label: '初三上册' }, { value: '9_down', label: '初三下册' },
+  { value: '10_up', label: '高一上册' }, { value: '10_down', label: '高一下册' },
+  { value: '11_up', label: '高二上册' }, { value: '11_down', label: '高二下册' },
+  { value: '12_up', label: '高三上册' }, { value: '12_down', label: '高三下册' },
 ];
 
 const SUBJECTS = [
@@ -21,7 +24,7 @@ const SUBJECTS = [
   { value: '英语', label: '英语' }, { value: '物理', label: '物理' },
   { value: '化学', label: '化学' }, { value: '生物', label: '生物学' },
   { value: '历史', label: '历史' }, { value: '地理', label: '地理' },
-  { value: '道德与法治', label: '道法' },
+  { value: '道德与法治', label: '道法/思政' },
 ];
 
 function getValidSubjectsForGrade(grade) {
@@ -71,6 +74,21 @@ function getValidSubjectsForGrade(grade) {
       { value: '历史', label: '历史' },
       { value: '物理', label: '物理' },
       { value: '化学', label: '化学' },
+    ];
+  }
+  const isHighSchool = ['10', '11', '12'].some(num => gradeStr.startsWith(num));
+  if (isHighSchool) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '数学', label: '数学' },
+      { value: '物理', label: '物理' },
+      { value: '化学', label: '化学' },
+      { value: '生物', label: '生物学' },
+      { value: '语文', label: '语文' },
+      { value: '英语', label: '英语' },
+      { value: '历史', label: '历史' },
+      { value: '地理', label: '地理' },
+      { value: '道德与法治', label: '思想政治' },
     ];
   }
   return SUBJECTS;
@@ -136,7 +154,7 @@ export default function Header({
         </div>
         <div className="header-brand">
           <h1>{getTranslation(language, 'app.title')}</h1>
-          <span className="brand-badge">人教版 1-9年级</span>
+          <span className="brand-badge">{['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) ? '人教版 高中全科' : '人教版 1-12年级 (全学段)'}</span>
         </div>
       </div>
 

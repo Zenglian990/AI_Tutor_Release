@@ -292,8 +292,17 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {/* ⚡ 60秒趣味口算天天练 */}
-        {onOpenMentalMath && (
+        {/* 🎯 高考高频押题密卷 (高中阶段特化) vs ⚡ 60秒趣味口算天天练 (小初阶段) */}
+        {['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) && onOpenTest ? (
+          <div className="action-card" onClick={onOpenTest} role="button" tabIndex={0} style={{ borderColor: 'rgba(239, 68, 68, 0.4)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🎯</span>
+              <span className="action-card-name" style={{ color: '#f87171' }}>高考高频押题密卷</span>
+            </div>
+            <p className="action-card-desc">历年高考高频母题与核心题眼精准提炼，全真高考步骤采分点评分</p>
+            <div className="action-card-cta" style={{ color: '#f87171' }}>开考押题卷 →</div>
+          </div>
+        ) : onOpenMentalMath ? (
           <div className="action-card" onClick={onOpenMentalMath} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(16, 185, 129, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">⚡</span>
@@ -302,7 +311,7 @@ export default function WelcomeDashboard({
             <p className="action-card-desc">1-9年级自适应速算冲刺，移动端九宫格大键盘，连对暴击获EXP</p>
             <div className="action-card-cta" style={{ color: '#38bdf8' }}>口算冲刺 →</div>
           </div>
-        )}
+        ) : null}
 
         {/* 📖 中考数理化必备公式定理速查宝典 */}
         {onOpenFormulaHandbook && (
@@ -311,7 +320,7 @@ export default function WelcomeDashboard({
               <span className="action-card-icon">📖</span>
               <span className="action-card-name" style={{ color: '#c084fc' }}>数理化公式定理宝典</span>
             </div>
-            <p className="action-card-desc">代数几何、物理力电浮力、化学口诀离线秒查，一键复制提问</p>
+            <p className="action-card-desc">{['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) ? '导数圆锥曲线、万有引力动量电磁、平衡Kp与电化学离线速查' : '代数几何、物理力电浮力、化学口诀离线秒查，一键复制提问'}</p>
             <div className="action-card-cta" style={{ color: '#c084fc' }}>速查宝典 →</div>
           </div>
         )}

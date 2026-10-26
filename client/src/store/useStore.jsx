@@ -16,8 +16,12 @@ const GRADE_MAP = {
   '7_up': '初一上册', '7_down': '初一下册',
   '8_up': '初二上册', '8_down': '初二下册',
   '9_up': '初三上册', '9_down': '初三下册',
+  '10_up': '高一上册', '10_down': '高一下册',
+  '11_up': '高二上册', '11_down': '高二下册',
+  '12_up': '高三上册', '12_down': '高三下册',
   '1': '一年级', '2': '二年级', '3': '三年级', '4': '四年级', '5': '五年级', '6': '六年级',
-  '7': '初一', '8': '初二', '9': '初三'
+  '7': '初一', '8': '初二', '9': '初三',
+  '10': '高一', '11': '高二', '12': '高三'
 };
 
 export function formatGrade(grade) {
@@ -281,11 +285,14 @@ const migrateGrade = (g) => {
     '七年级上册': '7_up', '七年级下册': '7_down',
     '八年级上册': '8_up', '八年级下册': '8_down',
     '九年级上册': '9_up', '九年级下册': '9_down',
+    '高一上册': '10_up', '高一下册': '10_down',
+    '高二上册': '11_up', '高二下册': '11_down',
+    '高三上册': '12_up', '高三下册': '12_down',
   };
   if (legacyMap[sg]) return legacyMap[sg];
   
-  // If it's a raw number 1-9 without '_', append '_up'
-  if (/^[1-9]$/.test(sg)) return sg + '_up';
+  // If it's a raw number 1-12 without '_', append '_up'
+  if (/^(?:[1-9]|1[0-2])$/.test(sg)) return sg + '_up';
   
   return sg;
 };

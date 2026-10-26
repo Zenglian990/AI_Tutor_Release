@@ -18,6 +18,9 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
       '7_up': '七年级/初一上册', '7_down': '七年级/初一下册',
       '8_up': '八年级/初二上册', '8_down': '八年级/初二下册',
       '9_up': '九年级/初三上册', '9_down': '九年级/初三下册',
+      '10_up': '高一上册', '10_down': '高一下册',
+      '11_up': '高二上册', '11_down': '高二下册',
+      '12_up': '高三上册', '12_down': '高三下册',
     };
     return maps[grade] || '通用课本';
   };

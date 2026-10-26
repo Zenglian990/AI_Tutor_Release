@@ -5,7 +5,10 @@ const logger = require('../services/logger');
 const GRADE_ALIASES = {
   '1': ['一年级'], '2': ['二年级'], '3': ['三年级'],
   '4': ['四年级'], '5': ['五年级'], '6': ['六年级'],
-  '7': ['初一'], '8': ['初二'], '9': ['初三']
+  '7': ['初一'], '8': ['初二'], '9': ['初三'],
+  '10': ['高一', '高中一年级'],
+  '11': ['高二', '高中二年级'],
+  '12': ['高三', '高中三年级']
 };
 
 let templates = {};
@@ -47,6 +50,11 @@ const FALLBACK_SYSTEM_GUIDELINES = {
      【绝对禁止】：在学生作答之前，绝对不能输出 ### 💡【步骤拆解与锦囊】 和 ### 🔥【举一反三微练过关】！只有等学生输入第一步答案后，再分步推进指导！
 3. 思维导图强制渲染：只要提问涉及复杂的概念关系、公式推导关联、实验流程或系统结构，请务必使用 Markdown 的 \`\`\`mermaid 代码块（使用 mindmap 或 graph TD）画出结构清晰的思维脑图，以便学生结构化记忆。
 4. 在推导或解答步骤中，请穿插亲切自然的学霸式口语化过渡说明（如“我们通过通分来化简这个常数项”、“注意这里需要提取二次项系数a”等），以便于理解。`,
+  GRADE_10_12: `2. 高考特级名师与模型突破教练：针对高一到高三学生（面临新高考选拔），语气专业严谨、高屋建瓴、直指本质（像清北名师/特级高考命题教练）。
+   - 答疑与概念讲解时，采用规范的高阶四模块（### 🎯【高考题眼与命题意图穿透】、### ✏️【破局模型与草稿支架】、### 💡【高考标准采分点书写与步骤锦囊】、### 🔥【高考同源变式与压轴突破】）。
+   - ⚠️【出题考核/挑战题红线】：首次面对新题或考核，首轮强制仅输出【🎯高考题眼与命题意图穿透】和【✏️破局模型与草稿支架】，严禁直接砸出全解！引导学生写出关键方程后分步解锁。
+3. 结构化建模与思维导图：跨章节综合（数形结合、微积分思想、动量能量综合）强制使用 \\\`\\\`\\\`mermaid 绘制结构化知识拓扑或模型推导流程图。
+4. 考点规范与答题踩点意识：文科强调专业术语踩点与逻辑自洽，理科强调规范方程依据与边界条件检验，公式严格使用规范 LaTeX。`,
   GRADE_DEFAULT: `2. 通俗易懂：用大白话解释复杂概念，循序渐进地引导学生思考。
 3. 知识延伸：适度扩展相关的考点或易错点，帮助举一反三。
 4. 鼓励式教学：语气要温和，多鼓励学生提问。
@@ -128,6 +136,8 @@ function getPromptGuidelines(grade, socratic) {
     base += getTemplateValue('GRADE_4_6'); // 4-6年级使用启发引导模式
   } else if (gradeNum >= 7 && gradeNum <= 9) {
     base += getTemplateValue('GRADE_7_9'); // 7-9年级升级为极致逻辑与中考学霸导师模式
+  } else if (gradeNum >= 10 && gradeNum <= 12) {
+    base += getTemplateValue('GRADE_10_12'); // 10-12年级升级为高考冲刺与深度模型突破名师模式
   } else {
     base += getTemplateValue('GRADE_DEFAULT');
   }
@@ -151,8 +161,8 @@ function getPromptGuidelines(grade, socratic) {
 function validateGradeIdentifier(raw) {
   if (!raw) return null;
   const str = String(raw).trim();
-  // Only allow known patterns: e.g. "3_up", "7_down", "5"
-  if (/^[1-9](?:_(?:up|down))?$/.test(str)) {
+  // Only allow known patterns: e.g. "3_up", "7_down", "10_up", "5"
+  if (/^(?:[1-9]|1[0-2])(?:_(?:up|down))?$/.test(str)) {
     return str;
   }
   return null;
@@ -173,8 +183,9 @@ function buildLanceDBWhereClause(grade, subject, edition) {
     '生物学': ['生物学', '生物', 'Biology'],
     '历史': ['历史', 'History'],
     '地理': ['地理', 'Geography'],
-    '政治': ['政治', '思想品德', '道德与法治', 'Politics'],
-    '道德与法治': ['道德与法治', '政治', 'Politics'],
+    '政治': ['思想政治', '政治', '思想品德', '道德与法治', 'Politics'],
+    '思想政治': ['思想政治', '道德与法治', '政治', 'Politics'],
+    '道德与法治': ['道德与法治', '思想政治', '政治', 'Politics'],
     '科学': ['科学', 'Science'],
     // '体育与健康' contains '体育' — '%体育%' already matches both
     '体育': ['体育与健康', '体育', 'Physical Education', 'PE'],
@@ -204,19 +215,21 @@ function buildLanceDBWhereClause(grade, subject, edition) {
         gradeNum = parseInt(validGrade);
       }
     } else {
-      // Fallback: try to parse numeric prefix only if it is a single digit (1-9)
-      const match = String(grade).match(/^([1-9])/);
+      // Fallback: try to parse numeric prefix
+      const match = String(grade).match(/^([1-9]|1[0-2])/);
       if (match) gradeNum = parseInt(match[1]);
     }
 
-    if (gradeNum && gradeNum >= 1 && gradeNum <= 9) {
+    if (gradeNum && gradeNum >= 1 && gradeNum <= 12) {
       const gradeConditions = [];
-      const numToWords = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+      const numToWords = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
       const word = numToWords[gradeNum];
 
-      // Exact match for the grade in the filename to avoid over-broad matching (e.g. '%初中%')
-      gradeConditions.push(`source LIKE '%${word}年级%'`);
-      gradeConditions.push(`source LIKE '%${gradeNum}年级%'`);
+      if (gradeNum <= 9) {
+        // Exact match for the grade in the filename to avoid over-broad matching (e.g. '%初中%')
+        gradeConditions.push(`source LIKE '%${word}年级%'`);
+        gradeConditions.push(`source LIKE '%${gradeNum}年级%'`);
+      }
 
       if (gradeNum === 7) {
         gradeConditions.push(`source LIKE '%初一%'`, `source LIKE '%初中一年级%'`);
@@ -228,6 +241,12 @@ function buildLanceDBWhereClause(grade, subject, edition) {
         gradeConditions.push(`source LIKE '%人文地理下册%'`);
       } else if (gradeNum === 9) {
         gradeConditions.push(`source LIKE '%初三%'`, `source LIKE '%初中三年级%'`);
+      } else if (gradeNum === 10) {
+        gradeConditions.push(`source LIKE '%高一%'`, `source LIKE '%高中一年级%'`, `source LIKE '%必修一%'`, `source LIKE '%必修 第一册%'`, `source LIKE '%必修第一册%'`);
+      } else if (gradeNum === 11) {
+        gradeConditions.push(`source LIKE '%高二%'`, `source LIKE '%高中二年级%'`, `source LIKE '%选择性必修 第一册%'`, `source LIKE '%选择性必修第一册%'`, `source LIKE '%选择性必修 第二册%'`, `source LIKE '%选择性必修第二册%'`);
+      } else if (gradeNum === 12) {
+        gradeConditions.push(`source LIKE '%高三%'`, `source LIKE '%高中三年级%'`, `source LIKE '%选择性必修 第三册%'`, `source LIKE '%选择性必修第三册%'`, `source LIKE '%总复习%'`, `source LIKE '%高考%'`);
       }
 
       let gradeClause = `(${gradeConditions.join(' OR ')})`;
@@ -235,7 +254,15 @@ function buildLanceDBWhereClause(grade, subject, edition) {
       // Precise volume matching (with support for full-year volumes)
       const volChar = volume === 'up' ? '上' : (volume === 'down' ? '下' : '');
       if (volChar) {
-        conditions.push(`(${gradeClause} AND (source LIKE '%${volChar}册%' OR source LIKE '%全一册%'))`);
+        if (gradeNum >= 10) {
+          if (volume === 'up') {
+            conditions.push(`(${gradeClause} AND (source LIKE '%上%' OR source LIKE '%第一册%' OR source LIKE '%必修一%' OR source LIKE '%全一册%'))`);
+          } else {
+            conditions.push(`(${gradeClause} AND (source LIKE '%下%' OR source LIKE '%第二册%' OR source LIKE '%第三册%' OR source LIKE '%必修二%' OR source LIKE '%全一册%'))`);
+          }
+        } else {
+          conditions.push(`(${gradeClause} AND (source LIKE '%${volChar}册%' OR source LIKE '%全一册%'))`);
+        }
       } else {
         conditions.push(gradeClause);
       }
@@ -338,7 +365,7 @@ function correctPageOffset(sourceName, pageNum) {
   const page = typeof pageNum === 'bigint' ? Number(pageNum) : Number(pageNum);
   if (isNaN(page)) return { source: sourceName, page: pageNum };
 
-  // 判断是否为初中教材（初一/初二/初三/七年级/八年级/九年级/g7/g8/g9）
+  // 判断是否为初中/高中教材
   const sourceLower = String(sourceName).toLowerCase();
   const isJuniorHigh = sourceLower.includes('初') || 
                        sourceLower.includes('七年级') || 
@@ -348,11 +375,18 @@ function correctPageOffset(sourceName, pageNum) {
                        sourceLower.includes('g8') ||
                        sourceLower.includes('g9');
 
+  const isHighSchool = sourceLower.includes('高') ||
+                       sourceLower.includes('必修') ||
+                       sourceLower.includes('选择性必修') ||
+                       sourceLower.includes('g10') ||
+                       sourceLower.includes('g11') ||
+                       sourceLower.includes('g12');
+
   // TODO: Future enhancement - Read offset dynamically from PDF metadata or a mapping config.
   // For now, use heuristics based on publisher/edition if available in filename.
-  let offset = isJuniorHigh ? 6 : 5;
+  let offset = (isHighSchool || isJuniorHigh) ? 6 : 5;
   if (sourceLower.includes('人教') || sourceLower.includes('rj')) {
-    offset = isJuniorHigh ? 6 : 5;
+    offset = (isHighSchool || isJuniorHigh) ? 6 : 5;
   } else if (sourceLower.includes('西师大') || sourceLower.includes('西南师大')) {
     offset = 4; // example heuristic
   }

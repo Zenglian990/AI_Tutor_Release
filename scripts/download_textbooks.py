@@ -21,7 +21,8 @@ import download_utils
 TARGET_GRADES = [
     "Grade 1 (小学一年级)", "Grade 2 (小学二年级)", "Grade 3 (小学三年级)", 
     "Grade 4 (小学四年级)", "Grade 5 (小学五年级)", "Grade 6 (小学六年级)",
-    "Grade 7 (初中一年级)", "Grade 8 (初中二年级)", "Grade 9 (初中三年级)"
+    "Grade 7 (初中一年级)", "Grade 8 (初中二年级)", "Grade 9 (初中三年级)",
+    "Grade 10 (高中一年级)", "Grade 11 (高中二年级)", "Grade 12 (高中三年级)"
 ]
 BASE_DIR = "data/textbooks"
 

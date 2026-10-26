@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.5.5_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.0_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Google_Cloud_Run-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.5.5)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.0)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.5.5 Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.6.0 Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,11 +34,11 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [AI_Tutor_v1.5.5.apk (~10.4MB · Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
-- **📥 Stable Fallback**: [AI_Tutor_v1.5.4.apk (~10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.4/AI_Tutor_v1.5.4.apk)
-- **✨ v1.5.5 Major Milestone Upgrades (Full-Feature Flagship Stability)**:
+- **📥 Direct APK Download**: [AI_Tutor_v1.6.0.apk (~10.4MB · Dual-Engine Disaster Recovery·Jev Decision·Factory Auth Edition)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk)
+- **📥 Stable Fallback**: [AI_Tutor_v1.5.5.apk (~10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
+- **✨ v1.6.0 Major Milestone Upgrades (Full-Feature Flagship Stability)**:
   - **⚡ TypeSafe Jev System One Ultra-Fast Decision Engine**:
-    - 70ms millisecond-level intention filtering for chitchat/greeting queries (0 Token cost); adaptive dynamic prompt routing across grades 1-9.
+    - 70ms millisecond-level intention filtering for chitchat/greeting queries (0 Token cost); adaptive dynamic prompt routing across grades 1-12.
   - **🤖 DeepSeek V3 / R1 & Google Gemini 2.5 Flash High-Speed Dual-Channel Disaster Recovery**:
     - Ultra-fast domestic direct connection with latency under 340ms, seamlessly backed by Gemini's world-class multimodal visual solver.
   - **🔐 Factory-Ready Authentication & Console One-Click Reset**:
