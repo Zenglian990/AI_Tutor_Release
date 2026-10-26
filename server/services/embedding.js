@@ -479,20 +479,6 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     }
   }
 
-  // Check if directly routing to domestic / OpenAI-compatible models (DeepSeek, Qwen-VL, GLM-4V, etc.)
-  const isOpenAiCompatible = currentModel.toLowerCase().includes('deepseek') ||
-                             currentModel.toLowerCase().includes('qwen') ||
-                             currentModel.toLowerCase().includes('glm') ||
-                             currentModel.toLowerCase().includes('step-') ||
-                             currentModel.startsWith('Qwen/') ||
-                             currentModel.startsWith('Pro/');
-  let url = buildURL(currentModel);
-  const urlType = url.includes('streamGenerateContent') ? 'stream' : (url.includes('embedContent') ? 'embed' : 'chat');
-
-  if (isOpenAiCompatible && (urlType === 'chat' || urlType === 'stream')) {
-    return await fetchDeepSeek(urlType, options, currentModel);
-  }
-
   // Fallback check: if request has image and the fallback model CANNOT see images, skip text-only fallback
   const fallbackModel = process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
   const fallbackCanSeeImage = isOpenAiVisionModel(fallbackModel);
@@ -508,6 +494,30 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
   // Strict per-request isolation: NEVER push clientCustomKey into the shared server API_KEYS pool
   const validKeys = clientCustomKey ? [clientCustomKey] : API_KEYS.filter(k => !invalidKeys.has(k));
+
+  // Check if directly routing to domestic / OpenAI-compatible models (DeepSeek, Qwen-VL, GLM-4V, etc.)
+  const isOpenAiCompatible = currentModel.toLowerCase().includes('deepseek') ||
+                             currentModel.toLowerCase().includes('qwen') ||
+                             currentModel.toLowerCase().includes('glm') ||
+                             currentModel.toLowerCase().includes('step-') ||
+                             currentModel.startsWith('Qwen/') ||
+                             currentModel.startsWith('Pro/');
+  let url = buildURL(currentModel);
+  const urlType = url.includes('streamGenerateContent') ? 'stream' : (url.includes('embedContent') ? 'embed' : 'chat');
+
+  if (isOpenAiCompatible && (urlType === 'chat' || urlType === 'stream')) {
+    try {
+      return await fetchDeepSeek(urlType, options, currentModel);
+    } catch (dsErr) {
+      if (validKeys.length > 0) {
+        logger.warn(`[Gateway] ${currentModel} failed (${dsErr.message}). Automatically falling back to Gemini...`);
+        currentModel = CHAT_MODEL || 'gemini-2.5-flash';
+        url = buildURL(currentModel);
+      } else {
+        throw dsErr;
+      }
+    }
+  }
 
   if (validKeys.length === 0) {
     if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek) {

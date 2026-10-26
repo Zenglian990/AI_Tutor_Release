@@ -196,9 +196,11 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
         let errorMsg = '服务器流式响应出错，请稍后重试。';
         const errStr = (e && e.message) ? e.message : String(e);
         if (errStr.includes('QUOTA_EXHAUSTED') || errStr.includes('429')) {
-          errorMsg = '今日 AI 调用额度已达上限。请稍后再试，或点击右上角设置 (⚙️) 填入您的自定义 Gemini Key。';
-        } else if (/API_KEY|auth|invalid|400|403|not configured/i.test(errStr)) {
-          errorMsg = 'AI 密钥未配置或已失效。请在云端控制台更新密钥，或点击右上角设置 (⚙️) 填入您的自定义 Gemini Key。';
+          errorMsg = '今日 AI 调用额度已达上限。请稍后再试，或在设置 (⚙️) 中填入可用的自定义 API Key。';
+        } else if (/insufficient_quota|balance|402/i.test(errStr)) {
+          errorMsg = '当前 AI 大模型账户余额不足 (402)。请充值或点击右上角设置 (⚙️) 切换为 Google Gemini 通道。';
+        } else if (/API_KEY|auth|invalid|400|403|not configured|缺少.*Key/i.test(errStr)) {
+          errorMsg = `AI 密钥配置异常或当前所选模型未配置有效 Key。请点击右上角设置 (⚙️) 检查对应模型的密钥，或切换为已测通的模型通道。`;
         }
         res.write(`data: ${JSON.stringify({ error: errorMsg, details: NODE_ENV === 'development' ? e.message : undefined })}\n\n`);
         res.end();

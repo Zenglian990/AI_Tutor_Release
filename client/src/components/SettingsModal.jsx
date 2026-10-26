@@ -1074,6 +1074,67 @@ export default function SettingsModal({
                 </div>
               </div>
 
+              {/* Active Engine Indicator & Quick Switcher */}
+              <div
+                style={{
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '10px'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>当前主界面问答调用引擎：</div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                    {chatModel.includes('gemini') ? '🔮 Google Gemini 2.5 Flash' : (chatModel.includes('deepseek') ? '🚀 DeepSeek-V3 文本模式' : (chatModel.includes('Qwen') ? '👑 通义千问 Qwen2.5-VL' : chatModel))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatModel('gemini-2.5-flash');
+                      localStorage.setItem('ai_tutor_chat_model', 'gemini-2.5-flash');
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: chatModel === 'gemini-2.5-flash' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.15)',
+                      background: chatModel === 'gemini-2.5-flash' ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)',
+                      color: chatModel === 'gemini-2.5-flash' ? '#e9d5ff' : '#94a3b8',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    切为 Gemini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatModel('deepseek-chat');
+                      localStorage.setItem('ai_tutor_chat_model', 'deepseek-chat');
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: chatModel === 'deepseek-chat' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
+                      background: chatModel === 'deepseek-chat' ? 'rgba(56,189,248,0.3)' : 'rgba(255,255,255,0.05)',
+                      color: chatModel === 'deepseek-chat' ? '#bae6fd' : '#94a3b8',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    切为 DeepSeek
+                  </button>
+                </div>
+              </div>
+
               {/* Card 0: 硅基流动 SiliconFlow API 密钥 (国产多模态首选) */}
               <div
                 style={{
