@@ -8,6 +8,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
+# Ensure build essentials and python3 exist for node-gyp native sqlite3 compilation
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy backend dependency declarations
 COPY package*.json ./
 
