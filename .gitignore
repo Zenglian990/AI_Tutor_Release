@@ -9,9 +9,10 @@ node_modules/
 *.env
 
 # Database files
-data/
+/data/
 !data/canonical_questions.db.gz
 !data/textbooks_k9_seed.json.gz
+!client/src/data/
 *.db
 *.db-journal
 *.db-wal

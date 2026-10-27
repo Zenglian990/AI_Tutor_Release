@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import { initMermaid, sanitizeMermaid, stringHash } from '../utils/mermaid_helper';
 import ExamRoomModal from './ExamRoomModal';
 import ScratchpadModal from './ScratchpadModal';
+import { getLocalChapters } from '../utils/chapterData';
 
 initMermaid();
 
@@ -245,23 +246,33 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   // 单元测试时拉取章节目录
   useEffect(() => {
     if (testType === 'unit' && stage === 'setup') {
-      setChaptersLoading(true);
+      const localList = getLocalChapters(currentGrade, selectedSubject, currentEdition);
+      if (localList && localList.length > 0) {
+        setChapters(localList);
+        setSelectedChapterId(localList[0].id);
+      }
+      setChaptersLoading(!localList || localList.length === 0);
       authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(selectedSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
         .then(res => {
           if (!res.ok) throw new Error('网络异常或验证失败，无法加载章节');
           return res.json();
         })
         .then(data => {
-          const list = data.chapters || [];
+          const list = (data.chapters && data.chapters.length > 0) ? data.chapters : (localList || []);
           setChapters(list);
           if (list.length > 0) {
-            setSelectedChapterId(list[0].id);
+            setSelectedChapterId(prev => prev || list[0].id);
           }
           setChaptersLoading(false);
         })
         .catch(err => {
-          console.error("Error fetching chapters:", err);
-          alert(err.message || '获取章节失败，请重新登录或重试');
+          console.warn("Could not sync chapters from cloud, using local fallback:", err);
+          if (localList && localList.length > 0) {
+            setChapters(localList);
+            setSelectedChapterId(prev => prev || localList[0].id);
+          } else {
+            alert(err.message || '获取章节失败，请重新登录或重试');
+          }
           setChaptersLoading(false);
         });
     }

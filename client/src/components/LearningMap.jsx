@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getLocalChapters } from '../utils/chapterData';
 
 export default function LearningMap({ currentGrade, currentSubject, currentEdition, currentProfileName, onSelectChapter, onClose, authFetch }) {
-  const [chapters, setChapters] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Initialize with local curriculum chapters to guarantee zero waiting & offline instant display
+  const [chapters, setChapters] = useState(() => {
+    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    return (local || []).map(c => ({ ...c, status: 'not_started', progress_pct: 0 }));
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [unlockAll, setUnlockAll] = useState(false);
 
@@ -26,7 +31,14 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
   };
 
   const fetchChapters = () => {
-    setLoading(true);
+    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    if (!chapters || chapters.length === 0) {
+      if (local && local.length > 0) {
+        setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+      } else {
+        setLoading(true);
+      }
+    }
     setError(null);
     authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
       .then(res => {
@@ -34,12 +46,23 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
         return res.json();
       })
       .then(data => {
-        setChapters(data.chapters || []);
+        if (data.chapters && data.chapters.length > 0) {
+          setChapters(data.chapters);
+        } else if (local && local.length > 0) {
+          // Graceful fallback to client curriculum data if server returns empty or is updating
+          setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+        } else {
+          setChapters([]);
+        }
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error fetching chapters:", err);
-        setError(err.message);
+        console.warn("Could not sync chapters from cloud, using local curriculum:", err);
+        if (local && local.length > 0) {
+          setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+        } else {
+          setError(err.message);
+        }
         setLoading(false);
       });
   };
@@ -50,6 +73,10 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
   }, [fetchChapters]);
 
   useEffect(() => {
+    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    if (local && local.length > 0) {
+      setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+    }
     fetchChapters();
   }, [currentGrade, currentSubject, currentEdition]);
 
