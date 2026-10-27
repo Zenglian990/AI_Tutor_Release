@@ -1,0 +1,35 @@
+# .gcloudignore - Google Cloud Build Upload Rules
+.gcloudignore
+.git
+.gitignore
+
+# Dependencies (built freshly inside container)
+node_modules/
+client/node_modules/
+
+# Secrets
+.env
+.env.*
+
+# Logs & temp
+logs/
+scratch/
+temp/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local dynamic databases & large local training corpora (keep seed files!)
+data/*.db
+data/mistakes.db*
+data/textbooks/
+data/backups/
+data/lancedb/
+data/*.jsonl
+data/Math_23K.json
+data/cmmath.json
+data/szzk*.json
+data/tal*.jsonl
+data/valid.ape.json
