@@ -105,7 +105,7 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
           <div className="map-empty">
             <span className="empty-icon">🌌</span>
             <h3>暂无章节地图</h3>
-            <p>此年级和科目暂未配置章节关卡，快切换到【三年级上册数学】或【初一上册数学】来挑战吧！</p>
+            <p>当前科目章节正在云端智能同步中。您可以直接返回主界面向 AI 私教提问、拍照解题或进行高考/中考全真模考！</p>
           </div>
         ) : (
           <div className="map-road-wrapper">

@@ -65,11 +65,15 @@ export default function WelcomeDashboard({
   let stageIcon = '📐';
   let stageDescription = '四两拨千斤名师支架 · 题眼穿透 · 中考母题通关';
 
-  if (gradeStr.startsWith('1') || gradeStr.startsWith('2') || gradeStr.startsWith('3')) {
+  if (['10', '11', '12'].some(num => gradeStr.startsWith(num))) {
+    stageName = '高中冲刺与高考拔高';
+    stageIcon = '🎓';
+    stageDescription = '高考核心考点精讲 · 步骤采分点剖析 · 导数与圆锥曲线大题突破';
+  } else if (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) {
     stageName = '小学低段启蒙';
     stageIcon = '🎈';
     stageDescription = '情境化趣味探险 · 具象比喻 · 保护学习兴趣';
-  } else if (gradeStr.startsWith('4') || gradeStr.startsWith('5') || gradeStr.startsWith('6')) {
+  } else if (['4_', '5_', '6_'].some(n => gradeStr.startsWith(n)) || ['4', '5', '6'].includes(gradeStr)) {
     stageName = '小学高段探究';
     stageIcon = '📘';
     stageDescription = '思维习惯养成 · 规律自主总结 · 循序渐进';
@@ -214,12 +218,17 @@ export default function WelcomeDashboard({
           let motherDesc = '精选必考母题模型，掌握解题钥匙，举一反三';
           let motherCta = '攻克母题 →';
 
-          if (['1', '2', '3'].some(n => gradeStr.startsWith(n))) {
+          if (['10', '11', '12'].some(n => gradeStr.startsWith(n))) {
+            motherPrompt = `老师，请针对当前【${gradeLabel} · ${subjectLabel}】，为我精析一个高考高频必考核心母题，详细点拨第一步动笔支架、步骤给分踩分点，并出一道高考试题变式题考考我！`;
+            motherTitle = '高考母题精析';
+            motherDesc = '高频必考题型精析，步骤采分点剖析，举一反三';
+            motherCta = '突破高考母题 →';
+          } else if (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) {
             motherPrompt = `老师，请针对当前【${gradeLabel} · ${subjectLabel}】，用生动有趣的比喻和日常生活小例子，为我讲透一个单元必会的基础核心题型，并出一道好玩的小闯关题考考我！`;
             motherTitle = '趣味题型点拨';
             motherDesc = '生动比喻通俗讲透，化身小侦探轻松闯关';
             motherCta = '趣味闯关 →';
-          } else if (['4', '5', '6'].some(n => gradeStr.startsWith(n))) {
+          } else if (['4_', '5_', '6_'].some(n => gradeStr.startsWith(n)) || ['4', '5', '6'].includes(gradeStr)) {
             motherPrompt = `老师，请针对当前【${gradeLabel} · ${subjectLabel}】，为我精讲一个期末高频考查的经典母题模型，引导我总结解题规律与草稿验算方法，并出一道微测题考考我！`;
             motherTitle = '期末母题点拨';
             motherDesc = '精选期末必考母题，梳理规律，举一反三';
@@ -248,11 +257,15 @@ export default function WelcomeDashboard({
           let examDesc = '中考真题规格沉浸式倒计时，名师步骤赋分与压轴题剖析';
           let examCta = '进入中考考场 →';
 
-          if (['1', '2', '3'].some(n => gradeStr.startsWith(n))) {
+          if (['10', '11', '12'].some(n => gradeStr.startsWith(n))) {
+            examTitle = '高考全真模考';
+            examDesc = '高考全国卷全真试题规格，沉浸式倒计时与规范解题步骤给分';
+            examCta = '进入高考考场 →';
+          } else if (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) {
             examTitle = '单元模拟闯关';
             examDesc = '课本单元随堂小测，生动评分与趣味名师讲解';
             examCta = '开始小测 →';
-          } else if (['4', '5', '6'].some(n => gradeStr.startsWith(n))) {
+          } else if (['4_', '5_', '6_'].some(n => gradeStr.startsWith(n)) || ['4', '5', '6'].includes(gradeStr)) {
             examTitle = '名校期末模考';
             examDesc = '名校期末全真试卷规格，沉浸式倒计时与规范解题给分';
             examCta = '进入期末考场 →';
@@ -270,7 +283,7 @@ export default function WelcomeDashboard({
           );
         })()}
 
-        {onOpenManipulatives && ['1', '2', '3'].some(n => gradeStr.startsWith(n)) && (
+        {onOpenManipulatives && (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) && (
           <div className="action-card" onClick={onOpenManipulatives} role="button" tabIndex={0} style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">🎒</span>
@@ -281,7 +294,7 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {onOpenGeometrySandbox && ['7', '8', '9'].some(n => gradeStr.startsWith(n)) && (
+        {onOpenGeometrySandbox && (['7_', '8_', '9_'].some(n => gradeStr.startsWith(n)) || ['7', '8', '9'].includes(gradeStr)) && (
           <div className="action-card" onClick={onOpenGeometrySandbox} role="button" tabIndex={0} style={{ borderColor: 'rgba(37, 99, 235, 0.4)', background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">📐</span>

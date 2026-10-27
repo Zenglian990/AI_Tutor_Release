@@ -30,7 +30,23 @@ const SUBJECTS = [
 function getValidSubjectsForGrade(grade) {
   if (!grade) return SUBJECTS;
   const gradeStr = String(grade);
-  const isPrimary = ['1', '2', '3', '4', '5', '6'].some(num => gradeStr.startsWith(num));
+  const isHighSchool = ['10', '11', '12'].some(num => gradeStr.startsWith(num));
+  if (isHighSchool) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '数学', label: '数学' },
+      { value: '物理', label: '物理' },
+      { value: '化学', label: '化学' },
+      { value: '生物', label: '生物学' },
+      { value: '语文', label: '语文' },
+      { value: '英语', label: '英语' },
+      { value: '历史', label: '历史' },
+      { value: '地理', label: '地理' },
+      { value: '道德与法治', label: '思想政治' },
+    ];
+  }
+  const isPrimary = ['1_', '2_', '3_', '4_', '5_', '6_'].some(prefix => gradeStr.startsWith(prefix)) ||
+                    ['1', '2', '3', '4', '5', '6'].includes(gradeStr);
   if (isPrimary) {
     return [
       { value: '', label: '全部科目' },
@@ -74,21 +90,6 @@ function getValidSubjectsForGrade(grade) {
       { value: '历史', label: '历史' },
       { value: '物理', label: '物理' },
       { value: '化学', label: '化学' },
-    ];
-  }
-  const isHighSchool = ['10', '11', '12'].some(num => gradeStr.startsWith(num));
-  if (isHighSchool) {
-    return [
-      { value: '', label: '全部科目' },
-      { value: '数学', label: '数学' },
-      { value: '物理', label: '物理' },
-      { value: '化学', label: '化学' },
-      { value: '生物', label: '生物学' },
-      { value: '语文', label: '语文' },
-      { value: '英语', label: '英语' },
-      { value: '历史', label: '历史' },
-      { value: '地理', label: '地理' },
-      { value: '道德与法治', label: '思想政治' },
     ];
   }
   return SUBJECTS;

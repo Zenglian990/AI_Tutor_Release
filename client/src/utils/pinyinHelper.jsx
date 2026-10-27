@@ -8,10 +8,13 @@ import React from 'react';
 export function isLowerGrade(grade) {
   if (!grade) return false;
   const raw = String(grade).toLowerCase();
+  // 高中阶段（高一10、高二11、高三12）绝对不需要启蒙拼音
+  if (['10', '11', '12'].some(num => raw.startsWith(num)) || raw.includes('高')) return false;
   return (
-    raw.startsWith('1') ||
-    raw.startsWith('2') ||
-    raw.startsWith('3') ||
+    raw.startsWith('1_') ||
+    raw.startsWith('2_') ||
+    raw.startsWith('3_') ||
+    raw === '1' || raw === '2' || raw === '3' ||
     raw.includes('一年级') ||
     raw.includes('二年级') ||
     raw.includes('三年级')
