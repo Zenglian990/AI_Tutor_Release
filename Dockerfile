@@ -2,7 +2,8 @@
 # ZengLian AI Tutor v1.5.5 Production Container Image
 # Official Node.js 22 LTS (Debian Bookworm - with native C++ build tools)
 # ============================================================
-FROM node:22-bookworm
+# Use Google Cloud internal mirror for ultra-fast pulls inside Cloud Shell (avoids docker.io TCP stalls)
+FROM mirror.gcr.io/library/node:22-bookworm
 WORKDIR /app
 
 ENV NODE_ENV=production
