@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.0_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.2_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-谷歌云亚太极速直达-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.0)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.2)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.6.0 双通道容灾·Jev决策·出厂认证版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.6.2 三位一体认知·续学断点·苏格拉底旗舰版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,9 +34,17 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📦 最新版安装包直链下载**：[AI_Tutor_v1.6.0.apk (约 10.5MB · 高考高频押题·步骤采分点·全科公式宝典旗舰版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk)
-- **📦 稳定备用直链**：[AI_Tutor_v1.5.5.apk (约 10.4MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.5.5/AI_Tutor_v1.5.5.apk)
-- **✅ v1.6.0 重磅体验跃升 (1-12年级小初高全学科旗舰版)**：
+- **📦 最新版安装包直链下载**：[AI_Tutor_v1.6.2.apk (约 10.5MB · 三位一体认知架构·续学断点记忆·苏格拉底启发式旗舰版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
+- **📦 稳定备用直链**：[AI_Tutor_v1.6.1.apk (约 10.5MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.1/AI_Tutor_v1.6.1.apk)
+- **✅ v1.6.2 重磅体验跃升 (三位一体认知架构与断点续学旗舰版)**：
+  - **📍 学习断点记录与续学锚点引擎（免从头学起）**：
+    - 智能记住学生退出时的精确掌握进度、疑难卡点与后续教学目标；即便离开数天重新进入，秒级无缝续学，**绝不用每次从头讲起**！
+  - **🏛️ 苏格拉底启发式教学门禁机制 (Socratic Scaffolding Gate)**：
+    - 严守三阶段启发式推进（概念发现 ➔ 脚手架搭设 ➔ 反思巩固），拒绝直接倾倒答案，引导学生主动推导顿悟。
+  - **🧠 L1-L3 动态认知状态演化记忆引擎 (Auditable Cognitive State)**：
+    - 追踪学生掌握度细粒度分值（0.0 ~ 1.0），智能标记掌握/薄弱/断层，精准逆向回溯知识盲区。
+  - **🗺️ 多模态母题与几何函数可视化锚点**：
+    - 全等三角形、勾股定理、二次函数等核心考点挂载经典图示与解题母题。
   - **🎓 1-12年级小初高全学段教材向量库贯通**：
     - 新增全面入库人教版高中各科教材（高中语数英物化生政史地必修与选择性必修），1.7万+权威切片毫秒级精准检索。
   - **🎯 高考高频押题与必考经典母题密卷**：

@@ -144,7 +144,8 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '没有明确指明直角边和斜边就直接套用公式（若题中未说c是斜边，漏掉c是直角边的情况）。',
     teacherMnemonic: '勾三股四弦五，求第三边先看斜；题干未点谁是斜，必分两种分类答！',
     lifeAnalogy: '就像两个人从同一个路口一个向东走3米、一个向北走4米，他们之间的直线空中距离就是那条斜边（5米）。',
-    feynmanChallenge: '直角三角形两边长是 3 和 4，第三边是 5 对不对？错在哪里？'
+    feynmanChallenge: '直角三角形两边长是 3 和 4，第三边是 5 对不对？错在哪里？',
+    visualAnchor: '经典赵爽弦图：大正方形内嵌4个全等直角三角形与中心小正方形，几何拼图验证 a² + b² = c²。'
   },
   'math_quadratic_equation': {
     id: 'math_quadratic_equation',
@@ -170,7 +171,8 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '配方求顶点时提取 a 后，一次项未除以 a；对称轴公式 x = -b/(2a) 符号记错。',
     teacherMnemonic: '左加右减括号内（自变量移动反直觉），上加下减常数后；a定胖瘦与朝向，对称轴看-b/2a！',
     lifeAnalogy: '二次函数图像就像向空中投掷一枚篮球或喷泉水柱：到达最高点（顶点）前向上冲，过了对称轴就匀速下落，左右完全对称。',
-    feynmanChallenge: '为什么 y = (x-2)² 的图像不是往左移2个单位，而是往右移2个单位？请用表格带入几个数值解释为什么会“反直觉”！'
+    feynmanChallenge: '为什么 y = (x-2)² 的图像不是往左移2个单位，而是往右移2个单位？请用表格带入几个数值解释为什么会“反直觉”！',
+    visualAnchor: '抛物线标准草图：顶点 (h,k)、对称轴 x=h，开口朝上(a>0)或朝下(a<0)，与x轴交点看 Δ=b²-4ac。'
   },
   'math_linear_function': {
     id: 'math_linear_function',
@@ -183,7 +185,8 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '混淆k与b的几何意义；待定系数法求解析式时两点坐标代入计算错误。',
     teacherMnemonic: 'k正往上爬，k负往下滑；b就是你站在y轴上的起跑点！',
     lifeAnalogy: '一次函数是懒人走路——永远朝一个方向匀速前进，绝不拐弯。出租车起步价就是b，每公里加价就是斜率k。',
-    feynmanChallenge: '如果两条直线的k相同但b不同，这两条直线在坐标系里的位置关系是什么？为什么？'
+    feynmanChallenge: '如果两条直线的k相同但b不同，这两条直线在坐标系里的位置关系是什么？为什么？',
+    visualAnchor: '直角坐标系四象限走向：k>0从左下到右上，k<0从左上到右下；b>0交y轴正半轴，b<0交y轴负半轴。'
   },
   'math_congruent_triangles': {
     id: 'math_congruent_triangles',
@@ -196,7 +199,8 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '误用 SSA 判定全等，或找角平分线、高线对应关系时推导断链。',
     teacherMnemonic: '先找两个已知量，第三个量自然现；两边夹角才叫角(SAS)，边边对角(SSA)不能算！',
     lifeAnalogy: '全等就是影分身（克隆体，完全重合）；相似就是放大缩小。先在图中用红笔把已经相等的边和角打勾标记，就像拼图找匹配凹凸口。',
-    feynmanChallenge: '为什么两边以及其中一边的对角相等(SSA)不能保证两个三角形全等？试着用圆规在纸上画一画为什么会出现两种不同形状！'
+    feynmanChallenge: '为什么两边以及其中一边的对角相等(SSA)不能保证两个三角形全等？试着用圆规在纸上画一画为什么会出现两种不同形状！',
+    visualAnchor: '全等辅助线三大模型：①倍长中线法构造全等；②截长补短法构造线段和差；③角平分线向两边引垂线（垂线段相等）。'
   },
   'math_angle_parallel': {
     id: 'math_angle_parallel',
@@ -403,9 +407,34 @@ function formatGraphRAGPromptSection(diagnosis) {
   if (rootCauseNode.feynmanChallenge) {
     section += '- 🔄 费曼反向挑战探针：' + rootCauseNode.feynmanChallenge + '\n';
   }
+  if (rootCauseNode.visualAnchor) {
+    section += '- 📐 几何/物理关键视觉表征：' + rootCauseNode.visualAnchor + '\n';
+  }
   section += '- 教学引导指引：若学生在解题或推导中卡壳，请不要只在当前考点原地打转！请一语道破其底层的【' + rootCauseNode.name + '】概念断层，给出前置小锦囊或草稿纸自测，帮助学生打通因果链条！\n';
 
   return section;
+}
+
+function getKnowledgeNodeWithVisuals(nodeId) {
+  const node = KNOWLEDGE_GRAPH[nodeId];
+  if (!node) return null;
+  const prereqs = getPrerequisites(nodeId, 2);
+  const visuals = [];
+  if (node.visualAnchor) visuals.push({ nodeId: node.id, name: node.name, visualAnchor: node.visualAnchor });
+  prereqs.forEach(p => {
+    if (p.visualAnchor) visuals.push({ nodeId: p.id, name: p.name, visualAnchor: p.visualAnchor });
+  });
+  return {
+    ...node,
+    visuals,
+    prerequisites: prereqs
+  };
+}
+
+function linkQueryToMultimodalConcepts(query, subject = '') {
+  const matched = matchKnowledgeNodes(query, subject);
+  if (!matched || matched.length === 0) return [];
+  return matched.map(m => getKnowledgeNodeWithVisuals(m.id)).filter(Boolean);
 }
 
 module.exports = {
@@ -413,5 +442,7 @@ module.exports = {
   getPrerequisites,
   matchKnowledgeNodes,
   diagnosePrerequisiteKnowledge,
-  formatGraphRAGPromptSection
+  formatGraphRAGPromptSection,
+  getKnowledgeNodeWithVisuals,
+  linkQueryToMultimodalConcepts
 };

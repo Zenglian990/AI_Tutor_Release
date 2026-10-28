@@ -51,51 +51,50 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.6.1.apk
-          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.0/AI_Tutor_v1.6.0.apk -o ./AI_Tutor_v1.6.0.apk || true
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.6.2.apk
+          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.1/AI_Tutor_v1.6.1.apk -o ./AI_Tutor_v1.6.1.apk || true
           ls -lh ./AI_Tutor_v1*.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.6.1
-          path: ./AI_Tutor_v1.6.1.apk
+          name: AI_Tutor_v1.6.2
+          path: ./AI_Tutor_v1.6.2.apk
           retention-days: 30
 
-      - name: Create or Update v1.6.1 Latest Release
+      - name: Create or Update v1.6.2 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.6.1
-          name: "曾练专属私教 v1.6.1 - 1-12年级小初高全科内置学习地图离线版 (高中全科图谱·高考高频押题·零延迟秒开)"
+          tag_name: v1.6.2
+          name: "曾练专属私教 v1.6.2 - 三位一体认知架构·苏格拉底脚手架·续学断点记忆·小初高全科 (断续学习免从头讲起)"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 曾练专属私教 v1.6.1 (1-12年级小初高全学科·内置学习地图离线版)
+            ## 🚀 曾练专属私教 v1.6.2 (三位一体认知架构 · 续学断点记忆 · 苏格拉底启发式教辅)
 
-            - 🗺️ **内置全学段全学科课程章节地图（离线秒开·永不为空）**：
-              - 将人教版 1-12 年级（涵盖小学、初中、高中必修与选修各科）章节树全部离线固化至客户端；
-              - 彻底消除云端同步延迟与冷启动空状态，打开“闯关式学习地图”瞬间呈现完整章节关卡！
-            - 🎓 **1-12年级小初高全学段知识图谱完整贯通**：
-              - 全面覆盖人教版高中各科教材（高中语数英物化生政史地必修与选择性必修全科目）；
-              - 17,200+ 权威教材知识切片与向量检索图谱，深度赋能高中课标学习。
-            - 🎯 **高考高频押题与必考经典母题密卷**：
-              - 适配新高考全国卷（I/II卷）、北京卷、浙江卷等各省考情与分值题型架构（数学150分/物理100分/化学100分等）；
-              - 深度押题历年极高频经典母题模型（导数极值点偏移、圆锥曲线定点定值、双导轨微元感应、化工平衡常数Kp等）。
-            - 📝 **对标高考标准之步骤采分点智能评卷**：
-              - 贯彻高考阅卷采分点量规，按步骤采分赋予过程分；
-              - 严谨识别一题多解等价推导，针对失分陷阱提供避坑点拨。
-            - 📖 **全学段核心公式定理与题型模型宝典**：
-              - 新增高中数学空间向量/解析几何/导数积分、物理电磁力学/万有引力、化学反应原理等高频模型宝典。
+            - 📍 **学习断点记录与续学锚点引擎（免从头学起 · 核心技术突破）**：
+              - 自动捕捉学生上一次学习退出的精准章节、未解疑惑点与下一讲预备目标；
+              - 学生断断续续学习、隔几天再打开时，智能体无缝衔接上次断点，主动发起续学唤醒，**绝不用每次从头讲起**！
+            - 🏛️ **苏格拉底启发式教学门禁机制 (Socratic Scaffolding Gate)**：
+              - 严守三阶段启发式推进：**概念探索发现 (Discovery) ➔ 台阶式脚手架拆解 (Scaffolding) ➔ 总结巩固反思 (Consolidation)**；
+              - 彻底消除 AI 教学直接倾倒答案的弊端，点拨思路诱发学生主动顿悟！
+            - 🧠 **L1-L3 动态认知状态演化记忆 (Auditable Cognitive State)**：
+              - 毫秒级量化掌握度分值（0.0 ~ 1.0），自动标记掌握（mastered）、薄弱不稳定（unstable）与认知断层（gapped）；
+              - 精准定位前置基础漏洞（如因式分解不稳导致二次函数受阻），动态调度靶向练习。
+            - 🗺️ **多模态母题与可视化锚点增强 (Multimodal Visual Anchors)**：
+              - 几何与函数核心考点（全等三角形、勾股定理、一次/二次函数）挂载可视化母题模型与动态图示。
+            - 💯 **全栈极速高质量工程交付**：
+              - 175 项服务端单元与集成测试用例全绿通过，28 项客户端核心组件用例 100% 验证！
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.6.1.apk`** 直接下载安装；
-            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.6.1】**，点开即用！
-            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.6.1 与 v1.6.0)*
+            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.6.2.apk`** 直接下载安装；
+            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.6.2】**，点开即用！
+            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.6.2 与 v1.6.1)*
           files: |
+            ./AI_Tutor_v1.6.2.apk
             ./AI_Tutor_v1.6.1.apk
-            ./AI_Tutor_v1.6.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

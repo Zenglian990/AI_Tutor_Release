@@ -8,6 +8,7 @@
 const { getSqliteDb } = require('../db/init');
 const { decryptField } = require('../utils/crypto');
 const logger = require('./logger');
+const { getStudyCheckpoint, formatCheckpointPromptSection } = require('./checkpointService');
 
 /**
  * Retrieves the comprehensive cognitive memory of a student.
@@ -92,15 +93,19 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
     const completedChapters = progressList.filter(p => p.progress_pct >= 100 || p.status === 'completed').length;
     const inProgressChapters = progressList.filter(p => p.progress_pct > 0 && p.progress_pct < 100).length;
 
-    // 4. Derive student name
+    // 4. Fetch persistent study checkpoint
+    const checkpoint = await getStudyCheckpoint(db, profileId, subject);
+
+    // 5. Derive student name
     const studentName = fallbackName;
 
-    const hasHistory = recentMistakes.length > 0 || progressList.length > 0;
+    const hasHistory = recentMistakes.length > 0 || progressList.length > 0 || !!checkpoint;
 
     return {
       profileId,
       studentName,
       hasHistory,
+      checkpoint,
       totalMistakes: recentMistakes.length,
       topWeakTags: topTags,
       recentWeakPoints: weakPoints.slice(0, 3),
@@ -144,6 +149,10 @@ function formatStudentMemoryForPrompt(mem) {
 
   if (mem.completedChapters > 0 || mem.inProgressChapters > 0) {
     prompt += `- 当前章节攻坚状况：已通关 ${mem.completedChapters} 个章节，${mem.inProgressChapters} 个章节攻关中\n`;
+  }
+
+  if (mem.checkpoint) {
+    prompt += formatCheckpointPromptSection(mem.checkpoint, mem.studentName, false);
   }
 
   prompt += `- 专属私教点拨要求：\n`;

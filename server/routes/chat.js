@@ -9,6 +9,9 @@ const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('
 const { NODE_ENV, RAG_TOP_K } = require('../config');
 const logger = require('../services/logger');
 const jev = require('../services/jevDecisionService');
+const { coordinateTriEngine } = require('../services/triEngineCoordinator');
+const { getSqliteDb } = require('../db/init');
+const { saveStudyCheckpoint, formatCheckpointPromptSection } = require('../services/checkpointService');
 
 // POST /api/chat — main chat endpoint with SSE streaming
 router.post('/chat', async (req, res) => {
@@ -85,14 +88,39 @@ router.post('/chat', async (req, res) => {
       try {
         const mem = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
         const memStr = formatStudentMemoryForPrompt(mem);
-        let gStr = '';
-        const diagnosis = diagnosePrerequisiteKnowledge(query, subject, mem?.recentWeakPoints);
-        if (diagnosis) {
-          gStr = formatGraphRAGPromptSection(diagnosis);
+        
+        let triPrompt = '';
+        const db = getSqliteDb();
+        const turnCount = (Array.isArray(history) ? Math.floor(history.length / 2) : 0) + 1;
+        const triCoord = await coordinateTriEngine({
+          db,
+          query,
+          profileId: profile_id || 'default',
+          subject: subject || '数学',
+          turnCount
+        });
+        if (triCoord && triCoord.prompts && triCoord.prompts.compositeSystemPrompt) {
+          triPrompt = '\n' + triCoord.prompts.compositeSystemPrompt;
         }
-        return { mem, memStr, gStr };
+
+        if (db && !isGreeting && cleanQuery.length > 5) {
+          saveStudyCheckpoint(db, {
+            profileId: profile_id || 'default',
+            subject: subject || '数学',
+            conceptId: triCoord?.matchedConceptId || '',
+            conceptName: triCoord?.matchedConcept?.name || '',
+            lastQuerySnippet: cleanQuery,
+            progressPct: 50
+          }).catch(e => {});
+        }
+
+        if (isGreeting && mem?.checkpoint) {
+          triPrompt += formatCheckpointPromptSection(mem.checkpoint, student_name || '曾练', true);
+        }
+
+        return { mem, memStr, gStr: triPrompt };
       } catch (memErr) {
-        logger.warn('[Chat] Could not load student memory or GraphRAG:', memErr.message);
+        logger.warn('[Chat] Could not load student memory or Tri-Engine:', memErr.message);
         return { mem: null, memStr: '', gStr: '' };
       }
     })();

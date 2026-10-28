@@ -163,7 +163,14 @@ async function runMigrations(db) {
       const chatCols = hasChat ? await db.all("PRAGMA table_info('chat_history')") : [];
       const chatColNames = chatCols.map(c => c.name);
 
-      if (hasFts) v = 11;
+      const hasGamification = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='user_gamification'");
+      const hasCognitive = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='cognitive_knowledge_state'");
+      const hasCheckpoints = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='study_checkpoints'");
+
+      if (hasCheckpoints) v = 14;
+      else if (hasCognitive) v = 13;
+      else if (hasGamification) v = 12;
+      else if (hasFts) v = 11;
       else if (hasSysSettings) v = 10;
       else if (mistakesColNames.includes('tags')) v = 9;
       else if (hasApiUsage) v = 8;
@@ -174,7 +181,7 @@ async function runMigrations(db) {
       else if (mistakesColNames.includes('review_count')) v = 2;
       else v = 1;
       
-      await db.exec(`INSERT INTO schema_version (version) VALUES (${v})`);
+      await db.exec(`INSERT OR IGNORE INTO schema_version (version) VALUES (${v})`);
       logger.info(`[Migrations] Deduced legacy schema version: v${v}`);
     }
   }
@@ -307,7 +314,62 @@ async function runMigrations(db) {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      await db.exec('INSERT INTO schema_version (version) VALUES (12)');
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (12)');
+    }
+
+    if (v < 13) {
+      // Tri-Engine Architecture: L3 Persistent Cognitive DAG & L2 Auditable Events
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS cognitive_knowledge_state (
+          profile_id TEXT NOT NULL,
+          concept_id TEXT NOT NULL,
+          subject TEXT NOT NULL,
+          mastery_score REAL DEFAULT 0.5,
+          confidence REAL DEFAULT 0.5,
+          success_count INTEGER DEFAULT 0,
+          failure_count INTEGER DEFAULT 0,
+          last_assessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (profile_id, concept_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cognitive_profile_subject ON cognitive_knowledge_state(profile_id, subject);
+
+        CREATE TABLE IF NOT EXISTS cognitive_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          profile_id TEXT NOT NULL,
+          concept_id TEXT NOT NULL,
+          session_id TEXT,
+          event_type TEXT NOT NULL,
+          scaffold_stage TEXT,
+          is_success INTEGER DEFAULT 0,
+          error_type TEXT,
+          notes TEXT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_cognitive_events_profile ON cognitive_events(profile_id, timestamp);
+      `);
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (13)');
+    }
+
+    if (v < 14) {
+      // Checkpoint Resume Engine: Persistent Study Checkpoints for Seamless Intermittent Learning
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS study_checkpoints (
+          profile_id TEXT NOT NULL,
+          subject TEXT NOT NULL,
+          chapter_id TEXT,
+          chapter_name TEXT,
+          concept_id TEXT,
+          concept_name TEXT,
+          last_query_snippet TEXT,
+          unresolved_question TEXT,
+          progress_pct INTEGER DEFAULT 0,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (profile_id, subject)
+        );
+        CREATE INDEX IF NOT EXISTS idx_study_checkpoints_updated ON study_checkpoints(profile_id, updated_at);
+      `);
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (14)');
     }
 
   } catch (err) {
