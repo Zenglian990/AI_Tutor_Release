@@ -31,6 +31,11 @@ import FormulaHandbookModal from './components/FormulaHandbookModal';
 import DailyMentalMathModal from './components/DailyMentalMathModal';
 import StepByStepMathScratchpad from './components/StepByStepMathScratchpad';
 import PhysicsSimulatorsModal from './components/PhysicsSimulatorsModal';
+import EssayUpgraderModal from './components/EssayUpgraderModal';
+import ChemistryLabModal from './components/ChemistryLabModal';
+import EnglishRolePlayModal from './components/EnglishRolePlayModal';
+import DailyAchievementCardModal from './components/DailyAchievementCardModal';
+import EyeCareTimerModal from './components/EyeCareTimerModal';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -113,6 +118,11 @@ function AppInner() {
   const [showStepScratchpad, setShowStepScratchpad] = useState(false);
   const [stepScratchpadEq, setStepScratchpadEq] = useState('2x + 4 = 10');
   const [showPhysicsSimulator, setShowPhysicsSimulator] = useState(false);
+  const [showEssayModal, setShowEssayModal] = useState(false);
+  const [showChemistryModal, setShowChemistryModal] = useState(false);
+  const [showEnglishRolePlay, setShowEnglishRolePlay] = useState(false);
+  const [showDailyCard, setShowDailyCard] = useState(false);
+  const [showEyeCare, setShowEyeCare] = useState(false);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
     return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== '1.5.4';
   });
@@ -205,6 +215,11 @@ function AppInner() {
     if (showMentalMathModal) { setShowMentalMathModal(false); return true; }
     if (showStepScratchpad) { setShowStepScratchpad(false); return true; }
     if (showPhysicsSimulator) { setShowPhysicsSimulator(false); return true; }
+    if (showEssayModal) { setShowEssayModal(false); return true; }
+    if (showChemistryModal) { setShowChemistryModal(false); return true; }
+    if (showEnglishRolePlay) { setShowEnglishRolePlay(false); return true; }
+    if (showDailyCard) { setShowDailyCard(false); return true; }
+    if (showEyeCare) { setShowEyeCare(false); return true; }
     if (showPrintModal) { setShowPrintModal(false); return true; }
     if (showMistakes) { setShowMistakes(false); return true; }
     if (showStats) { setShowStats(false); return true; }
@@ -1079,6 +1094,8 @@ function AppInner() {
         onOpenManipulatives={() => setShowManipulatives(true)}
         onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
         onOpenMembership={() => setShowMembershipModal(true)}
+        onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenDailyCard={() => setShowDailyCard(true)}
       />
 
       {/* 仅在对话进行中时显示轻量级返回首页条 */}
@@ -1160,6 +1177,11 @@ function AppInner() {
               setShowStepScratchpad(true);
             }}
             onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
+            onOpenEssay={() => setShowEssayModal(true)}
+            onOpenChemistry={() => setShowChemistryModal(true)}
+            onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
+            onOpenDailyCard={() => setShowDailyCard(true)}
+            onOpenEyeCare={() => setShowEyeCare(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -1428,6 +1450,46 @@ function AppInner() {
         onApplyToChat={(text) => setInput(text)}
       />
 
+      {/* 🖋️ 中高考作文五维精批与逐句升格台 */}
+      <EssayUpgraderModal
+        isOpen={showEssayModal}
+        onClose={() => setShowEssayModal(false)}
+        currentGrade={currentProfile?.grade || '7_up'}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* ⚗️ 初中化学动态虚拟微实验台 (O2/CO2制备与分子重组) */}
+      <ChemistryLabModal
+        isOpen={showChemistryModal}
+        onClose={() => setShowChemistryModal(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🗣️ 中考英语听说情景对练与音标雷达 */}
+      <EnglishRolePlayModal
+        isOpen={showEnglishRolePlay}
+        onClose={() => setShowEnglishRolePlay(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🌟 微信级晚间学情成果日报卡 */}
+      <DailyAchievementCardModal
+        isOpen={showDailyCard}
+        onClose={() => setShowDailyCard(false)}
+        studentName={currentProfile?.name || '曾练'}
+        currentGrade={currentProfile?.grade || '7_up'}
+        studyMinutes={45}
+        masteredCount={4}
+        feynmanStars={5}
+      />
+
+      {/* 🌿 国际眼科 20-20-20 视力守护番茄钟 */}
+      <EyeCareTimerModal
+        isOpen={showEyeCare}
+        onClose={() => setShowEyeCare(false)}
+        onToggleEink={toggleEinkMode}
+      />
+
       <InputBar
         input={input} setInput={setInput}
         isLoading={isLoading} isListening={isListening}
@@ -1445,6 +1507,11 @@ function AppInner() {
           setShowStepScratchpad(true);
         }}
         onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
+        onOpenEssay={() => setShowEssayModal(true)}
+        onOpenChemistry={() => setShowChemistryModal(true)}
+        onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
+        onOpenDailyCard={() => setShowDailyCard(true)}
+        onOpenEyeCare={() => setShowEyeCare(true)}
         isFeynmanMode={isFeynmanMode}
         onToggleFeynmanMode={toggleFeynmanMode}
         hasActiveChat={messages.length > 0}

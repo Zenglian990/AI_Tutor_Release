@@ -23,7 +23,12 @@ export default function WelcomeDashboard({
   onOpenMentalMath,
   onOpenFormulaHandbook,
   onOpenStepScratchpad,
-  onOpenPhysicsSimulator
+  onOpenPhysicsSimulator,
+  onOpenEssay,
+  onOpenChemistry,
+  onOpenEnglishRolePlay,
+  onOpenDailyCard,
+  onOpenEyeCare
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -326,6 +331,61 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">凸透镜光路折射成像与滑动变阻器欧姆定律电路动态探究</p>
             <div className="action-card-cta" style={{ color: '#38bdf8' }}>动手探究 →</div>
+          </div>
+        )}
+
+        {onOpenEssay && (
+          <div className="action-card" onClick={onOpenEssay} role="button" tabIndex={0} style={{ borderColor: 'rgba(217, 119, 6, 0.4)', background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(180, 83, 9, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🖋️</span>
+              <span className="action-card-name" style={{ color: '#f59e0b' }}>中高考作文名师精批</span>
+            </div>
+            <p className="action-card-desc">五维雷达专业阅卷标准，特级名师逐句前后润色升格点石成金</p>
+            <div className="action-card-cta" style={{ color: '#f59e0b' }}>作文升格 →</div>
+          </div>
+        )}
+
+        {onOpenChemistry && (
+          <div className="action-card" onClick={onOpenChemistry} role="button" tabIndex={0} style={{ borderColor: 'rgba(13, 148, 136, 0.4)', background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(5, 150, 105, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">⚗️</span>
+              <span className="action-card-name" style={{ color: '#10b981' }}>化学虚拟微实验台</span>
+            </div>
+            <p className="action-card-desc">中考氧气/二氧化碳气体制备大题装置拼装与水电解微观分子重组</p>
+            <div className="action-card-cta" style={{ color: '#10b981' }}>拼装实验 →</div>
+          </div>
+        )}
+
+        {onOpenEnglishRolePlay && (
+          <div className="action-card" onClick={onOpenEnglishRolePlay} role="button" tabIndex={0} style={{ borderColor: 'rgba(37, 99, 235, 0.4)', background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🗣️</span>
+              <span className="action-card-name" style={{ color: '#60a5fa' }}>英语听说情景对练</span>
+            </div>
+            <p className="action-card-desc">中考口语人机测试4大场景角色扮演，逐词音标级发音雷达纠错</p>
+            <div className="action-card-cta" style={{ color: '#60a5fa' }}>情景对练 →</div>
+          </div>
+        )}
+
+        {onOpenDailyCard && (
+          <div className="action-card" onClick={onOpenDailyCard} role="button" tabIndex={0} style={{ borderColor: 'rgba(79, 70, 229, 0.4)', background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(67, 56, 202, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🌟</span>
+              <span className="action-card-name" style={{ color: '#818cf8' }}>每日学情战报海报</span>
+            </div>
+            <p className="action-card-desc">高颜值晚间学情成果卡，专注时长与攻克母题一键分享家庭群</p>
+            <div className="action-card-cta" style={{ color: '#818cf8' }}>生成战报 →</div>
+          </div>
+        )}
+
+        {onOpenEyeCare && (
+          <div className="action-card" onClick={onOpenEyeCare} role="button" tabIndex={0} style={{ borderColor: 'rgba(16, 185, 129, 0.4)', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🌿</span>
+              <span className="action-card-name" style={{ color: '#34d399' }}>20-20-20 视力番茄钟</span>
+            </div>
+            <p className="action-card-desc">国际眼科视力守护法则：满20分钟引导远眺20秒，无蓝光护眼</p>
+            <div className="action-card-cta" style={{ color: '#34d399' }}>开启护眼 →</div>
           </div>
         )}
 

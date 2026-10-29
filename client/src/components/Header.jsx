@@ -112,7 +112,8 @@ export default function Header({
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
   onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
-  onOpenMembership, onOpenPoster, onOpenAdminConsole
+  onOpenMembership, onOpenPoster, onOpenAdminConsole,
+  onOpenEyeCare, onOpenDailyCard
 }) {
   const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, membershipStatus, chatModel, setChatModel } = useAppStore();
   const isVip = membershipStatus?.is_vip;
@@ -284,6 +285,28 @@ export default function Header({
         >
           {isLightMode ? '🌙' : '☀️'}
         </button>
+
+        {/* 视力守护与学情日报 */}
+        {onOpenEyeCare && (
+          <button
+            onClick={onOpenEyeCare}
+            className="header-btn-icon"
+            title="国际眼科 20-20-20 视力守护与专注番茄钟"
+            aria-label="打开视力守护番茄钟"
+          >
+            🌿
+          </button>
+        )}
+        {onOpenDailyCard && (
+          <button
+            onClick={onOpenDailyCard}
+            className="header-btn-icon"
+            title="生成今日微信学情战报海报"
+            aria-label="生成今日学情战报"
+          >
+            🌟
+          </button>
+        )}
 
         {/* 基础偏好设置 */}
         <button

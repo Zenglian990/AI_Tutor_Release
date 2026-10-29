@@ -45,6 +45,11 @@ const InputBar = React.memo(function InputBar({
   onOpenFormulaHandbook,
   onOpenStepScratchpad,
   onOpenPhysicsSimulator,
+  onOpenEssay,
+  onOpenChemistry,
+  onOpenEnglishRolePlay,
+  onOpenDailyCard,
+  onOpenEyeCare,
   isFeynmanMode = false,
   onToggleFeynmanMode = null,
   hasActiveChat
@@ -310,6 +315,61 @@ const InputBar = React.memo(function InputBar({
               onClick={onOpenPhysicsSimulator}
             >
               🔬 物理微实验
+            </button>
+          )}
+          {onOpenEssay && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#d97706', color: '#f59e0b', background: 'rgba(217, 119, 6, 0.1)' }}
+              title="中高考作文五维精批与特级名师逐句升格"
+              onClick={onOpenEssay}
+            >
+              🖋️ 作文精批
+            </button>
+          )}
+          {onOpenChemistry && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#059669', color: '#10b981', background: 'rgba(5, 150, 105, 0.1)' }}
+              title="初中化学气体制备装置拼装与微观分子重组模型"
+              onClick={onOpenChemistry}
+            >
+              ⚗️ 化学微实验
+            </button>
+          )}
+          {onOpenEnglishRolePlay && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#2563eb', color: '#60a5fa', background: 'rgba(37, 99, 235, 0.1)' }}
+              title="中考英语听说情景对练与音标级发音雷达"
+              onClick={onOpenEnglishRolePlay}
+            >
+              🗣️ 英语情景对练
+            </button>
+          )}
+          {onOpenDailyCard && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#4f46e5', color: '#818cf8', background: 'rgba(79, 70, 229, 0.1)' }}
+              title="生成微信级每日学情成长战报海报"
+              onClick={onOpenDailyCard}
+            >
+              🌟 今日战报
+            </button>
+          )}
+          {onOpenEyeCare && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#10b981', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)' }}
+              title="国际眼科 20-20-20 视力守护与专注番茄钟"
+              onClick={onOpenEyeCare}
+            >
+              🌿 护眼番茄钟
             </button>
           )}
         </div>
