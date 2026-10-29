@@ -269,11 +269,14 @@ router.post('/mistakes/generate-variants', async (req, res) => {
     }
 
     const { extractAndParseJson } = require('../utils/jsonParser');
+    const { getCrossGradeRootCause } = require('../services/knowledgeGraph');
+    const rootCauseDiagnosis = getCrossGradeRootCause(question, subject, grade);
 
     const prompt = `你是一位专注于 K-12 教学体系的中国特级教师。学生刚刚学习或答错了一道题目：
 【原题内容】：${question}
 ${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}
 【学生年级】：${grade}，【学科】：${subject}
+${rootCauseDiagnosis && rootCauseDiagnosis.hasCrossGradeGap ? `【知识图谱深层根因洞察】：该题前置基石漏洞可能位于【${rootCauseDiagnosis.rootCauseNode.name}】(${rootCauseDiagnosis.rootCauseNode.grade})，请在思路点拨中融入对底层基石的启发。` : ''}
 
 为了帮助学生彻底掌握该题背后的考点与解题思想，实现“做一题、通一类”，请你根据题眼与认知规律，为学生量身定制 2 道【举一反三·变式题】：
 1. 变式题一（母题巩固题）：
@@ -320,6 +323,7 @@ ${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}
     const parsed = extractAndParseJson(rawText);
 
     if (parsed && Array.isArray(parsed.variants) && parsed.variants.length > 0) {
+      parsed.prerequisite_root_cause = rootCauseDiagnosis;
       return res.json({ success: true, data: parsed });
     }
 
@@ -327,7 +331,8 @@ ${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}
     return res.json({
       success: true,
       data: {
-        core_knowledge: "核心考点巩固与变式",
+        core_knowledge: rootCauseDiagnosis?.currentNode?.name || "核心考点巩固与变式",
+        prerequisite_root_cause: rootCauseDiagnosis,
         variants: [
           {
             type: "consolidation",
@@ -350,7 +355,7 @@ ${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}
 // 评判学生的变式题答案，提供即时名师反馈与得分奖励
 router.post('/mistakes/check-variant-answer', async (req, res) => {
   try {
-    const { question, standard_answer, student_answer, grade = '7_up' } = req.body;
+    const { question, standard_answer, student_answer, grade = '7_up', is_foundation = false } = req.body;
     if (!question || !student_answer) {
       return res.status(400).json({ error: "Missing question or student answer" });
     }
@@ -365,15 +370,18 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
         feedback: {
           is_correct: true,
           rating: 'excellent',
-          score_earned: 20,
+          score_earned: is_foundation ? 25 : 20,
           cas_verified: true,
-          comment: '🎉 太棒了！经神经符号 CAS 引擎精确验算，你的推导与标准答案完全代数等价！',
+          is_foundation_cleared: !!is_foundation,
+          comment: is_foundation
+            ? '🎉 太棒了曾练！经神经符号 CAS 精确验算，底层基石漏洞已打通！现在回到主考点，势如破竹！'
+            : '🎉 太棒了！经神经符号 CAS 引擎精确验算，你的推导与标准答案完全代数等价！',
           detailed_step: `你的表达式【${student_answer}】与参考答案【${standard_answer}】在代数恒等性上完全一致。`
         }
       });
     }
 
-    const prompt = `你是一位耐心的名师，正在为学生实时批改变式巩固题：
+    const prompt = `你是一位耐心的名师，正在为学生实时批改${is_foundation ? '底层知识点基石自测题' : '变式巩固题'}：
 【题目】：${question}
 【标准参考答案】：${standard_answer || '依据常规解题推导'}
 【学生的作答内容】：${student_answer}
@@ -384,7 +392,7 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
 {
   "is_correct": true, // 布尔值：true为完全正确，false为错误或不完整
   "rating": "excellent", // "excellent" (满分/全对) | "good" (思路对但有小瑕疵) | "need_retry" (错误/未做对)
-  "score_earned": 20, // 奖励经验积分 0-20
+  "score_earned": 20, // 奖励经验积分 0-25
   "comment": "简短的名师评语（50字以内，热情鼓励、指明亮点或指出卡点）",
   "detailed_step": "简要的分步核对过程"
 }`;
@@ -403,6 +411,9 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
     const parsed = extractAndParseJson(rawText);
 
     if (parsed) {
+      if (is_foundation && parsed.is_correct) {
+        parsed.is_foundation_cleared = true;
+      }
       return res.json({ success: true, feedback: parsed });
     }
 
@@ -412,13 +423,33 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
         is_correct: true,
         rating: "good",
         score_earned: 15,
-        comment: "回答很有条理！勤学好思，举一反三能力显著提升！",
+        is_foundation_cleared: !!is_foundation,
+        comment: is_foundation
+          ? "底层基石漏洞已被你攻克！现在解答主考点将更加自信！"
+          : "回答很有条理！勤学好思，举一反三能力显著提升！",
         detailed_step: "参考标准步骤推导，思路正确。"
       }
     });
   } catch (e) {
     logger.error("Check variant answer error:", e);
     res.status(500).json({ error: "批改变式题失败" });
+  }
+});
+
+// POST /api/mistakes/diagnose-prerequisite
+// 单独针对错题或考点进行跨学期知识漏洞根因穿透诊断
+router.post('/mistakes/diagnose-prerequisite', (req, res) => {
+  try {
+    const { question, grade = '7_up', subject = '数学', tags = [] } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Missing question" });
+    }
+    const { getCrossGradeRootCause } = require('../services/knowledgeGraph');
+    const diagnosis = getCrossGradeRootCause(question, subject, grade, tags);
+    res.json({ success: true, data: diagnosis });
+  } catch (e) {
+    logger.error("Diagnose prerequisite error:", e);
+    res.status(500).json({ error: "根因溯源诊断失败" });
   }
 });
 

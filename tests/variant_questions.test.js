@@ -137,6 +137,25 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
     assert.strictEqual(body.data.variants.length, 2);
     assert.strictEqual(body.data.variants[0].tag, "同类巩固");
     assert.strictEqual(body.data.variants[1].tag, "避坑拔高");
+    assert.ok(body.data.prerequisite_root_cause, 'Should attach cross-grade root cause diagnosis');
+  });
+
+  await t.test('POST /api/mistakes/diagnose-prerequisite returns cross-grade root cause', async () => {
+    const res = await undici.request(`${baseUrl}/api/mistakes/diagnose-prerequisite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: "已知直角三角形两边长为3和4，求斜边长度？",
+        grade: "8_down",
+        subject: "数学"
+      })
+    });
+    assert.strictEqual(res.statusCode, 200);
+    const body = await res.body.json();
+    assert.strictEqual(body.success, true);
+    assert.ok(body.data.currentNode);
+    assert.ok(body.data.chainPath.length >= 2);
+    assert.ok(body.data.remedy);
   });
 
   await t.test('POST /api/mistakes/check-variant-answer checks student answer and awards score', async () => {
@@ -173,5 +192,26 @@ test('Variant Questions Workflow (作业帮式举一反三变式母题闭环)', 
     assert.strictEqual(body.feedback.is_correct, true);
     assert.strictEqual(body.feedback.score_earned, 20);
     assert.strictEqual(body.feedback.rating, "excellent");
+  });
+
+  await t.test('POST /api/mistakes/check-variant-answer with is_foundation clears foundation gap', async () => {
+    const res = await undici.request(`${baseUrl}/api/mistakes/check-variant-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: "计算：\\sqrt{36} 的值是多少？",
+        standard_answer: "6",
+        student_answer: "6",
+        grade: "8_up",
+        is_foundation: true
+      })
+    });
+    assert.strictEqual(res.statusCode, 200);
+    const body = await res.body.json();
+    assert.strictEqual(body.success, true);
+    assert.strictEqual(body.feedback.is_correct, true);
+    assert.strictEqual(body.feedback.is_foundation_cleared, true);
+    assert.strictEqual(body.feedback.cas_verified, true);
+    assert.ok(body.feedback.comment.includes('底层基石'));
   });
 });

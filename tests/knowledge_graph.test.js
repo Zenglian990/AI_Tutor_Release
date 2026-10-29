@@ -67,3 +67,16 @@ test('Knowledge Graph — diagnosePrerequisiteKnowledge & formatGraphRAGPromptSe
   assert.ok(promptSection.includes('【🔗 知识图谱跨学期根因穿透（GraphRAG）】'));
   assert.ok(promptSection.includes('二次函数'));
 });
+
+test('Knowledge Graph — getCrossGradeRootCause & foundation remedy', () => {
+  const { getCrossGradeRootCause } = require('../server/services/knowledgeGraph');
+  const result = getCrossGradeRootCause('勾股定理直角三角形斜边计算', '数学', '8_down');
+  assert.ok(result);
+  assert.strictEqual(result.currentNode.id, 'math_pythagorean');
+  assert.ok(result.chainPath.length >= 2, 'Should construct multi-hop prerequisite chain');
+  assert.strictEqual(result.hasCrossGradeGap, true, 'Should detect cross-grade gap');
+  assert.ok(result.remedy);
+  assert.ok(result.remedy.question, 'Remedy must have diagnostic foundation question');
+  assert.ok(result.remedy.answer, 'Remedy must have standard answer');
+  assert.ok(result.remedy.diagnosisReason.includes('勾股定理'), 'Must explain root cause in diagnosis reason');
+});

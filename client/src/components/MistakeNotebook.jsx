@@ -6,6 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch, formatGrade, useAppStore } from '../store/useStore';
 import { preprocessLatex } from '../utils/math';
 import A4PrintModal from './A4PrintModal';
+import VariantPracticeModal from './VariantPracticeModal';
 
 export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject }) {
   const { currentProfile } = useAppStore();
@@ -31,6 +32,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   const [showA4Modal, setShowA4Modal] = useState(false);
   const [generatingTargetedPaper, setGeneratingTargetedPaper] = useState(false);
   const [variantPaperQuestions, setVariantPaperQuestions] = useState([]);
+  const [selectedPrereqMistake, setSelectedPrereqMistake] = useState(null);
 
   const handleGenerateTargetedVariantPaper = async () => {
     if (mistakes.length === 0) {
@@ -476,6 +478,25 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                     >
                       {generatingVarId === m.id ? '⏳ 正在生成变式题...' : (variations[m.id] ? '🔄 换一题' : '🔄 举一反三')}
                     </button>
+                    <button
+                      onClick={() => setSelectedPrereqMistake(m)}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3))',
+                        border: '1px solid #10b981',
+                        borderRadius: '6px',
+                        color: '#34d399',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginLeft: '8px'
+                      }}
+                      title="向下溯源该题底层的跨学期知识漏洞，攻克底层基石"
+                    >
+                      🌱 根因溯源
+                    </button>
                     {variations[m.id] && (
                       <div className="mistake-variation" style={{ marginTop: '24px', padding: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))', border: '1px solid rgba(96, 165, 250, 0.2)', borderLeft: '5px solid #3b82f6', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(10px)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '14px', color: '#60a5fa', fontSize: '1.05rem', textShadow: '0 0 10px rgba(96,165,250,0.2)' }}>🎯 变式提优挑战</div>
@@ -548,6 +569,19 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           }))}
           initialMode="blank_student"
           initialFilter="all"
+        />
+      )}
+
+      {selectedPrereqMistake && (
+        <VariantPracticeModal
+          isOpen={!!selectedPrereqMistake}
+          onClose={() => setSelectedPrereqMistake(null)}
+          originalQuestion={selectedPrereqMistake.query}
+          originalAnswer={selectedPrereqMistake.answer}
+          grade={selectedPrereqMistake.grade || filterGrade || '7_up'}
+          subject={selectedPrereqMistake.subject || filterSubject || '数学'}
+          studentName={studentName}
+          initialStep={-1}
         />
       )}
     </div>

@@ -118,7 +118,11 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '分解不彻底（如将 x⁴ - 16 仅分解为 (x²+4)(x²-4)，漏分第二项），或公因式包含负号时符号混淆。',
     teacherMnemonic: '一提（提公因式）二套（套公式）三分组（分组分解）四十字；查到底，绝不留尾巴！',
     lifeAnalogy: '因式分解就像“把一辆组装好的乐高车拆成最小的标准零件块”，只要其中一个零件块还能再拆，工序就没做完。',
-    feynmanChallenge: '为什么 x² - 4 可以分解，但 x² + 4 在实数范围内就不能分解了？用图形或根的意义给我上一课！'
+    feynmanChallenge: '为什么 x² - 4 可以分解，但 x² + 4 在实数范围内就不能分解了？用图形或根的意义给我上一课！',
+    foundationQuestion: '将多项式 x^2 - 9 因式分解的结果是什么？',
+    foundationAnswer: '(x-3)(x+3)',
+    foundationHint: '利用平方差公式 a^2 - b^2 = (a-b)(a+b)。',
+    foundationAnalysis: 'x^2 - 3^2 = (x-3)(x+3)。'
   },
   'math_square_root': {
     id: 'math_square_root',
@@ -131,7 +135,11 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '混淆“平方根”（两个值 ±√a）与“算术平方根”（非负值 √a）。',
     teacherMnemonic: '平方根找双胞胎（正负俩兄弟），算术根只要大哥（非负正能量）！',
     lifeAnalogy: '求算术平方根就像已知正方形地砖的面积，量它单边边长是多少。边长绝不可能是负数。',
-    feynmanChallenge: '如果题目问你“4的平方根是谁”和“根号4等于多少”，这两个问题的答案一样吗？为什么？'
+    feynmanChallenge: '如果题目问你“4的平方根是谁”和“根号4等于多少”，这两个问题的答案一样吗？为什么？',
+    foundationQuestion: '计算：\\sqrt{36} 的值是多少？',
+    foundationAnswer: '6',
+    foundationHint: '算术平方根表示一个非负数，6的平方是36。',
+    foundationAnalysis: '\\sqrt{36} = 6（注意：算术平方根必须为非负数）。'
   },
   'math_pythagorean': {
     id: 'math_pythagorean',
@@ -145,7 +153,11 @@ const KNOWLEDGE_GRAPH = {
     teacherMnemonic: '勾三股四弦五，求第三边先看斜；题干未点谁是斜，必分两种分类答！',
     lifeAnalogy: '就像两个人从同一个路口一个向东走3米、一个向北走4米，他们之间的直线空中距离就是那条斜边（5米）。',
     feynmanChallenge: '直角三角形两边长是 3 和 4，第三边是 5 对不对？错在哪里？',
-    visualAnchor: '经典赵爽弦图：大正方形内嵌4个全等直角三角形与中心小正方形，几何拼图验证 a² + b² = c²。'
+    visualAnchor: '经典赵爽弦图：大正方形内嵌4个全等直角三角形与中心小正方形，几何拼图验证 a² + b² = c²。',
+    foundationQuestion: '直角三角形的两条直角边分别为 3 和 4，求斜边 c 的长度是多少？',
+    foundationAnswer: '5',
+    foundationHint: '利用勾股定理：a^2 + b^2 = c^2，即 3^2 + 4^2 = c^2。',
+    foundationAnalysis: 'c = \\sqrt{3^2 + 4^2} = \\sqrt{9 + 16} = \\sqrt{25} = 5。'
   },
   'math_quadratic_equation': {
     id: 'math_quadratic_equation',
@@ -158,7 +170,11 @@ const KNOWLEDGE_GRAPH = {
     commonMistake: '方程两边同除以含有未知数的式子导致失根（如 x² = 2x 误直接除以 x 得到 x=2，丢失了 x=0 的解）。',
     teacherMnemonic: '判别式大于零两根分，等于零两根同，小于零无实根；等式两边绝不除未知数防失根！',
     lifeAnalogy: '方程就像一家人：一元一次方程是小弟，一元二次方程是大哥，二元一次方程组是双胞胎。解方程本质就是把不认识的复杂关系拆解降维到我们熟悉的一元一次！',
-    feynmanChallenge: '解方程 x(x-3) = 2(x-3)，有同学直接两边约去 (x-3) 得到 x=2，你觉得这位同学犯了什么致命错误？怎么反驳他？'
+    feynmanChallenge: '解方程 x(x-3) = 2(x-3)，有同学直接两边约去 (x-3) 得到 x=2，你觉得这位同学犯了什么致命错误？怎么反驳他？',
+    foundationQuestion: '解一元二次方程：x^2 - 4 = 0，求方程的所有实数解？',
+    foundationAnswer: 'x=2或x=-2',
+    foundationHint: '因式分解为 (x-2)(x+2) = 0，或者移项直接开平方。',
+    foundationAnalysis: 'x^2 = 4，开方得 x = ±2。'
   },
   'math_quadratic_function': {
     id: 'math_quadratic_function',
@@ -180,7 +196,7 @@ const KNOWLEDGE_GRAPH = {
     subject: '数学',
     grade: '8_down',
     keywords: ['一次函数', '正比例函数', '斜率k', '截距b', '坐标系'],
-    prerequisites: ['math_linear_equation_one'],
+    prerequisites: ['math_linear_equation_one', 'math_linear_system_two'],
     coreRule: 'y = kx + b (k≠0)。k决定函数图像的增减性和倾斜方向，b决定与y轴交点坐标(0, b)。',
     commonMistake: '混淆k与b的几何意义；待定系数法求解析式时两点坐标代入计算错误。',
     teacherMnemonic: 'k正往上爬，k负往下滑；b就是你站在y轴上的起跑点！',
@@ -194,7 +210,7 @@ const KNOWLEDGE_GRAPH = {
     subject: '数学',
     grade: '8_up',
     keywords: ['全等三角形', 'SSS', 'SAS', 'ASA', 'AAS', 'HL'],
-    prerequisites: ['math_angle_parallel'],
+    prerequisites: ['math_angle_parallel', 'math_elementary_area'],
     coreRule: '判定定理：SSS、SAS、ASA、AAS；直角三角形特有 HL。注意：SSA（两边及一边的对角）不能证明全等！',
     commonMistake: '误用 SSA 判定全等，或找角平分线、高线对应关系时推导断链。',
     teacherMnemonic: '先找两个已知量，第三个量自然现；两边夹角才叫角(SAS)，边边对角(SSA)不能算！',
@@ -223,7 +239,63 @@ const KNOWLEDGE_GRAPH = {
     keywords: ['乘法口诀', '多位数乘法', '除数是两位数的除法', '商不变性质'],
     prerequisites: [],
     coreRule: '乘除法必须严格对齐数位，不够商1要用0占位。商不变性质：被除数和除数同时乘或除以同一个非0数，商不变。',
-    commonMistake: '除法竖式中中间有0的商漏写0（如 816 ÷ 4 误写成 24）。'
+    commonMistake: '除法竖式中中间有0的商漏写0（如 816 ÷ 4 误写成 24）。',
+    foundationQuestion: '计算：408 ÷ 4 的商是多少？',
+    foundationAnswer: '102',
+    foundationHint: '十位上的0不够商1，要在十位上商0占位。',
+    foundationAnalysis: '百位 4÷4=1，十位 0÷4=0 占位，个位 8÷4=2，商为 102。'
+  },
+  'math_elementary_area': {
+    id: 'math_elementary_area',
+    name: '小学平面图形面积与割补法',
+    subject: '数学',
+    grade: '5_up',
+    keywords: ['平面图形面积', '三角形面积', '梯形面积', '平行四边形面积', '割补法', '阴影部分面积'],
+    prerequisites: ['math_multiplication_division'],
+    coreRule: '不规则多边形或阴影部分面积求法：优先利用“割补法”转化为规则图形的和或差（总面积减空白面积）。直角三角形面积等于两直角边乘积除以2！',
+    commonMistake: '三角形或梯形求面积时忘记除以2；割补组合时重叠部分重复计算。',
+    teacherMnemonic: '规则套公式，不规则用割补；三角形梯形别忘除以二！',
+    lifeAnalogy: '就像切生日蛋糕或拼图：缺了一块的怪异形状，不如先切成几个方方正正的小长方形，算完再拼起来。',
+    feynmanChallenge: '你能向三年级的小朋友解释为什么平行四边形的面积等于底乘高，而三角形的面积必须要除以2吗？',
+    visualAnchor: '矩形、直角三角形、梯形网格面积拆拼示意图。',
+    foundationQuestion: '一个直角三角形的两条直角边分别为 6cm 和 8cm，求它的面积是多少平方厘米？',
+    foundationAnswer: '24',
+    foundationHint: '直角三角形两条直角边即为底和高，公式为 底×高÷2。',
+    foundationAnalysis: '面积 S = 6 × 8 ÷ 2 = 24 cm²。切记不可漏掉除以2！'
+  },
+  'math_linear_system_two': {
+    id: 'math_linear_system_two',
+    name: '二元一次方程组与消元法',
+    subject: '数学',
+    grade: '7_down',
+    keywords: ['二元一次方程组', '代入消元法', '加减消元法', '消元思想'],
+    prerequisites: ['math_linear_equation_one'],
+    coreRule: '解二元一次方程组的核心灵魂是“消元”，通过代入法或加减法将二元问题降维转化为一元一次方程。',
+    commonMistake: '用加减消元法两式相减时，被减式某一项有负号忘记变号（负负得正搞错）。',
+    teacherMnemonic: '系数相同用减法，符号相反用加法；消去一个变一元，回代求出另一半！',
+    lifeAnalogy: '解二元一次方程就像侦探排查两名嫌疑人：先通过确凿证据把其中一人彻底排除（消元），剩下的那个人自然就真相大白了。',
+    feynmanChallenge: '为什么要费尽心思消去一个未知数？数学上这种思维叫什么思想？',
+    foundationQuestion: '解方程组：x + y = 5 且 x - y = 1，求未知数 x 的值是多少？',
+    foundationAnswer: '3',
+    foundationHint: '将两个方程直接相加，即可消去 y。',
+    foundationAnalysis: '两式相加得到 2x = 6，解得 x = 3。'
+  },
+  'math_similar_triangles': {
+    id: 'math_similar_triangles',
+    name: '相似三角形的判定与基本模型',
+    subject: '数学',
+    grade: '9_up',
+    keywords: ['相似三角形', '相似比', 'A字型模型', '8字型模型', '射影定理'],
+    prerequisites: ['math_congruent_triangles', 'math_fraction_basic'],
+    coreRule: '对应角相等且对应边成比例的两个三角形相似。判定：两角分别相等、两边成比例且夹角相等、三边成比例。面积比等于相似比的平方！',
+    commonMistake: '误将“相似比”当作“面积比”（面积比必须平方！）；寻找对应边比例时顶点顺序对应错乱。',
+    teacherMnemonic: '平行必出A或8，两角相等最常用；边长比看相似比，面积比要平方记！',
+    lifeAnalogy: '就像手机上的照片放大缩放：照片里人的眼睛和鼻子角度没变，但长宽按相同比例放大，整个脸占屏幕的面积则变成了放大比例的平方。',
+    feynmanChallenge: '如果两个相似三角形对应边之比是 1:2，那么小三角形的面积是大三角形的几分之几？',
+    foundationQuestion: '已知两个相似三角形的相似比为 1:3，若小三角形面积为 4，则大三角形面积是多少？',
+    foundationAnswer: '36',
+    foundationHint: '相似三角形的面积比等于相似比的平方。',
+    foundationAnalysis: '相似比为 1:3，因此面积比为 1²:3² = 1:9。大三角形面积 = 4 × 9 = 36。'
   },
 
   // === 物理学科核心知识链 ===
@@ -253,7 +325,7 @@ const KNOWLEDGE_GRAPH = {
     subject: '物理',
     grade: '8_up',
     keywords: ['密度', 'ρ=m/V', '天平量筒', '物质的特性'],
-    prerequisites: ['math_linear_equation_one'],
+    prerequisites: ['math_linear_equation_one', 'math_linear_system_two'],
     coreRule: '密度是物质本身的一种特性，与物体的质量、体积大小无关。计算公式 ρ = m / V。',
     commonMistake: '误认为由公式 ρ = m/V 可知密度与质量成正比，忽视了密度是物质固有属性。'
   },
@@ -437,6 +509,142 @@ function linkQueryToMultimodalConcepts(query, subject = '') {
   return matched.map(m => getKnowledgeNodeWithVisuals(m.id)).filter(Boolean);
 }
 
+function getGradeRank(gradeStr) {
+  if (!gradeStr) return 70;
+  const str = String(gradeStr).toLowerCase();
+  if (str.includes('1_') || str.includes('1年级') || str.includes('一年级')) return 10;
+  if (str.includes('2_') || str.includes('2年级') || str.includes('二年级')) return 20;
+  if (str.includes('3_') || str.includes('3年级') || str.includes('三年级')) return 30;
+  if (str.includes('4_') || str.includes('4年级') || str.includes('四年级')) return 40;
+  if (str.includes('5_') || str.includes('5年级') || str.includes('五年级')) return 50;
+  if (str.includes('6_') || str.includes('6年级') || str.includes('六年级')) return 60;
+  if (str.includes('7_up') || str.includes('7上') || str.includes('七年级上')) return 71;
+  if (str.includes('7_down') || str.includes('7下') || str.includes('七年级下')) return 72;
+  if (str.includes('7')) return 70;
+  if (str.includes('8_up') || str.includes('8上') || str.includes('八年级上')) return 81;
+  if (str.includes('8_down') || str.includes('8下') || str.includes('八年级下')) return 82;
+  if (str.includes('8')) return 80;
+  if (str.includes('9_up') || str.includes('9上') || str.includes('九年级上')) return 91;
+  if (str.includes('9_down') || str.includes('9下') || str.includes('九年级下')) return 92;
+  if (str.includes('9')) return 90;
+  return 70;
+}
+
+function buildRemedyCard(rootCauseNode, currentNode) {
+  if (!rootCauseNode) return null;
+
+  const defaultQuestion = rootCauseNode.foundationQuestion || `【${rootCauseNode.name}基石自测】请根据其核心法则写出标准解答：`;
+  const defaultAnswer = rootCauseNode.foundationAnswer || '遵循基本定理推导';
+  const defaultHint = rootCauseNode.foundationHint || rootCauseNode.coreRule;
+  const defaultAnalysis = rootCauseNode.foundationAnalysis || rootCauseNode.coreRule;
+
+  return {
+    nodeId: rootCauseNode.id,
+    conceptName: rootCauseNode.name,
+    grade: rootCauseNode.grade,
+    subject: rootCauseNode.subject || '数学',
+    coreRule: rootCauseNode.coreRule,
+    commonMistake: rootCauseNode.commonMistake,
+    teacherMnemonic: rootCauseNode.teacherMnemonic || '吃透底层概念，解题势如破竹！',
+    lifeAnalogy: rootCauseNode.lifeAnalogy || '就像建高楼必须先打好地基，基础概念过关，难题迎刃而解。',
+    feynmanChallenge: rootCauseNode.feynmanChallenge || '',
+    question: defaultQuestion,
+    answer: defaultAnswer,
+    hint: defaultHint,
+    analysis: defaultAnalysis,
+    diagnosisReason: `你在解答【${currentNode.name}】时若遇阻碍，核心根因在于前置基石【${rootCauseNode.name}】存在断层漏洞。先花2分钟打通这个底层卡点，难题即可迎刃而解！`
+  };
+}
+
+function getCrossGradeRootCause(query, subject = '数学', currentGrade = '7_up', recentWeakPoints = []) {
+  let matchedNodes = matchKnowledgeNodes(query, subject);
+
+  if (matchedNodes.length === 0 && Array.isArray(recentWeakPoints)) {
+    for (const wp of recentWeakPoints) {
+      const nodes = matchKnowledgeNodes(wp, subject);
+      if (nodes.length > 0) {
+        matchedNodes = nodes;
+        break;
+      }
+    }
+  }
+
+  if (matchedNodes.length === 0) {
+    const fallbackNode = subject === '物理' ? KNOWLEDGE_GRAPH['phys_density'] : KNOWLEDGE_GRAPH['math_rational_operations'];
+    if (!fallbackNode) return null;
+    return {
+      currentNode: fallbackNode,
+      rootCauseNode: fallbackNode,
+      chainPath: [{ id: fallbackNode.id, name: fallbackNode.name, grade: fallbackNode.grade, isCurrent: true, isRoot: true, tag: '底层基石 🌟' }],
+      hasCrossGradeGap: false,
+      remedy: buildRemedyCard(fallbackNode, fallbackNode)
+    };
+  }
+
+  const currentNode = matchedNodes[0];
+  const allPrereqs = getPrerequisites(currentNode.id, 4);
+
+  if (allPrereqs.length === 0) {
+    return {
+      currentNode,
+      rootCauseNode: currentNode,
+      chainPath: [{ id: currentNode.id, name: currentNode.name, grade: currentNode.grade, isCurrent: true, isRoot: true, tag: '核心基石 🌟' }],
+      hasCrossGradeGap: false,
+      remedy: buildRemedyCard(currentNode, currentNode)
+    };
+  }
+
+  const currentRank = getGradeRank(currentNode.grade || currentGrade);
+
+  // Find lowest grade prerequisite or deepest ancestor
+  let bestRootCause = allPrereqs[allPrereqs.length - 1];
+  const lowerGradePrereq = allPrereqs.find(p => getGradeRank(p.grade) < currentRank);
+  if (lowerGradePrereq) {
+    bestRootCause = lowerGradePrereq;
+  }
+
+  const chainPath = [];
+  chainPath.push({
+    id: bestRootCause.id,
+    name: bestRootCause.name,
+    grade: bestRootCause.grade,
+    isCurrent: false,
+    isRoot: true,
+    tag: '底层基石 🌟'
+  });
+
+  const intermediates = allPrereqs.filter(p => p.id !== bestRootCause.id && p.id !== currentNode.id);
+  if (intermediates.length > 0) {
+    chainPath.push({
+      id: intermediates[0].id,
+      name: intermediates[0].name,
+      grade: intermediates[0].grade,
+      isCurrent: false,
+      isRoot: false,
+      tag: '过渡阶梯 🪜'
+    });
+  }
+
+  chainPath.push({
+    id: currentNode.id,
+    name: currentNode.name,
+    grade: currentNode.grade,
+    isCurrent: true,
+    isRoot: false,
+    tag: '当前考点 🎯'
+  });
+
+  const remedy = buildRemedyCard(bestRootCause, currentNode);
+
+  return {
+    currentNode,
+    rootCauseNode: bestRootCause,
+    chainPath,
+    hasCrossGradeGap: getGradeRank(bestRootCause.grade) < currentRank,
+    remedy
+  };
+}
+
 module.exports = {
   KNOWLEDGE_GRAPH,
   getPrerequisites,
@@ -444,5 +652,8 @@ module.exports = {
   diagnosePrerequisiteKnowledge,
   formatGraphRAGPromptSection,
   getKnowledgeNodeWithVisuals,
-  linkQueryToMultimodalConcepts
+  linkQueryToMultimodalConcepts,
+  getGradeRank,
+  buildRemedyCard,
+  getCrossGradeRootCause
 };
