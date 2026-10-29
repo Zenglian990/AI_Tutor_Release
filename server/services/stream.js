@@ -3,6 +3,7 @@ const { getSqliteDb } = require('../db/init');
 const { logApiUsage } = require('./usage');
 const dbQueue = require('./dbQueue');
 const { encryptField, generateFtsIndexText } = require('../utils/crypto');
+const { recordStudyActivity } = require('./streakService');
 const config = require('../config');
 const { NODE_ENV } = config;
 const logger = require('./logger');
@@ -234,6 +235,17 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
             );
           }
           await sqliteDb.run('COMMIT');
+
+          // Automatically update Duolingo-style Streak & Peer Intimacy XP
+          try {
+            await recordStudyActivity(sqliteDb, {
+              profileId: profile_id || 'default',
+              eventType: 'chat_turn',
+              xpGain: 15
+            });
+          } catch (streakErr) {
+            logger.warn('[Stream] Could not update streak activity:', streakErr.message);
+          }
         } catch (err) {
           try {
             await sqliteDb.run('ROLLBACK');

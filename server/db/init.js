@@ -390,6 +390,34 @@ async function runMigrations(db) {
       await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (15)');
     }
 
+    if (v < 16) {
+      // Gamification & Habit Motivation Engine (Duolingo-style Streak & Peer Intimacy XP)
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS student_streaks (
+          profile_id TEXT PRIMARY KEY,
+          current_streak INTEGER DEFAULT 0,
+          longest_streak INTEGER DEFAULT 0,
+          last_active_date TEXT,
+          streak_freeze_count INTEGER DEFAULT 2,
+          peer_intimacy_xp INTEGER DEFAULT 0,
+          peer_level INTEGER DEFAULT 1,
+          total_sessions INTEGER DEFAULT 0,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS streak_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          profile_id TEXT NOT NULL,
+          activity_date TEXT NOT NULL,
+          event_type TEXT DEFAULT 'study_session',
+          xp_awarded INTEGER DEFAULT 10,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(profile_id, activity_date, event_type)
+        );
+        CREATE INDEX IF NOT EXISTS idx_streak_history_profile_date ON streak_history(profile_id, activity_date);
+      `);
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (16)');
+    }
+
   } catch (err) {
     logger.error('Failed during schema migration: ', err);
     throw err;

@@ -237,6 +237,26 @@ export default function Header({
           </button>
         )}
 
+        {/* 连续学习连胜与同桌羁绊 (Duolingo-style Streak Flywheel) */}
+        {onOpenGamification && (
+          <button
+            onClick={onOpenGamification}
+            className="header-btn-pill"
+            title="多邻国式连续学习连胜榜 · 查看连胜周历与同桌小明羁绊"
+            aria-label="打开连续学习连胜榜"
+            style={{
+              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(234, 88, 12, 0.15))',
+              color: '#fb923c',
+              borderColor: 'rgba(249, 115, 22, 0.4)',
+              boxShadow: '0 0 10px rgba(249, 115, 22, 0.2)',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ filter: 'drop-shadow(0 0 4px rgba(249, 115, 22, 0.6))' }}>🔥</span>
+            <span className="btn-label">连胜</span>
+          </button>
+        )}
+
         {/* 教学模式 (直答 / 启发 / 苏氏提问) */}
         <button
           onClick={handleSocraticClick}

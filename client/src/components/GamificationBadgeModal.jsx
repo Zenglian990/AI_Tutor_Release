@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authFetch, getApiUrl } from '../store/useStore';
 
 /**
@@ -157,6 +157,77 @@ export default function GamificationBadgeModal({
                   </div>
                 </div>
               </div>
+
+              {/* Duolingo-style Streak & Freeze Shield */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(234, 88, 12, 0.05) 100%)',
+                borderRadius: '16px',
+                padding: '16px 20px',
+                border: '1px solid rgba(251, 146, 60, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '32px', filter: 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6))' }}>🔥</span>
+                  <div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fed7aa' }}>
+                      连续学习连胜：{data.streak?.currentStreak || data.streakDays || 1} 天
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#fdba74' }}>
+                      {data.streak?.isTodayCompleted ? '✨ 今日已完成打卡，连胜守护中' : '⚡ 今天还没向名师提问，快来守护连胜！'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ fontSize: '0.82rem', color: '#93c5fd', background: 'rgba(59, 130, 246, 0.15)', padding: '6px 10px', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                    🛡️ 冰冻卡: <strong>{data.streak?.streakFreezeCount ?? 2}</strong> 张
+                  </div>
+                </div>
+              </div>
+
+              {/* Peer Student Intimacy (同桌小明羁绊) */}
+              {data.streak?.peerIntimacy && (
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '16px',
+                  padding: '16px 20px',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.4rem' }}>🧑‍🤝‍🧑</span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9' }}>
+                        学伴小明羁绊：{data.streak.peerIntimacy.title}
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      background: 'rgba(234, 179, 8, 0.2)',
+                      color: '#facc15',
+                      fontWeight: 700
+                    }}>
+                      Lv.{data.streak.peerIntimacy.level}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '8px' }}>
+                    解锁特权：{data.streak.peerIntimacy.perk}
+                  </div>
+                  <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${data.streak.peerIntimacy.progressPercent}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)',
+                      borderRadius: '3px'
+                    }} />
+                  </div>
+                </div>
+              )}
 
               {/* Badges Matrix */}
               <div>

@@ -356,6 +356,22 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
     }
 
     const { extractAndParseJson } = require('../utils/jsonParser');
+    const { areAlgebraicallyEquivalent } = require('../utils/mathCAS');
+
+    // Neuro-Symbolic CAS Fast-Path: If algebraically equivalent, guarantee 100% correct
+    if (standard_answer && areAlgebraicallyEquivalent(student_answer, standard_answer)) {
+      return res.json({
+        success: true,
+        feedback: {
+          is_correct: true,
+          rating: 'excellent',
+          score_earned: 20,
+          cas_verified: true,
+          comment: '🎉 太棒了！经神经符号 CAS 引擎精确验算，你的推导与标准答案完全代数等价！',
+          detailed_step: `你的表达式【${student_answer}】与参考答案【${standard_answer}】在代数恒等性上完全一致。`
+        }
+      });
+    }
 
     const prompt = `你是一位耐心的名师，正在为学生实时批改变式巩固题：
 【题目】：${question}
