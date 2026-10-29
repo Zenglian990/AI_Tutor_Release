@@ -564,8 +564,74 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
     }
   }
 
-  // 3. 解答与综合大题补全（确保凑齐 25 题和 150 分）
-  const essayTemplates = [
+  // 3. 解答与综合大题补全（确保凑齐 25 题和 150 分，严格按照学段隔离）
+  const primaryEssayTemplates = [
+    {
+      type: 'essay',
+      question: '【脱式计算与简便运算】\n(1) 计算：$125 \\times 32 \\times 25$；\n(2) 计算：$480 \\div [ (15 + 25) \\times 2 ]$。',
+      score: 10,
+      answer: '(1) 100000；(2) 6。',
+      explanation: '【解析】(1) $125 \\times 32 \\times 25 = (125 \\times 8) \\times (4 \\times 25) = 1000 \\times 100 = 100000$。\n(2) 原式 $= 480 \\div [ 40 \\times 2 ] = 480 \\div 80 = 6$。'
+    },
+    {
+      type: 'essay',
+      question: '【周长与面积几何应用】一块长方形菜地，长是 24 米，宽是 16 米。\n(1) 求这块长方形菜地的周长和面积；\n(2) 如果在菜地的四周围上篱笆，一面靠墙（墙长 24 米），篱笆至少需要多少米？',
+      score: 10,
+      answer: '(1) 周长 80 米，面积 384 平方米；(2) 至少需要 56 米。',
+      explanation: '【解析】(1) 周长：$(24 + 16) \\times 2 = 80$（米）；面积：$24 \\times 16 = 384$（平方米）。\n(2) 要使篱笆最少，长边靠墙，篱笆长度为：$24 + 16 \\times 2 = 56$（米）。'
+    },
+    {
+      type: 'essay',
+      question: '【行程与速度应用题】甲、乙两辆汽车同时从相距 480 千米的两地相对开出，经过 3 小时两车相遇。已知甲车每小时行驶 75 千米，求乙车每小时行驶多少千米？',
+      score: 10,
+      answer: '乙车每小时行驶 85 千米。',
+      explanation: '【解析】速度和为：$480 \\div 3 = 160$（千米/小时）；乙车速度：$160 - 75 = 85$（千米/小时）。'
+    },
+    {
+      type: 'essay',
+      question: '【归一与总价应用题】学校食堂买来 6 箱苹果，每箱 15 千克，一共花费 360 元。平均每千克苹果多少元？如果学校计划再买 4 箱同样的苹果，还需要多少元？',
+      score: 10,
+      answer: '平均每千克 4 元；还需要 240 元。',
+      explanation: '【解析】总重量：$6 \\times 15 = 90$（千克），单价：$360 \\div 90 = 4$（元/千克）；再买 4 箱需要花费：$4 \\times (360 \\div 6) = 240$（元）。'
+    },
+    {
+      type: 'essay',
+      question: '【和倍与差倍思维大题】小明和小红共收集邮票 120 张，小明收集的邮票张数是小红的 3 倍。小明和小红各收集了多少张邮票？',
+      score: 12,
+      answer: '小红收集 30 张，小明收集 90 张。',
+      explanation: '【解析】份数和：$1 + 3 = 4$（份）；小红：$120 \\div 4 = 30$（张）；小明：$30 \\times 3 = 90$（张）。'
+    },
+    {
+      type: 'essay',
+      question: '【鸡兔同笼经典应用】笼子里有若干只鸡和兔。从上面数，有 35 个头；从下面数，有 94 只脚。笼子里鸡和兔各有多少只？',
+      score: 14,
+      answer: '鸡有 23 只，兔有 12 只。',
+      explanation: '【解析】假设全为鸡，脚数应为：$35 \\times 2 = 70$（只）；脚数差：$94 - 70 = 24$（只）；兔：$24 \\div (4 - 2) = 12$（只）；鸡：$35 - 12 = 23$（只）。'
+    },
+    {
+      type: 'essay',
+      question: '【工程合作与逻辑应用题】修一条长 1200 米的公路，甲队单独修需要 20 天完成，乙队单独修需要 30 天完成。两队合修这条公路，需要多少天可以修完？',
+      score: 14,
+      answer: '需要 12 天修完。',
+      explanation: '【解析】甲队每天修 $1200 \\div 20 = 60$（米），乙队每天修 $1200 \\div 30 = 40$（米）。合修天数：$1200 \\div (60 + 40) = 12$（天）。'
+    },
+    {
+      type: 'essay',
+      question: '【购物方案优化与促销问题】商场举行促销活动：A 方案为买五送一（即买 5 件赠送 1 件同价商品）；B 方案为全场每满 100 元立减 20 元。某班级计划购买单价为 30 元的足球 12 个。\n(1) 选择 A 方案需要花费多少元？\n(2) 选择 B 方案需要花费多少元？哪种方案更划算？',
+      score: 6,
+      answer: '(1) A 方案 300 元；(2) B 方案 300 元，两方案费用相同。',
+      explanation: '【解析】(1) 买五送一，买 10 个赠送 2 个刚好得 12 个，花费 $10 \\times 30 = 300$（元）；(2) 总价 $12 \\times 30 = 360$（元），满 300 减 60，花费 $360 - 60 = 300$（元）。两方案费用相同。'
+    },
+    {
+      type: 'essay',
+      question: '【周期规律与数形结合探究】有一列按规律排列的图形：△□□○△□□○△□□○……\n(1) 第 50 个图形是什么？\n(2) 前 50 个图形中，一共有多少个□？',
+      score: 4,
+      answer: '(1) 第 50 个图形是□；(2) 一共有 25 个□。',
+      explanation: '【解析】周期为 4（△□□○）。\n(1) $50 \\div 4 = 12$ 组……2 个，第 2 个是□；\n(2) 每组有 2 个□，前 12 组有 $12 \\times 2 = 24$ 个，余下 2 个中有 1 个□，总共 $24 + 1 = 25$ 个□。'
+    }
+  ];
+
+  const secondaryEssayTemplates = [
     {
       type: 'essay',
       question: '【代数运算与化简求值】\n(1) 计算：$-20 + (-14) - (-18) - 13$；\n(2) 先化简再求值：$2(x^2y + xy^2) - 3(x^2y - 1) - 2xy^2 - 2$，其中 $x = -2, y = \\frac{1}{2}$。',
@@ -630,6 +696,8 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
       explanation: '【解析】解第二个方程：$3x - 1 = 2x + 2 \\Rightarrow x = 3$。因为两方程解互为相反数，所以第一个方程的解为 $x = -3$。代入第一个方程得 $2(-3) + a = 1 \\Rightarrow -6 + a = 1 \\Rightarrow a = 7$。'
     }
   ];
+
+  const essayTemplates = isPrimarySchool ? primaryEssayTemplates : secondaryEssayTemplates;
 
   for (const eq of essayTemplates) {
     questions.push({
@@ -1129,5 +1197,7 @@ router.post('/printer/print-ipp', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.assembleReliableExamPaper = assembleReliableExamPaper;
 
 module.exports = router;

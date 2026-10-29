@@ -323,9 +323,9 @@ ${contextSection}学生随附提问/诉求：${query}
   }
 });
 
-// POST /api/vision/detect-questions
+// POST /api/vision/detect-questions & /api/detect-questions
 // 对标小猿搜题：整页拍图自动分题与多题目外接框快速检测
-router.post('/detect-questions', upload.single('image'), async (req, res) => {
+router.post(['/detect-questions', '/vision/detect-questions'], upload.single('image'), async (req, res) => {
   try {
     const imageBuffer = req.file?.buffer;
     const mimeType = req.file?.mimetype || 'image/jpeg';

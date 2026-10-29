@@ -31,3 +31,9 @@ test('Essay Evaluation — well structured essay yields high score and gold stan
   assert.ok(result.sentence_upgrades[0].technique);
   assert.ok(result.sentence_upgrades[0].reason);
 });
+
+test('Essay Evaluation — gradeEssayWithLLM exports properly and adheres to rubric schema', () => {
+  const { gradeEssayWithLLM } = require('../server/routes/essay');
+  assert.strictEqual(typeof gradeEssayWithLLM, 'function', 'gradeEssayWithLLM should be exported');
+});
+

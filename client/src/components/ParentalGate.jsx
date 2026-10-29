@@ -58,6 +58,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   const [isTampered, setIsTampered] = useState(false);
   const [tamperedToken, setTamperedToken] = useState('');
   const [tamperedError, setTamperedError] = useState('');
+  const [backendHasPin, setBackendHasPin] = useState(false);
 
   const handleVerifyTamperedToken = async () => {
     const inputToken = tamperedToken.trim();
@@ -102,6 +103,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
   const savedPinHash = useMemo(() => decryptData(savedPinHashEnc), [savedPinHashEnc]);
   const savedSecurityAnswerHashEnc = localStorage.getItem(GATE_SECURITY_ANSWER_HASH);
   const savedSecurityAnswerHash = useMemo(() => decryptData(savedSecurityAnswerHashEnc), [savedSecurityAnswerHashEnc]);
+  const hasConfiguredPin = Boolean(savedPinHash) || backendHasPin;
 
   useEffect(() => {
     if (isOpen) {
@@ -123,6 +125,9 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
         .then(data => {
           if (data && data.question_id) {
             setSelectedQuestion(data.question_id);
+          }
+          if (data && (data.has_pin || !data.needs_setup)) {
+            setBackendHasPin(true);
           }
         })
         .catch(err => console.error('Failed to fetch parent gate status from backend', err));
@@ -237,9 +242,10 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       const hash = await sha256(newPinVal);
 
       // (a) 检查是否与本地保存的自定义密码匹配
+      const hasConfiguredPin = Boolean(savedPinHash) || backendHasPin;
       const isLocalMatch = Boolean(savedPinHash && hash === savedPinHash);
-      // (b) 检查是否为出厂初始密码 888888 (仅在未配置自定义密码时允许作为出厂默认值)
-      const isMasterAllowed = !savedPinHash && (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH);
+      // (b) 检查是否为出厂初始密码 888888 (仅在未配置任何自定义密码时允许作为出厂默认值)
+      const isMasterAllowed = !hasConfiguredPin && (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH);
 
       if (isLocalMatch || isMasterAllowed) {
         setSuccess(true);
@@ -276,8 +282,8 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
           return;
         }
       } catch (e) {
-        // 网络或离线状态：如果未设置过密码，且输入了出厂默认密码 888888 则放行
-        if (!savedPinHash && (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH)) {
+        // 网络或离线状态：如果未设置过任何自定义密码，且输入了出厂默认密码 888888 则放行
+        if (!hasConfiguredPin && (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH)) {
           setSuccess(true);
           sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
           resetAttempts();
@@ -570,7 +576,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                     ) : isSettingUp ? (
                       !firstPin ? '请设置 6 位家长安全密码' : '请再次输入同一密码以确认'
                     ) : (
-                      '请输入 6 位家长安全密码（出厂默认：888888）'
+                      hasConfiguredPin ? '请输入 6 位家长安全密码' : '请输入 6 位家长安全密码（出厂默认：888888）'
                     )}
                   </p>
                 )}
@@ -592,7 +598,7 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                 )}
                 {error && (
                   <span className="error-message-text" style={{ color: '#ef4444', marginTop: '6px' }}>
-                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新输入' : '⚠️ 密码不正确，请重新输入（出厂默认：888888）'}
+                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新输入' : (hasConfiguredPin ? '⚠️ 密码不正确，请重新输入' : '⚠️ 密码不正确，请重新输入（出厂默认：888888）')}
                   </span>
                 )}
               </div>
@@ -641,39 +647,41 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
                 </button>
               </div>
 
-              <div style={{ marginTop: '12px', width: '100%' }}>
-                <button
-                  type="button"
-                  className="zeng-master-bypass-btn"
-                  onClick={() => {
-                    setSuccess(true);
-                    sessionStorage.setItem('parent_gate_verified_pin_hash', MASTER_PIN_HASH);
-                    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(MASTER_PIN_HASH));
-                    resetAttempts();
-                    setTimeout(() => {
-                      onVerify();
-                      onClose();
-                    }, 300);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.15))',
-                    border: '1px solid rgba(59, 130, 246, 0.4)',
-                    borderRadius: '10px',
-                    color: '#60a5fa',
-                    fontSize: '0.88rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  🔑 曾先生直接进入 (出厂默认 888888 免密验证)
-                </button>
-              </div>
+              {!hasConfiguredPin && (
+                <div style={{ marginTop: '12px', width: '100%' }}>
+                  <button
+                    type="button"
+                    className="zeng-master-bypass-btn"
+                    onClick={() => {
+                      setSuccess(true);
+                      sessionStorage.setItem('parent_gate_verified_pin_hash', MASTER_PIN_HASH);
+                      localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(MASTER_PIN_HASH));
+                      resetAttempts();
+                      setTimeout(() => {
+                        onVerify();
+                        onClose();
+                      }, 300);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.15))',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      borderRadius: '10px',
+                      color: '#60a5fa',
+                      fontSize: '0.88rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    🔑 曾先生直接进入 (出厂默认 888888 免密验证)
+                  </button>
+                </div>
+              )}
 
               <div className="gate-footer">
                 {!isSettingUp ? (

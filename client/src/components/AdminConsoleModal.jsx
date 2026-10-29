@@ -292,11 +292,11 @@ export default function AdminConsoleModal({
   };
 
   // -------------------------------------------------------------
-  // Tab 2: 批量发卡后台 (搞钱变现)
+  // Tab 2: 教学特权管理后台
   // -------------------------------------------------------------
   const [genCount, setGenCount] = useState(5);
   const [genDays, setGenDays] = useState(30);
-  const [genBatch, setGenBatch] = useState('微信社群/小红书学员精选');
+  const [genBatch, setGenBatch] = useState('首批内测学员精选');
   const [generating, setGenerating] = useState(false);
   const [generatedKeys, setGeneratedKeys] = useState([]);
   const [cardsMsg, setCardsMsg] = useState({ type: '', text: '' });
@@ -610,7 +610,7 @@ export default function AdminConsoleModal({
               borderBottom: activeTab === 'cards' ? '2px solid #059669' : '2px solid transparent'
             }}
           >
-            🔑 批量发卡后台 (搞钱变现)
+            🔑 教学特权卡管理
           </button>
           <button
             onClick={() => setActiveTab('ai_keys')}
@@ -715,7 +715,7 @@ export default function AdminConsoleModal({
             </div>
           )}
 
-          {/* TAB 2: 批量发卡后台 */}
+          {/* TAB 2: 教学特权管理后台 */}
           {activeTab === 'cards' && (
             <div>
               <div style={{
@@ -723,42 +723,42 @@ export default function AdminConsoleModal({
                 padding: '18px 20px', marginBottom: '18px', boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
               }}>
                 <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#0f172a', marginBottom: '12px' }}>
-                  🔑 批量生成 VIP 兑换卡密 (用于付费变现分发)
+                  🔑 批量生成教学特权卡密 (用于学员与班级授权)
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                      发卡张数：
+                      授权张数：
                     </label>
                     <select
                       value={genCount}
                       onChange={e => setGenCount(parseInt(e.target.value, 10))}
                       style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                     >
-                      <option value={1}>1 张 (单客测试)</option>
-                      <option value={5}>5 张 (小规模试销)</option>
-                      <option value={10}>10 张 (标准批次)</option>
-                      <option value={20}>20 张 (活动热卖)</option>
-                      <option value={50}>50 张 (代理/社群分销)</option>
-                      <option value={100}>100 张 (大型批量)</option>
+                      <option value={1}>1 张 (个别学员测试)</option>
+                      <option value={5}>5 张 (学习小组)</option>
+                      <option value={10}>10 张 (标准小组)</option>
+                      <option value={20}>20 张 (重点班级)</option>
+                      <option value={50}>50 张 (年级测试)</option>
+                      <option value={100}>100 张 (全校联动)</option>
                     </select>
                   </div>
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                      会员有效期：
+                      特权有效期：
                     </label>
                     <select
                       value={genDays}
                       onChange={e => setGenDays(parseInt(e.target.value, 10))}
                       style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                     >
-                      <option value={7}>7 天 (体验尝鲜卡)</option>
-                      <option value={30}>30 天 (月度提分卡 - 推荐)</option>
+                      <option value={7}>7 天 (短期辅导周卡)</option>
+                      <option value={30}>30 天 (月度提分月卡 - 推荐)</option>
                       <option value={90}>90 天 (学期攻坚季卡)</option>
-                      <option value={365}>365 天 (全年中考年度至尊卡)</option>
-                      <option value={3650}>永久尊享 (终身卡)</option>
+                      <option value={365}>365 天 (学年中考年卡)</option>
+                      <option value={3650}>永久特权 (终身卡)</option>
                     </select>
                   </div>
 
@@ -770,7 +770,7 @@ export default function AdminConsoleModal({
                       type="text"
                       value={genBatch}
                       onChange={e => setGenBatch(e.target.value)}
-                      placeholder="如：朋友圈付费批次"
+                      placeholder="如：初一数学提高班"
                       style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', boxSizing: 'border-box' }}
                     />
                   </div>
@@ -807,7 +807,7 @@ export default function AdminConsoleModal({
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#065f46' }}>
-                      📋 本次生成的 VIP 卡密清单 ({generatedKeys.length} 个)
+                      📋 本次生成的教学特权卡密清单 ({generatedKeys.length} 个)
                     </div>
                     <button
                       onClick={handleCopyAllKeys}
@@ -831,7 +831,7 @@ export default function AdminConsoleModal({
                     }}
                   />
                   <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
-                    * 家长在手机端打开【会员中心】输入卡密即可瞬间激活，无需任何复杂认证。
+                    * 学员或家长在设置端打开【特权码激活】输入卡密即可瞬间生效。
                   </div>
                 </div>
               )}

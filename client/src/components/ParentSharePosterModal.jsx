@@ -279,7 +279,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.fillStyle = template === 'primary' ? '#78350f' : '#ffffff';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(qrType === 'url' ? '微信扫码立即体验' : '扫码查看学情档案', 215, 788);
+      ctx.fillText(qrType === 'url' ? '扫码立即体验' : '扫码查看学情档案', 215, 788);
 
       ctx.fillStyle = template === 'primary' ? '#92400e' : '#94a3b8';
       ctx.font = '14px sans-serif';
@@ -493,7 +493,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                       }}
                       style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', cursor: 'pointer' }}
                     >
-                      加载曾先生默认微信码
+                      加载默认学情二维码
                     </button>
                   </div>
                 )}
@@ -546,7 +546,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
             {/* Additional Text Customization */}
             <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
-                <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '2px' }}>私教联系文案：</label>
+                <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '2px' }}>学情档案附注：</label>
                 <input
                   type="text"
                   value={contactName}
@@ -558,7 +558,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                 />
               </div>
               <div style={{ flex: 1, minWidth: '200px' }}>
-                <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '2px' }}>福利标语：</label>
+                <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '2px' }}>学情寄语：</label>
                 <input
                   type="text"
                   value={promoLine1}

@@ -210,10 +210,10 @@ export default function MembershipModal({ isOpen, onClose }) {
                 background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '14px', padding: '24px 22px'
               }}>
                 <div style={{ fontWeight: 'bold', color: '#6b21a8', fontSize: '1.05rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🔑</span> 输入 VIP 激活卡密兑换权益
+                  <span>🔑</span> 输入教师特权码激活特权
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#7e22ce', marginBottom: '16px' }}>
-                  卡密格式为 VIP-XXXX-XXXX-XXXX（不区分大小写，激活后会员时间自动累加）
+                  特权码格式为 VIP-XXXX-XXXX-XXXX（不区分大小写，激活后特权时间自动累加）
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -221,7 +221,7 @@ export default function MembershipModal({ isOpen, onClose }) {
                     type="text"
                     value={keyCodeInput}
                     onChange={e => setKeyCodeInput(e.target.value)}
-                    placeholder="请输入您的激活卡密，如：VIP-A1B2-C3D4-E5F6"
+                    placeholder="请输入您的特权激活码，如：VIP-A1B2-C3D4-E5F6"
                     style={{
                       flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid #c084fc',
                       fontSize: '0.95rem', fontFamily: 'monospace', textTransform: 'uppercase', outline: 'none'
@@ -236,7 +236,7 @@ export default function MembershipModal({ isOpen, onClose }) {
                       fontWeight: 'bold', fontSize: '0.92rem', cursor: redeeming ? 'wait' : 'pointer'
                     }}
                   >
-                    {redeeming ? '核销中...' : '立即兑换'}
+                    {redeeming ? '核销中...' : '立即激活'}
                   </button>
                 </div>
 
@@ -256,9 +256,9 @@ export default function MembershipModal({ isOpen, onClose }) {
                   📌 常见疑问：
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.7 }}>
-                  <li>激活码在核销后即刻生效，若您已有会员，有效期将顺延增加。</li>
-                  <li>每个激活码仅限核销一次，请妥善保管。</li>
-                  <li>系统所有教学工具与题库已全面开放，无需卡密即可无限制学习使用。</li>
+                  <li>特权码在核销后即刻生效，若您已有特权，有效期将顺延增加。</li>
+                  <li>每个特权码仅限核销一次，请妥善保管。</li>
+                  <li>系统所有教学工具与题库已全面开放，无需特权码即可无限制学习使用。</li>
                 </ul>
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function MembershipModal({ isOpen, onClose }) {
           borderTop: '1px solid #f1f5f9', background: '#fafafa', padding: '12px 24px',
           display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.78rem', color: '#94a3b8'
         }}>
-          <span>曾先生智慧私教系统 · 权威教材题库与启发式伴学</span>
+          <span>曾练专属私教 · 权威教材题库与启发式伴学</span>
         </div>
       </div>
     </div>

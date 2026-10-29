@@ -417,19 +417,21 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     saveState();
   };
 
-  // Coordinates helper
+  // Coordinates helper with viewport scale correction and active stylus pressure
   const getCoordinates = (e) => {
     const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0, pressure: 0.5 };
     const rect = canvas.getBoundingClientRect();
-    if (e.touches && e.touches[0]) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
-    }
+    const isTouch = e.touches && e.touches[0];
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+    const pressure = (typeof e.pressure === 'number' && e.pressure > 0) ? e.pressure : 0.5;
+    const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+    const scaleY = rect.height ? (canvas.height / rect.height) : 1;
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+      pressure
     };
   };
 
@@ -471,13 +473,17 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       currentStrokeRef.current.points.push({ x: pos.x, y: pos.y, t: Date.now() });
     }
 
-    ctx.lineWidth = lineWidth;
+    // Dynamic stylus pressure for Apple Pencil / S-Pen
+    const activeLineWidth = (tool !== 'eraser' && pos.pressure && e.pointerType === 'pen')
+      ? Math.max(1, lineWidth * (0.4 + pos.pressure * 0.9))
+      : lineWidth;
+
+    ctx.lineWidth = tool === 'eraser' ? lineWidth * 4 : activeLineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     if (tool === 'eraser') {
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = lineWidth * 4;
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
     } else if (tool === 'line') {

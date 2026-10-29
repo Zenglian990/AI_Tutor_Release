@@ -320,3 +320,26 @@ test('Network Printer API: POST /api/printer/print-ipp dispatches formatted exam
   assert.ok(rejectData.error.includes('出于安全防护') || rejectData.error.includes('局域网'));
 });
 
+test('Test Paper Fallback: primary school paper never receives secondary school algebra or negative powers', async () => {
+  const { assembleReliableExamPaper } = require('../server/routes/testPaper');
+  const paper = await assembleReliableExamPaper('3_up', '数学');
+
+  assert.ok(paper, 'Should assemble exam paper');
+  assert.ok(paper.title.includes('三年级上册'), `Title should include friendly grade: ${paper.title}`);
+  assert.equal(paper.questions.length, 25, 'Should assemble 25 questions');
+
+  // Verify no high school / middle school leakage in primary paper
+  for (const q of paper.questions) {
+    const qStr = (q.question || '') + ' ' + (q.explanation || '') + ' ' + (q.answer || '');
+    assert.ok(!qStr.includes('(-2)^3'), `Primary paper question ${q.id} leaked secondary negative power: ${qStr}`);
+    assert.ok(!qStr.includes('|x - 3|'), `Primary paper question ${q.id} leaked secondary absolute value equation: ${qStr}`);
+    assert.ok(!qStr.includes('5x - 2 = 3x + 6'), `Primary paper question ${q.id} leaked secondary linear equation: ${qStr}`);
+    assert.ok(!qStr.includes('x^2y'), `Primary paper question ${q.id} leaked secondary polynomial: ${qStr}`);
+  }
+
+  // Verify primary questions exist
+  const essayQuestions = paper.questions.filter(q => q.type === 'essay');
+  assert.ok(essayQuestions.some(q => q.question.includes('脱式计算') || q.question.includes('长方形菜地') || q.question.includes('鸡兔同笼')), 'Should contain primary grade essay themes');
+});
+
+
