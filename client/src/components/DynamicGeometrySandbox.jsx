@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import InteractiveMathCanvas from './InteractiveMathCanvas';
+import { AUXILIARY_LINE_MODELS } from '../utils/geometryScaffolding';
 
 /**
  * DynamicGeometrySandbox
- * 初中压轴动点与二次函数动态推演沙盒
- * 专为 7-9 年级心智模型打造：化抽象逻辑为动态轨迹，击穿中考动点压轴痛点
+ * 初中压轴动点、二次函数与几何辅助线因果动因逆推沙盒
+ * 专为 7-9 年级心智模型打造：化抽象逻辑为动态轨迹，击穿中考动点与几何压轴痛点
  */
 export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat }) {
-  const [activeTab, setActiveTab] = useState('moving_point'); // 'moving_point' | 'parabola'
+  const [activeTab, setActiveTab] = useState('moving_point'); // 'moving_point' | 'parabola' | 'auxiliary_line' | 'interactive_canvas'
 
   // Moving Point States
   const [timeT, setTimeT] = useState(3); // t from 0 to 10 seconds
@@ -20,6 +21,10 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
   const [paramA, setParamA] = useState(1); // a in y = a(x-h)^2 + k
   const [paramH, setParamH] = useState(1); // h (axis of symmetry)
   const [paramK, setParamK] = useState(-2); // k (vertex y)
+
+  // Auxiliary Line States
+  const [auxiliaryModelKey, setAuxiliaryModelKey] = useState('double_midpoint');
+  const [showAuxiliary, setShowAuxiliary] = useState(true);
 
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -128,7 +133,7 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
       drawPoint(ptC, 'C');
       drawPoint(ptP, `P(t=${timeT}s)`, '#dc2626', 7);
 
-    } else {
+    } else if (activeTab === 'parabola') {
       // Parabola Coordinate Plot
       const midX = width / 2;
       const midY = height / 2;
@@ -191,8 +196,83 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
       ctx.moveTo(vx, 0); ctx.lineTo(vx, height);
       ctx.stroke();
       ctx.setLineDash([]);
+    } else if (activeTab === 'auxiliary_line') {
+      // 1. Draw Subtle Grid
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 20) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 20) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+      }
+
+      const model = AUXILIARY_LINE_MODELS[auxiliaryModelKey] || AUXILIARY_LINE_MODELS.double_midpoint;
+      const figure = model.default_figure;
+
+      // 2. Draw Base Lines (Navy solid strokes)
+      if (figure && figure.base_lines) {
+        for (const line of figure.base_lines) {
+          const p1 = figure.points[line.from];
+          const p2 = figure.points[line.to];
+          if (p1 && p2) {
+            ctx.strokeStyle = line.color || '#1e293b';
+            ctx.lineWidth = line.width || 2.5;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 3. Draw Auxiliary Lines (Red/gold dashed strokes)
+      if (showAuxiliary && figure && figure.auxiliary_lines) {
+        for (const line of figure.auxiliary_lines) {
+          const p1 = figure.points[line.from];
+          const p2 = figure.points[line.to];
+          if (p1 && p2) {
+            ctx.strokeStyle = line.color || '#ef4444';
+            ctx.lineWidth = line.width || 2.5;
+            ctx.setLineDash(line.dashed ? [6, 4] : []);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw label
+            if (line.label) {
+              const midX = (p1.x + p2.x) / 2;
+              const midY = (p1.y + p2.y) / 2;
+              ctx.fillStyle = line.color || '#ef4444';
+              ctx.font = 'bold 12px sans-serif';
+              ctx.fillText(line.label, midX + 8, midY - 6);
+            }
+          }
+        }
+      }
+
+      // 4. Draw Points & Labels
+      if (figure && figure.points) {
+        for (const [key, pt] of Object.entries(figure.points)) {
+          if (!pt.label) continue;
+          const isAuxPoint = key === 'E' || key === 'M' || key === 'F';
+          if (isAuxPoint && !showAuxiliary) continue;
+
+          ctx.fillStyle = isAuxPoint ? '#ef4444' : '#1e293b';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, isAuxPoint ? 6 : 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillStyle = isAuxPoint ? '#ef4444' : '#1e293b';
+          ctx.fillText(pt.label, pt.x - 8, pt.y - 10);
+        }
+      }
     }
-  }, [isOpen, activeTab, timeT, paramA, paramH, paramK]);
+  }, [isOpen, activeTab, timeT, paramA, paramH, paramK, auxiliaryModelKey, showAuxiliary]);
 
   if (!isOpen) return null;
 
@@ -205,8 +285,11 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
     let text = '';
     if (activeTab === 'moving_point') {
       text = `老师，我在动点沙盒中演练了动点 P 从 A 向 B 运动的问题：\n- 当 t = ${timeT} 秒时，AP = ${currentAP}，△PAC 面积为 ${currentArea}（总面积为 ${totalArea}）。\n请问在实际中考压轴题中，如果点 P 越过 B 点继续运动，或者求 △PAC 与原三角形面积比为 1:2 时，具体的分类讨论分段函数应如何严谨书写？`;
-    } else {
+    } else if (activeTab === 'parabola') {
       text = `老师，我在二次函数沙盒中调整了解析式 y = ${paramA}(x - ${paramH})^2 + (${paramK})：\n- 顶点为 (${paramH}, ${paramK})，对称轴为 x = ${paramH}。\n请问如何利用顶点式与韦达定理，快速确定抛物线与 x 轴的交点距离以及割线斜率？`;
+    } else if (activeTab === 'auxiliary_line') {
+      const model = AUXILIARY_LINE_MODELS[auxiliaryModelKey] || AUXILIARY_LINE_MODELS.double_midpoint;
+      text = `老师，我正在钻研初中几何压轴题中的【${model.name}】：\n- 痛点特征：${model.trigger_summary}\n- 辅助线做发：${model.construction_step}\n- 因果动因：${model.causal_rationale}\n请教名师：在具体压轴题遇到更复杂的折叠、旋转或动点综合背景时，如何迅速识破题目中的隐藏中点或互余直角，准确构造出这一条破题辅助线？`;
     }
     onApplyToChat && onApplyToChat(text);
     onClose();
@@ -271,6 +354,19 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
           >
             <span>📈</span>
             <span>二次函数抛物线沙盒</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('auxiliary_line')}
+            style={{
+              padding: '8px 16px', borderRadius: '12px', border: 'none',
+              background: activeTab === 'auxiliary_line' ? '#2563eb' : 'transparent',
+              color: activeTab === 'auxiliary_line' ? '#fff' : '#64748b',
+              fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <span>📐</span>
+            <span>辅助线因果动因逆推台</span>
           </button>
           <button
             onClick={() => setActiveTab('interactive_canvas')}
@@ -359,7 +455,7 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'parabola' ? (
             /* Parabola Controls */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -383,6 +479,104 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
                 <div style={{ background: '#fef3c7', padding: '10px', borderRadius: '10px' }}>
                   <div style={{ fontSize: '0.8rem', color: '#92400e', marginBottom: '4px' }}>顶点高度 k ({paramK})</div>
                   <input type="range" min="-5" max="5" step="0.5" value={paramK} onChange={e => setParamK(parseFloat(e.target.value))} style={{ width: '100%' }} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Auxiliary Line Reasoning Controls */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* 4 Models Selector */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {Object.values(AUXILIARY_LINE_MODELS).map(m => {
+                  const isSelected = auxiliaryModelKey === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setAuxiliaryModelKey(m.id)}
+                      style={{
+                        padding: '10px 8px',
+                        borderRadius: '12px',
+                        border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        background: isSelected ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : '#ffffff',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <span style={{ fontSize: '1.3rem' }}>{m.icon}</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: '800', color: isSelected ? '#1e40af' : '#334155' }}>
+                        {m.name}
+                      </span>
+                      <span style={{ fontSize: '0.68rem', color: isSelected ? '#2563eb' : '#94a3b8' }}>
+                        {m.trigger_summary}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Toggle Auxiliary Line Visibility */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.84rem', fontWeight: '700', color: '#1e293b' }}>
+                  🛠️ 作法指令：
+                  <span style={{ color: '#ef4444', marginLeft: '6px' }}>
+                    {AUXILIARY_LINE_MODELS[auxiliaryModelKey]?.construction_step}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAuxiliary(v => !v)}
+                  style={{
+                    background: showAuxiliary ? '#ef4444' : '#10b981',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '0.8rem',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {showAuxiliary ? '👁️ 辅助线：已显示 (点击隐藏自主思考)' : '🙈 辅助线：已隐藏 (点击揭晓破局线)'}
+                </button>
+              </div>
+
+              {/* Master Causal Rationale Callout */}
+              <div style={{
+                background: 'linear-gradient(135deg, #fefce8 0%, #fef3c7 100%)',
+                border: '1px solid #fde047',
+                borderRadius: '14px',
+                padding: '14px 16px',
+                color: '#713f12'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '1.2rem' }}>💡</span>
+                  <span style={{ fontWeight: '800', fontSize: '0.92rem', color: '#854d0e' }}>
+                    特级名师因果动因逆推（为什么作这条辅助线？）
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.86rem', lineHeight: '1.6' }}>
+                  {AUXILIARY_LINE_MODELS[auxiliaryModelKey]?.causal_rationale}
+                </div>
+              </div>
+
+              {/* 3 Socratic Steps */}
+              <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '12px 16px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: '700', fontSize: '0.85rem', color: '#334155', marginBottom: '8px' }}>
+                  💬 启发式三步连环问（引导孩子自己推导）：
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {AUXILIARY_LINE_MODELS[auxiliaryModelKey]?.socratic_steps.map((step, idx) => (
+                    <div key={idx} style={{ fontSize: '0.82rem', color: '#475569', display: 'flex', gap: '6px' }}>
+                      <span style={{ color: '#2563eb', fontWeight: '700' }}>•</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

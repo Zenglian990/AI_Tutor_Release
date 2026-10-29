@@ -73,6 +73,18 @@ if (typeof window !== 'undefined') {
       createImageData: () => ({ width: 0, height: 0, data: new Uint8ClampedArray(4) }),
       drawImage: () => {},
       getContextAttributes: () => ({}),
+      beginPath: () => {},
+      closePath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      stroke: () => {},
+      fill: () => {},
+      arc: () => {},
+      setLineDash: () => {},
+      fillText: () => {},
+      measureText: () => ({ width: 0 }),
+      save: () => {},
+      restore: () => {},
     } as unknown as RenderingContext;
   } as typeof HTMLCanvasElement.prototype.getContext;
 

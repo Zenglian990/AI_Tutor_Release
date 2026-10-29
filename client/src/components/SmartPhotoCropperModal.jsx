@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { removeShadowsAndEnhance, enhanceBlackAndWhite } from '../utils/documentEnhancer';
+import { removeShadowsAndEnhance, enhanceBlackAndWhite, eraseHandwritingAndRestorePaper } from '../utils/documentEnhancer';
 import { inspectImageQuality } from '../utils/imageQualityInspector';
 import { warpPerspective } from '../utils/perspectiveTransform';
 import { playShutterSound } from '../utils/sensoryFeedback';
@@ -214,6 +214,17 @@ export default function SmartPhotoCropperModal({
         });
       } catch (err) {
         console.warn('[SmartCropper] B&W enhance failed, using raw:', err);
+      }
+    } else if (filterMode === 'restored') {
+      try {
+        removeShadowsAndEnhance(canvas, {
+          windowSizeRatio: 0.08,
+          targetWhite: 245,
+          contrastFactor: 1.15
+        });
+        eraseHandwritingAndRestorePaper(canvas);
+      } catch (err) {
+        console.warn('[SmartCropper] Handwriting erase & paper restore failed, using raw:', err);
       }
     }
   }, [imgObj, rotation, filterMode]);
@@ -991,6 +1002,25 @@ export default function SmartPhotoCropperModal({
               }}
             >
               🖨️ 黑白增强
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('restored')}
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: '8px',
+                background: filterMode === 'restored' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
+                color: '#ffffff',
+                border: filterMode === 'restored' ? '1px solid #fbbf24' : '1px solid transparent',
+                fontSize: '0.78rem',
+                fontWeight: filterMode === 'restored' ? 700 : 500,
+                cursor: 'pointer',
+                boxShadow: filterMode === 'restored' ? '0 2px 8px rgba(245, 158, 11, 0.4)' : 'none',
+                touchAction: 'manipulation'
+              }}
+            >
+              🧽 擦字还原
             </button>
           </div>
         </div>

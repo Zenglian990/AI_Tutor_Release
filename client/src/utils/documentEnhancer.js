@@ -201,6 +201,161 @@ export function eraseTeacherRedInk(canvas, options = {}) {
 }
 
 /**
+ * 试卷手写笔迹与红笔批改智能原位擦除还原算法 (Clean Slate Inpainting & Paper Restorer)
+ * 对标小猿口算/喵喵机“试卷翻新/还原空白卷”顶级功能：
+ * 1. 自动消除老师红笔批改、红叉、勾选标记与得分圈画
+ * 2. 自动消除学生蓝色圆珠笔、彩色水笔划线及中度灰度铅笔手写草稿与涂抹
+ * 3. 严格保留高对比度印刷体题干黑体/宋体、几何图形线条、坐标轴与表格线
+ * 4. 采用积分图局部自适应背景反演填充 (Local Inpainting)，无缝复原纸面平整度与白度
+ * 
+ * @param {HTMLCanvasElement} canvas
+ * @param {Object} options
+ * @returns {HTMLCanvasElement}
+ */
+export function eraseHandwritingAndRestorePaper(canvas, options = {}) {
+  const {
+    redThreshold = 24,
+    blueThreshold = 22,
+    printedDarknessMax = 68,     // 纯黑印刷墨水上限 (低于此值视为原题干印刷字体)
+    pencilUpperLimit = 185,       // 铅笔灰度上限
+    targetWhite = 252,
+    windowSizeRatio = 0.08
+  } = options;
+
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const totalPixels = width * height;
+
+  // 1. 提取灰度并计算积分图
+  const gray = new Uint8Array(totalPixels);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    gray[i] = (data[idx] * 77 + data[idx + 1] * 150 + data[idx + 2] * 29) >> 8;
+  }
+  const integral = buildIntegralImage(gray, width, height);
+  const radius = Math.max(14, Math.floor(Math.min(width, height) * windowSizeRatio));
+
+  // 2. 标记需要擦除的区域 (掩模 Mask)
+  const eraseMask = new Uint8Array(totalPixels);
+
+  for (let y = 0; y < height; y++) {
+    const y1 = Math.max(0, y - radius);
+    const y2 = Math.min(height, y + radius);
+
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x);
+      const pixelIdx = idx * 4;
+      const r = data[pixelIdx];
+      const g = data[pixelIdx + 1];
+      const b = data[pixelIdx + 2];
+      const curGray = gray[idx];
+
+      const x1 = Math.max(0, x - radius);
+      const x2 = Math.min(width, x + radius);
+      const localBg = Math.max(40, getWindowMean(integral, width, x1, y1, x2, y2));
+
+      // 特征 A: 老师红笔批改标记 (勾、叉、红圈、打分)
+      const isRedInk = r > 105 && (r - g > redThreshold) && (r - b > redThreshold);
+
+      // 特征 B: 蓝色/青色圆珠笔或彩墨水笔
+      const isBlueInk = b > 110 && (b - r > blueThreshold);
+
+      // 特征 C: 学生染料水笔或彩笔 (存在偏色，非纯工业碳黑)
+      const isTintedGel = (Math.abs(r - g) > 18 || Math.abs(r - b) > 18) && curGray > 70 && curGray < 210;
+
+      // 特征 D: 学生铅笔笔迹 (中度灰度，且背景明亮)
+      const isPencilHandwriting = curGray >= printedDarknessMax && curGray <= pencilUpperLimit && (localBg - curGray > 30);
+
+      if (isRedInk || isBlueInk || isTintedGel || isPencilHandwriting) {
+        eraseMask[idx] = 1;
+      }
+    }
+  }
+
+  // 3. 膨胀 1 像素，消除笔迹边缘残留色晕 (1-pixel dilation)
+  const dilatedMask = new Uint8Array(totalPixels);
+  for (let y = 1; y < height - 1; y++) {
+    const rowOffset = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const idx = rowOffset + x;
+      if (eraseMask[idx] === 1) {
+        dilatedMask[idx] = 1;
+        dilatedMask[idx - 1] = 1;
+        dilatedMask[idx + 1] = 1;
+        dilatedMask[idx - width] = 1;
+        dilatedMask[idx + width] = 1;
+      }
+    }
+  }
+
+  // 4. 原位智能平滑修复 (Inpainting with Local Background Illumination)
+  for (let y = 0; y < height; y++) {
+    const y1 = Math.max(0, y - radius);
+    const y2 = Math.min(height, y + radius);
+
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (dilatedMask[idx] === 1) {
+        const x1 = Math.max(0, x - radius);
+        const x2 = Math.min(width, x + radius);
+        const localBg = Math.max(40, getWindowMean(integral, width, x1, y1, x2, y2));
+        const fillVal = Math.min(255, Math.max(targetWhite, Math.round(localBg * 1.05)));
+
+        const pixelIdx = idx * 4;
+        data[pixelIdx] = fillVal;
+        data[pixelIdx + 1] = fillVal;
+        data[pixelIdx + 2] = fillVal;
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/**
+ * 将整页作业一键抹除手写笔迹与批改，生成空白复练卷文件
+ */
+export async function eraseHandwritingAndRestorePaperFile(file, options = {}) {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = objectUrl;
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      // 先执行文档提亮与平整，再原位擦除手写与红笔
+      removeShadowsAndEnhance(canvas, options);
+      eraseHandwritingAndRestorePaper(canvas, options);
+
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(objectUrl);
+        if (!blob) return resolve(file);
+        const restoredFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + "_restored_blank.jpg", {
+          type: outputType,
+          lastModified: Date.now()
+        });
+        resolve(restoredFile);
+      }, outputType, 0.92);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+  });
+}
+
+/**
  * 将整页作业一键抹除红笔批改与手写彩墨，生成空白复练卷
  */
 export async function eraseTeacherRedInkFile(file, options = {}) {

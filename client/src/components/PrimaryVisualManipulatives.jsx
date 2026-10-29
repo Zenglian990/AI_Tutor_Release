@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 
 /**
  * PrimaryVisualManipulatives
- * 小学低年级（1-3年级）具象实物积木与等式天平教具
- * 专为 1-3 年级心智模型打造：化抽象符号为直观操作，激发动手兴趣
+ * 小学低年级（1-3年级）具象实物积木、等式天平与分苹果乘除法教具
+ * 专为 1-3 年级心智模型打造：化抽象符号为直观操作，激发动手兴趣与语音伴读引导
  */
 export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToChat }) {
-  const [activeTab, setActiveTab] = useState('blocks'); // 'blocks' | 'balance'
+  const [activeTab, setActiveTab] = useState('blocks'); // 'blocks' | 'balance' | 'partition'
 
   // Tab 1: Base-10 Blocks & Candy Counter
   const [tensCount, setTensCount] = useState(2); // 2 tens = 20
@@ -19,6 +19,13 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
   const [rightWeights, setRightWeights] = useState(8); // 右边砝码 8
   const UNKNOWN_ACTUAL_VAL = 5; // 真实 x = 5，天平平衡
 
+  // Tab 3: Division & Multiplication Partition (分苹果与阵列)
+  const [totalApples, setTotalApples] = useState(12);
+  const [platesCount, setPlatesCount] = useState(3);
+
+  // Audio Narration State
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   if (!isOpen) return null;
 
   // Calculate balance tilt
@@ -29,15 +36,61 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
 
   const totalValue = tensCount * 10 + onesCount;
 
+  // Partition math
+  const perPlate = Math.floor(totalApples / platesCount);
+  const remainder = totalApples % platesCount;
+
+  // Web Speech API gentle narration for 1-3 grades
+  const handleVoiceNarration = () => {
+    const UtteranceClass = window.SpeechSynthesisUtterance || globalThis.SpeechSynthesisUtterance;
+    if (!window.speechSynthesis || !UtteranceClass) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    let speechText = '';
+    if (activeTab === 'blocks') {
+      speechText = `小朋友你好！你看，这里有 ${tensCount} 根十位棒，代表 ${tensCount * 10}，还有 ${onesCount} 个小散块。合起来一共是 ${totalValue} 哦！按加号减号试试看数字怎么变化吧！`;
+    } else if (activeTab === 'balance') {
+      if (diff === 0) {
+        speechText = `太棒啦！天平现在两边正好平衡，说明神秘方块 x 的重量正好是 5！这就是等式的秘密！`;
+      } else if (diff > 0) {
+        speechText = `天平向左边倾斜啦，说明左边太重了！试着在左边拿走一点砝码，或者在右边加上砝码让它平衡吧！`;
+      } else {
+        speechText = `天平向右边倾斜啦，右边太重了！试着给左边加一点重量让它平衡吧！`;
+      }
+    } else if (activeTab === 'partition') {
+      speechText = `我们来平均分苹果吧！一共有 ${totalApples} 个苹果，平均分给 ${platesCount} 个盘子。每个盘子能分到 ${perPlate} 个苹果${remainder > 0 ? `，还剩 ${remainder} 个在篮子里` : '，正好分完'}！这就是除法的神奇奥秘！`;
+    }
+
+    const utterance = new UtteranceClass(speechText);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 0.95; // Gentle and steady for children
+    utterance.pitch = 1.1; // Friendly tone
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
   const handleSendEquationToChat = () => {
     if (activeTab === 'blocks') {
       const summary = `老师，我刚才在实物积木上摆出了 ${tensCount} 个十（十位棒）和 ${onesCount} 个一（个位块），一共是 ${totalValue}。请问用这个怎么拆解退位减法呢？`;
       onApplyToChat && onApplyToChat(summary);
-    } else {
+    } else if (activeTab === 'balance') {
       const equationStr = `${leftUnknown > 1 ? `${leftUnknown}x` : 'x'} + ${leftWeights} = ${rightWeights}`;
       const summary = `老师，我在方程天平上摆出了【${equationStr}】。天平${diff === 0 ? '现在两边正好平衡！所以 x = ' + UNKNOWN_ACTUAL_VAL : (diff > 0 ? '左边偏重' : '右边偏重')}。请教我怎么通过两边同时拿走砝码来解出 x？`;
       onApplyToChat && onApplyToChat(summary);
+    } else {
+      const summary = `老师，我在分苹果实操台上操作了：将 ${totalApples} 个苹果平均分到 ${platesCount} 个盘子里，每个盘子得到 ${perPlate} 个${remainder > 0 ? `，剩余 ${remainder} 个` : '（整除）'}。请问如何把这个具象场景书写为除法竖式和有余数除法的严谨验算？`;
+      onApplyToChat && onApplyToChat(summary);
     }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     onClose();
   };
 
@@ -70,7 +123,29 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.4rem', cursor: 'pointer' }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleVoiceNarration}
+              style={{
+                background: isSpeaking ? '#ffffff' : 'rgba(255, 255, 255, 0.25)',
+                color: isSpeaking ? '#ea580c' : '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                borderRadius: '20px',
+                padding: '5px 14px',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: isSpeaking ? '0 0 12px rgba(255, 255, 255, 0.8)' : 'none'
+              }}
+            >
+              <span>{isSpeaking ? '🛑 停止伴读' : '🔊 名师伴读引导'}</span>
+            </button>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.4rem', cursor: 'pointer' }}>✕</button>
+          </div>
         </div>
 
         {/* Tab switcher */}
@@ -100,6 +175,19 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
           >
             <span>⚖️</span>
             <span>等式方程天平</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('partition')}
+            style={{
+              padding: '8px 16px', borderRadius: '12px', border: 'none',
+              background: activeTab === 'partition' ? '#10b981' : 'transparent',
+              color: activeTab === 'partition' ? '#fff' : '#64748b',
+              fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <span>🍎</span>
+            <span>分苹果平均分与乘除阵列</span>
           </button>
         </div>
 
@@ -220,7 +308,7 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'balance' ? (
             /* Balance Scale View */
             <div>
               <div style={{ textAlign: 'center', marginBottom: '14px' }}>
@@ -305,6 +393,130 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button onClick={() => setRightWeights(Math.max(0, rightWeights - 1))} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>-1</button>
                     <button onClick={() => setRightWeights(rightWeights + 1)} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>+1</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Partition / Multiplication Array View */
+            <div>
+              {/* Formula & Status Banner */}
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#047857' }}>
+                  {totalApples} ÷ {platesCount} = <span style={{ fontSize: '1.6rem', color: '#059669' }}>{perPlate}</span>
+                  {remainder > 0 && (
+                    <span style={{ color: '#d97706', fontSize: '1.1rem', marginLeft: '8px' }}>
+                      （余数：{remainder}）
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>
+                  乘法算理对应：<strong>{platesCount} 个盘子 × 每盘 {perPlate} 个 = {platesCount * perPlate} 个</strong>
+                  {remainder > 0 && `（加上篮子余数 ${remainder} 个 = 共 ${totalApples} 个）`}
+                </div>
+              </div>
+
+              {/* Visual Plates Display */}
+              <div style={{
+                background: '#f8fafc', border: '2px dashed #a7f3d0', borderRadius: '16px',
+                padding: '20px', minHeight: '190px', display: 'flex', flexDirection: 'column', gap: '16px'
+              }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+                  {Array.from({ length: platesCount }).map((_, plateIdx) => (
+                    <div
+                      key={plateIdx}
+                      style={{
+                        background: '#ffffff',
+                        border: '2.5px solid #10b981',
+                        borderRadius: '20px',
+                        padding: '10px 14px',
+                        minWidth: '100px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.15)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#047857' }}>
+                        🍽️ 盘子 #{plateIdx + 1}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '80px', justifyContent: 'center' }}>
+                        {Array.from({ length: perPlate }).map((_, aIdx) => (
+                          <span key={aIdx} style={{ fontSize: '1.2rem', lineHeight: '1' }}>🍎</span>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: '700' }}>
+                        共 {perPlate} 个
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Remainder Basket if any */}
+                {remainder > 0 && (
+                  <div style={{
+                    background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px',
+                    padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '1.2rem' }}>🧺</span>
+                    <span style={{ fontSize: '0.84rem', color: '#b45309', fontWeight: '700' }}>
+                      篮子里不够均分的苹果（余数）：
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {Array.from({ length: remainder }).map((_, rIdx) => (
+                        <span key={rIdx} style={{ fontSize: '1.1rem' }}>🍎</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Partition Controls */}
+              <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div style={{ background: '#ecfdf5', padding: '12px 16px', borderRadius: '12px', border: '1px solid #a7f3d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#065f46', fontSize: '0.88rem' }}>苹果总数 ({totalApples}个)</div>
+                    <div style={{ fontSize: '0.72rem', color: '#047857' }}>被除数 (范围 1~24)</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTotalApples(Math.max(1, totalApples - 1))}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      -1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTotalApples(Math.min(24, totalApples + 1))}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      +1
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#166534', fontSize: '0.88rem' }}>盘子数量 ({platesCount}盘)</div>
+                    <div style={{ fontSize: '0.72rem', color: '#15803d' }}>除数 (平均分成几份 2~6)</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPlatesCount(Math.max(2, platesCount - 1))}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#059669', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      -1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPlatesCount(Math.min(6, platesCount + 1))}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#059669', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      +1
+                    </button>
                   </div>
                 </div>
               </div>
