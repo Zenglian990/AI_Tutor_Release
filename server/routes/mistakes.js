@@ -46,7 +46,7 @@ router.post('/mistakes/mark', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const { query, answer, grade, subject, profile_id, source_info, tags, reason } = req.body;
+    const { query, answer, grade, subject, profile_id, source_info, tags, reason, image_url, crop_data } = req.body;
     if (!query || !answer) return res.status(400).json({ error: "Missing query or answer" });
 
     let sourceInfoStr = '[]';
@@ -59,9 +59,21 @@ router.post('/mistakes/mark', async (req, res) => {
     }
 
     const mistakeReason = reason || '用户自主标记';
+    const cropDataStr = crop_data ? (typeof crop_data === 'object' ? JSON.stringify(crop_data) : String(crop_data)) : '';
     const result = await sqliteDb.run(
-      'INSERT INTO mistakes (query, answer, grade, subject, source_info, reason, profile_id, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [encryptField(query), encryptField(answer), grade || 'unknown', subject || 'unknown', sourceInfoStr, encryptField(mistakeReason), profile_id || 'default', encryptField(tags || '')]
+      'INSERT INTO mistakes (query, answer, grade, subject, source_info, reason, profile_id, tags, image_url, crop_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        encryptField(query),
+        encryptField(answer),
+        grade || 'unknown',
+        subject || 'unknown',
+        sourceInfoStr,
+        encryptField(mistakeReason),
+        profile_id || 'default',
+        encryptField(tags || ''),
+        image_url || '',
+        cropDataStr
+      ]
     );
     res.json({ success: true, id: result.lastID });
   } catch (e) {

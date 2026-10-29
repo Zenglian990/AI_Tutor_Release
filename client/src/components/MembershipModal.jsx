@@ -77,13 +77,13 @@ export default function MembershipModal({ isOpen, onClose }) {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '1.6rem' }}>👑</span>
+              <span style={{ fontSize: '1.6rem' }}>🎓</span>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.02em' }}>
-                曾先生智慧私教 · VIP 会员中心
+                曾练专属私教 · 纯净全功能开放说明
               </h2>
             </div>
             <div style={{ fontSize: '0.82rem', color: '#c7d2fe', marginTop: '6px' }}>
-              1-9年级全学科教材题库 · 全国名校中考真卷 · 局域网真机打印 · 家长微信免密看板
+              零商业化收费 · 专注打磨教学品质 · 1-9年级全学科教材真题永久畅享
             </div>
           </div>
           <button
@@ -111,7 +111,7 @@ export default function MembershipModal({ isOpen, onClose }) {
               transition: 'all 0.2s'
             }}
           >
-            💎 会员特权与方案
+            🌱 教学功能开放说明
           </button>
           <button
             onClick={() => setActiveTab('redeem')}
@@ -123,166 +123,84 @@ export default function MembershipModal({ isOpen, onClose }) {
               transition: 'all 0.2s'
             }}
           >
-            🔑 激活码兑换
+            🔑 教师特权码激活
           </button>
         </div>
 
         {/* Body Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px' }}>
           {activeTab === 'overview' ? (
-            /* VIP Rights & Plans Showcase */
+            /* Pure Free Educational Mode */
             <div>
               {/* Current Status Banner */}
               <div style={{
-                background: isVip ? 'linear-gradient(135deg, #eff6ff, #dbeafe)' : '#f8fafc',
-                border: isVip ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+                background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                border: '1px solid #86efac',
                 borderRadius: '12px', padding: '16px 20px', marginBottom: '20px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
                 <div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  <div style={{ fontSize: '0.82rem', color: '#15803d' }}>
                     当前学员档案：<b>{currentProfile?.name || '默认学员'}</b>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                     <span style={{
                       fontSize: '1.05rem', fontWeight: 'bold',
-                      color: isVip ? '#1e40af' : '#334155'
+                      color: '#166534'
                     }}>
-                      {isVip ? '👑 Pro 尊享年度/季度会员' : '⚡ 免费基础体验版'}
+                      🌟 全功能纯净体验版（永久免费 · 无需付费）
                     </span>
-                    {isVip && (
-                      <span style={{
-                        background: '#10b981', color: '#fff', fontSize: '0.75rem',
-                        padding: '2px 8px', borderRadius: '12px', fontWeight: 600
-                      }}>
-                        剩余 {daysRemaining} 天
-                      </span>
-                    )}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#64748b' }}>
-                  {isVip ? `到期时间: ${new Date(membershipStatus.expire_at).toLocaleDateString()}` : '每日限额 5 次互动'}
+                <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#166534' }}>
+                  无互动限制 · 无商业广告
                 </div>
               </div>
 
-              {/* VIP Plans Grid */}
-              <div style={{ marginBottom: '22px' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', color: '#1e293b' }}>
-                  🌟 会员进阶方案推荐
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                  {/* Plan 1 */}
-                  <div style={{
-                    border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px',
-                    background: '#ffffff', textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>考前冲刺</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>月度冲刺卡</div>
-                    <div style={{ fontSize: '0.78rem', color: '#4f46e5', margin: '6px 0', fontWeight: 600 }}>30天畅学</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
-                      单科考前速查<br />名卷无限下载
-                    </div>
-                  </div>
-
-                  {/* Plan 2: Recommended */}
-                  <div style={{
-                    border: '2px solid #4f46e5', borderRadius: '12px', padding: '14px',
-                    background: 'linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%)', textAlign: 'center',
-                    position: 'relative'
-                  }}>
-                    <span style={{
-                      position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
-                      background: '#4f46e5', color: '#fff', fontSize: '0.68rem', padding: '2px 8px',
-                      borderRadius: '10px', fontWeight: 700
-                    }}>
-                      热门首选
-                    </span>
-                    <div style={{ fontSize: '0.82rem', color: '#4f46e5', fontWeight: 600 }}>学期攻坚</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>季度拔高卡</div>
-                    <div style={{ fontSize: '0.78rem', color: '#4f46e5', margin: '6px 0', fontWeight: 600 }}>90天全程</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
-                      错题翻新打印<br />微信学情免密看
-                    </div>
-                  </div>
-
-                  {/* Plan 3 */}
-                  <div style={{
-                    border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px',
-                    background: '#ffffff', textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>全年中考直通</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>年度尊享卡</div>
-                    <div style={{ fontSize: '0.78rem', color: '#059669', margin: '6px 0', fontWeight: 600 }}>365天全通</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
-                      1-9年级9门学科<br />39,114套题库
-                    </div>
-                  </div>
+              {/* Free Educational Guarantee */}
+              <div style={{
+                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px',
+                padding: '16px 20px', marginBottom: '20px'
+              }}>
+                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem', marginBottom: '6px' }}>
+                  🌱 纯净教育承诺：零商业付费，100% 潜心打磨产品
+                </div>
+                <div style={{ fontSize: '0.84rem', color: '#475569', lineHeight: 1.6 }}>
+                  本系统核心定位于打磨最优质的 1-9 年级名师启发式 AI 私教体验。所有学科题库、动点几何、科学实验沙盘、苏格拉底启发引导与错题翻新打印功能均向全体学员永久免费开放，不设任何消费门槛或商业付费套餐。
                 </div>
               </div>
 
-              {/* Privilege Comparison Table */}
+              {/* Feature Privilege List */}
               <div style={{ marginBottom: '22px' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#1e293b' }}>
-                  ✨ VIP 权益对照一览
+                  ✨ 已开放核心教学功能一览
                 </h4>
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', fontSize: '0.84rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', background: '#f1f5f9', padding: '10px 14px', fontWeight: 'bold', color: '#475569' }}>
-                    <span>功能特权</span>
-                    <span style={{ textAlign: 'center' }}>免费体验</span>
-                    <span style={{ textAlign: 'center', color: '#4f46e5' }}>VIP 尊享</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', background: '#f1f5f9', padding: '10px 14px', fontWeight: 'bold', color: '#475569' }}>
+                    <span>教学特权与工具</span>
+                    <span style={{ textAlign: 'center', color: '#16a34a' }}>开放状态</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>名师苏格拉底启发辅导</span>
-                    <span style={{ textAlign: 'center', color: '#94a3b8' }}>5次/天</span>
-                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>无限次</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
+                    <span>名师苏格拉底启发式辅导</span>
+                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 无限次免费畅用</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>全国名校中考真卷库 (海淀/黄冈/启东等)</span>
-                    <span style={{ textAlign: 'center', color: '#94a3b8' }}>基础样卷</span>
-                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>39,114+套名卷</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
+                    <span>全国名校中考真卷库 (39,114+套题库)</span>
+                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 完整开放</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>错题抹除红批 & 一键翻新空白卷</span>
-                    <span style={{ textAlign: 'center', color: '#94a3b8' }}>✕</span>
-                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 支持</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
+                    <span>错题抹除红批 & 一键翻新空白卷重练</span>
+                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 完整开放</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>家庭物理打印机局域网秒级出纸</span>
-                    <span style={{ textAlign: 'center', color: '#94a3b8' }}>✕</span>
-                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 支持</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
+                    <span>动点几何沙盘 & 动态物理化学实验室</span>
+                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 完整开放</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>家长微信随身学情免密看板</span>
-                    <span style={{ textAlign: 'center', color: '#94a3b8' }}>✕</span>
-                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 30天免密实时查</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
+                    <span>局域网 A4 真实打印机无线打印</span>
+                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 完整开放</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Purchase / Customer Service Box */}
-              <div style={{
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px 20px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-              }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.92rem' }}>
-                    💬 激活码选购与家庭方案定制
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
-                    添加导师【曾先生】微信或关注小红书官方店，获取专属激活码与 1 对 1 学情规划
-                  </div>
-                </div>
-                <button
-                  onClick={() => setActiveTab('redeem')}
-                  style={{
-                    background: 'linear-gradient(135deg, #4f46e5, #4338ca)',
-                    color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: '8px',
-                    fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', flexShrink: 0
-                  }}
-                >
-                  去输入卡密兑换 ➔
-                </button>
               </div>
             </div>
           ) : (
@@ -340,7 +258,7 @@ export default function MembershipModal({ isOpen, onClose }) {
                 <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.7 }}>
                   <li>激活码在核销后即刻生效，若您已有会员，有效期将顺延增加。</li>
                   <li>每个激活码仅限核销一次，请妥善保管。</li>
-                  <li>如未收到卡密或误输卡密，请联系曾先生导师微信或小红书客服协助解决。</li>
+                  <li>系统所有教学工具与题库已全面开放，无需卡密即可无限制学习使用。</li>
                 </ul>
               </div>
             </div>

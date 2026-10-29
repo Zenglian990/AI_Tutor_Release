@@ -1093,7 +1093,6 @@ function AppInner() {
         onOpenGamification={() => setShowGamification(true)}
         onOpenManipulatives={() => setShowManipulatives(true)}
         onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
-        onOpenMembership={() => setShowMembershipModal(true)}
         onOpenEyeCare={() => setShowEyeCare(true)}
         onOpenDailyCard={() => setShowDailyCard(true)}
       />

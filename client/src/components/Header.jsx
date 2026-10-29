@@ -112,11 +112,10 @@ export default function Header({
   selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
   onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
-  onOpenMembership, onOpenPoster, onOpenAdminConsole,
+  onOpenPoster, onOpenAdminConsole,
   onOpenEyeCare, onOpenDailyCard
 }) {
-  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, membershipStatus, chatModel, setChatModel } = useAppStore();
-  const isVip = membershipStatus?.is_vip;
+  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, chatModel, setChatModel } = useAppStore();
   const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
   const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
 
@@ -217,26 +216,6 @@ export default function Header({
 
       {/* 3. 核心功能与操作区 (Right) */}
       <div className="header-actions">
-        {/* VIP 会员与卡密激活 */}
-        {onOpenMembership && (
-          <button
-            onClick={onOpenMembership}
-            className="header-btn-pill"
-            title={isVip ? `VIP会员有效期至: ${membershipStatus?.expires_at ? new Date(membershipStatus.expires_at).toLocaleDateString() : '永久'}` : '开通/激活VIP会员'}
-            aria-label="VIP会员与卡密激活"
-            style={{
-              background: isVip 
-                ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.15))'
-                : 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.15))',
-              color: isVip ? '#fbbf24' : '#c084fc',
-              borderColor: isVip ? 'rgba(234, 179, 8, 0.4)' : 'rgba(139, 92, 246, 0.35)',
-              boxShadow: isVip ? '0 0 10px rgba(245, 158, 11, 0.15)' : 'none'
-            }}
-          >
-            <span>{isVip ? '👑' : '💎'}</span>
-            <span className="btn-label">{isVip ? 'VIP' : 'VIP'}</span>
-          </button>
-        )}
 
         {/* 连续学习连胜与同桌羁绊 (Duolingo-style Streak Flywheel) */}
         {onOpenGamification && (

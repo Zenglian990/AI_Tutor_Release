@@ -199,7 +199,7 @@ function convertGeminiToDeepSeekPayload(geminiPayload, isStream, modelName = nul
     stream: isStream
   };
 
-  if (selectedModel.includes('reasoner') || selectedModel.includes('r1')) {
+  if (selectedModel.includes('reasoner') || selectedModel.includes('r1') || (geminiPayload.generationConfig?.thinkingConfig?.thinkingBudget > 0)) {
     deepseekPayload.thinking = {
       type: "enabled"
     };

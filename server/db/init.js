@@ -418,6 +418,19 @@ async function runMigrations(db) {
       await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (16)');
     }
 
+    if (v < 17) {
+      // Mistake Notebook Image Persistence & Crop Data
+      const mistakesCols = await db.all("PRAGMA table_info('mistakes')");
+      const colNames = mistakesCols.map(c => c.name);
+      if (!colNames.includes('image_url')) {
+        await db.exec("ALTER TABLE mistakes ADD COLUMN image_url TEXT DEFAULT '';");
+      }
+      if (!colNames.includes('crop_data')) {
+        await db.exec("ALTER TABLE mistakes ADD COLUMN crop_data TEXT DEFAULT '';");
+      }
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (17)');
+    }
+
   } catch (err) {
     logger.error('Failed during schema migration: ', err);
     throw err;

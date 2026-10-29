@@ -256,10 +256,21 @@ router.post('/chat', async (req, res) => {
       prompt = getChapterStartPrompt(chapterName, correctedResults, grade, subject);
     }
 
+    // Dynamic thinking budget for complex STEM reasoning in secondary grades (7-12)
+    const rawGradeNum = parseInt(String(grade).split('_')[0], 10);
+    const isStemSubject = ['数学', '物理', '化学', '生物', '科学'].includes(subject);
+    const isSecondaryGrade = rawGradeNum >= 7 && rawGradeNum <= 12;
+    const isProofOrDerivation = /(?:证明|推导|求证|解方程|二次函数|动点|辅助线|压轴题|配方|受力分析|离子方程式|平衡常数|遗传概率)/i.test(query || '');
+
+    let thinkingBudget = 0;
+    if (!voice_mode && ((isSecondaryGrade && isStemSubject) || isProofOrDerivation)) {
+      thinkingBudget = isProofOrDerivation ? 2048 : 1024;
+    }
+
     const generationConfig = {
       temperature: 0.2,
       maxOutputTokens: 8192,
-      thinkingConfig: { thinkingBudget: 0 }
+      thinkingConfig: { thinkingBudget }
     };
 
     const contentsPayload = {

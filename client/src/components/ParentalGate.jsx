@@ -236,12 +236,12 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
       setIsVerifying(true);
       const hash = await sha256(newPinVal);
 
-      // (a) 检查是否为出厂万能密码 888888
-      const isMaster = (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH);
-      // (b) 检查是否与本地保存的自定义密码匹配
+      // (a) 检查是否与本地保存的自定义密码匹配
       const isLocalMatch = Boolean(savedPinHash && hash === savedPinHash);
+      // (b) 检查是否为出厂初始密码 888888 (仅在未配置自定义密码时允许作为出厂默认值)
+      const isMasterAllowed = !savedPinHash && (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH);
 
-      if (isMaster || isLocalMatch) {
+      if (isLocalMatch || isMasterAllowed) {
         setSuccess(true);
         sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
         localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
@@ -276,8 +276,8 @@ export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏�
           return;
         }
       } catch (e) {
-        // 网络或离线状态，未保存过密码则允许 888888 或首次默认进入
-        if (!savedPinHash) {
+        // 网络或离线状态：如果未设置过密码，且输入了出厂默认密码 888888 则放行
+        if (!savedPinHash && (newPinVal === MASTER_PIN || hash === MASTER_PIN_HASH)) {
           setSuccess(true);
           sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
           resetAttempts();

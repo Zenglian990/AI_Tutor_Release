@@ -83,7 +83,7 @@ export default function AdminConsoleModal({
   const [posterQrType, setPosterQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'custom_image');
   const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || ZENG_WECHAT_QR_DATA_URL);
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
-  const [posterContactName, setPosterContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '私教微信：扫码添加曾先生');
+  const [posterContactName, setPosterContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '曾练专属私教 · 纯净学习档案');
   const [posterSaving, setPosterSaving] = useState(false);
 
   const drawPoster = useCallback(async () => {
@@ -238,15 +238,15 @@ export default function AdminConsoleModal({
     ctx.fillStyle = posterTemplate === 'primary' ? '#1e293b' : '#f8fafc';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('微信扫码添加私教', 215, 805);
+    ctx.fillText('扫码查看学情档案', 215, 805);
 
     ctx.fillStyle = posterTemplate === 'primary' ? '#d97706' : '#38bdf8';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('送 7 天名校全真模考体验', 215, 835);
+    ctx.fillText('中小学 1-9 年级教材同步深度辅导', 215, 835);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '12px sans-serif';
-    ctx.fillText('全国 1-9 年级教材同步深度辅导', 215, 862);
+    ctx.fillText('苏格拉底启发引导 · 专注思维训练', 215, 862);
 
     ctx.fillStyle = posterTemplate === 'primary' ? '#78350f' : '#cbd5e1';
     ctx.font = '12px sans-serif';
@@ -267,7 +267,7 @@ export default function AdminConsoleModal({
     try {
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `曾先生私教获客海报_${posterTemplate === 'primary' ? '小学版' : '初中版'}.png`;
+      link.download = `曾练专属私教_学情报告_${posterTemplate === 'primary' ? '小学版' : '初中版'}.png`;
       link.href = dataUrl;
       link.click();
     } catch (e) {
@@ -572,7 +572,7 @@ export default function AdminConsoleModal({
               </h2>
             </div>
             <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>
-              商业变现 · 获客海报 · 批量发卡 · AI决策引擎与系统底层密钥（仅限本人使用）
+              教学管理 · 学情报告海报 · 教学特权 · AI决策引擎与系统底层密钥（仅限本人使用）
             </div>
           </div>
           <button
@@ -599,7 +599,7 @@ export default function AdminConsoleModal({
               borderBottom: activeTab === 'poster' ? '2px solid #4f46e5' : '2px solid transparent'
             }}
           >
-            📣 获客营销海报 (搞钱裂变)
+            📊 学情分享海报 (学习档案)
           </button>
           <button
             onClick={() => setActiveTab('cards')}
@@ -675,7 +675,7 @@ export default function AdminConsoleModal({
                     background: '#ffffff', color: '#334155', fontWeight: 600, fontSize: '0.82rem',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
                   }}>
-                    <span>🖼️ 更换微信二维码</span>
+                    <span>🖼️ 更换分享二维码</span>
                     <input type="file" ref={fileInputRef} accept="image/*" onChange={handleQrUpload} style={{ display: 'none' }} />
                   </label>
                   <button
@@ -688,7 +688,7 @@ export default function AdminConsoleModal({
                       display: 'flex', alignItems: 'center', gap: '6px'
                     }}
                   >
-                    <span>💾</span> {posterSaving ? '生成中...' : '保存高清海报发圈'}
+                    <span>💾</span> {posterSaving ? '生成中...' : '保存高清学情海报'}
                   </button>
                 </div>
               </div>
@@ -710,7 +710,7 @@ export default function AdminConsoleModal({
 
               {/* Copywriting Tip */}
               <div style={{ marginTop: '14px', padding: '12px 16px', background: '#e0f2fe', borderRadius: '10px', border: '1px solid #bae6fd', fontSize: '0.82rem', color: '#0369a1' }}>
-                💡 <b>曾先生获客私域秘籍</b>：保存海报后直接发送到家长微信朋友圈、小红书或班级互助群，精准吸引有“作业鸡飞狗跳”或“中考压轴攻坚”痛点的目标家长主动加微。
+                💡 <b>学情报告使用说明</b>：保存海报后可直接发送给家长或学生自查，全方位呈现思维启发、动手实验与错题巩固的学习进展。
               </div>
             </div>
           )}

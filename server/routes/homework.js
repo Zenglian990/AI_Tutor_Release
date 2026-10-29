@@ -203,9 +203,11 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
             const answerText = `【学生作答】：${item.studentAnswer || ''}\n【名师解析】：${item.standardAnswer || ''}\n【题眼破局】：${item.keyInsight || ''}`;
             const reasonText = item.mistakeReason || '整页作业批改识别错误';
             const tagsText = `${subject},整页批改,${grade}`;
+            const itemImageUrl = item.imageUrl || item.image_url || (base64Image ? `data:${mimeType};base64,${base64Image}` : '');
+            const itemCropData = item.box_2d ? (typeof item.box_2d === 'object' ? JSON.stringify(item.box_2d) : String(item.box_2d)) : (item.cropData ? JSON.stringify(item.cropData) : '');
 
             await db.run(
-              'INSERT INTO mistakes (query, answer, grade, subject, source_info, reason, profile_id, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              'INSERT INTO mistakes (query, answer, grade, subject, source_info, reason, profile_id, tags, image_url, crop_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
               [
                 encryptField(queryText),
                 encryptField(answerText),
@@ -214,7 +216,9 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
                 JSON.stringify({ source: '整页作业秒批改', questionNumber: item.questionNumber }),
                 encryptField(reasonText),
                 profile_id,
-                encryptField(tagsText)
+                encryptField(tagsText),
+                itemImageUrl,
+                itemCropData
               ]
             );
             autoArchivedCount++;

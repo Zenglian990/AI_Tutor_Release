@@ -71,4 +71,35 @@ describe('A4PrintModal Component', () => {
 
     expect(getByText(/测试畸形公式容错题/i)).toBeDefined();
   });
+
+  it('toggles handwriting eraser button and renders questions with image URLs', () => {
+    const questionsWithImage = [
+      {
+        id: 101,
+        title: '几何全等三角形真题切片',
+        body: '如图所示，已知 AB = AC，求证 ∠B = ∠C。',
+        score: 10,
+        standardAnswer: '【解】等边对等角。',
+        keyInsight: '基础几何性质。',
+        status: 'wrong',
+        imageUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+      }
+    ];
+
+    const { getByText } = render(
+      <A4PrintModal
+        isOpen={true}
+        onClose={() => {}}
+        studentName="曾练"
+        grade="八年级"
+        subject="数学"
+        questions={questionsWithImage}
+        initialMode="blank_student"
+      />
+    );
+
+    const eraserBtn = getByText(/手写笔迹擦除/i);
+    expect(eraserBtn).toBeDefined();
+    expect(getByText(/几何全等三角形真题切片/i)).toBeDefined();
+  });
 });

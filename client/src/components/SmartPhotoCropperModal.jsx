@@ -3,6 +3,7 @@ import { removeShadowsAndEnhance, enhanceBlackAndWhite, eraseHandwritingAndResto
 import { inspectImageQuality } from '../utils/imageQualityInspector';
 import { warpPerspective } from '../utils/perspectiveTransform';
 import { playShutterSound } from '../utils/sensoryFeedback';
+import { authFetch } from '../store/useStore';
 
 /**
  * SmartPhotoCropperModal
@@ -58,7 +59,7 @@ export default function SmartPhotoCropperModal({
     try {
       const formData = new FormData();
       formData.append('image', fileToUse);
-      const res = await fetch('/api/vision/detect-questions', {
+      const res = await authFetch('/api/detect-questions', {
         method: 'POST',
         body: formData
       });

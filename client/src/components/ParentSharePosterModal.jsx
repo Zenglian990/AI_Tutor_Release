@@ -58,9 +58,9 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
   });
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
   const [lanUrl, setLanUrl] = useState('');
-  const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '私教微信：扫码添加曾先生');
-  const [promoLine1, setPromoLine1] = useState(() => localStorage.getItem('parent_poster_promo_line1') || '送 7 天名校全真模考体验');
-  const [promoLine2, setPromoLine2] = useState(() => localStorage.getItem('parent_poster_promo_line2') || '全国 1-9 年级教材同步深度辅导');
+  const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '曾练专属私教 · 纯净学习档案');
+  const [promoLine1, setPromoLine1] = useState(() => localStorage.getItem('parent_poster_promo_line1') || '中小学 1-9 年级教材同步深度辅导');
+  const [promoLine2, setPromoLine2] = useState(() => localStorage.getItem('parent_poster_promo_line2') || '苏格拉底启发引导 · 专注思维训练');
 
   const studentName = currentProfile?.name || '同学';
   const grade = currentProfile?.grade || '7';
@@ -279,13 +279,13 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.fillStyle = template === 'primary' ? '#78350f' : '#ffffff';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(qrType === 'url' ? '微信扫码立即体验' : '微信扫码添加私教', 215, 788);
+      ctx.fillText(qrType === 'url' ? '微信扫码立即体验' : '扫码查看学情档案', 215, 788);
 
       ctx.fillStyle = template === 'primary' ? '#92400e' : '#94a3b8';
       ctx.font = '14px sans-serif';
-      ctx.fillText(promoLine1 || '送 7 天名校全真模考体验', 215, 822);
-      ctx.fillText(promoLine2 || '全国 1-9 年级教材同步深度辅导', 215, 852);
-      ctx.fillText(contactName || '私教微信：扫码添加曾先生', 215, 882);
+      ctx.fillText(promoLine1 || '中小学 1-9 年级教材同步深度辅导', 215, 822);
+      ctx.fillText(promoLine2 || '苏格拉底启发引导 · 专注思维训练', 215, 852);
+      ctx.fillText(contactName || '曾练专属私教 · 纯净学习档案', 215, 882);
       ctx.restore();
     } catch (qrErr) {
       console.warn('QR Code generation failed:', qrErr);
@@ -305,12 +305,12 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL('image/png');
-    const filename = `曾先生智慧私教_家长推荐海报_${template}.png`;
+    const filename = `曾练专属私教_学情报告_${template}.png`;
     await saveOrShareImage({
       dataUrl,
       filename,
-      title: '曾先生智慧私教 · 家长推荐海报',
-      text: '发现了一款超棒的中小学1-9年级AI深度辅导神器，推荐给各位家长朋友！'
+      title: '曾练专属私教 · 学情报告',
+      text: '中小学1-9年级AI深度辅导，专注思维启发与自主学习！'
     });
   };
 
@@ -417,7 +417,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                   }}
                 />
                 <span style={{ fontWeight: 600, color: '#047857' }}>
-                  📱 上传曾先生微信名片码 (最强推荐·私域转化首选)
+                  📱 学情分享二维码 (展示推荐)
                 </span>
               </label>
 
@@ -436,7 +436,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
               </label>
             </div>
 
-            {/* Type A: Custom WeChat QR Image */}
+            {/* Type A: Custom QR Image */}
             {qrType === 'custom_image' && (
               <div style={{
                 background: '#ffffff', border: '1px dashed #10b981', borderRadius: '8px',
@@ -457,7 +457,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                     padding: '6px 14px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer'
                   }}
                 >
-                  📷 点击上传曾先生微信二维码图片
+                  📷 点击上传自定义二维码图片
                 </button>
                 {customQrImage ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -467,7 +467,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                       style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', border: '1px solid #10b981' }}
                     />
                     <span style={{ color: '#059669', fontSize: '0.82rem', fontWeight: 600 }}>
-                      {customQrImage === ZENG_WECHAT_QR_DATA_URL ? '✓ 已搭载曾先生专属微信名片码（扫码加好友）' : '✓ 已加载自定义微信名片码！'}
+                      {customQrImage === ZENG_WECHAT_QR_DATA_URL ? '✓ 默认学情报告二维码' : '✓ 已加载自定义二维码！'}
                     </span>
                     {customQrImage !== ZENG_WECHAT_QR_DATA_URL && (
                       <button
@@ -478,7 +478,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                         }}
                         style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
                       >
-                        恢复曾先生默认名片
+                        恢复默认二维码
                       </button>
                     )}
                   </div>

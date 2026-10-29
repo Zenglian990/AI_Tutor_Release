@@ -88,7 +88,7 @@ describe('Duolingo-style Streak & Gamification Engine', () => {
     // Manually backdate student's last_active_date to 2 days ago
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    const dateStr = twoDaysAgo.toISOString().split('T')[0];
+    const dateStr = `${twoDaysAgo.getFullYear()}-${String(twoDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(twoDaysAgo.getDate()).padStart(2, '0')}`;
 
     await db.run(`
       INSERT OR REPLACE INTO student_streaks (profile_id, current_streak, longest_streak, last_active_date, streak_freeze_count, peer_intimacy_xp, peer_level, total_sessions)

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { saveOrShareImage } from '../utils/nativeShare';
 import { preprocessLatex } from '../utils/math';
 import { formatGrade, getApiUrl, authFetch } from '../store/useStore';
+import { eraseHandwritingAndRestorePaper } from '../utils/documentEnhancer';
 import ParentalGate from './ParentalGate';
 
 /**
@@ -60,6 +61,107 @@ function A4MathContent({ content }) {
 }
 
 /**
+ * Question Image renderer with optional automatic handwriting & teacher red mark eraser
+ */
+function QuestionImageWithEraser({ imageUrl, eraseHandwriting }) {
+  const [cleanedSrc, setCleanedSrc] = useState(null);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!imageUrl) {
+      setCleanedSrc(null);
+      return;
+    }
+    if (!eraseHandwriting) {
+      setCleanedSrc(null);
+      return;
+    }
+
+    let isCancelled = false;
+    setProcessing(true);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (isCancelled) return;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        eraseHandwritingAndRestorePaper(canvas);
+        const dataUrl = canvas.toDataURL('image/png');
+        if (!isCancelled) {
+          setCleanedSrc(dataUrl);
+          setProcessing(false);
+        }
+      } catch (err) {
+        console.warn('[A4PrintModal] Erase handwriting failed:', err);
+        if (!isCancelled) {
+          setCleanedSrc(null);
+          setProcessing(false);
+        }
+      }
+    };
+    img.onerror = () => {
+      if (!isCancelled) setProcessing(false);
+    };
+    img.src = imageUrl;
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [imageUrl, eraseHandwriting]);
+
+  if (!imageUrl) return null;
+
+  return (
+    <div style={{ margin: '10px 0', textAlign: 'center' }}>
+      {processing ? (
+        <div style={{ padding: '10px', fontSize: '0.82rem', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+          ⏳ 正在智能擦除手写字迹与批改红笔，还原空白真卷...
+        </div>
+      ) : (
+        <div style={{ display: 'inline-block', position: 'relative', maxWidth: '100%' }}>
+          <img
+            src={cleanedSrc || imageUrl}
+            alt="题目图示"
+            style={{
+              maxWidth: '100%',
+              maxHeight: '380px',
+              objectFit: 'contain',
+              borderRadius: '6px',
+              border: '1px solid #e2e8f0',
+              display: 'block'
+            }}
+          />
+          {cleanedSrc && (
+            <span
+              className="a4-no-print"
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
+                background: 'rgba(16, 185, 129, 0.9)',
+                color: '#fff',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+              }}
+            >
+              🧼 已擦除手写笔迹
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * A4PrintModal
  * 高清 A4 纸质周清微测试卷与空白重做卷排版预览组件
  * 核心特性：
@@ -80,6 +182,7 @@ function A4PrintModalInner({
 }) {
   const [printMode, setPrintMode] = useState(initialMode); // 'blank_student' | 'with_answers'
   const [filterType, setFilterType] = useState(initialFilter); // 'all' | 'wrong_only'
+  const [eraseHandwriting, setEraseHandwriting] = useState(false); // handwriting eraser
   const [twoColumn, setTwoColumn] = useState(false); // standard single column or dual column exam format
   const [exportingImage, setExportingImage] = useState(false);
   const [exportSuccessMsg, setExportSuccessMsg] = useState('');
@@ -152,7 +255,8 @@ function A4PrintModalInner({
     keyInsight: q?.keyInsight || q?.analysis || q?.explanation || '',
     mistakeReason: q?.mistakeReason || '',
     studentAnswer: q?.studentAnswer || '',
-    status: q?.status || 'unknown'
+    status: q?.status || 'unknown',
+    imageUrl: q?.imageUrl || q?.image_url || null
   }));
 
   const wrongCount = processedQuestions.filter(q => q.status === 'wrong' || q.status === 'partial').length;
@@ -445,6 +549,28 @@ function A4PrintModalInner({
                 📖 答案详析卷 (家长核对)
               </button>
             </div>
+
+            {/* Handwriting Eraser Toggle (Cleans handwriting and teacher marks for fresh paper practice) */}
+            <button
+              onClick={() => setEraseHandwriting(prev => !prev)}
+              style={{
+                background: eraseHandwriting ? '#4338ca' : '#f1f5f9',
+                color: eraseHandwriting ? '#fff' : '#475569',
+                border: '1px solid ' + (eraseHandwriting ? '#4338ca' : '#cbd5e1'),
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="自动擦除试卷拍照中的手写字迹与红笔批改，还原空白真题以供二刷重做"
+            >
+              <span>🧼</span>
+              <span>{eraseHandwriting ? '手写笔迹擦除: 开' : '手写笔迹擦除: 关'}</span>
+            </button>
 
             {/* Wrong Filter Selector */}
             {wrongCount > 0 && (
@@ -859,9 +985,12 @@ function A4PrintModalInner({
                     )}
                   </div>
 
-                  {/* Question Body Text with LaTeX Formula */}
+                  {/* Question Body Text with LaTeX Formula & Image */}
                   <div style={{ fontSize: '0.98rem', lineHeight: '1.7', marginBottom: '14px', color: '#111827' }}>
                     <A4MathContent content={q.body} />
+                    {q.imageUrl && (
+                      <QuestionImageWithEraser imageUrl={q.imageUrl} eraseHandwriting={eraseHandwriting} />
+                    )}
                   </div>
 
                   {/* Blank Student Writing Space (Student Mode) */}

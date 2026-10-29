@@ -10,6 +10,14 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const [color, setColor] = useState('#2563eb'); // default blue pen
   const [lineWidth, setLineWidth] = useState(3);
   const [gridMode, setGridMode] = useState('grid'); // 'blank', 'grid', 'coordinate', 'tian'
+  const [palmRejection, setPalmRejection] = useState(() => {
+    try {
+      return localStorage.getItem('scratchpad_palm_rejection') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const pointerActiveRef = useRef(false);
   
   // Dynamic Geometry & Function Sandbox States
   const [dynamicSandbox, setDynamicSandbox] = useState(null); // null | 'dynamic_point' | 'parabola_slider'
@@ -502,6 +510,66 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     saveState();
   };
 
+  // Pointer Event Handlers with Tablet Stylus Palm Rejection (Apple Pencil / S-Pen / Active Stylus)
+  const handlePointerDown = (e) => {
+    // Palm rejection: Ignore touch gestures (palm/finger) when palm rejection is active
+    if (palmRejection && e.pointerType === 'touch') {
+      e.preventDefault();
+      return;
+    }
+    // Auto-detect stylus: If a pen is used on tablet, automatically turn on palm rejection
+    if (e.pointerType === 'pen' && !palmRejection) {
+      setPalmRejection(true);
+      try {
+        localStorage.setItem('scratchpad_palm_rejection', 'true');
+      } catch {}
+    }
+    pointerActiveRef.current = true;
+    try {
+      if (e.target && e.target.setPointerCapture) {
+        e.target.setPointerCapture(e.pointerId);
+      }
+    } catch {}
+    startDrawing(e);
+  };
+
+  const handlePointerMove = (e) => {
+    if (palmRejection && e.pointerType === 'touch') {
+      e.preventDefault();
+      return;
+    }
+    draw(e);
+  };
+
+  const handlePointerUp = (e) => {
+    if (palmRejection && e.pointerType === 'touch') {
+      e.preventDefault();
+      return;
+    }
+    pointerActiveRef.current = false;
+    try {
+      if (e.target && e.target.hasPointerCapture && e.target.hasPointerCapture(e.pointerId)) {
+        e.target.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+    stopDrawing(e);
+  };
+
+  const handleMouseDownFallback = (e) => {
+    if (pointerActiveRef.current) return;
+    startDrawing(e);
+  };
+
+  const handleMouseMoveFallback = (e) => {
+    if (pointerActiveRef.current) return;
+    draw(e);
+  };
+
+  const handleMouseUpFallback = (e) => {
+    if (pointerActiveRef.current) return;
+    stopDrawing(e);
+  };
+
   // Export to Tutor
   const handleSendToTutor = () => {
     const canvas = canvasRef.current;
@@ -610,6 +678,27 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
               }}
             >
               🧹 橡皮
+            </button>
+            <button
+              onClick={() => {
+                setPalmRejection(prev => {
+                  const next = !prev;
+                  try { localStorage.setItem('scratchpad_palm_rejection', String(next)); } catch {}
+                  return next;
+                });
+              }}
+              style={{
+                padding: '6px 12px', borderRadius: '6px',
+                border: palmRejection ? '1px solid #059669' : '1px solid #cbd5e1',
+                background: palmRejection ? '#ecfdf5' : '#ffffff',
+                color: palmRejection ? '#047857' : '#334155',
+                cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+              title="平板手写笔防掌触模式：手掌贴在屏幕上不误画，仅响应 Apple Pencil / S-Pen 等压感手写笔与鼠标"
+            >
+              <span>✍️</span>
+              <span>{palmRejection ? '防掌触: 开' : '防掌触: 关'}</span>
             </button>
             <button
               onClick={() => setDynamicSandbox(prev => prev === 'dynamic_point' ? null : 'dynamic_point')}
@@ -926,14 +1015,22 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
 
           <canvas
             ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            style={{ display: 'block', width: '100%', height: '100%', cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+            onMouseDown={handleMouseDownFallback}
+            onMouseMove={handleMouseMoveFallback}
+            onMouseUp={handleMouseUpFallback}
+            onMouseLeave={handleMouseUpFallback}
+            style={{
+              display: 'block',
+              width: '100%',
+              height: '100%',
+              touchAction: 'none',
+              cursor: tool === 'eraser' ? 'cell' : 'crosshair'
+            }}
           />
         </div>
       </div>

@@ -475,6 +475,24 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                 </div>
 
                 <div className="mistake-query"><strong>问题：</strong>{m.query}</div>
+                {m.image_url && (
+                  <div style={{ margin: '8px 0' }} className="mistake-photo-box no-print">
+                    <img
+                      src={m.image_url}
+                      alt="作业原图切片"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '200px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        objectFit: 'contain',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => window.open(m.image_url, '_blank')}
+                      title="点击在新窗口查看作业原图"
+                    />
+                  </div>
+                )}
                 {!testMode ? (
                   <div className="mistake-answer">
                     <strong>解析：</strong>
@@ -571,7 +589,8 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
             standardAnswer: q.answer,
             keyInsight: q.explanation || '名师解析与思维破局点',
             mistakeReason: q.category === 'prerequisite_grounding' ? '针对该题此前暴露的前置基础断层进行保底测评' : '',
-            status: 'wrong'
+            status: 'wrong',
+            imageUrl: q.imageUrl || q.image_url || null
           })) : filtered.map((m, idx) => ({
             id: m.id,
             questionNumber: idx + 1,
@@ -581,7 +600,8 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
             standardAnswer: m.answer,
             keyInsight: '考点巩固：注意题干关键字提取、审题防坑与规范书写。',
             mistakeReason: m.mistake_reason || '',
-            status: 'wrong'
+            status: 'wrong',
+            imageUrl: m.image_url || null
           }))}
           initialMode="blank_student"
           initialFilter="all"

@@ -461,10 +461,13 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
   try {
     const db = getSqliteDb();
     if (db) {
-      // 1. 查询选择题 (带 options)
+      const gradeParam = grade || 'all';
+      const gradeLikeParam = rawGrade ? `${rawGrade}%` : '%';
+
+      // 1. 查询选择题 (带 options，严格按年级隔离)
       const choiceRows = await db.all(
-        "SELECT * FROM canonical_questions WHERE subject = ? AND options IS NOT NULL AND length(trim(options)) > 3 LIMIT 10",
-        [subject]
+        "SELECT * FROM canonical_questions WHERE subject = ? AND (grade = ? OR grade = 'all' OR grade LIKE ?) AND options IS NOT NULL AND length(trim(options)) > 3 LIMIT 10",
+        [subject, gradeParam, gradeLikeParam]
       );
       choiceRows.forEach((r, idx) => {
         let opts = [];
@@ -489,10 +492,10 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
         });
       });
 
-      // 2. 查询填空题
+      // 2. 查询填空题 (严格按年级隔离)
       const blankRows = await db.all(
-        "SELECT * FROM canonical_questions WHERE subject = ? AND (options IS NULL OR length(trim(options)) <= 3) LIMIT 6",
-        [subject]
+        "SELECT * FROM canonical_questions WHERE subject = ? AND (grade = ? OR grade = 'all' OR grade LIKE ?) AND (options IS NULL OR length(trim(options)) <= 3) LIMIT 6",
+        [subject, gradeParam, gradeLikeParam]
       );
       blankRows.forEach((r, idx) => {
         questions.push({
@@ -509,31 +512,56 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
     logger.warn('[TestPaperFallback] Canonical query error:', err.message);
   }
 
+  const isPrimarySchool = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+
   // 补齐选择题若不足 10 题
   while (questions.filter(q => q.type === 'choice').length < 10) {
     const idx = questions.length + 1;
-    questions.push({
-      id: idx,
-      type: 'choice',
-      question: `下列计算与概念判断中，完全正确的是（　　）`,
-      options: ['A. $(-2)^3 = -8$', 'B. $-2^2 = 4$', 'C. $(-1)^{2026} = -1$', 'D. $-( -3) = -3$'],
-      score: 4,
-      answer: 'A',
-      explanation: '$(-2)^3 = -8$ 正确；$-2^2 = -4$；$(-1)^{2026} = 1$；$-(-3) = 3$。选A。'
-    });
+    if (isPrimarySchool) {
+      questions.push({
+        id: idx,
+        type: 'choice',
+        question: `下列计算完全正确的是（　　）`,
+        options: ['A. 25 + 18 = 43', 'B. 36 - 19 = 15', 'C. 6 × 7 = 48', 'D. 54 ÷ 6 = 8'],
+        score: 4,
+        answer: 'A',
+        explanation: '25 + 18 = 43 正确；36 - 19 = 17；6 × 7 = 42；54 ÷ 6 = 9。选A。'
+      });
+    } else {
+      questions.push({
+        id: idx,
+        type: 'choice',
+        question: `下列计算与概念判断中，完全正确的是（　　）`,
+        options: ['A. $(-2)^3 = -8$', 'B. $-2^2 = 4$', 'C. $(-1)^{2026} = -1$', 'D. $-( -3) = -3$'],
+        score: 4,
+        answer: 'A',
+        explanation: '$(-2)^3 = -8$ 正确；$-2^2 = -4$；$(-1)^{2026} = 1$；$-(-3) = 3$。选A。'
+      });
+    }
   }
 
   // 补齐填空题若不足 6 题
   while (questions.filter(q => q.type === 'blank').length < 6) {
     const idx = questions.length + 1;
-    questions.push({
-      id: idx,
-      type: 'blank',
-      question: `若 $|x - 3| + (y + 1)^2 = 0$，则代数式 $x + y$ 的值为 ______。`,
-      score: 4,
-      answer: '2',
-      explanation: '非负数之和为0，则 $x = 3, y = -1$，$x + y = 2$。'
-    });
+    if (isPrimarySchool) {
+      questions.push({
+        id: idx,
+        type: 'blank',
+        question: `计算：48 ÷ 6 + 15 = ______。`,
+        score: 4,
+        answer: '23',
+        explanation: '先算除法 48 ÷ 6 = 8，再算加法 8 + 15 = 23。'
+      });
+    } else {
+      questions.push({
+        id: idx,
+        type: 'blank',
+        question: `若 $|x - 3| + (y + 1)^2 = 0$，则代数式 $x + y$ 的值为 ______。`,
+        score: 4,
+        answer: '2',
+        explanation: '非负数之和为0，则 $x = 3, y = -1$，$x + y = 2$。'
+      });
+    }
   }
 
   // 3. 解答与综合大题补全（确保凑齐 25 题和 150 分）
