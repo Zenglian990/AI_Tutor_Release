@@ -166,8 +166,10 @@ async function runMigrations(db) {
       const hasGamification = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='user_gamification'");
       const hasCognitive = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='cognitive_knowledge_state'");
       const hasCheckpoints = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='study_checkpoints'");
+      const hasFsrs = mistakesColNames.includes('stability');
 
-      if (hasCheckpoints) v = 14;
+      if (hasFsrs) v = 15;
+      else if (hasCheckpoints) v = 14;
       else if (hasCognitive) v = 13;
       else if (hasGamification) v = 12;
       else if (hasFts) v = 11;
@@ -370,6 +372,22 @@ async function runMigrations(db) {
         CREATE INDEX IF NOT EXISTS idx_study_checkpoints_updated ON study_checkpoints(profile_id, updated_at);
       `);
       await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (14)');
+    }
+
+    if (v < 15) {
+      // FSRS Spaced Repetition Engine (Next-Gen Cognitive Memory Retention)
+      const mistakesCols = await db.all("PRAGMA table_info('mistakes')");
+      const colNames = mistakesCols.map(c => c.name);
+      if (!colNames.includes('stability')) {
+        await db.exec("ALTER TABLE mistakes ADD COLUMN stability REAL DEFAULT 2.0;");
+      }
+      if (!colNames.includes('difficulty')) {
+        await db.exec("ALTER TABLE mistakes ADD COLUMN difficulty REAL DEFAULT 5.0;");
+      }
+      if (!colNames.includes('fsrs_state')) {
+        await db.exec("ALTER TABLE mistakes ADD COLUMN fsrs_state INTEGER DEFAULT 0;");
+      }
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (15)');
     }
 
   } catch (err) {

@@ -10,6 +10,7 @@ import { splitThinkingContent } from '../utils/thinking';
 import { useAppStore } from '../store/useStore';
 import { isLowerGrade, injectPinyinToChildren } from '../utils/pinyinHelper';
 import VariantPracticeModal from './VariantPracticeModal';
+import InteractiveMathCanvas from './InteractiveMathCanvas';
 import { playSuccessChime } from '../utils/sensoryFeedback';
 
 initMermaid();
@@ -466,13 +467,28 @@ const ChatMessage = React.memo(function ChatMessage({
                     },
                     pre({children, ...props}) {
                       const child = Array.isArray(children) ? children[0] : children;
-                      if (child?.type === MermaidChart) {
+                      if (child?.type === MermaidChart || child?.type === InteractiveMathCanvas) {
                         return <>{children}</>;
                       }
                       return <pre {...props}>{children}</pre>;
                     },
                     code({node, inline, className, children, ...props}) {
                       const match = /language-(\w+)/.exec(className || '')
+                      if (!inline && match && (match[1] === 'interactive-math' || match[1] === 'interactive_math')) {
+                        let parsedConfig = {};
+                        try {
+                          parsedConfig = JSON.parse(String(children).trim());
+                        } catch (err) {
+                          parsedConfig = { type: 'parabola', title: '动态数学探究画板' };
+                        }
+                        return (
+                          <InteractiveMathCanvas 
+                            initialType={parsedConfig.type || 'parabola'}
+                            initialParams={parsedConfig.params || parsedConfig}
+                            title={parsedConfig.title}
+                          />
+                        );
+                      }
                       if (!inline && match && match[1] === 'mermaid') {
                         if (isStreaming) {
                           return (

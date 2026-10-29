@@ -28,6 +28,11 @@ const {
   formatCognitivePromptSection
 } = require('./cognitiveState');
 
+const {
+  generatePeerStudentPersonaPrompt,
+  evaluateFeynmanExplanation
+} = require('./feynmanRoleplayService');
+
 const logger = require('./logger');
 
 /**
@@ -39,6 +44,8 @@ const logger = require('./logger');
  * @param {string} params.profileId - Student profile ID
  * @param {string} params.subject - Subject (e.g. '数学', '物理')
  * @param {number} params.turnCount - Conversation turns for current question
+ * @param {string} params.teachingMode - 'standard' | 'socratic' | 'feynman_roleplay'
+ * @param {string} params.studentName - Student's name
  * @returns {Promise<Object>} Tri-engine coordination payload
  */
 async function coordinateTriEngine({
@@ -46,7 +53,9 @@ async function coordinateTriEngine({
   query = '',
   profileId = 'default',
   subject = '数学',
-  turnCount = 1
+  turnCount = 1,
+  teachingMode = 'standard',
+  studentName = '曾练同学'
 }) {
   try {
     // 1. [Item 3: Multimodal Knowledge DAG Grounding]
@@ -55,9 +64,20 @@ async function coordinateTriEngine({
     const matchedConceptId = matchedNode ? matchedNode.id : '';
     const multimodalMatches = linkQueryToMultimodalConcepts(query, subject);
 
-    // 2. [Item 2: Socratic Scaffolding State Machine]
-    const socraticStage = determineSocraticStage({ turnCount, userMessage: query });
-    const socraticPrompt = formatSocraticSystemPrompt(socraticStage, diagnosis, { subject });
+    // 2. [Item 2: Socratic Scaffolding State Machine / Feynman Roleplay]
+    let socraticStage = determineSocraticStage({ turnCount, userMessage: query });
+    let socraticPrompt = '';
+    let feynmanEvaluation = null;
+
+    if (teachingMode === 'feynman_roleplay') {
+      const conceptName = matchedNode ? matchedNode.name : (subject + '核心考点');
+      socraticPrompt = generatePeerStudentPersonaPrompt(conceptName, studentName, subject);
+      if (turnCount > 1 || query.length > 10) {
+        feynmanEvaluation = evaluateFeynmanExplanation(query, matchedConceptId);
+      }
+    } else {
+      socraticPrompt = formatSocraticSystemPrompt(socraticStage, diagnosis, { subject });
+    }
 
     // 3. [Item 1: L1-L3 Cognitive Evolution Memory]
     let cognitivePrompt = '';
@@ -83,6 +103,8 @@ async function coordinateTriEngine({
       diagnosis,
       multimodalMatches,
       socraticStage,
+      teachingMode,
+      feynmanEvaluation,
       cognitiveSummary,
       prompts: {
         socraticPrompt,

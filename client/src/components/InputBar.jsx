@@ -43,6 +43,8 @@ const InputBar = React.memo(function InputBar({
   onOpenScratchpad,
   onOpenBatchGrade,
   onOpenFormulaHandbook,
+  isFeynmanMode = false,
+  onToggleFeynmanMode = null,
   hasActiveChat
 }) {
   const [localVal, setLocalVal] = useState(input);
@@ -332,6 +334,30 @@ const InputBar = React.memo(function InputBar({
         </div>
       )}
 
+      {isFeynmanMode && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '5px 12px',
+          marginBottom: '6px',
+          background: 'rgba(245, 158, 11, 0.12)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '10px',
+          fontSize: '0.8rem',
+          color: '#d97706'
+        }}>
+          <span>🧑‍🏫 <b>费曼小老师模式已激活</b>：你现在是名师，AI是好学的小同桌小明，把解题思路讲给ta听吧！</span>
+          {onToggleFeynmanMode && (
+            <button
+              type="button"
+              onClick={onToggleFeynmanMode}
+              style={{ background: 'transparent', border: 'none', color: '#d97706', cursor: 'pointer', fontWeight: 700 }}
+            >✕ 退出</button>
+          )}
+        </div>
+      )}
+
       <div className="input-container" role="form" aria-label="消息输入区域">
         <form className="input-form" onSubmit={handleFormSubmit}>
           <input
@@ -352,7 +378,7 @@ const InputBar = React.memo(function InputBar({
             value={localVal}
             onChange={e => setLocalVal(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? '🎤 正在倾听您的提问，说完停顿将自动发送...' : '输入课本难题、公式，或拍照/语音提问…'}
+            placeholder={isListening ? '🎤 正在倾听您的提问，说完停顿将自动发送...' : (isFeynmanMode ? '🧑‍🏫 小老师，把你的思路或原理解释给小同桌听吧…' : '输入课本难题、公式，或拍照/语音提问…')}
             disabled={isLoading}
             maxLength={2000}
             rows={1}
@@ -413,6 +439,26 @@ const InputBar = React.memo(function InputBar({
                   }}
                 >
                   📖
+                </button>
+              )}
+
+              {/* 费曼小老师以教代学模式开关 */}
+              {onToggleFeynmanMode && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={onToggleFeynmanMode}
+                  title={isFeynmanMode ? '退出费曼小老师模式' : '开启费曼小老师模式 (以教代学·AI扮同桌)'}
+                  aria-label="费曼小老师模式"
+                  style={{
+                    color: isFeynmanMode ? '#f59e0b' : '#94a3b8',
+                    fontSize: '1.05rem',
+                    background: isFeynmanMode ? 'rgba(245, 158, 11, 0.18)' : 'transparent',
+                    borderRadius: '10px',
+                    border: isFeynmanMode ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent'
+                  }}
+                >
+                  🧑‍🏫
                 </button>
               )}
 

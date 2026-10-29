@@ -16,7 +16,7 @@ const { saveStudyCheckpoint, formatCheckpointPromptSection } = require('../servi
 // POST /api/chat — main chat endpoint with SSE streaming
 router.post('/chat', async (req, res) => {
   try {
-    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode } = req.body;
+    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode, teaching_mode, feynman_mode } = req.body;
     if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
     if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
 
@@ -97,7 +97,9 @@ router.post('/chat', async (req, res) => {
           query,
           profileId: profile_id || 'default',
           subject: subject || '数学',
-          turnCount
+          turnCount,
+          teachingMode: teaching_mode || (feynman_mode ? 'feynman_roleplay' : 'standard'),
+          studentName: student_name || '曾练'
         });
         if (triCoord && triCoord.prompts && triCoord.prompts.compositeSystemPrompt) {
           triPrompt = '\n' + triCoord.prompts.compositeSystemPrompt;

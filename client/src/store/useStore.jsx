@@ -365,6 +365,18 @@ export function AppProvider({ children }) {
     return saved !== null ? saved === 'true' : true;
   });
 
+  const [isFeynmanMode, setIsFeynmanMode] = useState(() => {
+    return localStorage.getItem('ai_tutor_feynman_mode') === 'true';
+  });
+
+  const toggleFeynmanMode = useCallback(() => {
+    setIsFeynmanMode(prev => {
+      const next = !prev;
+      localStorage.setItem('ai_tutor_feynman_mode', String(next));
+      return next;
+    });
+  }, []);
+
   const [membershipStatus, setMembershipStatus] = useState({
     tier: 'free',
     is_vip: false,
@@ -489,7 +501,8 @@ export function AppProvider({ children }) {
     authFetch,
     language, setLanguage, t,
     chatModel, setChatModel,
-    pinyinMode, setPinyinMode
+    pinyinMode, setPinyinMode,
+    isFeynmanMode, setIsFeynmanMode, toggleFeynmanMode
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

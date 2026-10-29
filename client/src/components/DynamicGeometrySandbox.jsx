@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import InteractiveMathCanvas from './InteractiveMathCanvas';
 
 /**
  * DynamicGeometrySandbox
@@ -271,14 +272,36 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
             <span>📈</span>
             <span>二次函数抛物线沙盒</span>
           </button>
+          <button
+            onClick={() => setActiveTab('interactive_canvas')}
+            style={{
+              padding: '8px 16px', borderRadius: '12px', border: 'none',
+              background: activeTab === 'interactive_canvas' ? '#2563eb' : 'transparent',
+              color: activeTab === 'interactive_canvas' ? '#fff' : '#64748b',
+              fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <span>✨</span>
+            <span>手势拖拽自由画板 (Khanmigo理念)</span>
+          </button>
         </div>
 
         {/* Main interactive area */}
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Canvas Viewport */}
-          <div style={{ display: 'flex', justifyContent: 'center', background: '#f8fafc', borderRadius: '16px', border: '1px solid #cbd5e1', overflow: 'hidden' }}>
-            <canvas ref={canvasRef} width={440} height={260} style={{ display: 'block', maxWidth: '100%' }} />
-          </div>
+          {activeTab === 'interactive_canvas' ? (
+            <InteractiveMathCanvas
+              onAskTutor={(query) => {
+                onApplyToChat && onApplyToChat(query);
+                onClose();
+              }}
+            />
+          ) : (
+            <>
+              {/* Canvas Viewport */}
+              <div style={{ display: 'flex', justifyContent: 'center', background: '#f8fafc', borderRadius: '16px', border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+                <canvas ref={canvasRef} width={440} height={260} style={{ display: 'block', maxWidth: '100%' }} />
+              </div>
 
           {activeTab === 'moving_point' ? (
             /* Moving Point Controls & Insights */
@@ -363,6 +386,8 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
 
           {/* Action buttons */}

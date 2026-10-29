@@ -158,33 +158,70 @@ router.get('/mistakes/review-challenge', async (req, res) => {
   }
 });
 
-// POST /api/mistakes/review-feedback — SM-2 spaced repetition feedback
+// POST /api/mistakes/review-feedback — FSRS next-gen spaced repetition feedback (with SM-2 backward compatibility)
 router.post('/mistakes/review-feedback', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const { mistake_id, quality } = req.body;
+    const { mistake_id, quality, rating } = req.body;
 
-    if (!mistake_id || quality === undefined) return res.status(400).json({ error: "Missing parameters" });
-    if (!Number.isInteger(quality) || quality < 0 || quality > 5) return res.status(400).json({ error: "quality must be an integer 0-5" });
+    if (!mistake_id || (quality === undefined && rating === undefined)) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
 
-    const mistake = await sqliteDb.get(`SELECT review_count, easiness_factor, last_interval FROM mistakes WHERE id = ?`, [mistake_id]);
+    if (quality !== undefined && (!Number.isInteger(quality) || quality < 0 || quality > 5)) {
+      return res.status(400).json({ error: "quality must be an integer 0-5" });
+    }
+    if (rating !== undefined && (!Number.isInteger(rating) || rating < 1 || rating > 4)) {
+      return res.status(400).json({ error: "rating must be an integer 1-4" });
+    }
+
+    const mistake = await sqliteDb.get(
+      `SELECT review_count, easiness_factor, last_interval, stability, difficulty, fsrs_state FROM mistakes WHERE id = ?`, 
+      [mistake_id]
+    );
     if (!mistake) return res.status(404).json({ error: "Mistake not found" });
 
-    const { calculateSM2 } = require('../utils/sm2');
-    const sm2Result = calculateSM2(
-      quality,
-      mistake.review_count || 0,
-      mistake.easiness_factor || 2.5,
-      mistake.last_interval || 0
+    const { calculateFSRS } = require('../utils/fsrs');
+    const fsrsResult = calculateFSRS(
+      rating !== undefined ? rating : quality,
+      {
+        review_count: mistake.review_count || 0,
+        stability: mistake.stability,
+        difficulty: mistake.difficulty,
+        last_interval: mistake.last_interval || 0,
+        easiness_factor: mistake.easiness_factor || 2.5
+      }
     );
 
     await sqliteDb.run(
-      `UPDATE mistakes SET review_count = ?, easiness_factor = ?, next_review_date = datetime('now', '+' || ? || ' days'), last_interval = ? WHERE id = ?`,
-      [sm2Result.review_count, sm2Result.easiness_factor, sm2Result.interval, sm2Result.interval, mistake_id]
+      `UPDATE mistakes SET 
+         review_count = ?, 
+         stability = ?, 
+         difficulty = ?, 
+         fsrs_state = ?, 
+         next_review_date = datetime('now', '+' || ? || ' days'), 
+         last_interval = ? 
+       WHERE id = ?`,
+      [
+        fsrsResult.review_count, 
+        fsrsResult.stability, 
+        fsrsResult.difficulty, 
+        fsrsResult.state, 
+        fsrsResult.interval, 
+        fsrsResult.interval, 
+        mistake_id
+      ]
     );
 
-    res.json({ success: true, next_interval_days: sm2Result.interval });
+    res.json({ 
+      success: true, 
+      next_interval_days: fsrsResult.interval,
+      stability: fsrsResult.stability,
+      difficulty: fsrsResult.difficulty,
+      retrievability: fsrsResult.retrievability,
+      algorithm: 'FSRS-v4.5'
+    });
   } catch (e) {
     logger.error("Review feedback error:", e);
     res.status(500).json({ error: "提交反馈失败" });

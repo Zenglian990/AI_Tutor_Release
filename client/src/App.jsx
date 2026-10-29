@@ -55,7 +55,8 @@ function AppInner() {
     autoRead, setAutoRead, isLightMode, setIsLightMode,
     handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
     setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
-    language, t, chatModel, tutorPersona, setTutorPersona
+    language, t, chatModel, tutorPersona, setTutorPersona,
+    isFeynmanMode, toggleFeynmanMode
   } = store;
 
   const isOffline = useOfflineStatus();
@@ -813,6 +814,8 @@ function AppInner() {
             profile_id: currentProfileId,
             student_name: currentProfile?.name || '',
             socratic: socraticLevel,
+            feynman_mode: isFeynmanMode,
+            teaching_mode: isFeynmanMode ? 'feynman_roleplay' : undefined,
             edition: editionRef.current,
             model: chatModel,
             voice_mode: isVoiceMode
@@ -1410,6 +1413,8 @@ function AppInner() {
         onOpenScratchpad={() => setShowScratchpad(true)}
         onOpenBatchGrade={() => setShowBatchGrade(true)}
         onOpenFormulaHandbook={() => setShowFormulaModal(true)}
+        isFeynmanMode={isFeynmanMode}
+        onToggleFeynmanMode={toggleFeynmanMode}
         hasActiveChat={messages.length > 0}
       />
 
