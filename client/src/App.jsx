@@ -29,6 +29,8 @@ import ParentSharePosterModal from './components/ParentSharePosterModal';
 import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
 import FormulaHandbookModal from './components/FormulaHandbookModal';
 import DailyMentalMathModal from './components/DailyMentalMathModal';
+import StepByStepMathScratchpad from './components/StepByStepMathScratchpad';
+import PhysicsSimulatorsModal from './components/PhysicsSimulatorsModal';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -108,6 +110,9 @@ function AppInner() {
   const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [showMentalMathModal, setShowMentalMathModal] = useState(false);
+  const [showStepScratchpad, setShowStepScratchpad] = useState(false);
+  const [stepScratchpadEq, setStepScratchpadEq] = useState('2x + 4 = 10');
+  const [showPhysicsSimulator, setShowPhysicsSimulator] = useState(false);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
     return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== '1.5.4';
   });
@@ -198,6 +203,8 @@ function AppInner() {
     if (showSettings) { setShowSettings(false); return true; }
     if (showFormulaModal) { setShowFormulaModal(false); return true; }
     if (showMentalMathModal) { setShowMentalMathModal(false); return true; }
+    if (showStepScratchpad) { setShowStepScratchpad(false); return true; }
+    if (showPhysicsSimulator) { setShowPhysicsSimulator(false); return true; }
     if (showPrintModal) { setShowPrintModal(false); return true; }
     if (showMistakes) { setShowMistakes(false); return true; }
     if (showStats) { setShowStats(false); return true; }
@@ -1148,6 +1155,11 @@ function AppInner() {
             onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
             onOpenMentalMath={() => setShowMentalMathModal(true)}
             onOpenFormulaHandbook={() => setShowFormulaModal(true)}
+            onOpenStepScratchpad={() => {
+              setStepScratchpadEq('2x + 4 = 10');
+              setShowStepScratchpad(true);
+            }}
+            onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -1401,6 +1413,21 @@ function AppInner() {
         onAwardExp={handleAwardExp}
       />
 
+      {/* 📐 步骤级实时代数演算纸与 CAS 校验卫士 */}
+      <StepByStepMathScratchpad
+        isOpen={showStepScratchpad}
+        initialEquation={stepScratchpadEq}
+        onClose={() => setShowStepScratchpad(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🔬 初中物理动态虚拟微实验台 (凸透镜光路·滑动变阻器欧姆定律) */}
+      <PhysicsSimulatorsModal
+        isOpen={showPhysicsSimulator}
+        onClose={() => setShowPhysicsSimulator(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
       <InputBar
         input={input} setInput={setInput}
         isLoading={isLoading} isListening={isListening}
@@ -1413,6 +1440,11 @@ function AppInner() {
         onOpenScratchpad={() => setShowScratchpad(true)}
         onOpenBatchGrade={() => setShowBatchGrade(true)}
         onOpenFormulaHandbook={() => setShowFormulaModal(true)}
+        onOpenStepScratchpad={() => {
+          setStepScratchpadEq('2x + 4 = 10');
+          setShowStepScratchpad(true);
+        }}
+        onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
         isFeynmanMode={isFeynmanMode}
         onToggleFeynmanMode={toggleFeynmanMode}
         hasActiveChat={messages.length > 0}

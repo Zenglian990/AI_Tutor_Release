@@ -7,6 +7,7 @@ import { getApiUrl, authFetch, formatGrade, useAppStore } from '../store/useStor
 import { preprocessLatex } from '../utils/math';
 import A4PrintModal from './A4PrintModal';
 import VariantPracticeModal from './VariantPracticeModal';
+import FSRSFlashcardSprintModal from './FSRSFlashcardSprintModal';
 
 export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject }) {
   const { currentProfile } = useAppStore();
@@ -30,6 +31,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   const [editingTagsId, setEditingTagsId] = useState(null);
   const [tempTags, setTempTags] = useState('');
   const [showA4Modal, setShowA4Modal] = useState(false);
+  const [showFlashcardSprint, setShowFlashcardSprint] = useState(false);
   const [generatingTargetedPaper, setGeneratingTargetedPaper] = useState(false);
   const [variantPaperQuestions, setVariantPaperQuestions] = useState([]);
   const [selectedPrereqMistake, setSelectedPrereqMistake] = useState(null);
@@ -231,6 +233,20 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           <div style={{ display: 'flex', gap: '10px' }}>
             <button className="mistake-btn" onClick={() => setShowReviewOnly(!showReviewOnly)} style={{ borderColor: showReviewOnly ? '#a78bfa' : 'var(--accent-color)', color: showReviewOnly ? '#a78bfa' : 'var(--accent-color)' }}>
               {showReviewOnly ? '📅 全部错题' : '⏰ 艾宾浩斯复习推送'}
+            </button>
+            <button
+              className="mistake-btn"
+              onClick={() => setShowFlashcardSprint(true)}
+              style={{
+                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                borderColor: '#818cf8',
+                color: '#ffffff',
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.4)'
+              }}
+              title="3分钟 FSRS 记忆闪卡冲刺，科学快速消灭到期错题"
+            >
+              ⚡ 3分钟闪卡冲刺
             </button>
             <button className="mistake-btn" onClick={() => setTestMode(!testMode)}>
               {testMode ? '👁️ 显示答案' : '📝 生成复习卷'}
@@ -582,6 +598,17 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           subject={selectedPrereqMistake.subject || filterSubject || '数学'}
           studentName={studentName}
           initialStep={-1}
+        />
+      )}
+
+      {showFlashcardSprint && (
+        <FSRSFlashcardSprintModal
+          isOpen={showFlashcardSprint}
+          mistakes={filtered}
+          onClose={() => setShowFlashcardSprint(false)}
+          onMistakeUpdated={(id, data) => {
+            setMistakes(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
+          }}
         />
       )}
     </div>

@@ -24,6 +24,7 @@ const parentRoutes = require('./routes/parent');
 const homeworkRoutes = require('./routes/homework');
 const gamificationRoutes = require('./routes/gamification');
 const membershipRoutes = require('./routes/membership');
+const { router: feynmanRoutes } = require('./routes/feynman');
 
 function createApp() {
   const app = express();
@@ -185,6 +186,7 @@ function createApp() {
   app.use('/api', homeworkRoutes);
   app.use('/api', gamificationRoutes);
   app.use('/api', membershipRoutes);
+  app.use('/api', feynmanRoutes);
 
   // --- Serve static frontend ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');

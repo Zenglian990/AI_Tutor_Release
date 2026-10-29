@@ -21,7 +21,9 @@ export default function WelcomeDashboard({
   onOpenManipulatives,
   onOpenGeometrySandbox,
   onOpenMentalMath,
-  onOpenFormulaHandbook
+  onOpenFormulaHandbook,
+  onOpenStepScratchpad,
+  onOpenPhysicsSimulator
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -302,6 +304,28 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">中考动点轨迹动态推演，二次函数系数滑杆直观击穿难点</p>
             <div className="action-card-cta" style={{ color: '#60a5fa' }}>推演动点 →</div>
+          </div>
+        )}
+
+        {onOpenStepScratchpad && (
+          <div className="action-card" onClick={onOpenStepScratchpad} role="button" tabIndex={0} style={{ borderColor: 'rgba(16, 185, 129, 0.4)', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">📐</span>
+              <span className="action-card-name" style={{ color: '#10b981' }}>实时代数演算纸</span>
+            </div>
+            <p className="action-card-desc">写一步验一步，神经符号 CAS 实时防移项变号与漏项失误</p>
+            <div className="action-card-cta" style={{ color: '#10b981' }}>演练防错 →</div>
+          </div>
+        )}
+
+        {onOpenPhysicsSimulator && (
+          <div className="action-card" onClick={onOpenPhysicsSimulator} role="button" tabIndex={0} style={{ borderColor: 'rgba(2, 132, 199, 0.4)', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(3, 105, 161, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🔬</span>
+              <span className="action-card-name" style={{ color: '#38bdf8' }}>物理动态微实验台</span>
+            </div>
+            <p className="action-card-desc">凸透镜光路折射成像与滑动变阻器欧姆定律电路动态探究</p>
+            <div className="action-card-cta" style={{ color: '#38bdf8' }}>动手探究 →</div>
           </div>
         )}
 

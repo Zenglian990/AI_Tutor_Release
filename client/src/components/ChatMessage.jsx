@@ -10,6 +10,8 @@ import { splitThinkingContent } from '../utils/thinking';
 import { useAppStore } from '../store/useStore';
 import { isLowerGrade, injectPinyinToChildren } from '../utils/pinyinHelper';
 import VariantPracticeModal from './VariantPracticeModal';
+import FeynmanReverseTutorModal from './FeynmanReverseTutorModal';
+import StepByStepMathScratchpad from './StepByStepMathScratchpad';
 import InteractiveMathCanvas from './InteractiveMathCanvas';
 import { playSuccessChime } from '../utils/sensoryFeedback';
 
@@ -298,6 +300,8 @@ const ChatMessage = React.memo(function ChatMessage({
 
   const { currentProfile, pinyinMode, setPinyinMode, selectedGrade, selectedSubject, socraticLevel } = useAppStore();
   const [showVariantModal, setShowVariantModal] = useState(false);
+  const [showFeynmanModal, setShowFeynmanModal] = useState(false);
+  const [showStepScratchpad, setShowStepScratchpad] = useState(false);
   const activeGrade = msg.grade || selectedGrade || currentProfile?.grade || '7_up';
   const isPrimary = isLowerGrade(activeGrade);
   const isPinyinActive = (pinyinMode ?? true) && isPrimary && msg.role === 'ai';
@@ -746,6 +750,38 @@ const ChatMessage = React.memo(function ChatMessage({
               {msg.role === 'ai' && !isStreaming && (
                 <button
                   type="button"
+                  onClick={() => setShowFeynmanModal(true)}
+                  className="tts-btn"
+                  style={{ 
+                    background: 'rgba(2, 132, 199, 0.12)', 
+                    color: '#0284c7', 
+                    borderColor: 'rgba(2, 132, 199, 0.4)',
+                    fontWeight: '600'
+                  }}
+                  title="激活费曼学习法：反向讲给虚拟同桌小明听，检测真懂假懂"
+                >
+                  🎓 讲给小明听 (费曼以教代学)
+                </button>
+              )}
+              {msg.role === 'ai' && !isStreaming && (
+                <button
+                  type="button"
+                  onClick={() => setShowStepScratchpad(true)}
+                  className="tts-btn"
+                  style={{ 
+                    background: 'rgba(5, 150, 105, 0.12)', 
+                    color: '#059669', 
+                    borderColor: 'rgba(5, 150, 105, 0.4)',
+                    fontWeight: '600'
+                  }}
+                  title="步骤级代数演算纸：写一步验一步，每步CAS防移项变号失误"
+                >
+                  📐 分步演算纸 (CAS验算)
+                </button>
+              )}
+              {msg.role === 'ai' && !isStreaming && (
+                <button
+                  type="button"
                   onClick={() => {
                     if (!hasUnderstood) {
                       setHasUnderstood(true);
@@ -816,6 +852,34 @@ const ChatMessage = React.memo(function ChatMessage({
           grade={activeGrade}
           subject={selectedSubject || '数学'}
           studentName={currentProfile?.name || '曾练'}
+        />
+      )}
+
+      {showFeynmanModal && (
+        <FeynmanReverseTutorModal
+          isOpen={showFeynmanModal}
+          onClose={() => setShowFeynmanModal(false)}
+          question={displayMessageText}
+          studentName={currentProfile?.name || '曾练'}
+          subject={selectedSubject || '数学'}
+          grade={activeGrade}
+          onApplyFollowUpToChat={(prompt) => {
+            if (onQuickPrompt) onQuickPrompt(prompt);
+          }}
+        />
+      )}
+
+      {showStepScratchpad && (
+        <StepByStepMathScratchpad
+          isOpen={showStepScratchpad}
+          initialEquation={(() => {
+            const match = (displayMessageText || '').match(/([0-9a-zA-Z\+\-\*\/()\s]+\s*=\s*[0-9a-zA-Z\+\-\*\/()\s]+)/);
+            return match ? match[0].trim() : '2x + 4 = 10';
+          })()}
+          onClose={() => setShowStepScratchpad(false)}
+          onApplyToChat={(text) => {
+            if (onQuickPrompt) onQuickPrompt(text);
+          }}
         />
       )}
 

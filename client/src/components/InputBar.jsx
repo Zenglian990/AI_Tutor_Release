@@ -43,6 +43,8 @@ const InputBar = React.memo(function InputBar({
   onOpenScratchpad,
   onOpenBatchGrade,
   onOpenFormulaHandbook,
+  onOpenStepScratchpad,
+  onOpenPhysicsSimulator,
   isFeynmanMode = false,
   onToggleFeynmanMode = null,
   hasActiveChat
@@ -286,6 +288,28 @@ const InputBar = React.memo(function InputBar({
               onClick={onOpenFormulaHandbook}
             >
               📖 公式宝典
+            </button>
+          )}
+          {onOpenStepScratchpad && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#10b981', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)' }}
+              title="打开步骤级实时代数演算纸，写一步验一步实时CAS防移项变号失误"
+              onClick={onOpenStepScratchpad}
+            >
+              📐 分步演算纸
+            </button>
+          )}
+          {onOpenPhysicsSimulator && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#0284c7', color: '#38bdf8', background: 'rgba(2, 132, 199, 0.1)' }}
+              title="打开初中物理动态虚拟微实验台（凸透镜光路折射·欧姆定律滑动变阻器）"
+              onClick={onOpenPhysicsSimulator}
+            >
+              🔬 物理微实验
             </button>
           )}
         </div>
