@@ -51,50 +51,54 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.6.2.apk
-          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.1/AI_Tutor_v1.6.1.apk -o ./AI_Tutor_v1.6.1.apk || true
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.6.3.apk
+          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk -o ./AI_Tutor_v1.6.2.apk || true
           ls -lh ./AI_Tutor_v1*.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.6.2
-          path: ./AI_Tutor_v1.6.2.apk
+          name: AI_Tutor_v1.6.3
+          path: ./AI_Tutor_v1.6.3.apk
           retention-days: 30
 
-      - name: Create or Update v1.6.2 Latest Release
+      - name: Create or Update v1.6.3 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.6.2
-          name: "曾练专属私教 v1.6.2 - 三位一体认知架构·苏格拉底脚手架·续学断点记忆·小初高全科 (断续学习免从头讲起)"
+          tag_name: v1.6.3
+          name: "曾练专属私教 v1.6.3 - FSRS现代科学记忆调度·Mafs可交互数学画板·费曼以教代学同桌模式"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 曾练专属私教 v1.6.2 (三位一体认知架构 · 续学断点记忆 · 苏格拉底启发式教辅)
+            ## 🚀 曾练专属私教 v1.6.3 (FSRS科学记忆调度 · Mafs交互画板 · 费曼以教代学模式)
 
-            - 📍 **学习断点记录与续学锚点引擎（免从头学起 · 核心技术突破）**：
-              - 自动捕捉学生上一次学习退出的精准章节、未解疑惑点与下一讲预备目标；
-              - 学生断断续续学习、隔几天再打开时，智能体无缝衔接上次断点，主动发起续学唤醒，**绝不用每次从头讲起**！
-            - 🏛️ **苏格拉底启发式教学门禁机制 (Socratic Scaffolding Gate)**：
-              - 严守三阶段启发式推进：**概念探索发现 (Discovery) ➔ 台阶式脚手架拆解 (Scaffolding) ➔ 总结巩固反思 (Consolidation)**；
-              - 彻底消除 AI 教学直接倾倒答案的弊端，点拨思路诱发学生主动顿悟！
-            - 🧠 **L1-L3 动态认知状态演化记忆 (Auditable Cognitive State)**：
-              - 毫秒级量化掌握度分值（0.0 ~ 1.0），自动标记掌握（mastered）、薄弱不稳定（unstable）与认知断层（gapped）；
-              - 精准定位前置基础漏洞（如因式分解不稳导致二次函数受阻），动态调度靶向练习。
-            - 🗺️ **多模态母题与可视化锚点增强 (Multimodal Visual Anchors)**：
-              - 几何与函数核心考点（全等三角形、勾股定理、一次/二次函数）挂载可视化母题模型与动态图示。
+            - 🧠 **FSRS-v4.5 现代自由间隔重复调度引擎 (Free Spaced Repetition Scheduler)**：
+              - 告别经典 SM-2 粗糙固化间隔，采用 17 维认知参数驱动的动态遗忘曲线方程；
+              - 精准量化记忆稳定性（Stability $S$）、认知难度（Difficulty $D$）与实时提取概率（Retrievability $R$）；
+              - 自适应“重来/困难/良好/简单”四级反馈，实现错题复习周期的指数级精准调度，平滑兼容旧题库。
+            - 📐 **Mafs 原生手势/拖拽交互数学与几何画板 (Interactive Math Canvas)**：
+              - 告别死板静态图片与生硬只读公式，支持学生通过触控拖拽动态交互探索数学定理；
+              - 内置“二次函数顶点抛物线探索器”：拖拽顶点与开合度，实时联动 $y = a(x-h)^2 + k$ 解析式与图像拓扑；
+              - 内置“勾股定理与直角三角形交互验证板”：拖拽直角顶点动态演示边长变化与勾股数等式成立，直观顿悟几何规律；
+              - 无缝内嵌至私教聊天流（````interactive-math`）与几何沙盒实验室中。
+            - 🧑‍🤝‍🧑 **费曼学习法“虚拟小同桌”反向提问系统 (Feynman Peer Roleplay System)**：
+              - 智能私教化身“困惑的好奇同桌小明”，由学生主动把知识点“讲给同桌听”，实现最高层级的以教代学；
+              - 具备三维深度讲授评价机制：**科学准确性 (Accuracy 40%)、逻辑条理性 (Logic 35%)、通俗类比度 (Analogy 25%)**；
+              - 输入栏一键开关“费曼以教代学”模式，实时提示当前辅导角色与讲授任务。
+            - 📍 **延续 v1.6.2 续学断点记忆与苏格拉底脚手架**：
+              - 永久记住学生学到哪儿、错题根因与未完课题，随时中断随时接续，彻底告别重复讲起！
             - 💯 **全栈极速高质量工程交付**：
-              - 175 项服务端单元与集成测试用例全绿通过，28 项客户端核心组件用例 100% 验证！
+              - 184 项服务端单元测试 100% 通过，31 项客户端核心组件用例全面绿灯！
 
             ---
             ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.6.2.apk`** 直接下载安装；
-            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.6.2】**，点开即用！
-            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.6.2 与 v1.6.1)*
+            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.6.3.apk`** 直接下载安装；
+            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.6.3】**，点开即用！
+            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.6.3 与 v1.6.2)*
           files: |
+            ./AI_Tutor_v1.6.3.apk
             ./AI_Tutor_v1.6.2.apk
-            ./AI_Tutor_v1.6.1.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

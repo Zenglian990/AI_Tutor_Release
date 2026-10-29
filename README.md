@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.2_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.3_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-谷歌云亚太极速直达-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.2)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.3)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.6.2 三位一体认知·续学断点·苏格拉底旗舰版)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.6.3 FSRS科学记忆·交互画板·费曼同桌)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,29 +34,31 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📦 最新版安装包直链下载**：[AI_Tutor_v1.6.2.apk (约 10.5MB · 三位一体认知架构·续学断点记忆·苏格拉底启发式旗舰版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
-- **📦 稳定备用直链**：[AI_Tutor_v1.6.1.apk (约 10.5MB)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.1/AI_Tutor_v1.6.1.apk)
-- **✅ v1.6.2 重磅体验跃升 (三位一体认知架构与断点续学旗舰版)**：
-  - **📍 学习断点记录与续学锚点引擎（免从头学起）**：
+- **📦 最新版安装包直链下载**：[AI_Tutor_v1.6.3.apk (约 10.5MB · FSRS科学记忆调度·Mafs可交互数学画板·费曼以教代学同桌模式)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
+- **📦 稳定备用直链**：[AI_Tutor_v1.6.2.apk (约 10.5MB · 三位一体认知架构·续学断点记忆·苏格拉底启发式版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
+- **✅ v1.6.3 重磅体验跃升 (科学记忆调度 · 交互画板 · 费曼同桌旗舰版)**：
+  - **🧠 FSRS-v4.5 现代科学记忆调度引擎 (Free Spaced Repetition Scheduler)**：
+    - 告别经典 SM-2 粗糙固化间隔，采用 17 维认知参数驱动的动态遗忘曲线方程；
+    - 精准量化记忆稳定性（Stability $S$）、认知难度（Difficulty $D$）与实时提取概率（Retrievability $R$）；
+    - 错题复习自适应“重来/困难/良好/简单”四级反馈，实现错题复习周期的指数级精准调度。
+  - **📐 Mafs 原生手势/拖拽交互数学与几何画板 (Interactive Math Canvas)**：
+    - 告别死板静态图片与生硬只读公式，支持学生通过触控拖拽动态交互探索数学定理；
+    - 内置“二次函数顶点抛物线探索器”：拖拽顶点与开合度，实时联动 $y = a(x-h)^2 + k$ 解析式与图像拓扑；
+    - 内置“勾股定理与直角三角形交互验证板”：拖拽直角顶点动态演示边长变化与勾股数等式成立，直观顿悟几何规律；
+    - 无缝内嵌至私教聊天流（````interactive-math`）与几何沙盒实验室中。
+  - **🧑‍🤝‍🧑 费曼学习法“虚拟小同桌”反向提问系统 (Feynman Peer Roleplay System)**：
+    - 智能私教化身“困惑的好奇同桌小明”，由学生主动把知识点“讲给同桌听”，实现最高层级的以教代学；
+    - 具备三维深度讲授评价机制：**科学准确性 (Accuracy 40%)、逻辑条理性 (Logic 35%)、通俗类比度 (Analogy 25%)**；
+    - 输入栏一键开关“费曼以教代学”模式，实时提示当前辅导角色与讲授任务。
+  - **📍 学习断点记录与续学锚点引擎（免从头学起 · 传承特性）**：
     - 智能记住学生退出时的精确掌握进度、疑难卡点与后续教学目标；即便离开数天重新进入，秒级无缝续学，**绝不用每次从头讲起**！
   - **🏛️ 苏格拉底启发式教学门禁机制 (Socratic Scaffolding Gate)**：
     - 严守三阶段启发式推进（概念发现 ➔ 脚手架搭设 ➔ 反思巩固），拒绝直接倾倒答案，引导学生主动推导顿悟。
   - **🧠 L1-L3 动态认知状态演化记忆引擎 (Auditable Cognitive State)**：
     - 追踪学生掌握度细粒度分值（0.0 ~ 1.0），智能标记掌握/薄弱/断层，精准逆向回溯知识盲区。
-  - **🗺️ 多模态母题与几何函数可视化锚点**：
-    - 全等三角形、勾股定理、二次函数等核心考点挂载经典图示与解题母题。
-  - **🎓 1-12年级小初高全学段教材向量库贯通**：
-    - 新增全面入库人教版高中各科教材（高中语数英物化生政史地必修与选择性必修），1.7万+权威切片毫秒级精准检索。
-  - **🎯 高考高频押题与必考经典母题密卷**：
-    - 针对新高考全国卷（I/II卷）、北京卷、浙江卷等各省考情与分值题型架构（数学150分/理化100分）；
-    - 深度覆盖高考十年高频大题母题（导数极值点偏移、圆锥曲线定点定值、双导轨动量微元、化工工艺平衡常数Kp等）。
-  - **📝 严格对标高考评分标准的步骤采分点**：
-    - 落实高考阅卷采分点量规，按步骤采分赋予过程分，等价解法智能识别，提供关键失分陷阱剖析。
-  - **📖 全科核心公式定理与解题模型宝典**：
-    - 一键唤出数学空间向量/导数切线、物理万有引力/动量守恒、化学反应平衡/电化学等核心母题模型矩阵。
   - **🛡️ 纯粹专注·教育本源**：
     - 界面纯净无冗余商业卡片，保护专注度与深度思考心流。
-  *(按照规范，发布区严格保持最新的 2 个 APK 安装包)*
+  *(按照规范，发布区严格保持最新的 2 个 APK 安装包: v1.6.3 与 v1.6.2)*
 
 ### 🍎 2. 苹果端 (iPhone / iPad)
 - **🌟 方案 A（官方推荐·免签名免越狱·1秒添加至桌面）**：
