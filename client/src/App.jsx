@@ -60,6 +60,7 @@ function AppInner() {
     profiles, currentProfileId, currentProfile,
     selectedSubject, setSelectedSubject, socraticLevel, setSocraticLevel,
     autoRead, setAutoRead, isLightMode, setIsLightMode,
+    isEinkMode, toggleEinkMode,
     handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
     setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
     language, t, chatModel, tutorPersona, setTutorPersona,
@@ -210,7 +211,7 @@ function AppInner() {
   const vadTimerRef = useRef(null);
   const vadAudioContextRef = useRef(null);
   const nativeSpeechListeningRef = useRef(false);
-  const gradeRef = useRef(currentProfile.grade);
+  const gradeRef = useRef(currentProfile?.grade || '7_up');
   const subjectRef = useRef(selectedSubject);
   const messagesRef = useRef(messages);
   const lastBackPressRef = useRef(0);
@@ -293,20 +294,20 @@ function AppInner() {
       }
     };
   }, [showToast]);
-  const editionRef = useRef(currentProfile.edition);
+  const editionRef = useRef(currentProfile?.edition || '人教版');
   const handleSubmitRef = useRef(null);
 
-  gradeRef.current = currentProfile.grade;
+  gradeRef.current = currentProfile?.grade || '7_up';
   subjectRef.current = selectedSubject;
   messagesRef.current = messages;
-  editionRef.current = currentProfile.edition;
+  editionRef.current = currentProfile?.edition || '人教版';
 
   // Validate and auto-reset selectedSubject when grade changes to an incompatible one
   useEffect(() => {
-    const grade = currentProfile.grade;
+    const grade = currentProfile?.grade;
     if (!grade) return;
     const gradeStr = String(grade);
-    const isPrimary = ['1', '2', '3', '4', '5', '6'].some(num => gradeStr.startsWith(num));
+    const isPrimary = ['1_', '2_', '3_', '4_', '5_', '6_'].some(p => gradeStr.startsWith(p)) || ['1', '2', '3', '4', '5', '6'].includes(gradeStr);
     
     let allowed = [];
     if (isPrimary) {
@@ -324,7 +325,7 @@ function AppInner() {
     if (selectedSubject && !allowed.includes(selectedSubject)) {
       setSelectedSubject('');
     }
-  }, [currentProfile.grade, selectedSubject, setSelectedSubject]);
+  }, [currentProfile?.grade, selectedSubject, setSelectedSubject]);
 
   // Cleanup
   useEffect(() => {
@@ -341,7 +342,7 @@ function AppInner() {
   }, [messages.length, isLoading]);
 
   // Sync messages to server (exclude transient offline guidance & error notices)
-  const syncMessages = useCallback(async (currentMessages, explicitGrade = currentProfile.grade, explicitSubject = selectedSubject) => {
+  const syncMessages = useCallback(async (currentMessages, explicitGrade = currentProfile?.grade || '7_up', explicitSubject = selectedSubject) => {
     try {
       const persistableMessages = (currentMessages || []).filter(m => !m.isTransient && m.role !== 'system_notice');
       await authFetch('/api/chat-history', {
@@ -350,13 +351,13 @@ function AppInner() {
         body: JSON.stringify({ profile_id: currentProfileId, messages: persistableMessages, grade: explicitGrade, subject: explicitSubject })
       });
     } catch (e) { console.error('Failed to sync messages:', e); }
-  }, [currentProfileId, currentProfile.grade, selectedSubject]);
+  }, [currentProfileId, currentProfile?.grade, selectedSubject]);
 
   // Load messages on profile/subject change with race-condition prevention
   useEffect(() => {
     let isCancelled = false;
     const activeProfileId = currentProfileId;
-    const activeGrade = currentProfile.grade;
+    const activeGrade = currentProfile?.grade || '7_up';
     const activeSubject = selectedSubject;
 
     const loadMessages = async () => {
@@ -383,7 +384,7 @@ function AppInner() {
         syncMessages(messagesRef.current, activeGrade, activeSubject);
       }
     };
-  }, [currentProfileId, currentProfile.grade, selectedSubject, syncMessages]);
+  }, [currentProfileId, currentProfile?.grade, selectedSubject, syncMessages]);
 
   // Profile change handler (catches ADD_NEW)
   const onProfileChange = useCallback((profileId) => {
@@ -1116,16 +1117,16 @@ function AppInner() {
         onDeleteProfile={() => {
           if (currentProfileId === 'default') { showToast('默认学生档案受保护，无法删除', 'info'); return; }
           setGateAction(() => () => {
-            if (window.confirm(`确定要删除档案 "${currentProfile.name}" 及其所有记录吗？`)) {
+            if (window.confirm(`确定要删除档案 "${currentProfile?.name || ''}" 及其所有记录吗？`)) {
               authFetch('/api/profile?profile_id=' + currentProfileId, { method: 'DELETE' })
                 .then(res => { if (!res.ok) throw new Error('删除失败'); handleDeleteProfile(currentProfileId); showToast('已成功删除学生档案', 'success'); })
                 .catch(() => showToast('删除档案失败，请稍后重试', 'error'));
             }
           });
-          setGateReason(`删除学生档案 "${currentProfile.name}"`);
+          setGateReason(`删除学生档案 "${currentProfile?.name || ''}"`);
           setGateOpen(true);
         }}
-        selectedGrade={currentProfile.grade}
+        selectedGrade={currentProfile?.grade || '7_up'}
         onGradeChange={handleGradeChange}
         selectedSubject={selectedSubject}
         onSubjectChange={setSelectedSubject}
@@ -1195,7 +1196,7 @@ function AppInner() {
         activeChapterData={activeChapterData}
         setActiveChapterData={setActiveChapterData}
         currentProfileId={currentProfileId}
-        currentGrade={currentProfile.grade}
+        currentGrade={currentProfile?.grade || '7_up'}
         selectedSubject={selectedSubject}
         onSubmit={handleSubmit}
         authFetch={authFetch}
@@ -1206,7 +1207,7 @@ function AppInner() {
         {messages.length === 0 ? (
           <WelcomeDashboard
             currentProfile={currentProfile}
-            selectedGrade={currentProfile.grade}
+            selectedGrade={currentProfile?.grade || '7_up'}
             selectedSubject={selectedSubject}
             onGradeChange={handleGradeChange}
             onSubjectChange={setSelectedSubject}
@@ -1266,14 +1267,14 @@ function AppInner() {
       </div>
 
       {/* Modals */}
-      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile.grade} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
+      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile?.grade || '7_up'} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
       {showStats && <StatsDashboard profiles={profiles} onClose={() => setShowStats(false)} currentProfileId={currentProfileId} />}
       {showMap && (
         <LearningMap
-          currentGrade={currentProfile.grade}
+          currentGrade={currentProfile?.grade || '7_up'}
           currentSubject={selectedSubject || '数学'}
-          currentEdition={currentProfile.edition}
-          currentProfileName={currentProfile.name}
+          currentEdition={currentProfile?.edition || '人教版'}
+          currentProfileName={currentProfile?.name || '曾练'}
           onClose={() => setShowMap(false)}
           authFetch={authFetch}
           onSelectChapter={(chapter) => {
@@ -1283,7 +1284,7 @@ function AppInner() {
               setActiveChapterData({ ...chapter, status: 'in_progress', progress_pct: 25 });
               authFetch('/api/chapters/update-progress', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ profile_id: currentProfileId, grade: currentProfile.grade, subject: selectedSubject || '数学', chapter_id: chapter.id, status: 'in_progress', progress_pct: 25 })
+                body: JSON.stringify({ profile_id: currentProfileId, grade: currentProfile?.grade || '7_up', subject: selectedSubject || '数学', chapter_id: chapter.id, status: 'in_progress', progress_pct: 25 })
               }).catch(err => console.error('Failed to sync progress:', err));
             }
             handleSubmit(null, `[ACTION_START_CHAPTER] 我选择了关卡《${chapter.name}》，请给我发放【25%：新知导读与热身】的主动导学指引吧！`);
@@ -1331,7 +1332,7 @@ function AppInner() {
         autoRead={autoRead}
         onAutoReadToggle={() => setAutoRead(!autoRead)}
         currentProfileId={currentProfileId}
-        currentProfileEdition={currentProfile.edition}
+        currentProfileEdition={currentProfile?.edition || '人教版'}
         onEditionChange={handleEditionChange}
         backendUrl={backendUrl}
         onSaveBackendUrl={setBackendUrl}
@@ -1359,9 +1360,9 @@ function AppInner() {
         <KnowledgeTest
           onClose={() => setShowKnowledgeTest(false)}
           currentProfileId={currentProfileId}
-          currentGrade={currentProfile.grade}
+          currentGrade={currentProfile?.grade || '7_up'}
           selectedSubject={selectedSubject}
-          currentEdition={currentProfile.edition}
+          currentEdition={currentProfile?.edition || '人教版'}
           authFetch={authFetch}
         />
       )}

@@ -124,7 +124,7 @@ export default function Header({
     onSocraticCycle(nextSocratic.value);
   };
 
-  const currentProfile = profiles.find(p => p.id === currentProfileId) || { edition: '人教版' };
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
   const selectedEdition = currentProfile.edition || '人教版';
 
   const logoClicksRef = React.useRef([]);
@@ -169,7 +169,7 @@ export default function Header({
             value={currentProfileId}
             onChange={e => onProfileChange(e.target.value)}
             aria-label="选择学生档案"
-            title={`当前学生：${currentProfile.name}`}
+            title={`当前学生：${currentProfile?.name || '曾练'}`}
             style={{ fontWeight: 'bold', color: '#60a5fa' }}
           >
             {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}

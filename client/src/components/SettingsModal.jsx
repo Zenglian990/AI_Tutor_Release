@@ -413,7 +413,6 @@ export default function SettingsModal({
         right: 0,
         bottom: 0,
         width: '100vw',
-        height: '100vh',
         height: '100dvh',
         background: 'rgba(15, 23, 42, 0.82)',
         backdropFilter: 'blur(10px)',
