@@ -1412,7 +1412,7 @@ function AppInner() {
         isOpen={showRoadmap}
         onClose={() => setShowRoadmap(false)}
         currentProfileId={currentProfileId}
-        grade={currentProfile?.grade || '八年级'}
+        grade={currentProfile?.grade || '7_up'}
         subject={selectedSubject || '数学'}
         studentName={currentProfile?.name || '曾练'}
       />
@@ -1421,7 +1421,7 @@ function AppInner() {
         isOpen={showParentMemo}
         onClose={() => setShowParentMemo(false)}
         currentProfileId={currentProfileId}
-        grade={currentProfile?.grade || '八年级'}
+        grade={currentProfile?.grade || '7_up'}
         subject={selectedSubject || '数学'}
         studentName={currentProfile?.name || '曾练'}
       />
@@ -1430,7 +1430,7 @@ function AppInner() {
         isOpen={showBatchGrade}
         onClose={() => setShowBatchGrade(false)}
         currentProfileId={currentProfileId}
-        grade={currentProfile?.grade || '八年级'}
+        grade={currentProfile?.grade || '7_up'}
         subject={selectedSubject || '数学'}
         studentName={currentProfile?.name || '曾练'}
         onReviewMistakes={() => setShowMistakes(true)}
@@ -1483,7 +1483,7 @@ function AppInner() {
       <DailyMentalMathModal
         isOpen={showMentalMathModal}
         onClose={() => setShowMentalMathModal(false)}
-        currentGrade={Number(currentProfile?.grade) || 3}
+        currentGrade={parseInt(String(currentProfile?.grade || '3').split('_')[0], 10) || 3}
         onAwardExp={handleAwardExp}
       />
 

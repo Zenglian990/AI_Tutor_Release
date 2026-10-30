@@ -125,7 +125,7 @@ export default function Header({
   };
 
   const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
-  const selectedEdition = currentProfile.edition || '人教版';
+  const selectedEdition = currentProfile?.edition || '人教版';
 
   const logoClicksRef = React.useRef([]);
   const handleLogoClick = () => {
@@ -172,7 +172,7 @@ export default function Header({
             title={`当前学生：${currentProfile?.name || '曾练'}`}
             style={{ fontWeight: 'bold', color: '#60a5fa' }}
           >
-            {profiles.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
+            {profiles?.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
             <option value="ADD_NEW">➕ 新建档案...</option>
           </select>
         </div>

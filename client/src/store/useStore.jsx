@@ -510,14 +510,14 @@ export function AppProvider({ children }) {
 
   const t = useCallback((key) => getTranslation(language, key), [language]);
 
-  const currentProfile = profiles.find(p => p.id === currentProfileId) || profiles[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
 
   // Persist to localStorage & sync profile-scoped preferences
   useEffect(() => { localStorage.setItem('ai_tutor_profiles', JSON.stringify(profiles)); }, [profiles]);
   useEffect(() => {
     localStorage.setItem('ai_tutor_active_profile', currentProfileId);
     currentProfileIdRef.current = currentProfileId;
-    const target = profiles.find(p => p.id === currentProfileId) || profiles[0];
+    const target = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
     const def = getProfileDefaultPreferences(target?.grade);
     const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(currentProfileId, 'subject', def.subject));
     const prefSocratic = getProfilePref(currentProfileId, 'socratic_level', def.socraticLevel);
@@ -575,7 +575,7 @@ export function AppProvider({ children }) {
     currentProfileIdRef.current = profileId;
     setCurrentProfileId(profileId);
 
-    const target = profiles.find(p => p.id === profileId) || profiles[0];
+    const target = profiles?.find(p => p.id === profileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
     const def = getProfileDefaultPreferences(target?.grade);
     const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(profileId, 'subject', def.subject));
     const prefSocratic = getProfilePref(profileId, 'socratic_level', def.socraticLevel);
@@ -625,7 +625,7 @@ export function AppProvider({ children }) {
       const nextId = remaining[0]?.id || 'default';
       setCurrentProfileId(nextId);
       currentProfileIdRef.current = nextId;
-      return remaining;
+      return remaining.length > 0 ? remaining : [{ id: 'default', name: '曾练', grade: '7_up', edition: '人教版' }];
     });
   }, []);
 

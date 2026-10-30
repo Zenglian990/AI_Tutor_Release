@@ -8,7 +8,7 @@ import { saveOrShareImage } from '../utils/nativeShare';
 export default function StatsDashboard({ currentProfileId, profiles, onClose }) {
   const [stats, setStats] = useState(null);
   const [shareImageUrl, setShareImageUrl] = useState(null);
-  const profileName = profiles.find(p => p.id === currentProfileId)?.name || '未知用户';
+  const profileName = profiles?.find(p => p.id === currentProfileId)?.name || '未知用户';
   const { settings } = useAppStore();
   const parentName = settings?.parentName || '家长';
 
@@ -68,7 +68,7 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
           ref={shareCardRef} 
           profileName={profileName} 
           parentName={parentName}
-          activeProfile={profiles.find(p => p.id === currentProfileId)}
+          activeProfile={profiles?.find(p => p.id === currentProfileId)}
           stats={stats}
           recentData={recentData}
           subjectData={subjectData}
