@@ -4,25 +4,26 @@ import { getApiUrl, authFetch } from '../store/useStore';
 const SUBJECT_LIST = ['全部学科', '数学', '物理', '化学', '英语', '语文', '科学', '道德与法治'];
 
 const QUICK_TOPIC_PRESETS = [
-  { name: '二次函数的概念', grade: '9', subject: '数学', label: '🎯 二次函数 (G9)' },
-  { name: '勾股定理及其逆定理', grade: '8', subject: '数学', label: '📐 勾股定理 (G8)' },
-  { name: '浮力与阿基米德原理', grade: '8', subject: '物理', label: '🔬 浮力原理 (G8)' },
-  { name: '欧姆定律与动态电路分析', grade: '9', subject: '物理', label: '⚡ 欧姆定律 (G9)' },
-  { name: '分数的加法和减法', grade: '5', subject: '数学', label: '🧮 分数加减 (G5)' },
-  { name: '正比例', grade: '6', subject: '数学', label: '📊 正比例 (G6)' },
-  { name: '英语字母表', grade: '3', subject: '英语', label: '🔤 英语字母 (G3)' }
+  { name: '二次函数的概念', grade: '9', subject: '数学', label: '🎯 二次函数 (G9 数学)' },
+  { name: '勾股定理及其逆定理', grade: '8', subject: '数学', label: '📐 勾股定理 (G8 数学)' },
+  { name: '浮力与阿基米德原理', grade: '8', subject: '物理', label: '🔬 浮力原理 (G8 物理)' },
+  { name: '欧姆定律与动态电路分析', grade: '9', subject: '物理', label: '⚡ 欧姆定律 (G9 物理)' },
+  { name: '分数的加法和减法', grade: '5', subject: '数学', label: '🧮 分数加减 (G5 数学)' },
+  { name: '正比例', grade: '6', subject: '数学', label: '📊 正比例 (G6 数学)' },
+  { name: '英语字母表', grade: '3', subject: '英语', label: '🔤 英语字母 (G3 英语)' },
+  { name: '识字：天地人', grade: '1', subject: '语文', label: '📖 识字天地人 (G1 语文)' }
 ];
 
 export default function PrerequisiteTraceModal({
   isOpen,
   onClose,
   initialTopic,
-  initialSubject = '数学',
+  initialSubject = '全部学科',
   initialGrade,
   onAskTutor
 }) {
   const [keyword, setKeyword] = useState('');
-  const [subject, setSubject] = useState(initialSubject || '数学');
+  const [subject, setSubject] = useState(initialSubject || '全部学科');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [targetTopic, setTargetTopic] = useState(null);
@@ -42,7 +43,7 @@ export default function PrerequisiteTraceModal({
 
       const url = `${getApiUrl()}/api/knowledge-graph/trace?${params.toString()}`;
       const res = await authFetch(url);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success && Array.isArray(data.chain) && data.chain.length > 0) {
         setTargetTopic(data.target_topic || data.chain[0]);
@@ -50,69 +51,78 @@ export default function PrerequisiteTraceModal({
         setRevealedAnswers({});
         return;
       }
-      throw new Error(data.error || 'Empty chain');
+      
+      setError(data.error || '未找到该考点的递归先修链，请尝试输入核心考点关键词或切换学科。');
+      setChain([]);
+      setTargetTopic(null);
     } catch (err) {
-      console.warn('[PrerequisiteTraceModal] Trace fetch fallback:', err);
-      // Fallback local mock chain for testing/offline mode
-      const fallbackTarget = {
-        id: 'cnm_229',
-        name: queryKeyword || '二次函数的概念',
-        grade: 9,
-        gradeLabel: '初中3年级(9年级)上学期',
-        chapter: '九年级上册 第22章 二次函数',
-        domain: '函数',
-        description: '理解二次函数的概念，形如 y = ax² + bx + c (a≠0)。',
-        mastery_criteria: ['能识别二次函数表达式', '知道自变量取值范围', '理解a≠0的本质'],
-        diagnostic_question: {
-          question: '若函数 y = (m-1)x^2 + 2x 是关于 x 的二次函数，求 m 的取值范围？',
-          answer: 'm ≠ 1',
-          analysis: '二次项系数必须不等于0，即 m - 1 ≠ 0，解得 m ≠ 1。'
-        },
-        isTarget: true,
-        isRoot: false,
-        prerequisites: ['cnm_201']
-      };
-      const fallbackPrereq = {
-        id: 'cnm_201',
-        name: '一次函数的概念',
-        grade: 8,
-        gradeLabel: '初中2年级(8年级)下学期',
-        chapter: '八年级下册 第19章 一次函数',
-        domain: '函数',
-        description: '理解一次函数的概念，形如 y = kx + b (k≠0)。',
-        reason: '学习「二次函数」需要先掌握「一次函数」的函数模型与变化规律。',
-        mastery_criteria: ['能识别一次函数解析式', '掌握常数k与b的意义'],
-        diagnostic_question: {
-          question: '在函数 y = 3x - 5 中，自变量 x 的一次项系数是多少？',
-          answer: '3',
-          analysis: '标准形式 y = kx + b 中，k 是系数，因此系数为 3。'
-        },
-        isTarget: false,
-        isRoot: false,
-        prerequisites: ['cnm_p213']
-      };
-      const fallbackRoot = {
-        id: 'cnm_p213',
-        name: '正比例与乘法模型',
-        grade: 6,
-        gradeLabel: '小学6年级下学期',
-        chapter: '六年级下册 第4单元 比例',
-        domain: '数与代数',
-        description: '两种相关联的量，一种量变化，另一种量也随着变化，比值一定。',
-        reason: '函数思想萌芽于小学的正反比例与乘法数量关系模型。',
-        mastery_criteria: ['能判断两个量是否成正比例', '理解比值恒定的数学本质'],
-        diagnostic_question: {
-          question: '如果 y/x = 5 (x≠0)，那么 y 和 x 成什么比例？',
-          answer: '成正比例',
-          analysis: '比值恒定为常数5，符合正比例定义。'
-        },
-        isTarget: false,
-        isRoot: true,
-        prerequisites: []
-      };
+      console.warn('[PrerequisiteTraceModal] Trace fetch error:', err);
+      // Offline fallback only for default initial view when network is unreachable
+      if (!queryKeyword || queryKeyword === '二次函数的概念') {
+        const fallbackTarget = {
+          id: 'cnm_229',
+          name: queryKeyword || '二次函数的概念',
+          grade: 9,
+          gradeLabel: '初中3年级(9年级)上学期',
+          chapter: '九年级上册 第22章 二次函数',
+          domain: '函数',
+          description: '理解二次函数的概念，形如 y = ax² + bx + c (a≠0)。',
+          mastery_criteria: ['能识别二次函数表达式', '知道自变量取值范围', '理解a≠0的本质'],
+          diagnostic_question: {
+            question: '若函数 y = (m-1)x^2 + 2x 是关于 x 的二次函数，求 m 的取值范围？',
+            answer: 'm ≠ 1',
+            analysis: '二次项系数必须不等于0，即 m - 1 ≠ 0，解得 m ≠ 1。'
+          },
+          isTarget: true,
+          isRoot: false,
+          prerequisites: ['cnm_201']
+        };
+        const fallbackPrereq = {
+          id: 'cnm_201',
+          name: '一次函数的概念',
+          grade: 8,
+          gradeLabel: '初中2年级(8年级)下学期',
+          chapter: '八年级下册 第19章 一次函数',
+          domain: '函数',
+          description: '理解一次函数的概念，形如 y = kx + b (k≠0)。',
+          reason: '学习「二次函数」需要先掌握「一次函数」的函数模型与变化规律。',
+          mastery_criteria: ['能识别一次函数解析式', '掌握常数k与b的意义'],
+          diagnostic_question: {
+            question: '在函数 y = 3x - 5 中，自变量 x 的一次项系数是多少？',
+            answer: '3',
+            analysis: '标准形式 y = kx + b 中，k 是系数，因此系数为 3。'
+          },
+          isTarget: false,
+          isRoot: false,
+          prerequisites: ['cnm_p213']
+        };
+        const fallbackRoot = {
+          id: 'cnm_p213',
+          name: '正比例与乘法模型',
+          grade: 6,
+          gradeLabel: '小学6年级下学期',
+          chapter: '六年级下册 第4单元 比例',
+          domain: '数与代数',
+          description: '两种相关联的量，一种量变化，另一种量也随着变化，比值一定。',
+          reason: '函数思想萌芽于小学的正反比例与乘法数量关系模型。',
+          mastery_criteria: ['能判断两个量是否成正比例', '理解比值恒定的数学本质'],
+          diagnostic_question: {
+            question: '如果 y/x = 5 (x≠0)，那么 y 和 x 成什么比例？',
+            answer: '成正比例',
+            analysis: '比值恒定为常数5，符合正比例定义。'
+          },
+          isTarget: false,
+          isRoot: true,
+          prerequisites: []
+        };
 
-      setTargetTopic(fallbackTarget);
-      setChain([fallbackTarget, fallbackPrereq, fallbackRoot]);
+        setTargetTopic(fallbackTarget);
+        setChain([fallbackTarget, fallbackPrereq, fallbackRoot]);
+      } else {
+        setError('网络连接异常或未找到相关考点，请检查网络后重试。');
+        setChain([]);
+        setTargetTopic(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -295,6 +305,40 @@ export default function PrerequisiteTraceModal({
             </button>
           </form>
 
+          {/* Subject Filter Selector Pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.74rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>📚 学科筛选：</span>
+            {SUBJECT_LIST.map(subj => {
+              const isSelected = subject === subj;
+              return (
+                <button
+                  key={subj}
+                  type="button"
+                  onClick={() => {
+                    setSubject(subj);
+                    if (keyword.trim()) {
+                      fetchTrace(keyword.trim(), null, subj, null);
+                    }
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    background: isSelected ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : 'rgba(255, 255, 255, 0.06)',
+                    border: isSelected ? '1px solid #a78bfa' : '1px solid rgba(255, 255, 255, 0.12)',
+                    color: isSelected ? '#ffffff' : '#cbd5e1',
+                    fontSize: '0.75rem',
+                    fontWeight: isSelected ? '700' : 'normal',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {subj}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Quick Hot Chips */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
             <span style={{ fontSize: '0.74rem', color: '#64748b', whiteSpace: 'nowrap' }}>🔥 热门考点：</span>
@@ -335,8 +379,14 @@ export default function PrerequisiteTraceModal({
           )}
 
           {error && !loading && (
-            <div style={{ padding: '16px 20px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', marginBottom: '16px' }}>
-              ⚠️ {error}
+            <div style={{ padding: '20px', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.95rem', marginBottom: '6px' }}>
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+              <p style={{ margin: '6px 0 12px 0', fontSize: '0.82rem', color: '#e2e8f0', lineHeight: 1.5 }}>
+                💡 建议：您可以尝试直接点击上方热门考点（如二次函数、勾股定理、浮力原理、欧姆定律等），或切换学科为「全部学科」重新递归排查。
+              </p>
             </div>
           )}
 

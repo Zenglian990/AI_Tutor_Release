@@ -213,7 +213,34 @@ test('Knowledge Graph API — Endpoints End-to-End Verification', async () => {
     // 6. GET /api/knowledge-graph/trace unknown topic -> 404
     const resUnknown = await fetch(`${baseUrl}/api/knowledge-graph/trace?topic_id=unknown_xyz_9999`);
     assert.strictEqual(resUnknown.status, 404);
+
+    // 7. GET /api/knowledge-graph/trace cross-grade query from Grade 7 student for Grade 9 concept MUST succeed
+    const resCrossGrade = await fetch(`${baseUrl}/api/knowledge-graph/trace?keyword=${encodeURIComponent('二次函数的概念')}&grade=7_up&subject=${encodeURIComponent('数学')}`);
+    assert.strictEqual(resCrossGrade.status, 200);
+    const dataCrossGrade = await resCrossGrade.json();
+    assert.strictEqual(dataCrossGrade.success, true);
+    assert.strictEqual(dataCrossGrade.target_topic.id, 'cnm_229');
+    assert.ok(dataCrossGrade.chain.length >= 4);
+
+    // 8. GET /api/knowledge-graph/trace with complex question text from mistake card
+    const resQuestion = await fetch(`${baseUrl}/api/knowledge-graph/trace?keyword=${encodeURIComponent('已知二次函数 y=x^2-4x+3，求抛物线的对称轴和顶点坐标')}&grade=7_up&subject=${encodeURIComponent('数学')}`);
+    assert.strictEqual(resQuestion.status, 200);
+    const dataQuestion = await resQuestion.json();
+    assert.strictEqual(dataQuestion.success, true);
+    assert.ok(dataQuestion.target_topic.name.includes('二次函数'));
+
+    // 9. GET /api/knowledge-graph/trace with cross-subject fallback (searching physics while subject is math)
+    const resCrossSubj = await fetch(`${baseUrl}/api/knowledge-graph/trace?keyword=${encodeURIComponent('浮力')}&subject=${encodeURIComponent('数学')}`);
+    assert.strictEqual(resCrossSubj.status, 200);
+    const dataCrossSubj = await resCrossSubj.json();
+    assert.strictEqual(dataCrossSubj.success, true);
+    assert.strictEqual(dataCrossSubj.target_topic.subject, '物理');
+
+    // 10. normalizeSubject handles '全部学科' and 'all'
+    assert.strictEqual(normalizeSubject('全部学科'), '');
+    assert.strictEqual(normalizeSubject('all'), '');
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
 });
+

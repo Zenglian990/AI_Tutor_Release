@@ -103,8 +103,8 @@ describe('PrerequisiteTraceModal Component', () => {
 
     expect(getByText(/跨年级考点星图与先修断层溯源/i)).toBeDefined();
     expect(getByPlaceholderText(/输入任意考点名称/i)).toBeDefined();
-    expect(getByText(/二次函数 \(G9\)/i)).toBeDefined();
-    expect(getByText(/勾股定理 \(G8\)/i)).toBeDefined();
+    expect(getByText(/二次函数 \(G9/i)).toBeDefined();
+    expect(getByText(/勾股定理 \(G8/i)).toBeDefined();
   });
 
   it('renders ancestral ladder nodes with Target, Prerequisite, and Root badges', async () => {
@@ -170,5 +170,50 @@ describe('PrerequisiteTraceModal Component', () => {
     expect(onAskTutorMock).toHaveBeenCalledTimes(1);
     expect(onAskTutorMock.mock.calls[0][0]).toContain('苏格拉底');
     expect(onCloseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders subject filter tabs and allows switching subjects', async () => {
+    const { getByText } = render(
+      <PrerequisiteTraceModal
+        isOpen={true}
+        onClose={() => {}}
+        initialTopic="二次函数的概念"
+      />
+    );
+
+    expect(getByText('全部学科')).toBeDefined();
+    expect(getByText('物理')).toBeDefined();
+    expect(getByText('化学')).toBeDefined();
+    expect(getByText('英语')).toBeDefined();
+
+    // Click 物理 tab
+    fireEvent.click(getByText('物理'));
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+  });
+
+  it('displays error message when trace fetch fails', async () => {
+    global.fetch = vi.fn().mockImplementation(() => {
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({
+          success: false,
+          error: '未找到相关考点'
+        })
+      });
+    });
+
+    const { findByText } = render(
+      <PrerequisiteTraceModal
+        isOpen={true}
+        onClose={() => {}}
+        initialTopic="不存在的冷门考点"
+      />
+    );
+
+    const errorBanner = await findByText(/未找到相关考点/i);
+    expect(errorBanner).toBeDefined();
   });
 });

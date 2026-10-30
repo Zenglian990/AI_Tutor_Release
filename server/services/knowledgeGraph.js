@@ -375,6 +375,7 @@ const SUBJECT_MAP = {
 function normalizeSubject(subj) {
   if (!subj) return '';
   const clean = String(subj).trim().toLowerCase();
+  if (clean === '全部学科' || clean === '全部' || clean === 'all' || clean === '*') return '';
   return SUBJECT_MAP[clean] || subj;
 }
 
@@ -632,7 +633,7 @@ function formatGradeLabel(grade, semester) {
 }
 
 function findTopicsByKeyword(keyword, options = {}) {
-  const { grade, subject, limit = 10 } = options;
+  const { grade, subject, limit = 10, strictGrade = false } = options;
   const kw = keyword ? String(keyword).trim().toLowerCase() : '';
   const normSubj = subject ? normalizeSubject(subject) : '';
   const gradeRank = (grade !== undefined && grade !== null && grade !== '') ? getGradeRank(grade) : null;
@@ -642,61 +643,116 @@ function findTopicsByKeyword(keyword, options = {}) {
     return [KNOWLEDGE_GRAPH[kw]];
   }
 
-  const scored = [];
+  function scoreTopics(queryKw, subjFilter) {
+    const scored = [];
+    const cleanKw = queryKw ? queryKw.replace(/^(已知|若|求|请问|老师[，,]?|帮我看看|计算|求解|如何理解|怎么做|关于|什么是)+/, '').trim() : '';
 
-  for (const node of Object.values(KNOWLEDGE_GRAPH)) {
-    // Subject filter
-    if (normSubj) {
-      const nodeSubj = normalizeSubject(node.subject);
-      if (nodeSubj && nodeSubj !== normSubj && !nodeSubj.includes(normSubj) && !normSubj.includes(nodeSubj)) {
-        continue;
+    for (const node of Object.values(KNOWLEDGE_GRAPH)) {
+      if (subjFilter) {
+        const nodeSubj = normalizeSubject(node.subject);
+        if (nodeSubj && nodeSubj !== subjFilter && !nodeSubj.includes(subjFilter) && !subjFilter.includes(nodeSubj)) {
+          continue;
+        }
       }
-    }
 
-    // Grade filter
-    if (gradeRank !== null) {
       const nodeRank = getGradeRank(node.grade);
-      if (Math.abs(nodeRank - gradeRank) > 5) {
+
+      if (!queryKw) {
+        if (gradeRank !== null && Math.abs(nodeRank - gradeRank) > 5) {
+          continue;
+        }
+        scored.push({ node, score: 1 });
         continue;
       }
+
+      if (strictGrade && gradeRank !== null && Math.abs(nodeRank - gradeRank) > 5) {
+        continue;
+      }
+
+      const nodeId = String(node.id).toLowerCase();
+      const nodeName = String(node.name).toLowerCase();
+      const baseNodeName = nodeName.replace(/(的概念|及其逆定理|及其图像与性质|的意义和基本性质|的认识|初步认识|及其应用|与性质|的基本性质)$/, '');
+
+      let score = 0;
+
+      if (nodeId === queryKw) {
+        score = 1000;
+      } else if (nodeName === queryKw) {
+        score = 600;
+      } else if (nodeName.startsWith(queryKw)) {
+        score = 350 + Math.max(0, 50 - nodeName.length);
+      } else if (nodeName.includes(queryKw)) {
+        score = 250 - Math.min(50, nodeName.length - queryKw.length);
+      } else if (queryKw.includes(nodeName) && nodeName.length >= 2) {
+        score = 260 + nodeName.length * 10;
+      } else if (baseNodeName.length >= 2 && queryKw.includes(baseNodeName)) {
+        score = 240 + baseNodeName.length * 10;
+      } else if (cleanKw && cleanKw.length >= 2 && (nodeName.includes(cleanKw) || (baseNodeName.length >= 2 && cleanKw.includes(baseNodeName)))) {
+        score = 200;
+      } else if (node.keywords && node.keywords.some(k => String(k).toLowerCase() === queryKw)) {
+        score = 180;
+      } else if (node.keywords && node.keywords.some(k => String(k).toLowerCase().includes(queryKw))) {
+        score = 150;
+      }
+
+      // Keyword token accumulator: rewarding multi-term matches
+      if (node.keywords && node.keywords.length > 0) {
+        let kwMatches = 0;
+        for (const k of node.keywords) {
+          const kStr = String(k).toLowerCase();
+          if (kStr.length >= 2 && queryKw.includes(kStr)) {
+            kwMatches++;
+          }
+        }
+        if (kwMatches > 0) {
+          score = Math.max(score, 120 + kwMatches * 60);
+        }
+      }
+
+      if (score === 0) {
+        if (node.chapter && String(node.chapter).toLowerCase().includes(queryKw)) {
+          score = 90;
+        } else if (node.chapter && queryKw.includes(String(node.chapter).toLowerCase())) {
+          score = 95;
+        } else if (node.domain && String(node.domain).toLowerCase().includes(queryKw)) {
+          score = 70;
+        } else if (node.description && String(node.description).toLowerCase().includes(queryKw)) {
+          score = 50;
+        }
+      }
+
+      if (score > 0) {
+        // Soft grade boost for current grade affinity
+        if (gradeRank !== null) {
+          if (nodeRank === gradeRank) {
+            score += 35;
+          } else if (Math.abs(nodeRank - gradeRank) <= 10) {
+            score += 15;
+          }
+        }
+        scored.push({ node, score });
+      }
     }
+    return scored;
+  }
 
-    if (!kw) {
-      scored.push({ node, score: 1 });
-      continue;
-    }
+  let candidates = scoreTopics(kw, normSubj);
 
-    const nodeId = String(node.id).toLowerCase();
-    const nodeName = String(node.name).toLowerCase();
-    let score = 0;
+  // Fallback 1: if subject filter yielded 0 results, search across all subjects
+  if (candidates.length === 0 && normSubj && kw) {
+    candidates = scoreTopics(kw, '');
+  }
 
-    if (nodeId === kw) {
-      score = 1000;
-    } else if (nodeName === kw) {
-      score = 500;
-    } else if (nodeName.startsWith(kw)) {
-      score = 300 + Math.max(0, 100 - nodeName.length);
-    } else if (nodeName.includes(kw)) {
-      score = 200 - Math.min(100, nodeName.length - kw.length);
-    } else if (node.keywords && node.keywords.some(k => String(k).toLowerCase() === kw)) {
-      score = 150;
-    } else if (node.keywords && node.keywords.some(k => String(k).toLowerCase().includes(kw))) {
-      score = 100;
-    } else if (node.chapter && String(node.chapter).toLowerCase().includes(kw)) {
-      score = 80;
-    } else if (node.domain && String(node.domain).toLowerCase().includes(kw)) {
-      score = 60;
-    } else if (node.description && String(node.description).toLowerCase().includes(kw)) {
-      score = 40;
-    }
-
-    if (score > 0) {
-      scored.push({ node, score });
+  // Fallback 2: matchKnowledgeNodes integration
+  if (candidates.length === 0 && kw) {
+    const fallbackNodes = matchKnowledgeNodes(kw, normSubj);
+    for (const f of fallbackNodes) {
+      candidates.push({ node: f, score: 100 });
     }
   }
 
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit).map(s => s.node);
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.slice(0, limit).map(s => s.node);
 }
 
 function findTopicByKeyword(keyword, grade, subject) {
@@ -738,10 +794,15 @@ function tracePrerequisiteChain(topicIdOrName, maxDepth = 5) {
       mastery_criteria: node.mastery_criteria || [],
       diagnostic_question: node.diagnostic_question || (node.foundationQuestion ? {
         question: node.foundationQuestion,
-        answer: node.foundationAnswer,
-        hint: node.foundationHint,
-        analysis: node.foundationAnalysis
-      } : null),
+        answer: node.foundationAnswer || '遵循基本定理推导',
+        hint: node.foundationHint || node.coreRule,
+        analysis: node.foundationAnalysis || node.coreRule
+      } : (node.coreRule ? {
+        question: `【${node.name}基石自测】请简要写出其核心定理或解题法则：`,
+        answer: node.coreRule,
+        hint: node.description || node.name,
+        analysis: `掌握【${node.name}】是顺利攻克后续综合考点的根基。`
+      } : null)),
       root_reason: node.root_reason || '',
       prerequisites: directPrereqIds,
       prerequisiteCount: directPrereqIds.length,
