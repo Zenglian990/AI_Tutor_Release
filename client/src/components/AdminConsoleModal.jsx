@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useAppStore, getApiUrl, authFetch, getApiToken, DEFAULT_API_TOKEN } from '../store/useStore';
 import { decryptData, encryptData } from '../utils/crypto_helper';
-import { ZENG_WECHAT_QR_DATA_URL } from '../assets/zeng_wechat_qr_base64.js';
 import ParentalGate from './ParentalGate';
 
 const MASTER_PIN_HASH = '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e';
@@ -80,8 +79,8 @@ export default function AdminConsoleModal({
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const [posterTemplate, setPosterTemplate] = useState('primary');
-  const [posterQrType, setPosterQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'custom_image');
-  const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || ZENG_WECHAT_QR_DATA_URL);
+  const [posterQrType, setPosterQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'url');
+  const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || null);
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
   const [posterContactName, setPosterContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '曾练专属私教 · 纯净学习档案');
   const [posterSaving, setPosterSaving] = useState(false);
@@ -219,10 +218,12 @@ export default function AdminConsoleModal({
     ctx.stroke();
     ctx.beginPath();
 
-    let qrImageSrc = customQrImage;
-    if (posterQrType === 'url') {
+    let qrImageSrc = null;
+    if (posterQrType === 'custom_image' && customQrImage) {
+      qrImageSrc = customQrImage;
+    } else {
       try {
-        qrImageSrc = await QRCode.toDataURL(targetUrl || window.location.origin, {
+        qrImageSrc = await QRCode.toDataURL(targetUrl || getApiUrl() || window.location.origin, {
           margin: 1,
           width: 140,
           color: { dark: '#000000', light: '#ffffff' }

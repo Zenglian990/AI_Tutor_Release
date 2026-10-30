@@ -23,7 +23,6 @@ import GamificationBadgeModal from './components/GamificationBadgeModal';
 import ParentRemoteDashboard from './components/ParentRemoteDashboard';
 import PrimaryVisualManipulatives from './components/PrimaryVisualManipulatives';
 import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
-import MembershipModal from './components/MembershipModal';
 import AdminConsoleModal from './components/AdminConsoleModal';
 import ParentSharePosterModal from './components/ParentSharePosterModal';
 import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
@@ -108,7 +107,6 @@ function AppInner() {
   const [showGamification, setShowGamification] = useState(false);
   const [showManipulatives, setShowManipulatives] = useState(false);
   const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
-  const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
   const [showAdminConsole, setShowAdminConsole] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
@@ -232,7 +230,6 @@ function AppInner() {
     if (showGamification) { setShowGamification(false); return true; }
     if (showManipulatives) { setShowManipulatives(false); return true; }
     if (showGeometrySandbox) { setShowGeometrySandbox(false); return true; }
-    if (showMembershipModal) { setShowMembershipModal(false); return true; }
     if (showAdminConsole) { setShowAdminConsole(false); return true; }
     if (showReportModal) { setShowReportModal(false); return true; }
     if (showAddProfile) { setShowAddProfile(false); return true; }
@@ -724,9 +721,50 @@ function AppInner() {
     }
   };
 
+  const handleOpenVoiceCompanion = useCallback(() => {
+    if (voiceDialogueOpen) {
+      interruptSpeech();
+      stopVoiceRecording();
+      setVoiceDialogueOpen(false);
+      return;
+    }
+
+    let starterText = '';
+    const msgs = messagesRef.current || [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'ai' && msgs[i].text) {
+        const focus = extractQuestionFocus(msgs[i].text);
+        if (focus) {
+          starterText = focus;
+          break;
+        }
+      }
+    }
+
+    const studentName = currentProfile?.name || '同学';
+    const subject = selectedSubject || '学习';
+    const greeting = starterText || `${studentName}你好！我是你的面对面伴学导师。关于${subject}，你有什么想问或者卡壳的地方吗？直接说给我听吧！`;
+
+    setCurrentFocusQuestion(greeting);
+    setVoiceDialogueOpen(true);
+    setVoiceDialogueMode('speaking');
+
+    playTTS(
+      greeting,
+      gradeRef.current,
+      () => {
+        setVoiceDialogueMode('speaking');
+      },
+      () => {
+        setVoiceDialogueMode('listening');
+        startVoiceRecording(true);
+      }
+    );
+  }, [voiceDialogueOpen, currentProfile?.name, selectedSubject, startVoiceRecording, stopVoiceRecording]);
+
   const handleStartSocraticTutoring = useCallback(({ file, snippet, questionNumber }) => {
     setShowBatchGrade(false);
-    setSocraticLevel('socratic');
+    setSocraticLevel('guided');
     if (file) {
       if (previewImage) URL.revokeObjectURL(previewImage);
       setImageFile(file);
@@ -1095,6 +1133,7 @@ function AppInner() {
         onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
         onOpenEyeCare={() => setShowEyeCare(true)}
         onOpenDailyCard={() => setShowDailyCard(true)}
+        onOpenVoiceCompanion={handleOpenVoiceCompanion}
       />
 
       {/* 仅在对话进行中时显示轻量级返回首页条 */}
@@ -1398,11 +1437,6 @@ function AppInner() {
         onApplyToChat={(text) => setInput(text)}
       />
 
-      <MembershipModal
-        isOpen={showMembershipModal}
-        onClose={() => setShowMembershipModal(false)}
-      />
-
       {/* 智能拍照搜题取景框与去阴影裁剪器 (对标作业帮/小猿) */}
       <SmartPhotoCropperModal
         isOpen={showCropper}
@@ -1511,6 +1545,7 @@ function AppInner() {
         onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
         onOpenDailyCard={() => setShowDailyCard(true)}
         onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenVoiceCompanion={handleOpenVoiceCompanion}
         isFeynmanMode={isFeynmanMode}
         onToggleFeynmanMode={toggleFeynmanMode}
         hasActiveChat={messages.length > 0}

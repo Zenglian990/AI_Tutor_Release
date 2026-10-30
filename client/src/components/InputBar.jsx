@@ -34,6 +34,7 @@ const InputBar = React.memo(function InputBar({
   fileInputRef,
   onSubmit,
   onToggleVoice,
+  onOpenVoiceCompanion,
   onImageSelect,
   onClearImage,
   autoRead,
@@ -235,6 +236,22 @@ const InputBar = React.memo(function InputBar({
 
       {hasActiveChat && (
         <div className="quick-hints-bar" role="toolbar" aria-label="名师启发快捷支架">
+          {onOpenVoiceCompanion && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{
+                borderColor: '#ec4899',
+                color: '#f43f5e',
+                background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.18), rgba(244, 63, 94, 0.18))',
+                fontWeight: 700
+              }}
+              title="开启名师面对面全双工实时语音伴学（随时张口插话打断）"
+              onClick={onOpenVoiceCompanion}
+            >
+              🎙️ 面对面伴学
+            </button>
+          )}
           <button
             type="button"
             className="quick-hint-chip"
@@ -565,6 +582,32 @@ const InputBar = React.memo(function InputBar({
             </div>
 
             <div className="input-actions-right">
+              {/* 面对面伴学 (全屏沉浸语音) */}
+              {onOpenVoiceCompanion && (
+                <button
+                  type="button"
+                  className="icon-btn voice-companion-btn"
+                  onClick={onOpenVoiceCompanion}
+                  title="开启面对面伴学 (全屏沉浸语音对话)"
+                  aria-label="开启面对面伴学"
+                  style={{
+                    color: '#10b981',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    borderRadius: '10px',
+                    padding: '4px 6px',
+                    marginRight: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <span style={{ fontSize: '1.05rem' }}>🎙️</span>
+                  <span className="hidden sm:inline" style={{ fontSize: '0.78rem' }}>伴学</span>
+                </button>
+              )}
+
               {/* 语音输入 */}
               <button
                 type="button"

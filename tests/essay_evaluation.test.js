@@ -37,3 +37,23 @@ test('Essay Evaluation — gradeEssayWithLLM exports properly and adheres to rub
   assert.strictEqual(typeof gradeEssayWithLLM, 'function', 'gradeEssayWithLLM should be exported');
 });
 
+test('Essay Evaluation — grade-adaptive scoring sets correct maxScore and age-appropriate upgrades', () => {
+  // Grades 1-3: maxScore 20
+  const primaryLower = heuristicEssayEvaluation('我的小猫', '小猫真可爱。它浑身雪白雪白的。我和小猫一起玩捉迷藏。', '2_up');
+  assert.strictEqual(primaryLower.max_score, 20);
+  assert.ok(primaryLower.sentence_upgrades[0].technique.includes('童趣') || primaryLower.sentence_upgrades[0].technique.includes('五感'));
+
+  // Grades 4-6: maxScore 30
+  const primaryUpper = heuristicEssayEvaluation('一次难忘的劳动', '今天我和同学们一起在校园里植树。大家分工合作，有的挖坑，有的扶树苗，有的浇水。虽然很累，但看到整齐的小树苗，心里甜滋滋的。', '5_up');
+  assert.strictEqual(primaryUpper.max_score, 30);
+
+  // Grades 7-9: maxScore 50
+  const middleSchool = heuristicEssayEvaluation('成长足迹', '那是一次充满挑战的科技比赛，我们在实验室反复调试代码，终于在最后一刻攻克了算法难题。', '8_up');
+  assert.strictEqual(middleSchool.max_score, 50);
+
+  // Grades 10-12: maxScore 60
+  const highSchool = heuristicEssayEvaluation('时代与青年', '立于百年未有之大变局的交汇点，青年一代当以实干笃行回应时代叩问，在思辨与躬行中铸就精神之丰碑。', '11_up');
+  assert.strictEqual(highSchool.max_score, 60);
+  assert.ok(highSchool.sentence_upgrades[0].technique.includes('立意') || highSchool.sentence_upgrades[0].technique.includes('思辨') || highSchool.sentence_upgrades[0].technique.includes('家国'));
+});
+

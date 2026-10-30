@@ -74,6 +74,22 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
     return { valid: true, status: 'same', message: '与上一步一致', tip: '请写出下一步化简或移项' };
   }
 
+  const isUnsupportedNotation = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    return /[><≥≤≠≈]/.test(str) ||
+      /\b(sin|cos|tan|cot|sec|csc|log|ln|lg|lim|exp)\b/i.test(str) ||
+      /[√π°∠△⊥∥≌∽]/.test(str);
+  };
+
+  if (isUnsupportedNotation(cleanCurr) || isUnsupportedNotation(cleanPrev)) {
+    return {
+      valid: false,
+      status: 'unsupported',
+      message: '💡 暂不支持此类符号自动验算，请继续在草稿纸书写演算',
+      tip: '当前步骤级自动验算主要支持一元一次方程、整式及分式化简'
+    };
+  }
+
   const exprPrev = parseEquationToExpression(cleanPrev);
   const exprCurr = parseEquationToExpression(cleanCurr);
 
@@ -128,6 +144,18 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
         }
       }
     } catch (e) {
+      if (
+        isUnsupportedNotation(cleanCurr) ||
+        isUnsupportedNotation(cleanPrev) ||
+        (e && typeof e.message === 'string' && e.message.includes('Unsupported'))
+      ) {
+        return {
+          valid: false,
+          status: 'unsupported',
+          message: '💡 暂不支持此类符号自动验算，请继续在草稿纸书写演算',
+          tip: '当前步骤级自动验算主要支持一元一次方程、整式及分式化简'
+        };
+      }
       // Parse incomplete during typing
       return { valid: false, status: 'typing', message: '正在输入...', tip: '' };
     }

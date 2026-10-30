@@ -1229,7 +1229,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
             handleSubmitTest(submittedAnswers);
           }}
           onOpenScratchpad={() => setShowExamScratchpad(true)}
-          durationMinutes={isElementary ? 90 : 120}
+          durationMinutes={paper?.duration || (isElementary ? (['1', '2', '3'].includes(rawGrade) ? 40 : 60) : (isHighSchool ? 120 : 90))}
         />
       )}
 

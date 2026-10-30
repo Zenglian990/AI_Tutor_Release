@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useAppStore, getApiUrl, authFetch } from '../store/useStore';
-import { ZENG_WECHAT_QR_DATA_URL } from '../assets/zeng_wechat_qr_base64.js';
 import { saveOrShareImage } from '../utils/nativeShare';
 
 // Reliable image loader that handles synchronous completion and cached Base64 data URLs
@@ -47,14 +46,13 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
   const [template, setTemplate] = useState('primary'); // 'primary' | 'junior'
   const [showConfig, setShowConfig] = useState(false);
 
-  // QR Code configuration — ALWAYS defaults to Zeng's official WeChat QR code
+  // QR Code configuration — defaults to dynamic web experience QR code
   const [qrType, setQrType] = useState(() => {
     const saved = localStorage.getItem('parent_poster_qr_type');
-    return saved === 'url' ? 'url' : 'custom_image';
+    return saved === 'custom_image' ? 'custom_image' : 'url';
   });
   const [customQrImage, setCustomQrImage] = useState(() => {
-    const saved = localStorage.getItem('parent_poster_custom_qr_img');
-    return saved || ZENG_WECHAT_QR_DATA_URL;
+    return localStorage.getItem('parent_poster_custom_qr_img') || null;
   });
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
   const [lanUrl, setLanUrl] = useState('');
@@ -232,10 +230,14 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
     try {
       let qrImg = null;
 
-      if (qrType === 'url') {
+      if (qrType === 'custom_image' && customQrImage) {
+        qrImg = await loadAnyImage(customQrImage);
+      }
+
+      if (!qrImg) {
         let textToEncode = targetUrl || lanUrl;
         if (!textToEncode || textToEncode.includes('localhost') || textToEncode.includes('127.0.0.1')) {
-          textToEncode = lanUrl || window.location.origin;
+          textToEncode = lanUrl || getApiUrl() || window.location.origin;
         }
 
         const qrDataUrl = await QRCode.toDataURL(textToEncode, {
@@ -247,15 +249,6 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
           }
         });
         qrImg = await loadAnyImage(qrDataUrl);
-      } else {
-        // Default: Zeng's official WeChat QR code
-        const imgSrc = customQrImage || ZENG_WECHAT_QR_DATA_URL;
-        qrImg = await loadAnyImage(imgSrc);
-      }
-
-      // 100% fallback safety: if loading failed for any reason, load Zeng's QR directly
-      if (!qrImg) {
-        qrImg = await loadAnyImage(ZENG_WECHAT_QR_DATA_URL);
       }
 
       // 4.1 High-contrast White Card for QR Code (prevents WeChat camera read issues)
@@ -467,34 +460,24 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                       style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', border: '1px solid #10b981' }}
                     />
                     <span style={{ color: '#059669', fontSize: '0.82rem', fontWeight: 600 }}>
-                      {customQrImage === ZENG_WECHAT_QR_DATA_URL ? '✓ 默认学情报告二维码' : '✓ 已加载自定义二维码！'}
+                      ✓ 已加载自定义二维码！
                     </span>
-                    {customQrImage !== ZENG_WECHAT_QR_DATA_URL && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomQrImage(ZENG_WECHAT_QR_DATA_URL);
-                          localStorage.removeItem('parent_poster_custom_qr_img');
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        恢复默认二维码
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.82rem' }}>当前未设置图片</span>
                     <button
                       type="button"
                       onClick={() => {
-                        setCustomQrImage(ZENG_WECHAT_QR_DATA_URL);
+                        setCustomQrImage(null);
+                        setQrType('url');
                         localStorage.removeItem('parent_poster_custom_qr_img');
+                        localStorage.setItem('parent_poster_qr_type', 'url');
                       }}
-                      style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', cursor: 'pointer' }}
+                      style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
                     >
-                      加载默认学情二维码
+                      清除并使用动态体验网址码
                     </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.82rem' }}>当前未设置自定义图片，将自动采用动态体验网址码</span>
                   </div>
                 )}
               </div>

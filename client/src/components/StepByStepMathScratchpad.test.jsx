@@ -23,6 +23,18 @@ describe('StepByStepMathScratchpad and stepVerifier', () => {
     expect(res.message).toContain('移项');
   });
 
+  it('gracefully handles unsupported inequalities and trigonometric functions without hanging in typing', () => {
+    const resIneq = verifyStepTransition('2x + 1 > 5', '2x > 4');
+    expect(resIneq.valid).toBe(false);
+    expect(resIneq.status).toBe('unsupported');
+    expect(resIneq.message).toContain('暂不支持此类符号自动验算');
+
+    const resTrig = verifyStepTransition('sin(x) = 1', 'x = 90');
+    expect(resTrig.valid).toBe(false);
+    expect(resTrig.status).toBe('unsupported');
+    expect(resTrig.message).toContain('暂不支持此类符号自动验算');
+  });
+
   it('renders StepByStepMathScratchpad modal with initial equation and allows adding steps', () => {
     const onClose = vi.fn();
     const onApplyToChat = vi.fn();

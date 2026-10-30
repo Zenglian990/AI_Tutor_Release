@@ -113,11 +113,12 @@ export default function Header({
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
   onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
   onOpenPoster, onOpenAdminConsole,
-  onOpenEyeCare, onOpenDailyCard
+  onOpenEyeCare, onOpenDailyCard, onOpenVoiceCompanion
 }) {
   const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, chatModel, setChatModel } = useAppStore();
-  const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === socraticLevel) || SOCRATIC_LEVELS[0];
-  const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === socraticLevel) + 1) % SOCRATIC_LEVELS.length];
+  const normalizedSocratic = socraticLevel === 'socratic' ? 'guided' : socraticLevel;
+  const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === normalizedSocratic) || SOCRATIC_LEVELS[1];
+  const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === normalizedSocratic) + 1) % SOCRATIC_LEVELS.length];
 
   const handleSocraticClick = () => {
     onSocraticCycle(nextSocratic.value);
@@ -216,6 +217,26 @@ export default function Header({
 
       {/* 3. 核心功能与操作区 (Right) */}
       <div className="header-actions">
+
+        {/* 面对面伴学 (全屏沉浸语音对话) */}
+        {onOpenVoiceCompanion && (
+          <button
+            onClick={onOpenVoiceCompanion}
+            className="header-btn-pill"
+            title="开启面对面伴学 (全屏沉浸实时语音对话·对标GPT-4o/Gemini Live)"
+            aria-label="开启面对面伴学"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15))',
+              color: '#34d399',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ filter: 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.6))' }}>🎙️</span>
+            <span className="btn-label">伴学</span>
+          </button>
+        )}
 
         {/* 连续学习连胜与同桌羁绊 (Duolingo-style Streak Flywheel) */}
         {onOpenGamification && (

@@ -713,8 +713,19 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
 
   return {
     title: paperTitle,
+    duration: getExamDuration(grade),
+    grade: grade,
     questions: finalQuestions
   };
+}
+
+function getExamDuration(grade) {
+  const rawGrade = grade ? parseInt(String(grade).split('_')[0], 10) : 7;
+  if (rawGrade >= 1 && rawGrade <= 3) return 40;
+  if (rawGrade >= 4 && rawGrade <= 6) return 60;
+  if (rawGrade >= 7 && rawGrade <= 9) return 90;
+  if (rawGrade >= 10 && rawGrade <= 12) return 120;
+  return 90;
 }
 
 /**
@@ -778,6 +789,9 @@ router.post('/test-paper/generate', async (req, res) => {
     if (!paperObj || !Array.isArray(paperObj.questions) || paperObj.questions.length === 0) {
       logger.info('[TestPaper] Assembling authentic canonical exam paper fallback...');
       paperObj = await assembleReliableExamPaper(grade, subject, type, region);
+    } else {
+      paperObj.duration = paperObj.duration || getExamDuration(grade);
+      paperObj.grade = grade;
     }
 
     res.json({ paper: paperObj });

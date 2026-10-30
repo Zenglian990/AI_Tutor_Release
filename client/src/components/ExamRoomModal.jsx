@@ -8,7 +8,8 @@ export default function ExamRoomModal({
   onAnswerChange,
   onSubmitExam,
   onSubmit,
-  onOpenScratchpad
+  onOpenScratchpad,
+  durationMinutes: propDurationMinutes
 }) {
   const [answers, setAnswers] = useState(initialAnswersProp || {});
   const [markedQuestions, setMarkedQuestions] = useState({}); // { [qId]: true }
@@ -19,7 +20,19 @@ export default function ExamRoomModal({
   const timerRef = useRef(null);
 
   const questions = paper?.questions || [];
-  const durationMinutes = paper?.duration || 90;
+
+  const getGradeDefaultDuration = (gradeStr) => {
+    const raw = gradeStr ? parseInt(String(gradeStr).split('_')[0], 10) : 7;
+    if (raw >= 1 && raw <= 3) return 40;
+    if (raw >= 4 && raw <= 6) return 60;
+    if (raw >= 7 && raw <= 9) return 90;
+    if (raw >= 10 && raw <= 12) return 120;
+    return 90;
+  };
+
+  const durationMinutes = Number(paper?.duration) > 0
+    ? Number(paper.duration)
+    : (Number(propDurationMinutes) > 0 ? Number(propDurationMinutes) : getGradeDefaultDuration(paper?.grade));
 
   // Initialize timer and answers
   useEffect(() => {
@@ -113,7 +126,12 @@ export default function ExamRoomModal({
             background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff',
             padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold'
           }}>
-            🏛️ 中考全真模考封闭考场
+            {(() => {
+              const raw = paper?.grade ? parseInt(String(paper.grade).split('_')[0], 10) : 7;
+              if (raw <= 6) return '🏫 小学全真模拟考场';
+              if (raw >= 10) return '🎯 新高考全真模考封闭考场';
+              return '🏛️ 中考全真模考封闭考场';
+            })()}
           </span>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc' }}>

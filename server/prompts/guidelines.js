@@ -145,7 +145,7 @@ function getPromptGuidelines(grade, socratic) {
   // Three-level Socratic teaching mode
   if (socratic === 'strict') {
     base += `\n\n` + getTemplateValue('SOCRATIC_STRICT');
-  } else if (socratic === 'guided' || socratic === true) {
+  } else if (socratic === 'guided' || socratic === true || socratic === 'socratic') {
     base += `\n\n` + getTemplateValue('SOCRATIC_GUIDED');
   } else {
     base += `\n\n` + getTemplateValue('SOCRATIC_DIRECT');
