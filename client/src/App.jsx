@@ -35,6 +35,7 @@ import ChemistryLabModal from './components/ChemistryLabModal';
 import EnglishRolePlayModal from './components/EnglishRolePlayModal';
 import DailyAchievementCardModal from './components/DailyAchievementCardModal';
 import EyeCareTimerModal from './components/EyeCareTimerModal';
+import PrerequisiteTraceModal from './components/PrerequisiteTraceModal';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -121,6 +122,8 @@ function AppInner() {
   const [showEnglishRolePlay, setShowEnglishRolePlay] = useState(false);
   const [showDailyCard, setShowDailyCard] = useState(false);
   const [showEyeCare, setShowEyeCare] = useState(false);
+  const [showPrerequisiteTrace, setShowPrerequisiteTrace] = useState(false);
+  const [traceTargetTopic, setTraceTargetTopic] = useState(null);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
     return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== '1.5.4';
   });
@@ -128,6 +131,19 @@ function AppInner() {
   // Modern Non-Blocking Toast Notification & Quick Reason Tagging
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'info', id }
   const [mistakeTagPrompt, setMistakeTagPrompt] = useState(null); // { id, query }
+
+  const handleOpenPrerequisiteTrace = useCallback((targetTopicOrMistake) => {
+    if (targetTopicOrMistake) {
+      if (typeof targetTopicOrMistake === 'object') {
+        setTraceTargetTopic(targetTopicOrMistake.knowledge_point || targetTopicOrMistake.query || targetTopicOrMistake.name || targetTopicOrMistake);
+      } else {
+        setTraceTargetTopic(targetTopicOrMistake);
+      }
+    } else {
+      setTraceTargetTopic(null);
+    }
+    setShowPrerequisiteTrace(true);
+  }, []);
 
   const showToast = useCallback((message, type = 'info', duration = 2800) => {
     setToast({ message, type, id: Date.now() });
@@ -218,6 +234,7 @@ function AppInner() {
     if (showEnglishRolePlay) { setShowEnglishRolePlay(false); return true; }
     if (showDailyCard) { setShowDailyCard(false); return true; }
     if (showEyeCare) { setShowEyeCare(false); return true; }
+    if (showPrerequisiteTrace) { setShowPrerequisiteTrace(false); return true; }
     if (showPrintModal) { setShowPrintModal(false); return true; }
     if (showMistakes) { setShowMistakes(false); return true; }
     if (showStats) { setShowStats(false); return true; }
@@ -1220,6 +1237,7 @@ function AppInner() {
             onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
             onOpenDailyCard={() => setShowDailyCard(true)}
             onOpenEyeCare={() => setShowEyeCare(true)}
+            onOpenPrerequisiteTrace={() => handleOpenPrerequisiteTrace(null)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
@@ -1248,7 +1266,7 @@ function AppInner() {
       </div>
 
       {/* Modals */}
-      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile.grade} defaultSubject={selectedSubject} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
+      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile.grade} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
       {showStats && <StatsDashboard profiles={profiles} onClose={() => setShowStats(false)} currentProfileId={currentProfileId} />}
       {showMap && (
         <LearningMap
@@ -1523,6 +1541,19 @@ function AppInner() {
         onToggleEink={toggleEinkMode}
       />
 
+      {/* 🌌 跨年级考点星图与先修断层溯源模态框 */}
+      <PrerequisiteTraceModal
+        isOpen={showPrerequisiteTrace}
+        onClose={() => setShowPrerequisiteTrace(false)}
+        initialTopic={traceTargetTopic}
+        initialSubject={selectedSubject || '数学'}
+        initialGrade={currentProfile?.grade || '7_up'}
+        onAskTutor={(prompt) => {
+          setInput(prompt);
+          showToast('📖 已将先修基石攻坚设问填入案头，点击发送即可开始', 'info');
+        }}
+      />
+
       <InputBar
         input={input} setInput={setInput}
         isLoading={isLoading} isListening={isListening}
@@ -1545,6 +1576,7 @@ function AppInner() {
         onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
         onOpenDailyCard={() => setShowDailyCard(true)}
         onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenPrerequisiteTrace={() => handleOpenPrerequisiteTrace(null)}
         onOpenVoiceCompanion={handleOpenVoiceCompanion}
         isFeynmanMode={isFeynmanMode}
         onToggleFeynmanMode={toggleFeynmanMode}

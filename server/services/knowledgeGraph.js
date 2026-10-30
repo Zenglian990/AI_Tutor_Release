@@ -351,7 +351,36 @@ const KNOWLEDGE_GRAPH = {
   }
 };
 
-// 自动融合外部权威 PEP 初中数学知识拓扑（64核心节点 + 87条拓扑依赖链）
+const SUBJECT_MAP = {
+  'math': '数学',
+  'mathematics': '数学',
+  '数学': '数学',
+  'english': '英语',
+  '英语': '英语',
+  'physics': '物理',
+  '物理': '物理',
+  'chinese': '语文',
+  '语文': '语文',
+  'science': '科学',
+  '科学': '科学',
+  'morality': '道德与法治',
+  '道德与法治': '道德与法治',
+  '道法': '道德与法治',
+  'politics': '道德与法治',
+  '政治': '道德与法治',
+  'chemistry': '化学',
+  '化学': '化学'
+};
+
+function normalizeSubject(subj) {
+  if (!subj) return '';
+  const clean = String(subj).trim().toLowerCase();
+  return SUBJECT_MAP[clean] || subj;
+}
+
+const dependencyInfoMap = {};
+
+// 自动融合外部权威 PEP 及 K-12 全学段知识拓扑（2804+核心节点 + 4200+条拓扑依赖链）
 try {
   const topicsFile = path.join(__dirname, '..', '..', 'data', 'pep_topics.json');
   const depsFile = path.join(__dirname, '..', '..', 'data', 'pep_dependencies.json');
@@ -363,23 +392,63 @@ try {
     for (const d of rawDeps) {
       if (!depMap[d.topicId]) depMap[d.topicId] = [];
       depMap[d.topicId].push(d.prerequisiteId);
+      const depKey = `${d.topicId}->${d.prerequisiteId}`;
+      dependencyInfoMap[depKey] = {
+        strength: d.strength || 'hard',
+        reason: d.reason || ''
+      };
     }
 
     for (const t of rawTopics) {
+      const mappedSubject = normalizeSubject(t.subject) || '数学';
+      const nodeGrade = t.grade !== undefined ? t.grade : (t.ageRangeStart >= 12 ? '7_up' : 7);
+
       if (!KNOWLEDGE_GRAPH[t.id]) {
         KNOWLEDGE_GRAPH[t.id] = {
           id: t.id,
           name: t.name,
-          subject: '数学',
-          grade: '7_up',
-          keywords: [t.name, t.domain].concat(Array.isArray(t.evidence) ? t.evidence : []),
+          subject: mappedSubject,
+          grade: nodeGrade,
+          semester: t.semester || '',
+          chapter: t.chapter || '',
+          domain: t.domain || '',
+          type: t.type || 'conceptual',
+          description: t.description || t.name,
+          keywords: [t.name, t.domain || '']
+            .concat(Array.isArray(t.evidence) ? t.evidence : [])
+            .concat(Array.isArray(t.mastery_criteria) ? t.mastery_criteria : [])
+            .concat(t.chapter ? [t.chapter] : [])
+            .filter(Boolean),
           prerequisites: depMap[t.id] || [],
           coreRule: t.description || t.name,
-          commonMistake: t.assessmentPrompt || '在基本概念与运算步骤的严谨性上容易出现遗漏或符号错误。',
-          teacherMnemonic: `牢牢掌握【${t.domain}】核心定义与标准解题步骤！`,
+          commonMistake: t.assessmentPrompt || (t.mastery_criteria && t.mastery_criteria.length > 0 ? `重点掌握：${t.mastery_criteria.join('；')}` : '在基本概念与运算步骤的严谨性上容易出现遗漏或符号错误。'),
+          mastery_criteria: t.mastery_criteria || (Array.isArray(t.evidence) ? t.evidence : []),
+          diagnostic_question: t.diagnostic_question || null,
+          root_reason: t.root_reason || null,
+          standards: t.standards || [],
+          teacherMnemonic: `牢牢掌握【${t.domain || t.name}】核心定义与标准解题步骤！`,
           lifeAnalogy: `就像学习语言必须先背基础词汇一样，掌握${t.name}是解综合大题的敲门砖。`,
-          feynmanChallenge: `能否用自己的话，向没有学过的人讲清楚${t.name}的核心内涵？`
+          feynmanChallenge: `能否用自己的话，向没有学过的人讲清楚${t.name}的核心内涵？`,
+          foundationQuestion: t.diagnostic_question?.question || null,
+          foundationAnswer: t.diagnostic_question?.answer || null,
+          foundationHint: t.description || null,
+          foundationAnalysis: t.root_reason || t.description || null
         };
+      } else {
+        const existingNode = KNOWLEDGE_GRAPH[t.id];
+        if (depMap[t.id] && depMap[t.id].length > 0) {
+          const mergedPrereqs = Array.from(new Set([...(existingNode.prerequisites || []), ...depMap[t.id]]));
+          existingNode.prerequisites = mergedPrereqs;
+        }
+        if (t.diagnostic_question && !existingNode.diagnostic_question) {
+          existingNode.diagnostic_question = t.diagnostic_question;
+        }
+        if (t.chapter && !existingNode.chapter) {
+          existingNode.chapter = t.chapter;
+        }
+        if (t.domain && !existingNode.domain) {
+          existingNode.domain = t.domain;
+        }
       }
     }
   }
@@ -410,14 +479,18 @@ function matchKnowledgeNodes(text, subject = '') {
   if (!text) return [];
   const cleanText = String(text).toLowerCase();
   const matched = [];
+  const normTarget = normalizeSubject(subject);
 
   for (const node of Object.values(KNOWLEDGE_GRAPH)) {
-    if (subject && node.subject && !subject.includes(node.subject) && !node.subject.includes(subject)) {
-      continue;
+    if (normTarget) {
+      const normNode = normalizeSubject(node.subject);
+      if (normNode && normNode !== normTarget && !normNode.includes(normTarget) && !normTarget.includes(normNode)) {
+        continue;
+      }
     }
 
     const nameMatch = cleanText.includes(node.name.toLowerCase());
-    const keywordMatch = node.keywords.some(kw => cleanText.includes(kw.toLowerCase()));
+    const keywordMatch = node.keywords && node.keywords.some(kw => cleanText.includes(kw.toLowerCase()));
 
     if (nameMatch || keywordMatch) {
       matched.push(node);
@@ -510,24 +583,273 @@ function linkQueryToMultimodalConcepts(query, subject = '') {
 }
 
 function getGradeRank(gradeStr) {
-  if (!gradeStr) return 70;
-  const str = String(gradeStr).toLowerCase();
-  if (str.includes('1_') || str.includes('1年级') || str.includes('一年级')) return 10;
-  if (str.includes('2_') || str.includes('2年级') || str.includes('二年级')) return 20;
-  if (str.includes('3_') || str.includes('3年级') || str.includes('三年级')) return 30;
-  if (str.includes('4_') || str.includes('4年级') || str.includes('四年级')) return 40;
-  if (str.includes('5_') || str.includes('5年级') || str.includes('五年级')) return 50;
-  if (str.includes('6_') || str.includes('6年级') || str.includes('六年级')) return 60;
+  if (gradeStr === undefined || gradeStr === null || gradeStr === '') return 70;
+  if (typeof gradeStr === 'number') {
+    if (gradeStr >= 1 && gradeStr <= 6) return gradeStr * 10;
+    if (gradeStr >= 7 && gradeStr <= 9) return 70 + (gradeStr - 7) * 10;
+    if (gradeStr >= 10 && gradeStr <= 12) return 100 + (gradeStr - 10) * 10;
+    return gradeStr * 10;
+  }
+  const str = String(gradeStr).trim().toLowerCase();
+  if (str === '1' || str.includes('1_') || str.includes('1年级') || str.includes('一年级')) return 10;
+  if (str === '2' || str.includes('2_') || str.includes('2年级') || str.includes('二年级')) return 20;
+  if (str === '3' || str.includes('3_') || str.includes('3年级') || str.includes('三年级')) return 30;
+  if (str === '4' || str.includes('4_') || str.includes('4年级') || str.includes('四年级')) return 40;
+  if (str === '5' || str.includes('5_') || str.includes('5年级') || str.includes('五年级')) return 50;
+  if (str === '6' || str.includes('6_') || str.includes('6年级') || str.includes('六年级')) return 60;
   if (str.includes('7_up') || str.includes('7上') || str.includes('七年级上')) return 71;
   if (str.includes('7_down') || str.includes('7下') || str.includes('七年级下')) return 72;
-  if (str.includes('7')) return 70;
+  if (str === '7' || str.includes('7') || str.includes('初一') || str.includes('七年级')) return 70;
   if (str.includes('8_up') || str.includes('8上') || str.includes('八年级上')) return 81;
   if (str.includes('8_down') || str.includes('8下') || str.includes('八年级下')) return 82;
-  if (str.includes('8')) return 80;
+  if (str === '8' || str.includes('8') || str.includes('初二') || str.includes('八年级')) return 80;
   if (str.includes('9_up') || str.includes('9上') || str.includes('九年级上')) return 91;
   if (str.includes('9_down') || str.includes('9下') || str.includes('九年级下')) return 92;
-  if (str.includes('9')) return 90;
+  if (str === '9' || str.includes('9') || str.includes('初三') || str.includes('九年级')) return 90;
+  if (str === '10' || str.includes('10') || str.includes('高一') || str.includes('十年级')) return 100;
+  if (str === '11' || str.includes('11') || str.includes('高二') || str.includes('十一年级')) return 110;
+  if (str === '12' || str.includes('12') || str.includes('高三') || str.includes('十二年级')) return 120;
   return 70;
+}
+
+function formatGradeLabel(grade, semester) {
+  const semStr = semester ? (semester === '上' || semester === 'up' ? '上学期' : '下学期') : '';
+  if (typeof grade === 'number' || /^\d+$/.test(String(grade))) {
+    const g = Number(grade);
+    if (g >= 1 && g <= 6) return `小学${g}年级${semStr}`;
+    if (g >= 7 && g <= 9) return `初中${g - 6}年级(${g}年级)${semStr}`;
+    if (g >= 10 && g <= 12) return `高中${g - 9}年级(${g}年级)${semStr}`;
+    return `${g}年级${semStr}`;
+  }
+  const str = String(grade || '');
+  if (str === '7_up') return '初一(7年级)上学期';
+  if (str === '7_down') return '初一(7年级)下学期';
+  if (str === '8_up') return '初二(8年级)上学期';
+  if (str === '8_down') return '初二(8年级)下学期';
+  if (str === '9_up') return '初三(9年级)上学期';
+  if (str === '9_down') return '初三(9年级)下学期';
+  return str || '综合学段';
+}
+
+function findTopicsByKeyword(keyword, options = {}) {
+  const { grade, subject, limit = 10 } = options;
+  const kw = keyword ? String(keyword).trim().toLowerCase() : '';
+  const normSubj = subject ? normalizeSubject(subject) : '';
+  const gradeRank = (grade !== undefined && grade !== null && grade !== '') ? getGradeRank(grade) : null;
+
+  // Direct ID exact match
+  if (kw && KNOWLEDGE_GRAPH[kw]) {
+    return [KNOWLEDGE_GRAPH[kw]];
+  }
+
+  const scored = [];
+
+  for (const node of Object.values(KNOWLEDGE_GRAPH)) {
+    // Subject filter
+    if (normSubj) {
+      const nodeSubj = normalizeSubject(node.subject);
+      if (nodeSubj && nodeSubj !== normSubj && !nodeSubj.includes(normSubj) && !normSubj.includes(nodeSubj)) {
+        continue;
+      }
+    }
+
+    // Grade filter
+    if (gradeRank !== null) {
+      const nodeRank = getGradeRank(node.grade);
+      if (Math.abs(nodeRank - gradeRank) > 5) {
+        continue;
+      }
+    }
+
+    if (!kw) {
+      scored.push({ node, score: 1 });
+      continue;
+    }
+
+    const nodeId = String(node.id).toLowerCase();
+    const nodeName = String(node.name).toLowerCase();
+    let score = 0;
+
+    if (nodeId === kw) {
+      score = 1000;
+    } else if (nodeName === kw) {
+      score = 500;
+    } else if (nodeName.startsWith(kw)) {
+      score = 300 + Math.max(0, 100 - nodeName.length);
+    } else if (nodeName.includes(kw)) {
+      score = 200 - Math.min(100, nodeName.length - kw.length);
+    } else if (node.keywords && node.keywords.some(k => String(k).toLowerCase() === kw)) {
+      score = 150;
+    } else if (node.keywords && node.keywords.some(k => String(k).toLowerCase().includes(kw))) {
+      score = 100;
+    } else if (node.chapter && String(node.chapter).toLowerCase().includes(kw)) {
+      score = 80;
+    } else if (node.domain && String(node.domain).toLowerCase().includes(kw)) {
+      score = 60;
+    } else if (node.description && String(node.description).toLowerCase().includes(kw)) {
+      score = 40;
+    }
+
+    if (score > 0) {
+      scored.push({ node, score });
+    }
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map(s => s.node);
+}
+
+function findTopicByKeyword(keyword, grade, subject) {
+  const topics = findTopicsByKeyword(keyword, { grade, subject, limit: 1 });
+  return topics.length > 0 ? topics[0] : null;
+}
+
+function tracePrerequisiteChain(topicIdOrName, maxDepth = 5) {
+  if (!topicIdOrName) return [];
+
+  let startNode = KNOWLEDGE_GRAPH[topicIdOrName];
+  if (!startNode) {
+    startNode = findTopicByKeyword(topicIdOrName);
+  }
+  if (!startNode) return [];
+
+  const chain = [];
+  const visited = new Set();
+  let curr = startNode;
+
+  function formatChainNode(node, stepIndex, isTarget = false, isRoot = false, reason = '') {
+    const directPrereqIds = (node.prerequisites || []).filter(pId => KNOWLEDGE_GRAPH[pId]);
+    const directPrereqNodes = directPrereqIds.map(pId => KNOWLEDGE_GRAPH[pId]);
+
+    return {
+      step: stepIndex,
+      id: node.id,
+      name: node.name,
+      subject: node.subject,
+      grade: node.grade,
+      gradeLabel: formatGradeLabel(node.grade, node.semester),
+      semester: node.semester || '',
+      chapter: node.chapter || '',
+      domain: node.domain || '',
+      type: node.type || 'conceptual',
+      description: node.description || node.coreRule || node.name,
+      coreRule: node.coreRule || node.description || node.name,
+      commonMistake: node.commonMistake || '',
+      mastery_criteria: node.mastery_criteria || [],
+      diagnostic_question: node.diagnostic_question || (node.foundationQuestion ? {
+        question: node.foundationQuestion,
+        answer: node.foundationAnswer,
+        hint: node.foundationHint,
+        analysis: node.foundationAnalysis
+      } : null),
+      root_reason: node.root_reason || '',
+      prerequisites: directPrereqIds,
+      prerequisiteCount: directPrereqIds.length,
+      allPrerequisites: directPrereqNodes.map(p => ({
+        id: p.id,
+        name: p.name,
+        grade: p.grade,
+        gradeLabel: formatGradeLabel(p.grade, p.semester),
+        chapter: p.chapter || '',
+        subject: p.subject || ''
+      })),
+      reason: reason || '',
+      isTarget,
+      isRoot
+    };
+  }
+
+  function getMinGradeRankReachable(nodeId, memo = {}, callStack = new Set()) {
+    if (memo[nodeId] !== undefined) return memo[nodeId];
+    if (callStack.has(nodeId)) return 999;
+    callStack.add(nodeId);
+
+    const n = KNOWLEDGE_GRAPH[nodeId];
+    if (!n) return 999;
+    let minRank = getGradeRank(n.grade);
+
+    for (const pId of n.prerequisites || []) {
+      const childMin = getMinGradeRankReachable(pId, memo, callStack);
+      if (childMin < minRank) {
+        minRank = childMin;
+      }
+    }
+
+    callStack.delete(nodeId);
+    memo[nodeId] = minRank;
+    return minRank;
+  }
+
+  const memoRanks = {};
+  visited.add(curr.id);
+  let step = 0;
+
+  while (curr && step <= maxDepth) {
+    const isTarget = (step === 0);
+    const prereqIds = (curr.prerequisites || []).filter(pId => !visited.has(pId) && KNOWLEDGE_GRAPH[pId]);
+    const isRoot = (prereqIds.length === 0 || step === maxDepth);
+
+    let stepReason = '';
+    if (step > 0 && chain.length > 0) {
+      const prevNode = chain[chain.length - 1];
+      const depKey = `${prevNode.id}->${curr.id}`;
+      stepReason = (dependencyInfoMap && dependencyInfoMap[depKey]?.reason) || `掌握【${prevNode.name}】需要先学好前置基石【${curr.name}】`;
+    }
+
+    chain.push(formatChainNode(curr, step, isTarget, isRoot, stepReason));
+
+    if (isRoot) {
+      break;
+    }
+
+    // Select the prerequisite that leads to earlier grades / foundation
+    let bestPrereqId = null;
+    let lowestReachableRank = Infinity;
+    let lowestDirectGradeRank = Infinity;
+
+    for (const pId of prereqIds) {
+      const pNode = KNOWLEDGE_GRAPH[pId];
+      const directRank = getGradeRank(pNode.grade);
+      const reachableRank = getMinGradeRankReachable(pId, memoRanks);
+
+      if (reachableRank < lowestReachableRank || (reachableRank === lowestReachableRank && directRank < lowestDirectGradeRank)) {
+        lowestReachableRank = reachableRank;
+        lowestDirectGradeRank = directRank;
+        bestPrereqId = pId;
+      }
+    }
+
+    if (!bestPrereqId) {
+      chain[chain.length - 1].isRoot = true;
+      break;
+    }
+
+    visited.add(bestPrereqId);
+    curr = KNOWLEDGE_GRAPH[bestPrereqId];
+    step++;
+  }
+
+  return chain;
+}
+
+function getKnowledgeGraphStats() {
+  const topics = Object.values(KNOWLEDGE_GRAPH);
+  const subjects = new Set();
+  const grades = new Set();
+  let totalPrereqs = 0;
+
+  for (const t of topics) {
+    if (t.subject) subjects.add(t.subject);
+    if (t.grade !== undefined) grades.add(t.grade);
+    if (Array.isArray(t.prerequisites)) totalPrereqs += t.prerequisites.length;
+  }
+
+  return {
+    totalTopics: topics.length,
+    totalDependencies: Object.keys(dependencyInfoMap).length || totalPrereqs,
+    subjects: Array.from(subjects),
+    grades: Array.from(grades).sort((a, b) => getGradeRank(a) - getGradeRank(b))
+  };
 }
 
 function buildRemedyCard(rootCauseNode, currentNode) {
@@ -654,6 +976,14 @@ module.exports = {
   getKnowledgeNodeWithVisuals,
   linkQueryToMultimodalConcepts,
   getGradeRank,
+  formatGradeLabel,
   buildRemedyCard,
-  getCrossGradeRootCause
+  getCrossGradeRootCause,
+  findTopicByKeyword,
+  findTopicsByKeyword,
+  tracePrerequisiteChain,
+  getKnowledgeGraphStats,
+  dependencyInfoMap,
+  SUBJECT_MAP,
+  normalizeSubject
 };

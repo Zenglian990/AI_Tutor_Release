@@ -8,8 +8,9 @@ import { preprocessLatex } from '../utils/math';
 import A4PrintModal from './A4PrintModal';
 import VariantPracticeModal from './VariantPracticeModal';
 import FSRSFlashcardSprintModal from './FSRSFlashcardSprintModal';
+import PrerequisiteTraceModal from './PrerequisiteTraceModal';
 
-export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject }) {
+export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject, onOpenPrerequisiteTrace }) {
   const { currentProfile } = useAppStore();
   const studentName = currentProfile?.name || '曾练';
   const [mistakes, setMistakes] = useState([]);
@@ -35,6 +36,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
   const [generatingTargetedPaper, setGeneratingTargetedPaper] = useState(false);
   const [variantPaperQuestions, setVariantPaperQuestions] = useState([]);
   const [selectedPrereqMistake, setSelectedPrereqMistake] = useState(null);
+  const [selectedTraceMistake, setSelectedTraceMistake] = useState(null);
 
   const handleGenerateTargetedVariantPaper = async () => {
     if (mistakes.length === 0) {
@@ -531,6 +533,31 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                     >
                       🌱 根因溯源
                     </button>
+                    <button
+                      onClick={() => {
+                        if (onOpenPrerequisiteTrace) {
+                          onOpenPrerequisiteTrace(m);
+                        } else {
+                          setSelectedTraceMistake(m);
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.3))',
+                        border: '1px solid #8b5cf6',
+                        borderRadius: '6px',
+                        color: '#c084fc',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginLeft: '8px'
+                      }}
+                      title="溯源先修断层：递归排查该考点在更早年级的前置知识链与认知漏洞"
+                    >
+                      🔍 溯源先修断层
+                    </button>
                     {variations[m.id] && (
                       <div className="mistake-variation" style={{ marginTop: '24px', padding: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))', border: '1px solid rgba(96, 165, 250, 0.2)', borderLeft: '5px solid #3b82f6', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(10px)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '14px', color: '#60a5fa', fontSize: '1.05rem', textShadow: '0 0 10px rgba(96,165,250,0.2)' }}>🎯 变式提优挑战</div>
@@ -629,6 +656,16 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           onMistakeUpdated={(id, data) => {
             setMistakes(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
           }}
+        />
+      )}
+
+      {selectedTraceMistake && (
+        <PrerequisiteTraceModal
+          isOpen={!!selectedTraceMistake}
+          onClose={() => setSelectedTraceMistake(null)}
+          initialTopic={selectedTraceMistake.knowledge_point || selectedTraceMistake.query}
+          initialSubject={selectedTraceMistake.subject || filterSubject || defaultSubject || '数学'}
+          initialGrade={selectedTraceMistake.grade || filterGrade || defaultGrade || '7_up'}
         />
       )}
     </div>

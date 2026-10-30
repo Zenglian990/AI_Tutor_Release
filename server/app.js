@@ -26,6 +26,7 @@ const gamificationRoutes = require('./routes/gamification');
 const membershipRoutes = require('./routes/membership');
 const { router: feynmanRoutes } = require('./routes/feynman');
 const { router: essayRoutes } = require('./routes/essay');
+const learningMapRoutes = require('./routes/learningMap');
 
 function createApp() {
   const app = express();
@@ -189,6 +190,7 @@ function createApp() {
   app.use('/api', membershipRoutes);
   app.use('/api', feynmanRoutes);
   app.use('/api', essayRoutes);
+  app.use('/api', learningMapRoutes);
 
   // --- Serve static frontend ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');

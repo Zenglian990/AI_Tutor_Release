@@ -28,7 +28,8 @@ export default function WelcomeDashboard({
   onOpenChemistry,
   onOpenEnglishRolePlay,
   onOpenDailyCard,
-  onOpenEyeCare
+  onOpenEyeCare,
+  onOpenPrerequisiteTrace
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
@@ -386,6 +387,17 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">国际眼科视力守护法则：满20分钟引导远眺20秒，无蓝光护眼</p>
             <div className="action-card-cta" style={{ color: '#34d399' }}>开启护眼 →</div>
+          </div>
+        )}
+
+        {onOpenPrerequisiteTrace && (
+          <div className="action-card" onClick={onOpenPrerequisiteTrace} role="button" tabIndex={0} style={{ borderColor: 'rgba(139, 92, 246, 0.45)', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(99, 102, 241, 0.08))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🌌</span>
+              <span className="action-card-name" style={{ color: '#c084fc' }}>跨年级考点星图与断层溯源</span>
+            </div>
+            <p className="action-card-desc">溯源跨学期认知断层，从高年级考点一键穿透回小学初中先修基石</p>
+            <div className="action-card-cta" style={{ color: '#c084fc' }}>溯源考点断层 →</div>
           </div>
         )}
 

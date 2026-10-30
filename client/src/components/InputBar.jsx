@@ -51,6 +51,7 @@ const InputBar = React.memo(function InputBar({
   onOpenEnglishRolePlay,
   onOpenDailyCard,
   onOpenEyeCare,
+  onOpenPrerequisiteTrace,
   isFeynmanMode = false,
   onToggleFeynmanMode = null,
   hasActiveChat
@@ -250,6 +251,22 @@ const InputBar = React.memo(function InputBar({
               onClick={onOpenVoiceCompanion}
             >
               🎙️ 面对面伴学
+            </button>
+          )}
+          {onOpenPrerequisiteTrace && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{
+                borderColor: '#8b5cf6',
+                color: '#c084fc',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(99, 102, 241, 0.18))',
+                fontWeight: 700
+              }}
+              title="跨年级考点星图与断层溯源（从当前年级考点溯源至小学初中先修基石）"
+              onClick={onOpenPrerequisiteTrace}
+            >
+              🌌 跨年级考点星图与断层溯源
             </button>
           )}
           <button
@@ -540,6 +557,24 @@ const InputBar = React.memo(function InputBar({
                   }}
                 >
                   📖
+                </button>
+              )}
+
+              {/* 跨年级考点星图与断层溯源 */}
+              {onOpenPrerequisiteTrace && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={onOpenPrerequisiteTrace}
+                  title="🌌 跨年级考点星图与断层溯源 (溯源前置概念基石与断层)"
+                  aria-label="打开考点星图与断层溯源"
+                  style={{
+                    color: '#a78bfa',
+                    fontSize: '1.05rem',
+                    fontWeight: 700
+                  }}
+                >
+                  🌌
                 </button>
               )}
 

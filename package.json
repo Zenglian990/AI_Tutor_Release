@@ -1,6 +1,6 @@
 {
   "name": "ai_tutor_release",
-  "version": "1.6.8",
+  "version": "1.7.0",
   "description": "曾练专属私教 (ZengLian AI Tutor) - 专为1-12年级小初高全学段量身定制的开源 RAG AI 教辅智能体 (FSRS科学记忆·交互数学画板·费曼以教代学·高考高频押题)",
   "main": "server/index.js",
   "scripts": {
