@@ -55,5 +55,13 @@ test('Essay Evaluation — grade-adaptive scoring sets correct maxScore and age-
   const highSchool = heuristicEssayEvaluation('时代与青年', '立于百年未有之大变局的交汇点，青年一代当以实干笃行回应时代叩问，在思辨与躬行中铸就精神之丰碑。', '11_up');
   assert.strictEqual(highSchool.max_score, 60);
   assert.ok(highSchool.sentence_upgrades[0].technique.includes('立意') || highSchool.sentence_upgrades[0].technique.includes('思辨') || highSchool.sentence_upgrades[0].technique.includes('家国'));
+
+  // Robust Chinese Grade Names
+  const cnGrade3 = heuristicEssayEvaluation('可爱小兔', '小白兔真可爱，蹦蹦跳跳地吃胡萝卜。', '小学三年级');
+  assert.strictEqual(cnGrade3.max_score, 20);
+  const cnGrade5 = heuristicEssayEvaluation('秋天的校园', '秋风吹过操场，金黄的银杏叶随风飘落。', '五年级');
+  assert.strictEqual(cnGrade5.max_score, 30);
+  const cnGradeHigh = heuristicEssayEvaluation('论修养', '涵养身心，格物致知，方能行稳致远。', '高一');
+  assert.strictEqual(cnGradeHigh.max_score, 60);
 });
 

@@ -21,8 +21,31 @@ export default function ExamRoomModal({
 
   const questions = paper?.questions || [];
 
+  const parseGradeNumber = (g) => {
+    if (!g) return 7;
+    if (typeof g === 'number') return g;
+    const s = String(g).trim();
+    const startDigit = s.match(/^(\d+)/);
+    if (startDigit) return parseInt(startDigit[1], 10);
+    if (s.includes('高一') || s.includes('高1') || s.includes('高中一年级')) return 10;
+    if (s.includes('高二') || s.includes('高2') || s.includes('高中二年级')) return 11;
+    if (s.includes('高三') || s.includes('高3') || s.includes('高中三年级')) return 12;
+    if (s.includes('七年级') || s.includes('初一') || s.includes('初中一年级')) return 7;
+    if (s.includes('八年级') || s.includes('初二') || s.includes('初中二年级')) return 8;
+    if (s.includes('九年级') || s.includes('初三') || s.includes('初中三年级')) return 9;
+    const cnNums = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    const cnMatch = s.match(/([一二三四五六七八九])年级/);
+    if (cnMatch) {
+      const idx = cnNums.indexOf(cnMatch[1]);
+      if (idx !== -1) return idx;
+    }
+    const anyDigit = s.match(/(\d+)/);
+    if (anyDigit) return parseInt(anyDigit[1], 10);
+    return 7;
+  };
+
   const getGradeDefaultDuration = (gradeStr) => {
-    const raw = gradeStr ? parseInt(String(gradeStr).split('_')[0], 10) : 7;
+    const raw = parseGradeNumber(gradeStr);
     if (raw >= 1 && raw <= 3) return 40;
     if (raw >= 4 && raw <= 6) return 60;
     if (raw >= 7 && raw <= 9) return 90;
@@ -127,7 +150,7 @@ export default function ExamRoomModal({
             padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold'
           }}>
             {(() => {
-              const raw = paper?.grade ? parseInt(String(paper.grade).split('_')[0], 10) : 7;
+              const raw = parseGradeNumber(paper?.grade);
               if (raw <= 6) return '🏫 小学全真模拟考场';
               if (raw >= 10) return '🎯 新高考全真模考封闭考场';
               return '🏛️ 中考全真模考封闭考场';

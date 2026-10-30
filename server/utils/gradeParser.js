@@ -79,7 +79,41 @@ function matchesGrade(source, grade) {
   return true;
 }
 
+function parseGradeNumber(grade) {
+  if (!grade) return 7;
+  if (typeof grade === 'number') return grade;
+  const s = String(grade).trim();
+
+  // 1. Direct digit prefix, e.g. "3_up", "7", "11_down", "3"
+  const startDigit = s.match(/^(\d+)/);
+  if (startDigit) return parseInt(startDigit[1], 10);
+
+  // 2. High school
+  if (s.includes('高一') || s.includes('高1') || s.includes('高中一年级')) return 10;
+  if (s.includes('高二') || s.includes('高2') || s.includes('高中二年级')) return 11;
+  if (s.includes('高三') || s.includes('高3') || s.includes('高中三年级')) return 12;
+
+  // 3. Junior high
+  if (s.includes('七年级') || s.includes('初一') || s.includes('初七') || s.includes('初中一年级')) return 7;
+  if (s.includes('八年级') || s.includes('初二') || s.includes('初八') || s.includes('初中二年级')) return 8;
+  if (s.includes('九年级') || s.includes('初三') || s.includes('初九') || s.includes('初中三年级')) return 9;
+
+  // 4. Primary school Chinese numerals
+  const cnMatch = s.match(/([一二三四五六七八九])年级/);
+  if (cnMatch) {
+    const idx = CHINESE_NUMS.indexOf(cnMatch[1]);
+    if (idx !== -1) return idx;
+  }
+
+  // 5. Embedded digit in "grade3", "小学3年级", etc.
+  const anyDigit = s.match(/(\d+)/);
+  if (anyDigit) return parseInt(anyDigit[1], 10);
+
+  return 7;
+}
+
 module.exports = {
+  parseGradeNumber,
   extractGradeFromSource,
   matchesGrade
 };

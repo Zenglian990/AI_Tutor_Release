@@ -33,6 +33,21 @@ describe('StepByStepMathScratchpad and stepVerifier', () => {
     expect(resTrig.valid).toBe(false);
     expect(resTrig.status).toBe('unsupported');
     expect(resTrig.message).toContain('暂不支持此类符号自动验算');
+
+    // LaTeX inequality
+    const resLatex = verifyStepTransition('2x \\le 4', 'x \\le 2');
+    expect(resLatex.valid).toBe(false);
+    expect(resLatex.status).toBe('unsupported');
+
+    // Brackets in transposition rule check should not crash
+    const resBrackets = verifyStepTransition('2x + [y] = 10', '2x = 10 + [y]');
+    expect(resBrackets.valid).toBe(false);
+    expect(resBrackets.status).toBe('unsupported');
+
+    // Typing incomplete returns typing
+    const resTyping = verifyStepTransition('2x = 6', 'x = ');
+    expect(resTyping.valid).toBe(false);
+    expect(resTyping.status).toBe('typing');
   });
 
   it('renders StepByStepMathScratchpad modal with initial equation and allows adding steps', () => {

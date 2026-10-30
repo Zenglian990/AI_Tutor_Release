@@ -3,13 +3,14 @@ const router = express.Router();
 const logger = require('../services/logger');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { extractAndParseJson } = require('../utils/jsonParser');
+const { parseGradeNumber } = require('../utils/gradeParser');
 
 /**
  * Grade-Adaptive Essay Configuration
  * 对标义务教育语文课程标准与新高考评分量表
  */
 function getEssayGradeConfig(grade) {
-  const rawGrade = grade ? parseInt(String(grade).split('_')[0], 10) : 7;
+  const rawGrade = parseGradeNumber(grade);
   if (rawGrade >= 1 && rawGrade <= 3) {
     return {
       maxScore: 20,

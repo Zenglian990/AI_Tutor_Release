@@ -23,6 +23,7 @@ const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
 const { extractAndParseJson } = require('../utils/jsonParser');
 const { sendToNetworkPrinter, formatExamForPrinter } = require('../services/printerService');
 const { isVerifiedAdminRequest } = require('../utils/adminAuth');
+const { parseGradeNumber } = require('../utils/gradeParser');
 
 
 
@@ -720,7 +721,7 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
 }
 
 function getExamDuration(grade) {
-  const rawGrade = grade ? parseInt(String(grade).split('_')[0], 10) : 7;
+  const rawGrade = parseGradeNumber(grade);
   if (rawGrade >= 1 && rawGrade <= 3) return 40;
   if (rawGrade >= 4 && rawGrade <= 6) return 60;
   if (rawGrade >= 7 && rawGrade <= 9) return 90;
@@ -1213,5 +1214,6 @@ router.post('/printer/print-ipp', async (req, res) => {
 });
 
 router.assembleReliableExamPaper = assembleReliableExamPaper;
+router.getExamDuration = getExamDuration;
 
 module.exports = router;

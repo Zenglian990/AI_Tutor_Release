@@ -10,6 +10,29 @@ import { authFetch } from '../store/useStore';
  * 2. 逐句原句 vs 名师润色升格句对比，拆解提分修辞技巧与白描手法
  * 3. 一键带入私教课堂向特级名师请教
  */
+function parseGradeNumber(g) {
+  if (!g) return 7;
+  if (typeof g === 'number') return g;
+  const s = String(g).trim();
+  const startDigit = s.match(/^(\d+)/);
+  if (startDigit) return parseInt(startDigit[1], 10);
+  if (s.includes('高一') || s.includes('高1') || s.includes('高中一年级')) return 10;
+  if (s.includes('高二') || s.includes('高2') || s.includes('高中二年级')) return 11;
+  if (s.includes('高三') || s.includes('高3') || s.includes('高中三年级')) return 12;
+  if (s.includes('七年级') || s.includes('初一') || s.includes('初中一年级')) return 7;
+  if (s.includes('八年级') || s.includes('初二') || s.includes('初中二年级')) return 8;
+  if (s.includes('九年级') || s.includes('初三') || s.includes('初中三年级')) return 9;
+  const cnNums = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const cnMatch = s.match(/([一二三四五六七八九])年级/);
+  if (cnMatch) {
+    const idx = cnNums.indexOf(cnMatch[1]);
+    if (idx !== -1) return idx;
+  }
+  const anyDigit = s.match(/(\d+)/);
+  if (anyDigit) return parseInt(anyDigit[1], 10);
+  return 7;
+}
+
 export default function EssayUpgraderModal({
   isOpen,
   onClose,
@@ -22,14 +45,30 @@ export default function EssayUpgraderModal({
   const [report, setReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const rawGrade = parseGradeNumber(currentGrade);
+  const isPrimaryLower = rawGrade <= 3;
+  const isPrimaryUpper = rawGrade >= 4 && rawGrade <= 6;
+  const isHighSchool = rawGrade >= 10;
+
   if (!isOpen) return null;
 
   const handleLoadSample = () => {
-    setTitle('阳光总在风雨后');
-    setContent(`那年夏天，蝉鸣阵阵，阳光透过密密麻麻的梧桐树叶洒下斑驳的光影。
+    if (isPrimaryLower) {
+      setTitle('可爱的小花猫');
+      setContent(`今天我家来了一只可爱的小花猫。它浑身雪白雪白的，耳朵尖尖的，走起路来悄悄的没有一点声音。我拿小鱼干喂它，它吃得津津有味，还朝我喵喵叫，好像在说谢谢我呢！`);
+    } else if (isPrimaryUpper) {
+      setTitle('一次难忘的劳动');
+      setContent(`周五下午，我和同学们一起在校园小农场里翻土种菜。太阳晒得大家额头满是汗珠，但小明挥舞着小铁锹，我蹲下身小心翼翼地把菜苗扶正，填土、浇水。看到一排排精神抖擞的小绿苗，大家心里比吃了蜜还甜。`);
+    } else if (isHighSchool) {
+      setTitle('时代与青年');
+      setContent(`立于百年未有之大变局的交汇点，青年一代当以实干笃行回应时代叩问。无论是漫漫科研路上的默默坚守，还是乡村振兴一线的青春播撒，唯有将个体命运融入家国大业，方能在思辨与躬行中铸就精神之丰碑。`);
+    } else {
+      setTitle('阳光总在风雨后');
+      setContent(`那年夏天，蝉鸣阵阵，阳光透过密密麻麻的梧桐树叶洒下斑驳的光影。
 我独自坐在教室的角落里，面对着模拟考卷上鲜红的分数，心中满是迷茫与沮丧。
 母亲轻轻推开门，递给我一杯温热的牛奶。她没有责备我，只是微笑着说：“孩子，一次跌倒并不代表永远爬不起来。”
 那一刻，我仿佛看到心中的坚冰在阳光下悄然消融。我重新拿起笔，向着梦想的方向再次起跑。`);
+    }
     setErrorMsg('');
   };
 
@@ -67,11 +106,21 @@ export default function EssayUpgraderModal({
 
   const handleSendToChat = () => {
     if (!report) return;
-    const text = `老师，我在中高考作文精批台上批改了我的作文《${title || '未命题'}》：\n` +
+    const stagePlatform = isPrimaryLower ? '小学写话精批台' : (isPrimaryUpper ? '小学习作精批台' : '作文精批台');
+    let followUpQuestion = '请问老师，在考场高压下写记叙文时，我怎样才能快速抓住动词和环境细节，把平铺直叙的段落升华为能打动阅卷老师的高分金句？';
+    if (isPrimaryLower) {
+      followUpQuestion = '请问老师，我怎样才能把生活里的观察写得更生动、更有童趣呀？';
+    } else if (isPrimaryUpper) {
+      followUpQuestion = '请问老师，我在写记叙文时，怎样才能把人物的动作和心理细节写得像电影慢镜头一样生动？';
+    } else if (isHighSchool) {
+      followUpQuestion = '请问老师，在写高考思辨议论文时，如何强化驳论与破立结合，使文章立意更深邃宏阔？';
+    }
+
+    const text = `老师，我在${stagePlatform}上批改了我的作文《${title || '未命题'}》：\n` +
       `名师诊断总分：【${report.total_score} / ${report.max_score}分】（${report.grade_level_label}）。\n` +
       `其中五维诊断中我的【词句文采】评分为 ${report.dimensions?.rhetoric?.score || 8} 分。\n` +
       `名师给我的升格建议是：“${report.suggestions?.[0] || '强化细节白描'}”。\n` +
-      `请问老师，在考场高压下写记叙文时，我怎样才能快速抓住动词和环境细节，把平铺直叙的段落升华为能打动阅卷老师的高分金句？`;
+      followUpQuestion;
     onApplyToChat && onApplyToChat(text);
     onClose();
   };
@@ -98,10 +147,10 @@ export default function EssayUpgraderModal({
             <span style={{ fontSize: '1.6rem' }}>🖋️</span>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
-                中高考作文五维精批与逐句升格台
+                {isPrimaryLower ? '小学低段写话与日记精批升格台' : (isPrimaryUpper ? '小学中高段习作五维精批升格台' : (isHighSchool ? '新高考作文五维精批与逐句升格台' : '中高考作文五维精批与逐句升格台'))}
               </h3>
               <div style={{ fontSize: '0.8rem', color: '#fef3c7', marginTop: '2px' }}>
-                特级教师阅卷雷达 · 逐句润色提分 · 击穿中考50-60分最大难关
+                {isPrimaryLower ? '特级教师童趣指导 · 词句多感官润色 · 满分20分写话标准' : (isPrimaryUpper ? '特级教师细节诊断 · 动作与心理镜头化 · 满分30分习作标准' : (isHighSchool ? '全国新高考阅卷名师 · 思辨与家国情怀 · 满分60分高考标准' : '特级教师阅卷雷达 · 逐句润色提分 · 击穿中考50分大关'))}
               </div>
             </div>
           </div>

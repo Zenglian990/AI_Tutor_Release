@@ -340,6 +340,38 @@ test('Test Paper Fallback: primary school paper never receives secondary school 
   // Verify primary questions exist
   const essayQuestions = paper.questions.filter(q => q.type === 'essay');
   assert.ok(essayQuestions.some(q => q.question.includes('脱式计算') || q.question.includes('长方形菜地') || q.question.includes('鸡兔同笼')), 'Should contain primary grade essay themes');
+
+  // Verify duration
+  assert.equal(paper.duration, 40, 'Primary Grade 3 paper should have 40 min duration');
+});
+
+test('Test Paper Duration: grade-adaptive durations across all grade formats', () => {
+  const { getExamDuration } = require('../server/routes/testPaper');
+  // Grades 1-3 -> 40
+  assert.equal(getExamDuration('1_up'), 40);
+  assert.equal(getExamDuration('3_down'), 40);
+  assert.equal(getExamDuration('小学三年级'), 40);
+  assert.equal(getExamDuration('三年级'), 40);
+  assert.equal(getExamDuration(2), 40);
+
+  // Grades 4-6 -> 60
+  assert.equal(getExamDuration('4_up'), 60);
+  assert.equal(getExamDuration('6_down'), 60);
+  assert.equal(getExamDuration('五年级'), 60);
+  assert.equal(getExamDuration(5), 60);
+
+  // Grades 7-9 -> 90
+  assert.equal(getExamDuration('7_up'), 90);
+  assert.equal(getExamDuration('8_down'), 90);
+  assert.equal(getExamDuration('初二'), 90);
+  assert.equal(getExamDuration('九年级'), 90);
+
+  // Grades 10-12 -> 120
+  assert.equal(getExamDuration('10_up'), 120);
+  assert.equal(getExamDuration('11_down'), 120);
+  assert.equal(getExamDuration('高一'), 120);
+  assert.equal(getExamDuration('高三'), 120);
+  assert.equal(getExamDuration(12), 120);
 });
 
 

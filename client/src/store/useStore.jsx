@@ -316,13 +316,53 @@ function loadProfiles() {
   return [{ id: 'default', name: '曾练', grade: migrateGrade(existingGrade) || '7_up', edition: '人教版' }];
 }
 
+const getProfileDefaultPreferences = (grade) => {
+  const rawGrade = grade ? parseInt(String(grade).replace(/\D/g, ''), 10) : 7;
+  return {
+    subject: rawGrade <= 3 ? '语文' : '数学',
+    socraticLevel: 'guided',
+    persona: rawGrade <= 3 ? 'lion' : (rawGrade <= 6 ? 'sister' : 'owl'),
+    pinyinMode: rawGrade <= 3
+  };
+};
+
+const sanitizeSubjectForGrade = (grade, subject) => {
+  const rawGrade = grade ? parseInt(String(grade).replace(/\D/g, ''), 10) : 7;
+  if (rawGrade <= 6) {
+    const primarySubjects = ['语文', '数学', '英语', ''];
+    if (primarySubjects.includes(subject)) return subject;
+    return rawGrade <= 3 ? '语文' : '数学';
+  }
+  if (rawGrade === 7) {
+    const g7Subjects = ['语文', '数学', '英语', '道德与法治', '历史', '地理', '生物', ''];
+    if (g7Subjects.includes(subject)) return subject;
+    return '数学';
+  }
+  if (rawGrade === 8) {
+    const g8Subjects = ['语文', '数学', '英语', '道德与法治', '历史', '地理', '生物', '物理', ''];
+    if (g8Subjects.includes(subject)) return subject;
+    return '数学';
+  }
+  if (rawGrade === 9) {
+    const g9Subjects = ['语文', '数学', '英语', '道德与法治', '历史', '物理', '化学', ''];
+    if (g9Subjects.includes(subject)) return subject;
+    return '数学';
+  }
+  return subject || '数学';
+};
+
 const getProfilePref = (profileId, key, fallback) => {
   if (typeof window === 'undefined' || !window.localStorage) return fallback;
   const scopedKey = `ai_tutor_${profileId}_${key}`;
   const val = localStorage.getItem(scopedKey);
   if (val !== null && val !== undefined && val !== '') return val;
-  const legacyVal = localStorage.getItem(`ai_tutor_${key}`);
-  if (legacyVal !== null && legacyVal !== undefined && legacyVal !== '') return legacyVal;
+  if (profileId === 'default') {
+    const legacyVal = localStorage.getItem(`ai_tutor_${key}`);
+    if (legacyVal !== null && legacyVal !== undefined && legacyVal !== '') {
+      localStorage.setItem(scopedKey, legacyVal);
+      return legacyVal;
+    }
+  }
   return fallback;
 };
 
@@ -349,7 +389,11 @@ export function AppProvider({ children }) {
 
   const [selectedSubject, setSelectedSubjectState] = useState(() => {
     const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
-    return getProfilePref(initialId, 'subject', '数学');
+    const initProfiles = loadProfiles();
+    const p = initProfiles.find(x => x.id === initialId) || initProfiles[0];
+    const def = getProfileDefaultPreferences(p?.grade);
+    const sub = getProfilePref(initialId, 'subject', def.subject);
+    return sanitizeSubjectForGrade(p?.grade, sub);
   });
   const [socraticLevel, setSocraticLevelState] = useState(() => {
     const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
@@ -378,42 +422,56 @@ export function AppProvider({ children }) {
   });
   const [tutorPersona, setTutorPersonaState] = useState(() => {
     const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
-    return getProfilePref(initialId, 'persona', 'owl');
+    const initProfiles = loadProfiles();
+    const p = initProfiles.find(x => x.id === initialId) || initProfiles[0];
+    const def = getProfileDefaultPreferences(p?.grade);
+    return getProfilePref(initialId, 'persona', def.persona);
   });
 
   const [pinyinMode, setPinyinModeState] = useState(() => {
     const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
-    const val = getProfilePref(initialId, 'pinyin_mode', 'true');
+    const initProfiles = loadProfiles();
+    const p = initProfiles.find(x => x.id === initialId) || initProfiles[0];
+    const def = getProfileDefaultPreferences(p?.grade);
+    const val = getProfilePref(initialId, 'pinyin_mode', String(def.pinyinMode));
     return val === 'true';
   });
 
   const setSelectedSubject = useCallback((sub) => {
     setSelectedSubjectState(sub);
     const pid = currentProfileIdRef.current;
-    if (pid) setProfilePref(pid, 'subject', sub);
-    localStorage.setItem('ai_tutor_subject', sub);
+    if (pid) {
+      setProfilePref(pid, 'subject', sub);
+      if (pid === 'default') localStorage.setItem('ai_tutor_subject', sub);
+    }
   }, []);
 
   const setSocraticLevel = useCallback((lvl) => {
     const normalized = (lvl === 'socratic') ? 'guided' : lvl;
     setSocraticLevelState(normalized);
     const pid = currentProfileIdRef.current;
-    if (pid) setProfilePref(pid, 'socratic_level', normalized);
-    localStorage.setItem('ai_tutor_socratic_level', normalized);
+    if (pid) {
+      setProfilePref(pid, 'socratic_level', normalized);
+      if (pid === 'default') localStorage.setItem('ai_tutor_socratic_level', normalized);
+    }
   }, []);
 
   const setTutorPersona = useCallback((persona) => {
     setTutorPersonaState(persona);
     const pid = currentProfileIdRef.current;
-    if (pid) setProfilePref(pid, 'persona', persona);
-    localStorage.setItem('ai_tutor_persona', persona);
+    if (pid) {
+      setProfilePref(pid, 'persona', persona);
+      if (pid === 'default') localStorage.setItem('ai_tutor_persona', persona);
+    }
   }, []);
 
   const setPinyinMode = useCallback((mode) => {
     setPinyinModeState(mode);
     const pid = currentProfileIdRef.current;
-    if (pid) setProfilePref(pid, 'pinyin_mode', String(mode));
-    localStorage.setItem('ai_tutor_pinyin_mode', String(mode));
+    if (pid) {
+      setProfilePref(pid, 'pinyin_mode', String(mode));
+      if (pid === 'default') localStorage.setItem('ai_tutor_pinyin_mode', String(mode));
+    }
   }, []);
 
   const [isFeynmanMode, setIsFeynmanMode] = useState(() => {
@@ -459,16 +517,18 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('ai_tutor_active_profile', currentProfileId);
     currentProfileIdRef.current = currentProfileId;
-    const prefSubject = getProfilePref(currentProfileId, 'subject', '数学');
-    const prefSocratic = getProfilePref(currentProfileId, 'socratic_level', 'guided');
-    const prefPersona = getProfilePref(currentProfileId, 'persona', 'owl');
-    const prefPinyin = getProfilePref(currentProfileId, 'pinyin_mode', 'true') === 'true';
+    const target = profiles.find(p => p.id === currentProfileId) || profiles[0];
+    const def = getProfileDefaultPreferences(target?.grade);
+    const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(currentProfileId, 'subject', def.subject));
+    const prefSocratic = getProfilePref(currentProfileId, 'socratic_level', def.socraticLevel);
+    const prefPersona = getProfilePref(currentProfileId, 'persona', def.persona);
+    const prefPinyin = getProfilePref(currentProfileId, 'pinyin_mode', String(def.pinyinMode)) === 'true';
 
     setSelectedSubjectState(prefSubject);
     setSocraticLevelState(prefSocratic === 'socratic' ? 'guided' : prefSocratic);
     setTutorPersonaState(prefPersona);
     setPinyinModeState(prefPinyin);
-  }, [currentProfileId]);
+  }, [currentProfileId, profiles]);
   useEffect(() => {
     if (backendUrl && backendUrl !== getDefaultBackendUrl()) {
       localStorage.setItem('ai_tutor_backend_url', backendUrl);
@@ -515,17 +575,19 @@ export function AppProvider({ children }) {
     currentProfileIdRef.current = profileId;
     setCurrentProfileId(profileId);
 
-    const prefSubject = getProfilePref(profileId, 'subject', '数学');
-    const prefSocratic = getProfilePref(profileId, 'socratic_level', 'guided');
-    const prefPersona = getProfilePref(profileId, 'persona', 'owl');
-    const prefPinyin = getProfilePref(profileId, 'pinyin_mode', 'true') === 'true';
+    const target = profiles.find(p => p.id === profileId) || profiles[0];
+    const def = getProfileDefaultPreferences(target?.grade);
+    const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(profileId, 'subject', def.subject));
+    const prefSocratic = getProfilePref(profileId, 'socratic_level', def.socraticLevel);
+    const prefPersona = getProfilePref(profileId, 'persona', def.persona);
+    const prefPinyin = getProfilePref(profileId, 'pinyin_mode', String(def.pinyinMode)) === 'true';
 
     setSelectedSubjectState(prefSubject);
     setSocraticLevelState(prefSocratic === 'socratic' ? 'guided' : prefSocratic);
     setTutorPersonaState(prefPersona);
     setPinyinModeState(prefPinyin);
     return 'changed';
-  }, []);
+  }, [profiles]);
 
   const handleAddProfile = useCallback((name, grade, edition) => {
     const newProfile = { id: 'p_' + Date.now(), name, grade, edition: edition || '人教版' };
@@ -552,8 +614,19 @@ export function AppProvider({ children }) {
   }, []);
 
   const handleDeleteProfile = useCallback((profileId) => {
-    setProfiles(prev => prev.filter(p => p.id !== profileId));
-    setCurrentProfileId('default');
+    try {
+      localStorage.removeItem(`ai_tutor_${profileId}_subject`);
+      localStorage.removeItem(`ai_tutor_${profileId}_socratic_level`);
+      localStorage.removeItem(`ai_tutor_${profileId}_persona`);
+      localStorage.removeItem(`ai_tutor_${profileId}_pinyin_mode`);
+    } catch {}
+    setProfiles(prev => {
+      const remaining = prev.filter(p => p.id !== profileId);
+      const nextId = remaining[0]?.id || 'default';
+      setCurrentProfileId(nextId);
+      currentProfileIdRef.current = nextId;
+      return remaining;
+    });
   }, []);
 
   const handleRenameProfile = useCallback((profileId, newName) => {
@@ -563,7 +636,11 @@ export function AppProvider({ children }) {
 
   const handleGradeChange = useCallback((val) => {
     setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, grade: val } : p));
-  }, [currentProfileId]);
+    const validSubject = sanitizeSubjectForGrade(val, selectedSubject);
+    if (validSubject !== selectedSubject) {
+      setSelectedSubject(validSubject);
+    }
+  }, [currentProfileId, selectedSubject, setSelectedSubject]);
 
   const handleEditionChange = useCallback((val) => {
     setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, edition: val } : p));

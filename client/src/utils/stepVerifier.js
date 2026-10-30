@@ -74,9 +74,20 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
     return { valid: true, status: 'same', message: '与上一步一致', tip: '请写出下一步化简或移项' };
   }
 
+  // If user is currently typing an incomplete expression
+  if (
+    cleanCurr.endsWith('=') ||
+    /[+\-*/^]$/.test(cleanCurr) ||
+    (cleanCurr.includes('=') && !cleanCurr.split('=')[1]?.trim()) ||
+    (cleanCurr.match(/\(/g) || []).length > (cleanCurr.match(/\)/g) || []).length
+  ) {
+    return { valid: false, status: 'typing', message: '正在输入...', tip: '' };
+  }
+
   const isUnsupportedNotation = (str) => {
     if (!str || typeof str !== 'string') return false;
     return /[><≥≤≠≈]/.test(str) ||
+      /\\(?:le|leq|ge|geq|ne|neq|approx|sim|cong|sqrt|pm|mp|int|sum|prod|sin|cos|tan|cot|sec|csc|log|ln|lg|lim|exp|perp|parallel|angle|triangle)\b/i.test(str) ||
       /\b(sin|cos|tan|cot|sec|csc|log|ln|lg|lim|exp)\b/i.test(str) ||
       /[√π°∠△⊥∥≌∽]/.test(str);
   };
@@ -99,16 +110,19 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
     const prevParts = cleanPrev.split('=');
     const currParts = cleanCurr.split('=');
     if (currParts[1]?.includes('+') && !prevParts[1]?.includes('+')) {
-      // 检查是否将左侧正数项直接加到了右侧
-      const testValPrev = sanitizeForEval(exprPrev, { [varName]: 2 });
-      const testValCurr = sanitizeForEval(exprCurr, { [varName]: 2 });
-      if (Math.abs(testValPrev - testValCurr) > 1e-4) {
-        return {
-          valid: false,
-          status: 'invalid',
-          message: '⚠️ 疑似移项未变号',
-          tip: '把项从等号一边移到另一边时，要由正变负（或由负变正）哦！'
-        };
+      try {
+        const testValPrev = sanitizeForEval(exprPrev, { [varName]: 2 });
+        const testValCurr = sanitizeForEval(exprCurr, { [varName]: 2 });
+        if (Math.abs(testValPrev - testValCurr) > 1e-4) {
+          return {
+            valid: false,
+            status: 'invalid',
+            message: '⚠️ 疑似移项未变号',
+            tip: '把项从等号一边移到另一边时，要由正变负（或由负变正）哦！'
+          };
+        }
+      } catch (e) {
+        // Fall through to general evaluation if expression has custom tokens
       }
     }
   }
@@ -147,7 +161,7 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
       if (
         isUnsupportedNotation(cleanCurr) ||
         isUnsupportedNotation(cleanPrev) ||
-        (e && typeof e.message === 'string' && e.message.includes('Unsupported'))
+        (e && typeof e.message === 'string' && (e.message.includes('Unsupported') || e.message.includes('is not defined')))
       ) {
         return {
           valid: false,
