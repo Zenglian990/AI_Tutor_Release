@@ -2,7 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
-const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
+const { fetchWithKeyRotation, buildChatURL, isOpenAiVisionModel } = require('../services/embedding');
+const config = require('../config');
 const { encryptField } = require('../utils/crypto');
 const logger = require('../services/logger');
 const { extractAndParseJson } = require('../utils/jsonParser');
@@ -27,7 +28,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       grade = '7_up',
       subject = '数学',
       student_name = '曾练',
-      model = 'gemini-3.6-flash'
+      model
     } = req.body;
 
     const imageBuffer = req.file?.buffer;
@@ -117,19 +118,56 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       }
     };
 
+    const clientHeaders = {
+      'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
+      'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
+      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || '',
+      'x-siliconflow-api-key': req.headers['x-siliconflow-api-key'] || req.headers['X-Siliconflow-Api-Key'] || '',
+      'x-dashscope-api-key': req.headers['x-dashscope-api-key'] || req.headers['X-Dashscope-Api-Key'] || '',
+      'x-zhipu-api-key': req.headers['x-zhipu-api-key'] || req.headers['X-Zhipu-Api-Key'] || '',
+      'x-openai-api-key': req.headers['x-openai-api-key'] || req.headers['X-Openai-Api-Key'] || '',
+      'x-custom-api-url': req.headers['x-custom-api-url'] || req.headers['X-Custom-Api-Url'] || ''
+    };
+
+    // Auto-switch to vision model if requested model lacks vision capability (e.g. DeepSeek-V3, DeepSeek-R1)
+    const isVisionCapable = model && (
+      model.toLowerCase().includes('gemini') || 
+      isOpenAiVisionModel(model)
+    );
+
+    const sfKey = (clientHeaders['x-siliconflow-api-key'] || process.env.SILICONFLOW_API_KEY || '').trim();
+    const dsKey = (clientHeaders['x-dashscope-api-key'] || process.env.DASHSCOPE_API_KEY || '').trim();
+    const zpKey = (clientHeaders['x-zhipu-api-key'] || process.env.ZHIPU_API_KEY || '').trim();
+
+    let defaultVisionModel = config.CHAT_MODEL || 'gemini-2.5-flash';
+    if (sfKey) {
+      defaultVisionModel = 'deepseek-ai/deepseek-vl2';
+    } else if (dsKey) {
+      defaultVisionModel = 'qwen2.5-vl-72b-instruct';
+    } else if (zpKey) {
+      defaultVisionModel = 'glm-4v-flash';
+    }
+
+    const visionModel = isVisionCapable ? model : defaultVisionModel;
+
     const options = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(req.headers['x-gemini-api-key'] ? { 'x-gemini-api-key': req.headers['x-gemini-api-key'] } : {}),
-        ...(req.headers['x-deepseek-api-key'] ? { 'x-deepseek-api-key': req.headers['x-deepseek-api-key'] } : {}),
-        ...(req.headers['x-deepseek-api-url'] ? { 'x-deepseek-api-url': req.headers['x-deepseek-api-url'] } : {})
+        ...(clientHeaders['x-gemini-api-key'] ? { 'x-gemini-api-key': clientHeaders['x-gemini-api-key'] } : {}),
+        ...(clientHeaders['x-deepseek-api-key'] ? { 'x-deepseek-api-key': clientHeaders['x-deepseek-api-key'] } : {}),
+        ...(clientHeaders['x-deepseek-api-url'] ? { 'x-deepseek-api-url': clientHeaders['x-deepseek-api-url'] } : {}),
+        ...(clientHeaders['x-siliconflow-api-key'] ? { 'x-siliconflow-api-key': clientHeaders['x-siliconflow-api-key'] } : {}),
+        ...(clientHeaders['x-dashscope-api-key'] ? { 'x-dashscope-api-key': clientHeaders['x-dashscope-api-key'] } : {}),
+        ...(clientHeaders['x-zhipu-api-key'] ? { 'x-zhipu-api-key': clientHeaders['x-zhipu-api-key'] } : {}),
+        ...(clientHeaders['x-openai-api-key'] ? { 'x-openai-api-key': clientHeaders['x-openai-api-key'] } : {}),
+        ...(clientHeaders['x-custom-api-url'] ? { 'x-custom-api-url': clientHeaders['x-custom-api-url'] } : {})
       },
       body: JSON.stringify(contentsPayload)
     };
 
-    logger.info(`[HomeworkBatch] Calling vision model for student ${student_name}, profile ${profile_id}...`);
-    const aiRes = await fetchWithKeyRotation(buildChatURL, options, 4, 60000, model || 'gemini-3.6-flash', true);
+    logger.info(`[HomeworkBatch] Calling vision model '${visionModel}' for student ${student_name}, profile ${profile_id}...`);
+    const aiRes = await fetchWithKeyRotation(buildChatURL, options, 4, 60000, visionModel, false);
     
     if (!aiRes.ok) {
       const errText = await aiRes.text();

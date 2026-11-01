@@ -15,6 +15,12 @@ before(async () => {
   
   // Initialize DB
   await initDB();
+  const db = getSqliteDb();
+  if (db) {
+    await db.run("DELETE FROM chat_history WHERE profile_id = 'api_test_profile'");
+    await db.run("DELETE FROM mistakes WHERE profile_id = 'api_test_profile'");
+    await db.run("DELETE FROM profile_progress WHERE profile_id = 'api_test_profile'");
+  }
   
   // Start server on a dynamic port
   app = createApp();

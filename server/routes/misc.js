@@ -147,6 +147,7 @@ router.post('/chat-history', async (req, res) => {
             WHERE profile_id = ? AND grade = ? AND subject = ?
           )
         `, [profile_id, grade, subject]);
+        await sqliteDb.run('DELETE FROM chat_history WHERE profile_id = ? AND grade = ? AND subject = ?', [profile_id, grade, subject]);
         let savedCount = 0;
         for (const msg of messages) {
           // Security / Data hygiene: skip transient offline fallback messages

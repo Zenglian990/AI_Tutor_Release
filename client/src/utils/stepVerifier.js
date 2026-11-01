@@ -34,7 +34,6 @@ function sanitizeForEval(expr, varMap = {}) {
     throw new Error('Unsupported tokens in expression');
   }
 
-  // eslint-disable-next-line no-new-func
   return Function(`"use strict"; return (${clean});`)();
 }
 

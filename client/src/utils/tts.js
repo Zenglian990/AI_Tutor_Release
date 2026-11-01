@@ -33,7 +33,7 @@ export function extractQuestionFocus(text) {
   if (!text) return '';
   const clean = text
     .replace(/<[^>]+>/g, '')
-    .replace(/\!\[.*?\]\(.*?\)/g, '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
     .replace(/\[.*?\]\(.*?\)/g, '')
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`]+`/g, '');
@@ -44,10 +44,10 @@ export function extractQuestionFocus(text) {
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
     if (line.includes('？') || line.includes('?') || line.includes('你觉得') || line.includes('动笔') || line.includes('请') || line.includes('判断')) {
-      return line.replace(/^[#*>\-\d\.\s]+/, '').slice(0, 100);
+      return line.replace(/^[#*>\-\d.\s]+/, '').slice(0, 100);
     }
   }
-  return lines[lines.length - 1]?.replace(/^[#*>\-\d\.\s]+/, '').slice(0, 80) || '';
+  return lines[lines.length - 1]?.replace(/^[#*>\-\d.\s]+/, '').slice(0, 80) || '';
 }
 
 export function getTtsEngine() {
@@ -267,7 +267,7 @@ export function playTTS(text, gradeOrOnStart, onStartOrOnEnd, maybeOnEnd) {
 
   let cleanText = text
     .replace(/<[^>]+>/g, '')
-    .replace(/\!\[.*?\]\(.*?\)/g, '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
     .replace(/\[.*?\]\(.*?\)/g, '')
     .replace(/\*/g, '')
     .replace(/#/g, '')

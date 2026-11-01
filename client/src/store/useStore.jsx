@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getTranslation } from '../utils/i18n';
 import { encryptData, decryptData } from '../utils/crypto_helper';
 import hmacSHA256 from 'crypto-js/hmac-sha256';
@@ -655,10 +655,13 @@ export function AppProvider({ children }) {
     setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, edition: val } : p));
   }, [currentProfileId]);
 
-  const value = {
+  const selectedGrade = currentProfile?.grade || '7_up';
+
+  const value = useMemo(() => ({
     backendUrl, setBackendUrl,
     apiToken, setApiToken,
     profiles, currentProfileId, currentProfile,
+    selectedGrade,
     setCurrentProfileId, handleProfileChange,
     handleAddProfile, handleDeleteProfile, handleRenameProfile,
     selectedSubject, setSelectedSubject,
@@ -677,7 +680,15 @@ export function AppProvider({ children }) {
     chatModel, setChatModel,
     pinyinMode, setPinyinMode,
     isFeynmanMode, setIsFeynmanMode, toggleFeynmanMode
-  };
+  }), [
+    backendUrl, setBackendUrl, apiToken, setApiToken, profiles, currentProfileId, currentProfile, selectedGrade,
+    setCurrentProfileId, handleProfileChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
+    selectedSubject, setSelectedSubject, socraticLevel, setSocraticLevel, autoRead, setAutoRead,
+    settings, setSettings, isLightMode, setIsLightMode, isEinkMode, setIsEinkMode, toggleEinkMode,
+    tutorPersona, setTutorPersona, membershipStatus, setMembershipStatus, checkMembership,
+    handleGradeChange, handleEditionChange, language, setLanguage, t,
+    chatModel, setChatModel, pinyinMode, setPinyinMode, isFeynmanMode, setIsFeynmanMode, toggleFeynmanMode
+  ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

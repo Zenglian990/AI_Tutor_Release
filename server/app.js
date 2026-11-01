@@ -192,8 +192,29 @@ function createApp() {
   app.use('/api', essayRoutes);
   app.use('/api', learningMapRoutes);
 
-  // --- Serve static frontend ---
+  // --- APK Release Download & Protection ---
   const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');
+  app.get(/\.apk$/i, (req, res) => {
+    const filename = path.basename(req.path);
+    const distPath = path.join(CLIENT_DIST, filename);
+    const rootPath = path.join(__dirname, '..', filename);
+
+    let targetPath = null;
+    if (fs.existsSync(distPath) && fs.statSync(distPath).isFile()) {
+      targetPath = distPath;
+    } else if (fs.existsSync(rootPath) && fs.statSync(rootPath).isFile()) {
+      targetPath = rootPath;
+    }
+
+    if (targetPath) {
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      return res.sendFile(targetPath);
+    }
+
+    return res.status(404).json({ error: 'APK release file not found on server' });
+  });
+
+  // --- Serve static frontend ---
   if (fs.existsSync(CLIENT_DIST)) {
     const staticLimiter = rateLimit({
       windowMs: 1 * 60 * 1000, // 1 minute
@@ -217,6 +238,9 @@ function createApp() {
     // SPA fallback: return index.html for all non-API, non-static routes
     app.use((req, res, next) => {
       if (req.path.startsWith('/api/')) return next();
+      if (req.path.endsWith('.apk')) {
+        return res.status(404).json({ error: 'APK release file not found on server' });
+      }
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
