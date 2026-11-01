@@ -628,7 +628,9 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
             keyInsight: '考点巩固：注意题干关键字提取、审题防坑与规范书写。',
             mistakeReason: m.mistake_reason || '',
             status: 'wrong',
-            imageUrl: m.image_url || null
+            imageUrl: m.image_url || null,
+            variant: m.variant || (Array.isArray(m.variants) && m.variants[0]) || null,
+            variantQuestion: m.variantQuestion || null
           }))}
           initialMode="blank_student"
           initialFilter="all"

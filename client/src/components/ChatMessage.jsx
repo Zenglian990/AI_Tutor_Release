@@ -210,13 +210,20 @@ function splitAnswerSections(text) {
     postAnswer = rest.substring(varIdx).trim();
   }
 
-  // Only consider it a valid split if preAnswer is substantial
-  if (!preAnswer) return null;
+  // Only consider it a valid split if preAnswer is substantial, or fallback to default prompt
+  const finalPreAnswer = preAnswer || '📝【题目解析与思考引导】：';
+
+  // Strip redundant <details> and <summary> tags so raw markup doesn't bleed into markdown rendering
+  const cleanedAnswerBody = answerBody
+    .replace(/<details[^>]*>/gi, '')
+    .replace(/<\/details>/gi, '')
+    .replace(/<summary>[\s\S]*?<\/summary>/gi, '')
+    .trim();
 
   // Detect auxiliary line hint in preAnswer or answerBody
   let auxLine = null;
   const auxRegex = /(?:^|\n)(#{3,4}\s*(?:📐\s*)?【辅助线[作法|灵感|指引|提示]*】[^\n]*\n[\s\S]*?)(?=\n#{2,4}|\n###|$)/;
-  const auxMatch = preAnswer.match(auxRegex) || answerBody.match(auxRegex);
+  const auxMatch = finalPreAnswer.match(auxRegex) || cleanedAnswerBody.match(auxRegex);
   if (auxMatch) {
     auxLine = auxMatch[1].trim();
   }
@@ -224,7 +231,7 @@ function splitAnswerSections(text) {
   // Check if text is a geometry problem
   const isGeometry = /(?:几何|辅助线|三角形|四边形|直角|全等|相似|圆周|垂径|平分线|切线|勾股定理)/.test(text);
 
-  return { preAnswer, answerBody, postAnswer, auxLine, isGeometry };
+  return { preAnswer: finalPreAnswer, answerBody: cleanedAnswerBody, postAnswer, auxLine, isGeometry };
 }
 
 const animatedIds = new Set();

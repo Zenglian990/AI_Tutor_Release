@@ -489,7 +489,7 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       color: strokeColor,
       lineWidth: strokeWidth,
       tool,
-      points: [{ x: pos.x, y: pos.y, t: Date.now() }]
+      points: [{ x: pos.x, y: pos.y, pressure: pos.pressure, t: Date.now() }]
     };
 
     if (tool === 'line') {
@@ -536,16 +536,10 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       ctx.stroke();
     } else {
       // Pen: Cubic Bezier spline smoothing & dynamic stylus pressure
+      // Each segment (p1 -> p2) is rendered sequentially without duplicate lineTo overlap
       const pts = currentStrokeRef.current ? currentStrokeRef.current.points : [];
       const len = pts.length;
-      if (len === 2) {
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        ctx.lineTo(pts[1].x, pts[1].y);
-        ctx.lineWidth = activeLineWidth;
-        ctx.strokeStyle = color;
-        ctx.stroke();
-      } else if (len >= 3) {
+      if (len >= 3) {
         const p0 = len >= 4 ? pts[len - 4] : pts[len - 3];
         const p1 = pts[len - 3];
         const p2 = pts[len - 2];
@@ -566,7 +560,14 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
         const ctx = canvas.getContext('2d');
         const pts = currentStrokeRef.current.points;
         const len = pts.length;
-        if (len >= 2) {
+        if (len === 1) {
+          // Instant dot rendering on single stylus/touch tap
+          ctx.beginPath();
+          ctx.arc(pts[0].x, pts[0].y, lineWidth / 2, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+        } else if (len >= 2) {
+          // Render the final trailing segment on release
           const p0 = len >= 3 ? pts[len - 3] : pts[len - 2];
           const p1 = pts[len - 2];
           const p2 = pts[len - 1];

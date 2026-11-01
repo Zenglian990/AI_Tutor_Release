@@ -63,11 +63,58 @@ test('MathSolver: extractAndVerifyDeterministicMath identifies K-12 patterns fro
 test('HomeworkValidator: extractOptionLetter and extractNumbers extract accurately', () => {
   assert.strictEqual(extractOptionLetter('B. 16'), 'B');
   assert.strictEqual(extractOptionLetter('b'), 'B');
+  assert.strictEqual(extractOptionLetter('选B'), 'B');
+  assert.strictEqual(extractOptionLetter('答案: C'), 'C');
   assert.strictEqual(extractOptionLetter('选项C'), null);
   assert.deepStrictEqual(extractNumbers('周长是16厘米，面积是12平方厘米'), [16, 12]);
   assert.deepStrictEqual(extractNumbers('x = -7, y = 7, z = -3.5, w = +4'), [-7, 7, -3.5, 4]);
   assert.strictEqual(extractNumbers('-7')[0], -7);
   assert.notStrictEqual(extractNumbers('-7')[0], 7);
+});
+
+test('HomeworkValidator: strictly rejects negative sign vs positive sign in canonical matching (-7 vs 7)', async () => {
+  const fakeDb = {
+    get: async () => ({
+      id: 99,
+      standard_answer: '7',
+      analysis: '10 - 3 = 7',
+      key_insight: '有理数减法'
+    })
+  };
+
+  // Student answered -7 when canonical answer is 7 -> must remain wrong!
+  const falseData = {
+    results: [
+      {
+        questionNumber: 1,
+        questionSnippet: '计算 10 - 3',
+        studentAnswer: '-7',
+        standardAnswer: '7',
+        status: 'wrong',
+        mistakeReason: '符号计算错误，把正7算成了负7'
+      }
+    ]
+  };
+
+  const arbitratedFalse = await sanitizeAndArbitrateHomeworkResults(falseData, { subject: '数学', grade: '7_up' }, fakeDb);
+  assert.strictEqual(arbitratedFalse.results[0].status, 'wrong', 'Student answer -7 must NOT be marked correct when canonical is 7');
+
+  // Student answered 7 when canonical answer is 7 -> must be marked correct
+  const trueData = {
+    results: [
+      {
+        questionNumber: 2,
+        questionSnippet: '计算 10 - 3',
+        studentAnswer: '7',
+        standardAnswer: '7',
+        status: 'wrong',
+        mistakeReason: '模型偶然误判'
+      }
+    ]
+  };
+
+  const arbitratedTrue = await sanitizeAndArbitrateHomeworkResults(trueData, { subject: '数学', grade: '7_up' }, fakeDb);
+  assert.strictEqual(arbitratedTrue.results[0].status, 'correct', 'Student answer 7 should match canonical answer 7');
 });
 
 test('HomeworkValidator: auto-corrects LLM geometric hallucination and validates student answer', async () => {

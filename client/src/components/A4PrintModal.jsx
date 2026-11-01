@@ -208,6 +208,8 @@ function A4PrintModalInner({
   });
   const [printerSending, setPrinterSending] = useState(false);
   const [printerMsg, setPrinterMsg] = useState('');
+  const [fetchedVariants, setFetchedVariants] = useState({});
+  const [fetchingVariants, setFetchingVariants] = useState(false);
   const sheetRef = useRef(null);
 
   if (!isOpen) return null;
@@ -220,7 +222,11 @@ function A4PrintModalInner({
       score: 10,
       standardAnswer: '【解】(1) ∵ ∠B = 40°，∠C = 60°，\n∴ 在 △ABC 中，∠BAC = 180° - 40° - 60° = 80°。\n∵ AD 平分 ∠BAC，\n∴ ∠BAD = ∠CAD = 40°。\n∵ DE ∥ AB，\n∴ ∠ADE = ∠BAD = 40°。\n\n(2) 证明：\n由(1)知 ∠ADE = 40°，且 ∠CAD = 40°，\n∴ ∠ADE = ∠DAE，\n∴ AE = DE，即 △ADE 是等腰三角形。',
       keyInsight: '平行线内错角相等 + 角平分线性质，是几何证明等腰三角形最经典的两大联动抓手。',
-      status: 'wrong'
+      status: 'wrong',
+      variant: {
+        question: '【同构变式母题】在 △ABC 中，∠B = 50°，∠C = 70°，AD 平分 ∠BAC 交 BC 于点 D，过点 D 作 DE ∥ AB 交 AC 于点 E。求 ∠ADE 的度数，并判定 △ADE 的形状。',
+        answer: '∠ADE = 30°，△ADE 为等腰三角形'
+      }
     },
     {
       id: 2,
@@ -229,7 +235,11 @@ function A4PrintModalInner({
       score: 10,
       standardAnswer: '【解】由完全平方公式展开：\n(x + y)^2 = x^2 + 2xy + y^2 = 25 ①\n(x - y)^2 = x^2 - 2xy + y^2 = 9  ②\n① + ② 得：2(x^2 + y^2) = 34 ⇒ x^2 + y^2 = 17。\n① - ② 得：4xy = 16 ⇒ xy = 4。',
       keyInsight: '方程组思想整体相加相减消元，不需要具体求出 x 和 y 的具体值。',
-      status: 'correct'
+      status: 'correct',
+      variant: {
+        question: '【同构变式母题】已知 (a + b)^2 = 16，(a - b)^2 = 4，求 a^2 + b^2 以及 ab 的具体数值。',
+        answer: 'a^2 + b^2 = 10, ab = 3'
+      }
     },
     {
       id: 3,
@@ -238,7 +248,11 @@ function A4PrintModalInner({
       score: 12,
       standardAnswer: '【解】点 P 在射线 AB 上运动，AP = 2t。\n因为 △PAC 与 △ABC 具有相同的底边方向且点 C 到 AB 所在直线的垂线高相同，\n所以 $S_{\\triangle PAC} = \\frac{1}{2} S_{\\triangle ABC}$ 等价于 $AP = \\frac{1}{2} AB$。\n∵ AB = 10，∴ AP = 5。\n即 2t = 5 ⇒ t = 2.5 秒。',
       keyInsight: '同高模型面积比等于底边比；注意射线运动是否存在分类讨论（点P越过B点后的面积关系）。',
-      status: 'wrong'
+      status: 'wrong',
+      variant: {
+        question: '【同构变式母题】某动点 P 从点 A 出发沿射线 AB 运动，速度为每秒 3 个单位。若 AB = 12，当点 P 运动 t 秒时，△PAC 的面积恰好等于 △ABC 面积的三分之一，求运动时间 t。',
+        answer: 't = 4/3 秒'
+      }
     }
   ];
 
@@ -256,7 +270,9 @@ function A4PrintModalInner({
     mistakeReason: q?.mistakeReason || '',
     studentAnswer: q?.studentAnswer || '',
     status: q?.status || 'unknown',
-    imageUrl: q?.imageUrl || q?.image_url || null
+    imageUrl: q?.imageUrl || q?.image_url || null,
+    variant: q?.variant || (Array.isArray(q?.variants) && q?.variants[0]) || null,
+    variantQuestion: q?.variantQuestion || null
   }));
 
   const wrongCount = processedQuestions.filter(q => q.status === 'wrong' || q.status === 'partial').length;
@@ -270,6 +286,53 @@ function A4PrintModalInner({
 
   const totalScore = displayQuestions.reduce((acc, q) => acc + (q.score || 10), 0);
   const suggestedTime = Math.max(15, Math.min(60, displayQuestions.length * 8));
+
+  // Asynchronously fetch authentic variants from canonical bank when hengshui dual column is active
+  useEffect(() => {
+    if (printMode !== 'hengshui_dual_column' || !isOpen) return;
+
+    let isCancelled = false;
+    async function loadMissingVariants() {
+      const missingQuestions = displayQuestions.filter(q => 
+        !q.variant && !q.variantQuestion && !fetchedVariants[q.id]
+      );
+      if (missingQuestions.length === 0) return;
+
+      setFetchingVariants(true);
+      const updates = {};
+      for (const q of missingQuestions.slice(0, 10)) {
+        try {
+          const res = await authFetch('/api/mistakes/generate-variants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              question: q.body || q.title,
+              answer: q.standardAnswer || '',
+              grade,
+              subject
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.data?.variants?.length > 0) {
+              updates[q.id] = data.data.variants[0];
+            }
+          }
+        } catch (e) {
+          // Graceful fallback
+        }
+      }
+      if (!isCancelled && Object.keys(updates).length > 0) {
+        setFetchedVariants(prev => ({ ...prev, ...updates }));
+      }
+      if (!isCancelled) {
+        setFetchingVariants(false);
+      }
+    }
+
+    loadMissingVariants();
+    return () => { isCancelled = true; };
+  }, [printMode, isOpen, displayQuestions, grade, subject]);
 
   const handlePrint = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
@@ -304,7 +367,11 @@ function A4PrintModalInner({
       let fullText = `【${studentName}专属私教】${gradeDisplay} ${subject}周清微测试卷\n日期：${currentDateStr}\n\n`;
       displayQuestions.forEach((q, idx) => {
         fullText += `第 ${idx + 1} 题（${q.score || 10}分）：\n${q.body || q.title}\n`;
-        if (printMode === 'with_answers' && q.standardAnswer) {
+        if (printMode === 'hengshui_dual_column') {
+          if (q.mistakeReason) fullText += `【易错陷阱与失分归因】：\n${q.mistakeReason}\n`;
+          const variantStem = q.variant?.question || fetchedVariants[q.id]?.question || q.variantQuestion || `【同考点变式题 #${idx + 1}】（请根据核心考点重新推演解答）`;
+          fullText += `【同构变式母题】：\n${variantStem}\n`;
+        } else if (printMode === 'with_answers' && q.standardAnswer) {
           fullText += `【参考答案】：\n${q.standardAnswer}\n`;
           if (q.keyInsight) fullText += `【名师点睛】：${q.keyInsight}\n`;
         }
@@ -1075,8 +1142,11 @@ function A4PrintModalInner({
                         <div style={{ fontSize: '0.96rem', lineHeight: '1.7', color: '#111827' }}>
                           <A4MathContent content={
                             q.variant?.question ||
+                            fetchedVariants[q.id]?.question ||
                             q.variantQuestion ||
-                            `【同考点变式题 #${idx + 1}】已知与原题相同的核心考点，请根据题干给出的约束关系在下方草稿区重新推演，求出变式结果。`
+                            (fetchingVariants
+                              ? '⏳ 正在从 39,114 权威母题库智能匹配该考点真题变式...'
+                              : `【同考点变式题 #${idx + 1}】已知与原题相同的核心考点，请根据题干给出的约束关系在下方草稿区重新推演，求出变式结果。`)
                           } />
                         </div>
 

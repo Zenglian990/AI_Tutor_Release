@@ -12,8 +12,8 @@ const { lookupCanonicalQuestion } = require('./canonicalQuestions');
  */
 function extractOptionLetter(str) {
   if (typeof str !== 'string') return null;
-  const match = str.trim().match(/^[A-Da-d](?=[\s.、，:：\)]|$)/);
-  return match ? match[0].toUpperCase() : null;
+  const match = str.trim().match(/(?:^|选\s*|答案\s*[:：]?\s*)([A-Da-d])(?=[\s.、，:：\)]|$)/i);
+  return match ? match[1].toUpperCase() : null;
 }
 
 /**
@@ -57,12 +57,32 @@ async function sanitizeAndArbitrateHomeworkResults(parsedData, context = {}, db 
 
           const studentOpt = extractOptionLetter(studentAns);
           const canonicalOpt = extractOptionLetter(canonical.standard_answer);
+          const optMatches = Boolean(studentOpt && canonicalOpt && studentOpt === canonicalOpt);
 
-          const studentMatchesCanonical = Boolean(
-            (studentOpt && canonicalOpt && studentOpt === canonicalOpt) ||
-            studentAns.toLowerCase().includes(canonical.standard_answer.toLowerCase()) ||
-            (extractNumbers(canonical.standard_answer).length > 0 && extractNumbers(studentAns).includes(extractNumbers(canonical.standard_answer)[0]))
+          const canonicalNums = extractNumbers(canonical.standard_answer);
+          const studentNums = extractNumbers(studentAns);
+          const hasCanonicalNums = canonicalNums.length > 0;
+          const hasStudentNums = studentNums.length > 0;
+
+          // Numeric comparison (only when numbers are present):
+          // Canonical number must be matched, AND opposing signs (e.g. -7 vs 7) must strictly NOT match
+          const numMatches = Boolean(
+            hasCanonicalNums && 
+            hasStudentNums && 
+            canonicalNums.every(n => studentNums.includes(n))
           );
+
+          // Exact string match (ignoring whitespace and simple punctuation)
+          const cleanStudent = studentAns.replace(/[\s.,;:()（）=]/g, '').toLowerCase();
+          const cleanCanonical = canonical.standard_answer.replace(/[\s.,;:()（）=]/g, '').toLowerCase();
+          const exactTextMatches = cleanStudent.length > 0 && cleanStudent === cleanCanonical;
+
+          // Text substring match is ONLY allowed for non-numeric conceptual answers (e.g. "光合作用", "垂直平分线")
+          // If either answer contains numbers, substring matching is STRICTLY FORBIDDEN to prevent "-7" matching "7" or "17" matching "7"
+          const isPureTextConceptual = !hasCanonicalNums && !hasStudentNums && cleanCanonical.length >= 2;
+          const textContains = Boolean(isPureTextConceptual && cleanStudent.includes(cleanCanonical));
+
+          const studentMatchesCanonical = optMatches || numMatches || exactTextMatches || textContains;
 
           if (studentMatchesCanonical) {
             item.status = 'correct';

@@ -101,6 +101,11 @@ test('Item 2: Socratic Scaffolding State Machine & Direct Answer Gate', () => {
   const stageGated = determineSocraticStage({ turnCount: 3, userMessage: '我还是不懂，老师你直接把答案告诉我吧' });
   assert.strictEqual(stageGated, SOCRATIC_STAGES.SCAFFOLDING);
 
+  // Direct demanding phrases with "答案是多少" or "答案是几" must NEVER bypass to consolidation
+  assert.strictEqual(determineSocraticStage({ turnCount: 1, userMessage: '答案是多少' }), SOCRATIC_STAGES.DISCOVERY);
+  assert.strictEqual(determineSocraticStage({ turnCount: 2, userMessage: '快告诉我最终答案是多少' }), SOCRATIC_STAGES.SCAFFOLDING);
+  assert.strictEqual(determineSocraticStage({ turnCount: 3, userMessage: '答案是几？直接给答案' }), SOCRATIC_STAGES.SCAFFOLDING);
+
   // Immediate answer attempt trigger -> Consolidation
   const stageAttempt = determineSocraticStage({ turnCount: 1, userMessage: '老师我算出来 x = 5 对不对？' });
   assert.strictEqual(stageAttempt, SOCRATIC_STAGES.CONSOLIDATION);

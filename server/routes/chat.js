@@ -27,11 +27,11 @@ function computeProblemTurnCount(history, currentQuery) {
   // If query is an explicit transition to a new problem or chapter
   const isNewProblemQuery = /^(?:下一题|再来一道|换一道|帮我看另一道|还有一道题|新题目|再出一条|下一道)/i.test(cleanQuery) ||
     cleanQuery.startsWith('[ACTION_START_CHAPTER]') ||
-    (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算：|求解方程)/.test(cleanQuery) && cleanQuery.length > 25);
+    (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算[：:]|求解方程[：:]?|求值[：:]|化简[：:]|证明[：:])/i.test(cleanQuery) && cleanQuery.length >= 8);
 
-  // Follow-up indicator
-  const isFollowUp = cleanQuery.length <= 15 ||
-    /^(?:好的|对|不对|是的|不是|不懂|不会|为什么|然后呢|下一步|算完了|做完了|我算的是|等于|是不是|怎么算|老师你看|没思路)/i.test(cleanQuery);
+  // Follow-up indicator (only when NOT starting with explicit problem stem)
+  const isFollowUp = !isNewProblemQuery && (cleanQuery.length <= 15 ||
+    /^(?:好的|对|不对|是的|不是|不懂|不会|为什么|然后呢|下一步|算完了|做完了|我算的是|等于|是不是|怎么算|老师你看|没思路)/i.test(cleanQuery));
 
   if (isNewProblemQuery && !isFollowUp) {
     return 1;
@@ -48,7 +48,7 @@ function computeProblemTurnCount(history, currentQuery) {
       // Check if this user message was the start of a distinct problem
       const isStartOfProblem = /^(?:下一题|再来一道|换一道|帮我看另一道|新题目)/i.test(text) ||
         text.startsWith('[ACTION_START_CHAPTER]') ||
-        (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算：|求解方程)/.test(text) && text.length > 25);
+        (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算[：:]|求解方程[：:]?|求值[：:]|化简[：:]|证明[：:])/i.test(text) && text.length >= 8);
 
       if (isStartOfProblem) {
         break;

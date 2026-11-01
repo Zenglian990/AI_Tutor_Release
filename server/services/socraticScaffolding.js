@@ -26,14 +26,19 @@ const SOCRATIC_STAGES = {
 function determineSocraticStage({ turnCount = 1, userMessage = '', isDirectAnswerRequest = false }) {
   const msg = (userMessage || '').toLowerCase();
 
-  // If student asks for check/verification of their answer
-  const hasAnswerAttempt = /我算出来|答案是|是不是等于|x\s*=|得数是|对不对|检验一下|等于|结果是/i.test(msg);
+  // Direct answer demand -> strictly gatekeep, never dump answer
+  const isDirectDemanding = isDirectAnswerRequest || /(?:直接告诉|直接给|告诉我答案|答案到底是多少|答案是几|答案是多少|最终答案|快给答案|答案是啥|求答案|把答案给我)/i.test(msg);
+
+  // If student asks for check/verification of their actual deduction or answer attempt
+  const hasAnswerAttempt = !isDirectDemanding && /(?:我算(?:出来|的是)|得数是|检验一下|对不对|是不是等于|(?:答案|结果)\s*(?:是不是|是|等于)?\s*[-+]?\d+|(?:x|y|z)\s*=\s*[-+]?\d+)/i.test(msg);
   if (hasAnswerAttempt) {
     return SOCRATIC_STAGES.CONSOLIDATION;
   }
 
-  // Direct answer demand -> strictly gatekeep, never dump answer
-  const isDirectDemanding = isDirectAnswerRequest || /直接告诉|直接给|告诉我答案|答案到底是多少|答案是几|快给答案/i.test(msg);
+  // If student is demanding direct answer, strictly keep in discovery (turn 1) or scaffolding (turn 2+)
+  if (isDirectDemanding) {
+    return turnCount <= 1 ? SOCRATIC_STAGES.DISCOVERY : SOCRATIC_STAGES.SCAFFOLDING;
+  }
 
   // Turn count progression with micro-assertion gating
   if (turnCount <= 1) {
@@ -44,8 +49,8 @@ function determineSocraticStage({ turnCount = 1, userMessage = '', isDirectAnswe
   const hasEvidenceOfKnownsOrDeduction = /(?:\d+|[a-zA-Z]\s*=|直角边|斜边|设|因为|所以|已知|公式|定理|代入|移项|判别式|化简|边长|底|高|面积|周长)/.test(userMessage || '');
   const isStuckOrConfused = /^(?:我还是不懂|完全不会|不知道|不懂|不会|没思路|没看懂|没有思路|教教我|算不出来|这怎么做|然后呢|下一步呢)[\s!！?？~～]*$/i.test(msg);
 
-  // If student is demanding direct answer or still stuck without identifying core knowns, stay in SCAFFOLDING / DISCOVERY
-  if (isDirectDemanding || isStuckOrConfused || !hasEvidenceOfKnownsOrDeduction) {
+  // If student is still stuck or has not identified core knowns, stay in SCAFFOLDING
+  if (isStuckOrConfused || !hasEvidenceOfKnownsOrDeduction) {
     return SOCRATIC_STAGES.SCAFFOLDING;
   }
 

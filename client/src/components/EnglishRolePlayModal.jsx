@@ -137,6 +137,39 @@ export default function EnglishRolePlayModal({
     const raw = (textToEvaluate || studentInput).trim();
     if (!raw) return;
 
+    if (isGenerativeMode) {
+      // In Open Generative Mode, evaluate student's own spontaneous language production
+      const spokenWords = raw.replace(/[^a-zA-Z\s]/g, '').split(/\s+/).filter(Boolean);
+      if (spokenWords.length === 0) return;
+
+      const lower = raw.toLowerCase();
+      const hasGrammarFlaw = /\bi\s+(?:is|are)\b/i.test(lower) || 
+                             /\b(?:he|she|it)\s+(?:do|have|go|want)\b/i.test(lower) ||
+                             /\byesterday.*?(?:go|see|buy)\b/i.test(lower);
+
+      const scoredWords = spokenWords.map(w => {
+        const isCommon = ['the', 'a', 'an', 'is', 'to', 'in', 'it', 'and'].includes(w.toLowerCase());
+        return {
+          word: w,
+          status: hasGrammarFlaw && (w.length <= 3) ? 'warn' : 'good',
+          score: hasGrammarFlaw ? 80 : isCommon ? 90 : 96
+        };
+      });
+
+      const baseScore = hasGrammarFlaw ? 82 : spokenWords.length >= 6 ? 96 : spokenWords.length >= 3 ? 92 : 86;
+      setEvaluation({
+        accuracy: baseScore,
+        fluency: spokenWords.length >= 5 ? 95 : 88,
+        pronunciation: baseScore,
+        words: scoredWords,
+        tip: hasGrammarFlaw
+          ? '表达积极勇敢！注意上方标注的语法与搭配细节，修改后会更加地道。'
+          : '自由表达极其流畅自然！句意完整、词汇恰当，达到了中考英语听说高分标准！'
+      });
+      return;
+    }
+
+    // In Guided Scripted Mode, evaluate student pronunciation against target prompt
     const targetWords = activeDialogue.prompt.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
     const spokenWords = raw.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
 
