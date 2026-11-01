@@ -44,4 +44,30 @@ describe('EnglishRolePlayModal Component', () => {
     expect(onApplyToChat).toHaveBeenCalledWith(expect.stringContaining('英语情景口语台'));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('switches to open conversational roleplay and generates AI turn with grammar tips', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <EnglishRolePlayModal
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    // Switch to open mode
+    const openModeBtn = getByText(/自由开放人机对话/);
+    fireEvent.click(openModeBtn);
+    expect(openModeBtn).toBeDefined();
+
+    // Input custom text with grammar issue
+    const input = getByPlaceholderText(/输入或开口说任意英文句子/);
+    fireEvent.change(input, { target: { value: 'Yesterday I go to the library and buy a book' } });
+
+    // Click AI response & grammar diagnostics
+    const aiBtn = getByText(/AI 应答 & 语法诊断/);
+    fireEvent.click(aiBtn);
+
+    // Verify grammar tips and next turn
+    expect(getByText(/语法与地道表达润色建议/)).toBeDefined();
+    expect(getByText(/时态一致性注意/)).toBeDefined();
+  });
 });

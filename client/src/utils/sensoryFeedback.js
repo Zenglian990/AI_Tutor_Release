@@ -6,6 +6,8 @@
  * 3. 移动端触觉震动 (Haptic Vibrations)
  */
 
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+
 let audioCtx = null;
 
 function getAudioContext() {
@@ -22,29 +24,51 @@ function getAudioContext() {
 }
 
 /**
- * 触发物理机身触觉震动反馈 (支持 Android App 与 PWA)
+ * 触发物理机身触觉震动反馈 (支持 Capacitor 原生 Android/iOS 与 PWA/Web)
  */
-export function triggerHaptic(type = 'light') {
-  if (typeof window === 'undefined' || !navigator.vibrate) return;
+export async function triggerHaptic(type = 'light') {
   try {
-    switch (type) {
-      case 'light':
-        navigator.vibrate(15);
-        break;
-      case 'medium':
-        navigator.vibrate(30);
-        break;
-      case 'success':
-        navigator.vibrate([20, 40, 30]); // 双击顿挫震动
-        break;
-      case 'error':
-        navigator.vibrate([40, 60, 40, 60, 50]);
-        break;
-      default:
-        navigator.vibrate(20);
+    if (type === 'light') {
+      await Haptics.impact({ style: ImpactStyle.Light });
+      return;
+    } else if (type === 'medium') {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+      return;
+    } else if (type === 'success') {
+      await Haptics.notification({ type: NotificationType.Success });
+      return;
+    } else if (type === 'error') {
+      await Haptics.notification({ type: NotificationType.Error });
+      return;
+    } else {
+      await Haptics.impact({ style: ImpactStyle.Light });
+      return;
     }
   } catch (e) {
-    // Ignore haptic failures gracefully
+    // Graceful fallback to navigator.vibrate when not in native Capacitor container
+  }
+
+  if (typeof window !== 'undefined' && navigator.vibrate) {
+    try {
+      switch (type) {
+        case 'light':
+          navigator.vibrate(15);
+          break;
+        case 'medium':
+          navigator.vibrate(30);
+          break;
+        case 'success':
+          navigator.vibrate([20, 40, 30]); // 双击顿挫震动
+          break;
+        case 'error':
+          navigator.vibrate([40, 60, 40, 60, 50]);
+          break;
+        default:
+          navigator.vibrate(20);
+      }
+    } catch (e) {
+      // Ignore haptic failures gracefully
+    }
   }
 }
 

@@ -13,10 +13,60 @@ const { coordinateTriEngine } = require('../services/triEngineCoordinator');
 const { getSqliteDb } = require('../db/init');
 const { saveStudyCheckpoint, formatCheckpointPromptSection } = require('../services/checkpointService');
 
+/**
+ * Isolates turnCount per problem / question session rather than dividing global history.length / 2.
+ * Prevents subsequent problems in the same conversation from skipping discovery and scaffolding stages.
+ */
+function computeProblemTurnCount(history, currentQuery) {
+  if (!Array.isArray(history) || history.length === 0) {
+    return 1;
+  }
+
+  const cleanQuery = (currentQuery || '').trim();
+
+  // If query is an explicit transition to a new problem or chapter
+  const isNewProblemQuery = /^(?:下一题|再来一道|换一道|帮我看另一道|还有一道题|新题目|再出一条|下一道)/i.test(cleanQuery) ||
+    cleanQuery.startsWith('[ACTION_START_CHAPTER]') ||
+    (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算：|求解方程)/.test(cleanQuery) && cleanQuery.length > 25);
+
+  // Follow-up indicator
+  const isFollowUp = cleanQuery.length <= 15 ||
+    /^(?:好的|对|不对|是的|不是|不懂|不会|为什么|然后呢|下一步|算完了|做完了|我算的是|等于|是不是|怎么算|老师你看|没思路)/i.test(cleanQuery);
+
+  if (isNewProblemQuery && !isFollowUp) {
+    return 1;
+  }
+
+  // Scan backwards from the end of history to count user turns for the CURRENT problem session
+  let turnsInCurrentSession = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg && msg.role === 'user') {
+      turnsInCurrentSession++;
+      const text = (msg.text || '').trim();
+
+      // Check if this user message was the start of a distinct problem
+      const isStartOfProblem = /^(?:下一题|再来一道|换一道|帮我看另一道|新题目)/i.test(text) ||
+        text.startsWith('[ACTION_START_CHAPTER]') ||
+        (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算：|求解方程)/.test(text) && text.length > 25);
+
+      if (isStartOfProblem) {
+        break;
+      }
+
+      if (turnsInCurrentSession >= 8) {
+        break;
+      }
+    }
+  }
+
+  return Math.max(1, turnsInCurrentSession + 1);
+}
+
 // POST /api/chat — main chat endpoint with SSE streaming
 router.post('/chat', async (req, res) => {
   try {
-    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode, teaching_mode, feynman_mode } = req.body;
+    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode, teaching_mode, feynman_mode, turn_count } = req.body;
     if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
     if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
 
@@ -91,7 +141,9 @@ router.post('/chat', async (req, res) => {
         
         let triPrompt = '';
         const db = getSqliteDb();
-        const turnCount = (Array.isArray(history) ? Math.floor(history.length / 2) : 0) + 1;
+        const turnCount = (typeof turn_count === 'number' && turn_count >= 1) 
+          ? turn_count 
+          : computeProblemTurnCount(history, query);
         const triCoord = await coordinateTriEngine({
           db,
           query,

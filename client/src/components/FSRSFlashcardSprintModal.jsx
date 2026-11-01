@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { authFetch } from '../store/useStore';
 import { preprocessLatex } from '../utils/math';
+import { triggerHaptic } from '../utils/sensoryFeedback';
 
 /**
  * FSRSFlashcardSprintModal
@@ -50,6 +51,7 @@ export default function FSRSFlashcardSprintModal({
   const handleRate = async (rating) => {
     if (!currentCard || isSubmitting) return;
     setIsSubmitting(true);
+    triggerHaptic(rating >= 3 ? 'success' : 'light');
 
     try {
       const res = await authFetch('/api/mistakes/review-feedback', {
@@ -218,7 +220,10 @@ export default function FSRSFlashcardSprintModal({
 
             {/* Flashcard Body */}
             <div
-              onClick={() => setIsFlipped(prev => !prev)}
+              onClick={() => {
+                setIsFlipped(prev => !prev);
+                triggerHaptic('light');
+              }}
               style={{
                 minHeight: '260px',
                 background: isFlipped ? '#f8fafc' : '#ffffff',

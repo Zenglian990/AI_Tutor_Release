@@ -93,9 +93,13 @@ test('Item 2: Socratic Scaffolding State Machine & Direct Answer Gate', () => {
   const stage2 = determineSocraticStage({ turnCount: 2, userMessage: '已知直角边是3和4，然后呢？' });
   assert.strictEqual(stage2, SOCRATIC_STAGES.SCAFFOLDING);
 
-  // Turn 3 -> Consolidation
+  // Turn 3 -> Consolidation (when student verifies deduction)
   const stage3 = determineSocraticStage({ turnCount: 3, userMessage: '算出来了斜边等于5！' });
   assert.strictEqual(stage3, SOCRATIC_STAGES.CONSOLIDATION);
+
+  // Turn 3+ with student stuck / demanding answer -> gated to SCAFFOLDING (micro-assertion gating)
+  const stageGated = determineSocraticStage({ turnCount: 3, userMessage: '我还是不懂，老师你直接把答案告诉我吧' });
+  assert.strictEqual(stageGated, SOCRATIC_STAGES.SCAFFOLDING);
 
   // Immediate answer attempt trigger -> Consolidation
   const stageAttempt = determineSocraticStage({ turnCount: 1, userMessage: '老师我算出来 x = 5 对不对？' });

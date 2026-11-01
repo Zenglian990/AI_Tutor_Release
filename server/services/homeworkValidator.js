@@ -17,11 +17,11 @@ function extractOptionLetter(str) {
 }
 
 /**
- * 提取纯数字或带单位的数值
+ * 提取纯数字或带单位的数值（包含正负号与小数，杜绝 -7 vs 7 误判）
  */
 function extractNumbers(str) {
   if (typeof str !== 'string') return [];
-  const matches = str.match(/\d+(?:\.\d+)?/g);
+  const matches = str.match(/(?:-|\+)?\d+(?:\.\d+)?/g);
   return matches ? matches.map(Number) : [];
 }
 

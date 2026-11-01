@@ -187,9 +187,9 @@ function MermaidChart({ chart }) {
 
 function splitAnswerSections(text) {
   if (!text) return null;
-  // Match headers for answer / derivation:
-  // e.g. ### 📐 【完整推导...】 or ### 📐 【第四步...】 or ### 💡【步骤拆解...】
-  const answerRegex = /(?:^|\n)(###\s*(?:📐|💡\s*【步骤拆解|【第四步|📐\s*【完整推导|【完整推导|【标准答案))/;
+  // Match headers for answer / derivation / spoiler fold:
+  // e.g. ### 📐 【完整推导...】 or ### 📐 【第四步...】 or 4. 📐【第四步...】 or <details>
+  const answerRegex = /(?:^|\n)(?:###\s*|\d+\.\s*)?(?:📐\s*【第四步|💡\s*【步骤拆解|【第四步|📐\s*【完整推导|【完整推导|【标准答案|<details)/;
   const match = text.match(answerRegex);
   if (!match) return null;
 
@@ -198,8 +198,8 @@ function splitAnswerSections(text) {
   const rest = text.substring(splitIdx);
 
   // Match variation / quiz header:
-  // e.g. ### 🔄 【举一反三...】 or ### 🔥 【举一反三...】 or ### 🔄 【第五步...】
-  const varRegex = /(?:^|\n)(###\s*(?:🔄|🔥\s*【举一反三|🔄\s*【举一反三|🔥\s*【母题|【第五步))/;
+  // e.g. ### 🔄 【举一反三...】 or 5. 🔄【第五步...】 or ### 🔥 【母题...】
+  const varRegex = /(?:^|\n)(?:###\s*|\d+\.\s*)?(?:🔄|🔥\s*【举一反三|🔄\s*【举一反三|🔥\s*【母题|【第五步)/;
   const varMatch = rest.match(varRegex);
 
   let answerBody = rest;

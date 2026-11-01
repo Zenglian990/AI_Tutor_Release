@@ -44,6 +44,25 @@ describe('A4PrintModal Component', () => {
     expect(elements.length).toBeGreaterThan(0);
   });
 
+  it('renders default questions in hengshui_dual_column mode without throwing', () => {
+    const { getAllByText } = render(
+      <A4PrintModal
+        isOpen={true}
+        onClose={() => {}}
+        studentName="曾练"
+        grade="八年级"
+        subject="数学"
+        initialMode="hengshui_dual_column"
+      />
+    );
+    const hengshuiHeaders = getAllByText(/衡水双栏错题变式重做卷/i);
+    expect(hengshuiHeaders.length).toBeGreaterThan(0);
+    const variantBadges = getAllByText(/同构变式母题闭环训练/i);
+    expect(variantBadges.length).toBeGreaterThan(0);
+    const scratchpadGrids = getAllByText(/衡水体规范演算步骤与草稿方格/i);
+    expect(scratchpadGrids.length).toBeGreaterThan(0);
+  });
+
   it('safely handles malformed latex and mixed Chinese prose without crashing', () => {
     const malformedQuestions = [
       {

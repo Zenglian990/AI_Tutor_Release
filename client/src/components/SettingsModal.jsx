@@ -1803,7 +1803,7 @@ export default function SettingsModal({
           }}
         >
           <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>曾练专属私教 v1.5.5</span>
+            <span>曾练专属私教 v1.7.1</span>
             <span style={{ opacity: 0.7 }}>· 人教版全科</span>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>

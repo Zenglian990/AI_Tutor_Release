@@ -27,21 +27,33 @@ function determineSocraticStage({ turnCount = 1, userMessage = '', isDirectAnswe
   const msg = (userMessage || '').toLowerCase();
 
   // If student asks for check/verification of their answer
-  const hasAnswerAttempt = /我算出来|答案是|是不是等于|x\s*=|得数是|对不对|检验一下/i.test(msg);
+  const hasAnswerAttempt = /我算出来|答案是|是不是等于|x\s*=|得数是|对不对|检验一下|等于|结果是/i.test(msg);
   if (hasAnswerAttempt) {
     return SOCRATIC_STAGES.CONSOLIDATION;
   }
 
-  // Turn count based progression
+  // Direct answer demand -> strictly gatekeep, never dump answer
+  const isDirectDemanding = isDirectAnswerRequest || /直接告诉|直接给|告诉我答案|答案到底是多少|答案是几|快给答案/i.test(msg);
+
+  // Turn count progression with micro-assertion gating
   if (turnCount <= 1) {
     return SOCRATIC_STAGES.DISCOVERY;
+  }
+
+  // Micro-assertion gating: check if student has identified known quantities or made a deduction step
+  const hasEvidenceOfKnownsOrDeduction = /(?:\d+|[a-zA-Z]\s*=|直角边|斜边|设|因为|所以|已知|公式|定理|代入|移项|判别式|化简|边长|底|高|面积|周长)/.test(userMessage || '');
+  const isStuckOrConfused = /^(?:我还是不懂|完全不会|不知道|不懂|不会|没思路|没看懂|没有思路|教教我|算不出来|这怎么做|然后呢|下一步呢)[\s!！?？~～]*$/i.test(msg);
+
+  // If student is demanding direct answer or still stuck without identifying core knowns, stay in SCAFFOLDING / DISCOVERY
+  if (isDirectDemanding || isStuckOrConfused || !hasEvidenceOfKnownsOrDeduction) {
+    return SOCRATIC_STAGES.SCAFFOLDING;
   }
 
   if (turnCount === 2) {
     return SOCRATIC_STAGES.SCAFFOLDING;
   }
 
-  // Turn 3+ moves to consolidation unless student is still probing initial terms
+  // Turn 3+ moves to consolidation only when student has demonstrated step engagement
   return SOCRATIC_STAGES.CONSOLIDATION;
 }
 
@@ -71,6 +83,7 @@ function formatSocraticSystemPrompt(stage, diagnosis = null, options = {}) {
 
     case SOCRATIC_STAGES.SCAFFOLDING:
       prompt += `【当前阶段】：阶段二 · 前置卡点脚手架与破局灵感 (Level 2 / 3)\n`;
+      prompt += `- 【微断言门禁 (Micro-Assertion Gating)】：如果学生尚未准确找出已知量与核心定理，继续保持启发式分步提问，绝不跳步揭晓答案！只有当学生完成当前微步骤时，才引导进入下一步推演。\n`;
       prompt += `- 教学动作：\n`;
       if (rootCauseNode) {
         prompt += `  1. 结合知识图谱，点破底层前置概念：【${rootCauseNode.name}】；\n`;

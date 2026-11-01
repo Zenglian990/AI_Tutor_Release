@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { triggerHaptic } from '../utils/sensoryFeedback';
 
 /**
  * DailyMentalMathModal
@@ -263,9 +264,11 @@ export default function DailyMentalMathModal({
       setStreak(nextStreak);
       if (nextStreak > maxStreak) setMaxStreak(nextStreak);
       setFeedbackState('correct');
+      triggerHaptic('success');
     } else {
       setStreak(0);
       setFeedbackState('wrong');
+      triggerHaptic('light');
     }
 
     setTimeout(() => {
@@ -277,6 +280,7 @@ export default function DailyMentalMathModal({
       } else {
         // 完成全部题目
         setIsFinished(true);
+        triggerHaptic('success');
         if (timerRef.current) clearInterval(timerRef.current);
 
         // 奖励结算

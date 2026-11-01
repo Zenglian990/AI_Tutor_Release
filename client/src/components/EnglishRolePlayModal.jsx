@@ -56,6 +56,60 @@ const SCENARIOS = [
   }
 ];
 
+function generateLocalAiTurn(scenarioId, studentMessage) {
+  const msg = (studentMessage || '').toLowerCase();
+  let partnerReply = '';
+  let partnerZh = '';
+  let grammarTip = '';
+  let suggestedPrompt = '';
+  let suggestedPromptZh = '';
+
+  const grammarIssues = [];
+  if (/\bi\s+(?:is|are)\b/i.test(msg)) grammarIssues.push('主谓搭配注意：代词 I 后面需搭配 am 或 was。');
+  if (/\b(?:he|she|it)\s+(?:do|have|go|want)\b/i.test(msg)) grammarIssues.push('第三人称单数注意：主语为单数时动词需用 does/has/goes/wants 等第三人称形式。');
+  if (/\bi\s+want\b/i.test(msg)) grammarIssues.push('地道口语建议：在公共场合，将 "I want..." 换成 "Could I please have..." 或 "I would like..." 显得更礼貌地道。');
+  if (/\byesterday.*?(?:go|see|buy)\b/i.test(msg)) grammarIssues.push('时态一致性注意：句子中包含过去时间状语时，谓语动词需使用一般过去时（went/saw/bought）。');
+
+  if (grammarIssues.length > 0) {
+    grammarTip = grammarIssues.join(' ');
+  } else {
+    grammarTip = '语法非常规范！句子结构完整，动词时态与介词搭配准确，达到中考英语听说满分标准！';
+  }
+
+  if (scenarioId === 'library') {
+    if (msg.includes('history') || msg.includes('book') || msg.includes('look')) {
+      partnerReply = "Sure thing! We also have an interactive digital archive on that topic. Would you like me to reserve a reading booth for you?";
+      partnerZh = "当然没问题！我们还有一个该主题的互动数字档案库。需要我为你预定一个自习阅览位吗？";
+      suggestedPrompt = "That sounds wonderful! How can I access the digital archive?";
+      suggestedPromptZh = "太棒了！我怎样才能访问这个数字档案库呢？";
+    } else if (msg.includes('two weeks') || msg.includes('borrow') || msg.includes('keep')) {
+      partnerReply = "Two weeks is perfectly fine. Don't forget that you can easily renew the loan online through our student portal if you need extra time.";
+      partnerZh = "借两周完全可以。如果需要延长时间，别忘了你可以在学生门户网站直接在线续借。";
+      suggestedPrompt = "Thank you for the reminder! I will return it on time.";
+      suggestedPromptZh = "谢谢提醒！我会按时归还的。";
+    } else {
+      partnerReply = "That's very interesting. Let me check our catalog database to see if we have relevant materials available for checkout right now.";
+      partnerZh = "这很有意思。让我查一下我们的馆藏目录数据库，看看现在是否有相关资料可供借阅。";
+      suggestedPrompt = "Could you please help me find the latest edition?";
+      suggestedPromptZh = "你能帮我找找最新一版吗？";
+    }
+  } else {
+    if (msg.includes('lab') || msg.includes('science')) {
+      partnerReply = "By the way, the science lab requires students to wear lab coats before entering. Did your teacher mention that?";
+      partnerZh = "顺便提一下，科学实验室要求学生进入前穿好实验服。你的老师有提到过吗？";
+      suggestedPrompt = "Yes, I have already prepared my lab coat in my backpack.";
+      suggestedPromptZh = "是的，我已经把实验服准备在书包里了。";
+    } else {
+      partnerReply = "You're very welcome! Feel free to ask any teacher or student if you get turned around again. Have a wonderful class!";
+      partnerZh = "不客气！如果不小心又迷路了，随时问任何老师或同学都可以。祝你上课愉快！";
+      suggestedPrompt = "Thanks again! See you around the campus.";
+      suggestedPromptZh = "再次感谢！校园里见。";
+    }
+  }
+
+  return { partnerReply, partnerZh, grammarTip, suggestedPrompt, suggestedPromptZh };
+}
+
 export default function EnglishRolePlayModal({
   isOpen,
   onClose,
@@ -66,18 +120,25 @@ export default function EnglishRolePlayModal({
   const [studentInput, setStudentInput] = useState('');
   const [evaluation, setEvaluation] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isGenerativeMode, setIsGenerativeMode] = useState(false); // Guided vs Open Generative
+  const [dynamicTurns, setDynamicTurns] = useState([]);
+  const [isGeneratingTurn, setIsGeneratingTurn] = useState(false);
 
   if (!isOpen) return null;
 
   const currentScenario = SCENARIOS[selectedScenarioIdx];
-  const activeDialogue = currentScenario.dialogues[currentTurn] || currentScenario.dialogues[0];
+  const activeDialogue = (isGenerativeMode && dynamicTurns.length > 0)
+    ? dynamicTurns[dynamicTurns.length - 1]
+    : (dynamicTurns.length > 0 && currentTurn >= currentScenario.dialogues.length
+      ? dynamicTurns[currentTurn - currentScenario.dialogues.length]
+      : (currentScenario.dialogues[currentTurn] || currentScenario.dialogues[0]));
 
   const handleEvaluateSpeech = (textToEvaluate) => {
     const raw = (textToEvaluate || studentInput).trim();
     if (!raw) return;
 
-    const targetWords = activeDialogue.prompt.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
-    const spokenWords = raw.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
+    const targetWords = activeDialogue.prompt.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
+    const spokenWords = raw.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
 
     // Score word by word
     const scoredWords = targetWords.map((w) => {
@@ -89,9 +150,11 @@ export default function EnglishRolePlayModal({
       return { word: w, status: 'poor', score: 50 };
     });
 
-    const avgScore = Math.round(scoredWords.reduce((acc, curr) => acc + curr.score, 0) / scoredWords.length);
+    const avgScore = scoredWords.length > 0 
+      ? Math.round(scoredWords.reduce((acc, curr) => acc + curr.score, 0) / scoredWords.length)
+      : 88;
 
-    setEvaluation({
+    const evalResult = {
       accuracy: Math.min(98, avgScore + 3),
       fluency: 90,
       pronunciation: avgScore,
@@ -99,7 +162,33 @@ export default function EnglishRolePlayModal({
       tip: avgScore >= 85 
         ? '发音极其地道！注意连读节奏与重音落点，中考听说满分标准！' 
         : '注意弱读与连读（如 for your 连读为 /fə jɔː/），保持语速平稳。'
-    });
+    };
+
+    setEvaluation(evalResult);
+  };
+
+  const handleGenerateAiNextTurn = async () => {
+    const raw = studentInput.trim() || activeDialogue.prompt;
+    if (!raw) return;
+
+    setIsGeneratingTurn(true);
+    handleEvaluateSpeech(raw);
+
+    // Contextual AI turn generation with grammar diagnostics
+    const localTurn = generateLocalAiTurn(currentScenario.id, raw, currentTurn);
+
+    const newTurnObj = {
+      partner: localTurn.partnerReply,
+      partnerZh: localTurn.partnerZh,
+      prompt: localTurn.suggestedPrompt,
+      promptZh: localTurn.suggestedPromptZh,
+      grammarTip: localTurn.grammarTip
+    };
+
+    setDynamicTurns(prev => [...prev, newTurnObj]);
+    setCurrentTurn(prev => prev + 1);
+    setStudentInput('');
+    setIsGeneratingTurn(false);
   };
 
   const handleSpeechRecognition = () => {
@@ -203,23 +292,52 @@ export default function EnglishRolePlayModal({
 
         {/* Content Body */}
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Scenario Selector */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {SCENARIOS.map((s, idx) => (
+          {/* Mode Switch & Scenario Selector */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {SCENARIOS.map((s, idx) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => { setSelectedScenarioIdx(idx); setCurrentTurn(0); setDynamicTurns([]); setEvaluation(null); setStudentInput(''); }}
+                  style={{
+                    padding: '8px 14px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
+                    border: selectedScenarioIdx === idx ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: selectedScenarioIdx === idx ? '#eff6ff' : '#f8fafc',
+                    color: selectedScenarioIdx === idx ? '#1e40af' : '#475569'
+                  }}
+                >
+                  {s.title}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px' }}>
               <button
-                key={s.id}
                 type="button"
-                onClick={() => { setSelectedScenarioIdx(idx); setCurrentTurn(0); setEvaluation(null); setStudentInput(''); }}
+                onClick={() => setIsGenerativeMode(false)}
                 style={{
-                  padding: '8px 14px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                  border: selectedScenarioIdx === idx ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                  background: selectedScenarioIdx === idx ? '#eff6ff' : '#f8fafc',
-                  color: selectedScenarioIdx === idx ? '#1e40af' : '#475569'
+                  padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: 700,
+                  background: !isGenerativeMode ? '#2563eb' : 'transparent',
+                  color: !isGenerativeMode ? '#ffffff' : '#475569'
                 }}
               >
-                {s.title}
+                📖 经典人机剧本
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setIsGenerativeMode(true)}
+                style={{
+                  padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: 700,
+                  background: isGenerativeMode ? '#7c3aed' : 'transparent',
+                  color: isGenerativeMode ? '#ffffff' : '#475569'
+                }}
+              >
+                🤖 自由开放人机对话
+              </button>
+            </div>
           </div>
 
           {/* Sarah Dialogue Bubble */}
@@ -236,7 +354,9 @@ export default function EnglishRolePlayModal({
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <span style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '0.9rem' }}>Sarah ({currentScenario.roleSarah})</span>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>第 {currentTurn + 1} / {currentScenario.dialogues.length} 轮</span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  {isGenerativeMode ? `开放对话 第 ${currentTurn + 1} 轮` : `第 ${currentTurn + 1} / ${currentScenario.dialogues.length} 轮`}
+                </span>
               </div>
               <div style={{ fontSize: '1.05rem', color: '#1e293b', fontWeight: 600, lineHeight: '1.5' }}>
                 "{activeDialogue.partner}"
@@ -244,6 +364,25 @@ export default function EnglishRolePlayModal({
               <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>
                 💡 译文：{activeDialogue.partnerZh}
               </div>
+
+              {/* Grammar & Phrasing Polish Tip if available */}
+              {activeDialogue.grammarTip && (
+                <div style={{
+                  background: '#eff6ff',
+                  border: '1px solid #93c5fd',
+                  borderRadius: '10px',
+                  padding: '8px 12px',
+                  marginTop: '10px',
+                  fontSize: '0.82rem',
+                  color: '#1e40af'
+                }}>
+                  <div style={{ fontWeight: 800, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🎯</span>
+                    <span>语法与地道表达润色建议 (Grammar & Phrasing Polish)：</span>
+                  </div>
+                  <div>{activeDialogue.grammarTip}</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -254,7 +393,7 @@ export default function EnglishRolePlayModal({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#2563eb' }}>
-                🎯 你的作答目标句 (请大声朗读或点击麦克风)：
+                🎯 你的作答目标句 (请大声朗读或输入自由表达)：
               </span>
               <button
                 type="button"
@@ -271,15 +410,17 @@ export default function EnglishRolePlayModal({
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
               "{activeDialogue.prompt}"
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-              💡 中文释义：{activeDialogue.promptZh}
-            </div>
+            {activeDialogue.promptZh && (
+              <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                💡 中文释义：{activeDialogue.promptZh}
+              </div>
+            )}
 
             {/* Speaking / Input Area */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
               <input
                 type="text"
-                placeholder="在此输入你说的英文句子，或点击右侧麦克风说出来..."
+                placeholder={isGenerativeMode ? "输入或开口说任意英文句子，AI将实时应答并诊断语法..." : "在此输入你说的英文句子，或点击右侧麦克风说出来..."}
                 value={studentInput}
                 onChange={e => setStudentInput(e.target.value)}
                 style={{
@@ -292,11 +433,23 @@ export default function EnglishRolePlayModal({
                 onClick={handleSpeechRecognition}
                 style={{
                   background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '10px',
-                  fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                  color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '10px',
+                  fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0
                 }}
               >
                 <span>{isRecording ? '⏹️ 录音中...' : '🎙️ 开口朗读'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateAiNextTurn}
+                disabled={isGeneratingTurn}
+                style={{
+                  background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                  color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '10px',
+                  fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0
+                }}
+              >
+                <span>{isGeneratingTurn ? '⏳ 思考中...' : '🤖 AI 应答 & 语法诊断'}</span>
               </button>
             </div>
           </div>

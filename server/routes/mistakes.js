@@ -282,8 +282,94 @@ router.post('/mistakes/generate-variants', async (req, res) => {
 
     const { extractAndParseJson } = require('../utils/jsonParser');
     const { getCrossGradeRootCause } = require('../services/knowledgeGraph');
+    const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
     const rootCauseDiagnosis = getCrossGradeRootCause(question, subject, grade);
 
+    // ---- 0. 优先检索 39,114 权威真题与教材母题库 (0 幻觉确定性锚定) ----
+    const sqliteDb = getSqliteDb();
+    if (sqliteDb) {
+      try {
+        const matchedCanonical = await lookupCanonicalQuestion(question, grade, subject, sqliteDb);
+        const excludeId = matchedCanonical?.canonical?.id || 0;
+        const targetChapter = matchedCanonical?.canonical?.chapter || '';
+        const conceptName = rootCauseDiagnosis?.currentNode?.name || '';
+
+        let candidates = [];
+        if (targetChapter) {
+          candidates = await sqliteDb.all(
+            `SELECT * FROM canonical_questions 
+             WHERE id != ? AND subject = ? AND chapter = ? 
+             ORDER BY id ASC LIMIT 5`,
+            [excludeId, subject, targetChapter]
+          );
+        }
+
+        if (candidates.length < 2 && conceptName) {
+          const cleanConcept = conceptName.replace(/[\(（].*?[\)）]/g, '').slice(0, 6);
+          if (cleanConcept.length >= 2) {
+            const moreByConcept = await sqliteDb.all(
+              `SELECT * FROM canonical_questions 
+               WHERE id != ? AND subject = ? AND (question LIKE ? OR chapter LIKE ? OR key_insight LIKE ?) 
+               LIMIT 5`,
+              [excludeId, subject, `%${cleanConcept}%`, `%${cleanConcept}%`, `%${cleanConcept}%`]
+            );
+            candidates = candidates.concat(moreByConcept.filter(c => !candidates.some(existing => existing.id === c.id)));
+          }
+        }
+
+        if (candidates.length < 2) {
+          const keyTerms = (question.match(/(?:勾股定理|直角三角形|一元二次方程|判别式|顶点坐标|二次函数|相似三角形|长方形|正方形|周长|面积|鸡兔同笼|植树|压强|浮力|密度|欧姆定律|质量守恒|化学方程式|绝对值|因式分解|平行四边形|角平分线|等腰三角形)/g) || []);
+          for (const term of keyTerms) {
+            if (candidates.length >= 2) break;
+            const moreByTerm = await sqliteDb.all(
+              `SELECT * FROM canonical_questions 
+               WHERE id != ? AND subject = ? AND question LIKE ? 
+               LIMIT 5`,
+              [excludeId, subject, `%${term}%`]
+            );
+            for (const m of moreByTerm) {
+              if (!candidates.some(c => c.id === m.id)) {
+                candidates.push(m);
+                if (candidates.length >= 2) break;
+              }
+            }
+          }
+        }
+
+        if (candidates.length >= 2) {
+          const q1 = candidates[0];
+          const q2 = candidates[1];
+          const formatVariant = (item, type, tag, defaultHint) => ({
+            type,
+            tag,
+            question: item.question + (item.options && item.options.trim() ? `\n${item.options}` : ''),
+            hint: item.key_insight || defaultHint,
+            answer: item.standard_answer,
+            analysis: item.analysis,
+            source: item.source || '人教版核心教材与考点真题',
+            is_canonical: true
+          });
+
+          logger.info(`[GenerateVariants] Grounded 2 authentic variants from canonical bank for "${question.slice(0, 20)}..." (IDs: ${q1.id}, ${q2.id})`);
+          return res.json({
+            success: true,
+            data: {
+              core_knowledge: rootCauseDiagnosis?.currentNode?.name || q1.chapter || "人教版核心真题变式",
+              grounded_source: "canonical_questions_39114",
+              prerequisite_root_cause: rootCauseDiagnosis,
+              variants: [
+                formatVariant(q1, 'consolidation', '同类巩固', '紧扣本题核心模型与公式，列出已知条件求解。'),
+                formatVariant(q2, 'advanced', '避坑拔高', '注意隐藏条件与审题陷阱，严密书写推导步骤。')
+              ]
+            }
+          });
+        }
+      } catch (dbErr) {
+        logger.warn('[Variants] Error querying canonical questions bank:', dbErr.message);
+      }
+    }
+
+    // ---- 1. 若题库无足量精准匹配题，优雅降级至特级名师 LLM 深度合成 ----
     const prompt = `你是一位专注于 K-12 教学体系的中国特级教师。学生刚刚学习或答错了一道题目：
 【原题内容】：${question}
 ${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}

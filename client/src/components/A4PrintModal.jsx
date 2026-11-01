@@ -517,21 +517,36 @@ function A4PrintModalInner({
           {/* Mode & Filter Toggles */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {/* Mode Selector */}
-            <div style={{ display: 'flex', background: '#e2e8f0', padding: '3px', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', background: '#e2e8f0', padding: '3px', borderRadius: '8px', gap: '2px' }}>
               <button
                 onClick={() => setPrintMode('blank_student')}
                 style={{
                   background: printMode === 'blank_student' ? '#2563eb' : 'transparent',
                   color: printMode === 'blank_student' ? '#fff' : '#475569',
                   border: 'none',
-                  padding: '6px 12px',
+                  padding: '6px 10px',
                   borderRadius: '6px',
-                  fontSize: '0.83rem',
+                  fontSize: '0.82rem',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
-                📝 空白重测卷 (学生真练)
+                📝 空白重测卷
+              </button>
+              <button
+                onClick={() => setPrintMode('hengshui_dual_column')}
+                style={{
+                  background: printMode === 'hengshui_dual_column' ? '#7c3aed' : 'transparent',
+                  color: printMode === 'hengshui_dual_column' ? '#fff' : '#475569',
+                  border: 'none',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                🏛️ 衡水双栏错题变式重做卷
               </button>
               <button
                 onClick={handleSwitchToAnswers}
@@ -539,14 +554,14 @@ function A4PrintModalInner({
                   background: printMode === 'with_answers' ? '#059669' : 'transparent',
                   color: printMode === 'with_answers' ? '#fff' : '#475569',
                   border: 'none',
-                  padding: '6px 12px',
+                  padding: '6px 10px',
                   borderRadius: '6px',
-                  fontSize: '0.83rem',
+                  fontSize: '0.82rem',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
-                📖 答案详析卷 (家长核对)
+                📖 答案详析卷
               </button>
             </div>
 
@@ -881,7 +896,11 @@ function A4PrintModalInner({
                 【{studentName || '学员'}专属私教】{subject}靶向突破周清微测试卷
               </h2>
               <div style={{ fontSize: '0.92rem', color: '#374151', fontWeight: 600, marginBottom: '10px' }}>
-                （{printMode === 'blank_student' ? '📝 学生独立闭卷实操版 · 答题留白' : '📖 名师详析与考点穿透版 · 家长核对'}）
+                （{printMode === 'blank_student' 
+                    ? '📝 学生独立闭卷实操版 · 答题留白' 
+                    : printMode === 'hengshui_dual_column'
+                      ? '🏛️ 衡水校本双栏错题变式重做卷 · 左栏原题与避坑警示 · 右栏变式母题与草稿方格'
+                      : '📖 名师详析与考点穿透版 · 家长核对'}）
               </div>
 
               {/* Student Metadata Table */}
@@ -956,109 +975,241 @@ function A4PrintModalInner({
               {displayQuestions.map((q, idx) => (
                 <div key={q.id} className="a4-question-card" style={{
                   paddingBottom: '16px',
-                  borderBottom: idx < displayQuestions.length - 1 ? '1px dashed #d1d5db' : 'none'
+                  borderBottom: idx < displayQuestions.length - 1 ? '1.5px dashed #d1d5db' : 'none'
                 }}>
-                  {/* Question Stem Header */}
-                  <div style={{
-                    fontSize: '1.02rem',
-                    fontWeight: 700,
-                    color: '#000',
-                    marginBottom: '8px',
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: '6px'
-                  }}>
-                    <span>{idx + 1}.</span>
-                    <span>({q.score}分)</span>
-                    <span>{q.title}</span>
-                    {q.status === 'wrong' && (
-                      <span className="a4-no-print" style={{
-                        fontSize: '0.75rem',
-                        background: '#fee2e2',
-                        color: '#dc2626',
-                        padding: '1px 6px',
-                        borderRadius: '4px',
-                        fontWeight: 600
-                      }}>
-                        本次待订正
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Question Body Text with LaTeX Formula & Image */}
-                  <div style={{ fontSize: '0.98rem', lineHeight: '1.7', marginBottom: '14px', color: '#111827' }}>
-                    <A4MathContent content={q.body} />
-                    {q.imageUrl && (
-                      <QuestionImageWithEraser imageUrl={q.imageUrl} eraseHandwriting={eraseHandwriting} />
-                    )}
-                  </div>
-
-                  {/* Blank Student Writing Space (Student Mode) */}
-                  {printMode === 'blank_student' ? (
+                  {printMode === 'hengshui_dual_column' ? (
                     <div style={{
-                      minHeight: twoColumn ? '140px' : '170px',
-                      border: '1px dashed #9ca3af',
-                      borderRadius: '6px',
-                      padding: '12px',
-                      position: 'relative',
-                      background: 'repeating-linear-gradient(transparent, transparent 27px, #f3f4f6 28px)'
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '24px',
+                      background: '#ffffff',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      position: 'relative'
                     }}>
-                      <span style={{
-                        position: 'absolute',
-                        right: '10px',
-                        bottom: '8px',
-                        fontSize: '0.78rem',
-                        color: '#9ca3af',
-                        userSelect: 'none'
+                      {/* Left Column: Original Mistake with Trap Warning */}
+                      <div style={{
+                        borderRight: '1.5px dashed #94a3b8',
+                        paddingRight: '18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
                       }}>
-                        【解题与证明演算区域（规范书写）】
-                      </span>
-                    </div>
-                  ) : (
-                    /* Answer Key & Insight (Teacher/Parent Mode) */
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      padding: '12px 16px'
-                    }}>
-                      {/* Standard Answer */}
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669', marginBottom: '4px' }}>
-                          🎯 名师标准答案与推导步骤：
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderBottom: '1.5px solid #fee2e2',
+                          paddingBottom: '6px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#dc2626', fontSize: '0.95rem' }}>
+                            <span>📌</span>
+                            <span>第 {idx + 1} 题【原题错因诊断与避坑指南】</span>
+                          </div>
+                          <span style={{ fontSize: '0.82rem', color: '#64748b' }}>({q.score}分)</span>
                         </div>
-                        <div style={{ fontSize: '0.92rem', color: '#1f2937', lineHeight: '1.6' }}>
-                          <A4MathContent content={q.standardAnswer || '（请参见教材标准参考答案）'} />
+
+                        <div style={{ fontSize: '0.96rem', lineHeight: '1.7', color: '#111827' }}>
+                          <A4MathContent content={q.body} />
+                          {q.imageUrl && (
+                            <QuestionImageWithEraser imageUrl={q.imageUrl} eraseHandwriting={eraseHandwriting} />
+                          )}
                         </div>
+
+                        {/* Trap warning */}
+                        <div style={{
+                          background: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          borderRadius: '6px',
+                          padding: '10px 12px'
+                        }}>
+                          <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#e11d48', marginBottom: '3px' }}>
+                            ⚠️ 易错陷阱与失分归因：
+                          </div>
+                          <div style={{ fontSize: '0.86rem', color: '#9f1239', lineHeight: '1.5' }}>
+                            <A4MathContent content={q.mistakeReason || q.keyInsight || '容易忽视题目隐藏约束或计算符号导致失误，重做时务必规范草稿步骤。'} />
+                          </div>
+                        </div>
+
+                        {q.keyInsight && (
+                          <div style={{
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            padding: '8px 12px'
+                          }}>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1d4ed8', marginBottom: '2px' }}>
+                              💡 核心题眼破题心法：
+                            </div>
+                            <div style={{ fontSize: '0.84rem', color: '#1e40af' }}>
+                              <A4MathContent content={q.keyInsight} />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Key Insight */}
-                      {q.keyInsight && (
-                        <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }}>
-                          <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#2563eb', marginBottom: '2px' }}>
-                            💡 核心题眼与破题心法：
+                      {/* Right Column: Matched Variant Question with Blank Scratchpad / Grid */}
+                      <div style={{
+                        paddingLeft: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderBottom: '1.5px solid #ede9fe',
+                          paddingBottom: '6px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#7c3aed', fontSize: '0.95rem' }}>
+                            <span>🔄</span>
+                            <span>第 {idx + 1} 题【同构变式母题闭环训练】</span>
                           </div>
-                          <div style={{ fontSize: '0.88rem', color: '#334155' }}>
-                            <A4MathContent content={q.keyInsight} />
-                          </div>
+                          <span style={{ fontSize: '0.78rem', background: '#f5f3ff', color: '#7c3aed', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                            变式复测
+                          </span>
                         </div>
-                      )}
 
-                      {/* Mistake Pitfall Warning */}
-                      {q.mistakeReason && (
-                        <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }}>
-                          <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#dc2626', marginBottom: '2px' }}>
-                            ⚠️ 易错点与避坑预警：
+                        <div style={{ fontSize: '0.96rem', lineHeight: '1.7', color: '#111827' }}>
+                          <A4MathContent content={
+                            q.variant?.question ||
+                            q.variantQuestion ||
+                            `【同考点变式题 #${idx + 1}】已知与原题相同的核心考点，请根据题干给出的约束关系在下方草稿区重新推演，求出变式结果。`
+                          } />
+                        </div>
+
+                        {/* Blank Scratchpad / Math Grid */}
+                        <div style={{
+                          flex: 1,
+                          minHeight: '220px',
+                          border: '1px solid #94a3b8',
+                          borderRadius: '6px',
+                          background: 'linear-gradient(#f1f5f9 1px, transparent 1px), linear-gradient(90deg, #f1f5f9 1px, transparent 1px)',
+                          backgroundSize: '18px 18px',
+                          backgroundColor: '#ffffff',
+                          position: 'relative',
+                          padding: '10px'
+                        }}>
+                          <span style={{
+                            position: 'absolute',
+                            right: '10px',
+                            bottom: '8px',
+                            fontSize: '0.78rem',
+                            color: '#94a3b8',
+                            userSelect: 'none'
+                          }}>
+                            【衡水体规范演算步骤与草稿方格】
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Question Stem Header */}
+                      <div style={{
+                        fontSize: '1.02rem',
+                        fontWeight: 700,
+                        color: '#000',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: '6px'
+                      }}>
+                        <span>{idx + 1}.</span>
+                        <span>({q.score}分)</span>
+                        <span>{q.title}</span>
+                        {q.status === 'wrong' && (
+                          <span className="a4-no-print" style={{
+                            fontSize: '0.75rem',
+                            background: '#fee2e2',
+                            color: '#dc2626',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 600
+                          }}>
+                            本次待订正
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Question Body Text with LaTeX Formula & Image */}
+                      <div style={{ fontSize: '0.98rem', lineHeight: '1.7', marginBottom: '14px', color: '#111827' }}>
+                        <A4MathContent content={q.body} />
+                        {q.imageUrl && (
+                          <QuestionImageWithEraser imageUrl={q.imageUrl} eraseHandwriting={eraseHandwriting} />
+                        )}
+                      </div>
+
+                      {/* Blank Student Writing Space (Student Mode) */}
+                      {printMode === 'blank_student' ? (
+                        <div style={{
+                          minHeight: twoColumn ? '140px' : '170px',
+                          border: '1px dashed #9ca3af',
+                          borderRadius: '6px',
+                          padding: '12px',
+                          position: 'relative',
+                          background: 'repeating-linear-gradient(transparent, transparent 27px, #f3f4f6 28px)'
+                        }}>
+                          <span style={{
+                            position: 'absolute',
+                            right: '10px',
+                            bottom: '8px',
+                            fontSize: '0.78rem',
+                            color: '#9ca3af',
+                            userSelect: 'none'
+                          }}>
+                            【解题与证明演算区域（规范书写）】
+                          </span>
+                        </div>
+                      ) : (
+                        /* Answer Key & Insight (Teacher/Parent Mode) */
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '12px 16px'
+                        }}>
+                          {/* Standard Answer */}
+                          <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669', marginBottom: '4px' }}>
+                              🎯 名师标准答案与推导步骤：
+                            </div>
+                            <div style={{ fontSize: '0.92rem', color: '#1f2937', lineHeight: '1.6' }}>
+                              <A4MathContent content={q.standardAnswer || '（请参见教材标准参考答案）'} />
+                            </div>
                           </div>
-                          <div style={{ fontSize: '0.88rem', color: '#991b1b' }}>
-                            <A4MathContent content={q.mistakeReason} />
-                          </div>
+
+                          {/* Key Insight */}
+                          {q.keyInsight && (
+                            <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }}>
+                              <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#2563eb', marginBottom: '2px' }}>
+                                💡 核心题眼与破题心法：
+                              </div>
+                              <div style={{ fontSize: '0.88rem', color: '#334155' }}>
+                                <A4MathContent content={q.keyInsight} />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Mistake Pitfall Warning */}
+                          {q.mistakeReason && (
+                            <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }}>
+                              <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#dc2626', marginBottom: '2px' }}>
+                                ⚠️ 易错点与避坑预警：
+                              </div>
+                              <div style={{ fontSize: '0.88rem', color: '#991b1b' }}>
+                                <A4MathContent content={q.mistakeReason} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               ))}

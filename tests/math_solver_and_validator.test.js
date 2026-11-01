@@ -65,6 +65,9 @@ test('HomeworkValidator: extractOptionLetter and extractNumbers extract accurate
   assert.strictEqual(extractOptionLetter('b'), 'B');
   assert.strictEqual(extractOptionLetter('选项C'), null);
   assert.deepStrictEqual(extractNumbers('周长是16厘米，面积是12平方厘米'), [16, 12]);
+  assert.deepStrictEqual(extractNumbers('x = -7, y = 7, z = -3.5, w = +4'), [-7, 7, -3.5, 4]);
+  assert.strictEqual(extractNumbers('-7')[0], -7);
+  assert.notStrictEqual(extractNumbers('-7')[0], 7);
 });
 
 test('HomeworkValidator: auto-corrects LLM geometric hallucination and validates student answer', async () => {

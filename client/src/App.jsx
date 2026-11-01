@@ -48,6 +48,7 @@ import { generateOfflineSocraticResponse } from './utils/offlineSocraticEngine';
 import OnboardingGuide from './components/OnboardingGuide';
 import WelcomeDashboard from './components/WelcomeDashboard';
 import PrivacyConsentModal from './components/PrivacyConsentModal';
+import { triggerHaptic } from './utils/sensoryFeedback';
 
 const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
 let hasInitializedTTS = false;
@@ -148,6 +149,9 @@ function AppInner() {
 
   const showToast = useCallback((message, type = 'info', duration = 2800) => {
     setToast({ message, type, id: Date.now() });
+    if (type === 'success') {
+      triggerHaptic('success');
+    }
     setTimeout(() => {
       setToast(curr => (curr?.message === message ? null : curr));
     }, duration);

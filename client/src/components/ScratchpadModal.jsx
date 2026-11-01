@@ -238,7 +238,32 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     };
   };
 
-  // Redraw all strokes onto context
+  // Helper for cubic bezier spline segment with pressure-sensitive width
+  const drawCubicBezierSplineSegment = (ctx, p0, p1, p2, p3, baseWidth, strokeColor) => {
+    // Catmull-Rom to Cubic Bezier control points calculation
+    // Eliminates 120Hz/240Hz sampling corner jaggedness on touch and active stylus
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    // Segment pressure calculation
+    const p1Pressure = typeof p1.pressure === 'number' && p1.pressure > 0 ? p1.pressure : 0.5;
+    const p2Pressure = typeof p2.pressure === 'number' && p2.pressure > 0 ? p2.pressure : 0.5;
+    const avgPressure = (p1Pressure + p2Pressure) / 2;
+    const segmentWidth = Math.max(1, baseWidth * (0.35 + avgPressure * 1.1));
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    ctx.lineWidth = segmentWidth;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  };
+
+  // Redraw all strokes onto context with cubic bezier smoothing & pressure width
   const redrawAllStrokes = useCallback((ctx, strokes) => {
     for (const stroke of strokes) {
       if (!stroke.points || stroke.points.length === 0) continue;
@@ -248,20 +273,33 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      if (stroke.tool === 'line' && stroke.points.length >= 2) {
-        const pStart = stroke.points[0];
-        const pEnd = stroke.points[stroke.points.length - 1];
+      const pts = stroke.points;
+      if (stroke.tool === 'line' && pts.length >= 2) {
+        const pStart = pts[0];
+        const pEnd = pts[pts.length - 1];
         ctx.beginPath();
         ctx.moveTo(pStart.x, pStart.y);
         ctx.lineTo(pEnd.x, pEnd.y);
         ctx.stroke();
-      } else {
+      } else if (pts.length === 1) {
         ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
+        ctx.arc(pts[0].x, pts[0].y, stroke.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = stroke.color;
+        ctx.fill();
+      } else if (pts.length === 2) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
         ctx.stroke();
+      } else {
+        // Cubic bezier spline interpolation through points
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = i > 0 ? pts[i - 1] : pts[0];
+          const p1 = pts[i];
+          const p2 = pts[i + 1];
+          const p3 = i < pts.length - 2 ? pts[i + 2] : p2;
+          drawCubicBezierSplineSegment(ctx, p0, p1, p2, p3, stroke.lineWidth, stroke.color);
+        }
       }
       ctx.restore();
     }
@@ -470,19 +508,19 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     const pos = getCoordinates(e);
 
     if (currentStrokeRef.current) {
-      currentStrokeRef.current.points.push({ x: pos.x, y: pos.y, t: Date.now() });
+      currentStrokeRef.current.points.push({ x: pos.x, y: pos.y, pressure: pos.pressure, t: Date.now() });
     }
 
     // Dynamic stylus pressure for Apple Pencil / S-Pen
-    const activeLineWidth = (tool !== 'eraser' && pos.pressure && e.pointerType === 'pen')
-      ? Math.max(1, lineWidth * (0.4 + pos.pressure * 0.9))
+    const activeLineWidth = (tool !== 'eraser' && pos.pressure && (e.pointerType === 'pen' || e.pointerType === 'touch'))
+      ? Math.max(1, lineWidth * (0.35 + pos.pressure * 1.1))
       : lineWidth;
 
-    ctx.lineWidth = tool === 'eraser' ? lineWidth * 4 : activeLineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     if (tool === 'eraser') {
+      ctx.lineWidth = lineWidth * 4;
       ctx.strokeStyle = '#ffffff';
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
@@ -490,16 +528,30 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       if (snapshotRef.current) {
         ctx.putImageData(snapshotRef.current, 0, 0);
       }
+      ctx.lineWidth = lineWidth;
       ctx.strokeStyle = color;
       ctx.beginPath();
       ctx.moveTo(startPosRef.current.x, startPosRef.current.y);
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
     } else {
-      // Pen
-      ctx.strokeStyle = color;
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
+      // Pen: Cubic Bezier spline smoothing & dynamic stylus pressure
+      const pts = currentStrokeRef.current ? currentStrokeRef.current.points : [];
+      const len = pts.length;
+      if (len === 2) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.lineWidth = activeLineWidth;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      } else if (len >= 3) {
+        const p0 = len >= 4 ? pts[len - 4] : pts[len - 3];
+        const p1 = pts[len - 3];
+        const p2 = pts[len - 2];
+        const p3 = pts[len - 1];
+        drawCubicBezierSplineSegment(ctx, p0, p1, p2, p3, lineWidth, color);
+      }
     }
   };
 
@@ -509,6 +561,19 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     setIsDrawing(false);
 
     if (currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
+      const canvas = canvasRef.current;
+      if (canvas && tool === 'pen') {
+        const ctx = canvas.getContext('2d');
+        const pts = currentStrokeRef.current.points;
+        const len = pts.length;
+        if (len >= 2) {
+          const p0 = len >= 3 ? pts[len - 3] : pts[len - 2];
+          const p1 = pts[len - 2];
+          const p2 = pts[len - 1];
+          const p3 = p2;
+          drawCubicBezierSplineSegment(ctx, p0, p1, p2, p3, lineWidth, color);
+        }
+      }
       strokesRef.current.push(currentStrokeRef.current);
       currentStrokeRef.current = null;
     }
