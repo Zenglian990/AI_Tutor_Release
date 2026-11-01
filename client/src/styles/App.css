@@ -449,7 +449,13 @@ body.light-mode .chat-textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.input-actions-left::-webkit-scrollbar {
+  display: none;
 }
 
 .input-actions-right {

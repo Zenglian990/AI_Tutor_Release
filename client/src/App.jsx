@@ -635,8 +635,11 @@ function AppInner() {
         try {
           // 直通传输：无损轻量原生 Opus/WebM 或 AAC/MP4，跳过耗时 1.5s 的客户端重采样与 WAV 转换
           const fileName = mime.includes('mp4') ? 'voice.mp4' : (mime.includes('aac') ? 'voice.aac' : 'voice.webm');
+          const audioFile = (typeof File !== 'undefined')
+            ? new File([audioBlob], fileName, { type: mime })
+            : audioBlob;
           const formData = new FormData();
-          formData.append('audio', audioBlob, fileName);
+          formData.append('audio', audioFile, fileName);
           const response = await authFetch('/api/transcribe', { method: 'POST', body: formData });
           if (response.ok) {
             const data = await response.json();
@@ -659,12 +662,12 @@ function AppInner() {
           } else {
             setInput('');
             if (isDialogueLoop) setVoiceDialogueOpen(false);
-            showToast('语音识别服务响应异常，请重试或手动输入', 'error');
+            showToast('🎙️ 没听清您的说话，请靠近麦克风再说一遍，或直接打字哦~', 'info');
           }
         } catch (err) {
           setInput('');
           if (isDialogueLoop) setVoiceDialogueOpen(false);
-          showToast('语音识别网络异常，请检查网络后重试', 'error');
+          showToast('🎙️ 录音网络稍有波动，请再试一次或直接打字~', 'info');
         } finally {
           setIsLoading(false);
         }
@@ -1588,11 +1591,11 @@ function AppInner() {
         hasActiveChat={messages.length > 0}
       />
 
-      {/* 现代移动端渐隐 Toast 状态提示 (替代原生阻塞式 alert) */}
+      {/* 现代移动端渐隐 Toast 状态提示 (替代原生阻塞式 alert，安全漂浮在 Header 下方) */}
       {toast && (
         <div style={{
           position: 'fixed',
-          top: '24px',
+          top: 'calc(env(safe-area-inset-top, 0px) + 72px)',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 99999,
@@ -1601,6 +1604,8 @@ function AppInner() {
           gap: '8px',
           padding: '10px 20px',
           borderRadius: '30px',
+          maxWidth: '90%',
+          boxSizing: 'border-box',
           background: toast.type === 'error'
             ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95))'
             : toast.type === 'success'

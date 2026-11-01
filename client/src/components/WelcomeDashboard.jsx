@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatGrade, authFetch, getApiUrl } from '../store/useStore';
+import { isFeatureVisible, getEssayFeatureConfig, getExamFeatureConfig } from '../utils/gradeFeatureGate';
 
 export default function WelcomeDashboard({
   currentProfile,
@@ -260,38 +261,23 @@ export default function WelcomeDashboard({
           );
         })()}
 
+        {/* 1. 闯关与模考评测卡片 (分龄自适应: 单元闯关 / 中考真题 / 高考全真) */}
         {onOpenTest && (() => {
-          let examTitle = '名校中考模考';
-          let examDesc = '中考真题规格沉浸式倒计时，名师步骤赋分与压轴题剖析';
-          let examCta = '进入中考考场 →';
-
-          if (['10', '11', '12'].some(n => gradeStr.startsWith(n))) {
-            examTitle = '高考全真模考';
-            examDesc = '高考全国卷全真试题规格，沉浸式倒计时与规范解题步骤给分';
-            examCta = '进入高考考场 →';
-          } else if (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) {
-            examTitle = '单元模拟闯关';
-            examDesc = '课本单元随堂小测，生动评分与趣味名师讲解';
-            examCta = '开始小测 →';
-          } else if (['4_', '5_', '6_'].some(n => gradeStr.startsWith(n)) || ['4', '5', '6'].includes(gradeStr)) {
-            examTitle = '名校期末模考';
-            examDesc = '名校期末全真试卷规格，沉浸式倒计时与规范解题给分';
-            examCta = '进入期末考场 →';
-          }
-
+          const examCfg = getExamFeatureConfig(selectedGrade);
           return (
             <div className="action-card" onClick={onOpenTest} role="button" tabIndex={0} style={{ borderColor: 'rgba(236, 72, 153, 0.4)', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(219, 39, 119, 0.05))' }}>
               <div className="action-card-header">
                 <span className="action-card-icon">🏛️</span>
-                <span className="action-card-name" style={{ color: '#ec4899' }}>{examTitle}</span>
+                <span className="action-card-name" style={{ color: '#ec4899' }}>{examCfg.title}</span>
               </div>
-              <p className="action-card-desc">{examDesc}</p>
-              <div className="action-card-cta" style={{ color: '#ec4899' }}>{examCta}</div>
+              <p className="action-card-desc">{examCfg.desc}</p>
+              <div className="action-card-cta" style={{ color: '#ec4899' }}>{examCfg.cta}</div>
             </div>
           );
         })()}
 
-        {onOpenManipulatives && (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) && (
+        {/* 2. 小学趣味实物教具 (严格仅限小学 1-6 年级数学) */}
+        {onOpenManipulatives && isFeatureVisible('manipulatives', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenManipulatives} role="button" tabIndex={0} style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">🎒</span>
@@ -302,7 +288,20 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {onOpenGeometrySandbox && (['7_', '8_', '9_'].some(n => gradeStr.startsWith(n)) || ['7', '8', '9'].includes(gradeStr)) && (
+        {/* 3. 60秒趣味口算天天练 (小学 1-6 年级数学及初一强化) */}
+        {onOpenMentalMath && isFeatureVisible('mentalMath', selectedGrade, selectedSubject) && (
+          <div className="action-card" onClick={onOpenMentalMath} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(16, 185, 129, 0.05))' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">⚡</span>
+              <span className="action-card-name" style={{ color: '#38bdf8' }}>60秒趣味口算天天练</span>
+            </div>
+            <p className="action-card-desc">自适应速算冲刺，移动端九宫格大键盘，连对暴击获EXP</p>
+            <div className="action-card-cta" style={{ color: '#38bdf8' }}>口算冲刺 →</div>
+          </div>
+        )}
+
+        {/* 4. 动点压轴几何沙盒 (初高中 7-12 年级数学) */}
+        {onOpenGeometrySandbox && isFeatureVisible('geometrySandbox', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenGeometrySandbox} role="button" tabIndex={0} style={{ borderColor: 'rgba(37, 99, 235, 0.4)', background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">📐</span>
@@ -313,7 +312,8 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {onOpenStepScratchpad && (
+        {/* 5. 实时代数演算纸 (初高中 7-12 年级数理 CAS) */}
+        {onOpenStepScratchpad && isFeatureVisible('stepScratchpad', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenStepScratchpad} role="button" tabIndex={0} style={{ borderColor: 'rgba(16, 185, 129, 0.4)', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">📐</span>
@@ -324,7 +324,8 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {onOpenPhysicsSimulator && (
+        {/* 6. 物理动态微实验台 (严格仅限初二8年级及以上物理/科学) */}
+        {onOpenPhysicsSimulator && isFeatureVisible('physicsSimulator', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenPhysicsSimulator} role="button" tabIndex={0} style={{ borderColor: 'rgba(2, 132, 199, 0.4)', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(3, 105, 161, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">🔬</span>
@@ -335,18 +336,23 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {onOpenEssay && (
-          <div className="action-card" onClick={onOpenEssay} role="button" tabIndex={0} style={{ borderColor: 'rgba(217, 119, 6, 0.4)', background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(180, 83, 9, 0.05))' }}>
-            <div className="action-card-header">
-              <span className="action-card-icon">🖋️</span>
-              <span className="action-card-name" style={{ color: '#f59e0b' }}>中高考作文名师精批</span>
+        {/* 7. 作文名师精批 / 看图写话 (语文学科特化，分龄自适应文案) */}
+        {onOpenEssay && isFeatureVisible('essay', selectedGrade, selectedSubject) && (() => {
+          const essayCfg = getEssayFeatureConfig(selectedGrade);
+          return (
+            <div className="action-card" onClick={onOpenEssay} role="button" tabIndex={0} style={{ borderColor: 'rgba(217, 119, 6, 0.4)', background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(180, 83, 9, 0.05))' }}>
+              <div className="action-card-header">
+                <span className="action-card-icon">🖋️</span>
+                <span className="action-card-name" style={{ color: '#f59e0b' }}>{essayCfg.title}</span>
+              </div>
+              <p className="action-card-desc">{essayCfg.desc}</p>
+              <div className="action-card-cta" style={{ color: '#f59e0b' }}>{essayCfg.cta}</div>
             </div>
-            <p className="action-card-desc">五维雷达专业阅卷标准，特级名师逐句前后润色升格点石成金</p>
-            <div className="action-card-cta" style={{ color: '#f59e0b' }}>作文升格 →</div>
-          </div>
-        )}
+          );
+        })()}
 
-        {onOpenChemistry && (
+        {/* 8. 化学虚拟微实验台 (严格仅限初三9年级及以上化学/科学) */}
+        {onOpenChemistry && isFeatureVisible('chemistryLab', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenChemistry} role="button" tabIndex={0} style={{ borderColor: 'rgba(13, 148, 136, 0.4)', background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(5, 150, 105, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">⚗️</span>
@@ -357,13 +363,14 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {onOpenEnglishRolePlay && (
+        {/* 9. 英语听说情景对练 (严格仅限英语学科) */}
+        {onOpenEnglishRolePlay && isFeatureVisible('englishRolePlay', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenEnglishRolePlay} role="button" tabIndex={0} style={{ borderColor: 'rgba(37, 99, 235, 0.4)', background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">🗣️</span>
               <span className="action-card-name" style={{ color: '#60a5fa' }}>英语听说情景对练</span>
             </div>
-            <p className="action-card-desc">中考口语人机测试4大场景角色扮演，逐词音标级发音雷达纠错</p>
+            <p className="action-card-desc">口语人机测试情景角色扮演，逐词音标级发音雷达纠错</p>
             <div className="action-card-cta" style={{ color: '#60a5fa' }}>情景对练 →</div>
           </div>
         )}
@@ -401,29 +408,8 @@ export default function WelcomeDashboard({
           </div>
         )}
 
-        {/* 🎯 高考高频押题密卷 (高中阶段特化) vs ⚡ 60秒趣味口算天天练 (小初阶段) */}
-        {['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) && onOpenTest ? (
-          <div className="action-card" onClick={onOpenTest} role="button" tabIndex={0} style={{ borderColor: 'rgba(239, 68, 68, 0.4)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.05))' }}>
-            <div className="action-card-header">
-              <span className="action-card-icon">🎯</span>
-              <span className="action-card-name" style={{ color: '#f87171' }}>高考高频押题密卷</span>
-            </div>
-            <p className="action-card-desc">历年高考高频母题与核心题眼精准提炼，全真高考步骤采分点评分</p>
-            <div className="action-card-cta" style={{ color: '#f87171' }}>开考押题卷 →</div>
-          </div>
-        ) : onOpenMentalMath ? (
-          <div className="action-card" onClick={onOpenMentalMath} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(16, 185, 129, 0.05))' }}>
-            <div className="action-card-header">
-              <span className="action-card-icon">⚡</span>
-              <span className="action-card-name" style={{ color: '#38bdf8' }}>60秒趣味口算天天练</span>
-            </div>
-            <p className="action-card-desc">1-9年级自适应速算冲刺，移动端九宫格大键盘，连对暴击获EXP</p>
-            <div className="action-card-cta" style={{ color: '#38bdf8' }}>口算冲刺 →</div>
-          </div>
-        ) : null}
-
-        {/* 📖 中考数理化必备公式定理速查宝典 */}
-        {onOpenFormulaHandbook && (
+        {/* 10. 数理化必备公式定理速查宝典 (初高中 7-12 年级数理化) */}
+        {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', selectedGrade, selectedSubject) && (
           <div className="action-card" onClick={onOpenFormulaHandbook} role="button" tabIndex={0} style={{ borderColor: 'rgba(168, 85, 247, 0.4)', background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(139, 92, 246, 0.05))' }}>
             <div className="action-card-header">
               <span className="action-card-icon">📖</span>
@@ -431,6 +417,18 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">{['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) ? '导数圆锥曲线、万有引力动量电磁、平衡Kp与电化学离线速查' : '代数几何、物理力电浮力、化学口诀离线秒查，一键复制提问'}</p>
             <div className="action-card-cta" style={{ color: '#c084fc' }}>速查宝典 →</div>
+          </div>
+        )}
+
+        {/* 11. 长周期战役沙盘 (初中与高中 7-12 年级) */}
+        {onOpenRoadmap && isFeatureVisible('campaignRoadmap', selectedGrade, selectedSubject) && (
+          <div className="action-card" onClick={onOpenRoadmap} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">🏛️</span>
+              <span className="action-card-name" style={{ color: '#38bdf8' }}>长周期战役沙盘</span>
+            </div>
+            <p className="action-card-desc">全局把控中考/期末提分节奏，锁定阶段里程碑核心分</p>
+            <div className="action-card-cta" style={{ color: '#38bdf8' }}>查看看板 →</div>
           </div>
         )}
 
@@ -443,17 +441,6 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">多巴胺成长驱动：连胜天数、费曼反讲勋章与数理院士之路</p>
             <div className="action-card-cta" style={{ color: '#facc15' }}>查看段位勋章 →</div>
-          </div>
-        )}
-
-        {onOpenRoadmap && (
-          <div className="action-card" onClick={onOpenRoadmap} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
-            <div className="action-card-header">
-              <span className="action-card-icon">🏛️</span>
-              <span className="action-card-name" style={{ color: '#38bdf8' }}>长周期战役沙盘</span>
-            </div>
-            <p className="action-card-desc">全局把控中考/期末提分节奏，锁定阶段里程碑核心分</p>
-            <div className="action-card-cta" style={{ color: '#38bdf8' }}>查看看板 →</div>
           </div>
         )}
 

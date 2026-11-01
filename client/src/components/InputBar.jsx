@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useAppStore } from '../store/useStore';
+import { isFeatureVisible } from '../utils/gradeFeatureGate';
 
 const QUICK_MATH_SYMBOLS = [
   { label: '+', insert: '+' },
@@ -59,6 +61,10 @@ const InputBar = React.memo(function InputBar({
   const [localVal, setLocalVal] = useState(input);
   const [showSymbols, setShowSymbols] = useState(false);
   const textareaRef = useRef(null);
+
+  const { selectedGrade, selectedSubject, currentProfile } = useAppStore();
+  const activeGrade = selectedGrade || currentProfile?.grade || '7_up';
+  const activeSubject = selectedSubject || '';
 
   const handleInsertSymbol = (sym) => {
     const ta = textareaRef.current;
@@ -318,18 +324,18 @@ const InputBar = React.memo(function InputBar({
               📑 整页秒批
             </button>
           )}
-          {onOpenFormulaHandbook && (
+          {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
             <button
               type="button"
               className="quick-hint-chip"
               style={{ borderColor: '#a855f7', color: '#c084fc', background: 'rgba(168, 85, 247, 0.1)' }}
-              title="打开中考数理化必备公式定理速查宝典"
+              title="打开数理化必备公式定理速查宝典"
               onClick={onOpenFormulaHandbook}
             >
               📖 公式宝典
             </button>
           )}
-          {onOpenStepScratchpad && (
+          {onOpenStepScratchpad && isFeatureVisible('stepScratchpad', activeGrade, activeSubject) && (
             <button
               type="button"
               className="quick-hint-chip"
@@ -340,45 +346,45 @@ const InputBar = React.memo(function InputBar({
               📐 分步演算纸
             </button>
           )}
-          {onOpenPhysicsSimulator && (
+          {onOpenPhysicsSimulator && isFeatureVisible('physicsSimulator', activeGrade, activeSubject) && (
             <button
               type="button"
               className="quick-hint-chip"
               style={{ borderColor: '#0284c7', color: '#38bdf8', background: 'rgba(2, 132, 199, 0.1)' }}
-              title="打开初中物理动态虚拟微实验台（凸透镜光路折射·欧姆定律滑动变阻器）"
+              title="打开物理动态虚拟微实验台（凸透镜光路折射·欧姆定律滑动变阻器）"
               onClick={onOpenPhysicsSimulator}
             >
               🔬 物理微实验
             </button>
           )}
-          {onOpenEssay && (
+          {onOpenEssay && isFeatureVisible('essay', activeGrade, activeSubject) && (
             <button
               type="button"
               className="quick-hint-chip"
               style={{ borderColor: '#d97706', color: '#f59e0b', background: 'rgba(217, 119, 6, 0.1)' }}
-              title="中高考作文五维精批与特级名师逐句升格"
+              title="作文名师五维精批与逐句升格"
               onClick={onOpenEssay}
             >
               🖋️ 作文精批
             </button>
           )}
-          {onOpenChemistry && (
+          {onOpenChemistry && isFeatureVisible('chemistryLab', activeGrade, activeSubject) && (
             <button
               type="button"
               className="quick-hint-chip"
               style={{ borderColor: '#059669', color: '#10b981', background: 'rgba(5, 150, 105, 0.1)' }}
-              title="初中化学气体制备装置拼装与微观分子重组模型"
+              title="化学气体制备装置拼装与微观分子重组模型"
               onClick={onOpenChemistry}
             >
               ⚗️ 化学微实验
             </button>
           )}
-          {onOpenEnglishRolePlay && (
+          {onOpenEnglishRolePlay && isFeatureVisible('englishRolePlay', activeGrade, activeSubject) && (
             <button
               type="button"
               className="quick-hint-chip"
               style={{ borderColor: '#2563eb', color: '#60a5fa', background: 'rgba(37, 99, 235, 0.1)' }}
-              title="中考英语听说情景对练与音标级发音雷达"
+              title="英语听说情景对练与音标级发音雷达"
               onClick={onOpenEnglishRolePlay}
             >
               🗣️ 英语情景对练
@@ -523,27 +529,29 @@ const InputBar = React.memo(function InputBar({
                 </svg>
               </label>
 
-              {/* 常用数学理化符号开关 */}
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => setShowSymbols(s => !s)}
-                title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
-                aria-label="切换常用数学理化符号"
-                style={{
-                  color: showSymbols ? '#3b82f6' : '#94a3b8',
-                  fontWeight: 700,
-                  fontSize: '1.05rem',
-                  background: showSymbols ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
-                  borderRadius: '10px',
-                  border: showSymbols ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent'
-                }}
-              >
-                ∑
-              </button>
+              {/* 常用数学理化符号开关 (仅在数理化学科开启) */}
+              {isFeatureVisible('mathSymbols', activeGrade, activeSubject) && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => setShowSymbols(s => !s)}
+                  title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
+                  aria-label="切换常用数学理化符号"
+                  style={{
+                    color: showSymbols ? '#3b82f6' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '1.05rem',
+                    background: showSymbols ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
+                    borderRadius: '10px',
+                    border: showSymbols ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent'
+                  }}
+                >
+                  ∑
+                </button>
+              )}
 
-              {/* 数理化公式定理速查宝典 */}
-              {onOpenFormulaHandbook && (
+              {/* 数理化公式定理速查宝典 (初高中数理化学科) */}
+              {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
                 <button
                   type="button"
                   className="icon-btn"

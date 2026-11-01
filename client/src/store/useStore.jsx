@@ -243,7 +243,16 @@ async function authFetch(path, options = {}) {
           } else if (value instanceof File) {
             fileFields.push(`${key}:${value.name}:${value.size}`);
           } else if (value instanceof Blob) {
-            const defaultName = key === 'audio' ? 'voice.wav' : (key === 'image' ? 'image.jpg' : `${key}.bin`);
+            let defaultName = value.name;
+            if (!defaultName) {
+              if (key === 'audio') {
+                defaultName = value.type?.includes('mp4') ? 'voice.mp4' : (value.type?.includes('aac') ? 'voice.aac' : (value.type?.includes('webm') ? 'voice.webm' : 'voice.wav'));
+              } else if (key === 'image') {
+                defaultName = 'image.jpg';
+              } else {
+                defaultName = `${key}.bin`;
+              }
+            }
             fileFields.push(`${key}:${defaultName}:${value.size}`);
           }
         }
