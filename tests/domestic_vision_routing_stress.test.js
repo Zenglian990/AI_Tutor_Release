@@ -14,13 +14,6 @@ undici.fetch = async (url, options) => {
   const parsedBody = options?.body ? JSON.parse(options.body) : null;
   const authHeader = options?.headers?.Authorization || options?.headers?.authorization || '';
 
-  interceptedRequests.push({
-    url: urlStr,
-    options,
-    body: parsedBody,
-    authHeader
-  });
-
   // Mock OpenAI-compatible chat completion response for domestic vision providers
   if (
     urlStr.includes('siliconflow.cn') ||
@@ -28,6 +21,13 @@ undici.fetch = async (url, options) => {
     urlStr.includes('bigmodel.cn') ||
     urlStr.includes('api.deepseek.com')
   ) {
+    interceptedRequests.push({
+      url: urlStr,
+      options,
+      body: parsedBody,
+      authHeader
+    });
+
     const mockReply = {
       choices: [{
         message: {
