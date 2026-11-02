@@ -404,10 +404,10 @@ body.light-mode .table-responsive tr:hover {
   color: var(--text-primary);
   font-size: 1rem;
   font-family: inherit;
-  line-height: 1.5;
-  padding: 4px 6px;
+  line-height: 1.45;
+  padding: 8px 10px;
   resize: none;
-  min-height: 38px;
+  min-height: 44px;
   max-height: 130px;
   overflow-y: auto;
   writing-mode: horizontal-tb !important;
@@ -488,6 +488,124 @@ body.light-mode .chat-textarea::placeholder {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.3);
   cursor: not-allowed;
+}
+
+/* 🛠️ 智能助学工具箱抽屉样式 */
+.more-tools-drawer {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 20px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.15);
+  animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.more-tools-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.more-tools-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #60a5fa;
+}
+
+.more-tools-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #94a3b8;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.more-tools-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.more-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.more-tool-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.more-tool-card:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.tool-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.tool-card-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tool-card-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-card-desc {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 语音输入按钮样式修正 */
@@ -636,8 +754,8 @@ body.light-mode .chat-textarea::placeholder {
     gap: 14px !important;
   }
   .header {
-    flex-wrap: wrap;
-    padding: 10px 12px;
+    flex-wrap: nowrap;
+    padding: 8px 10px;
   }
   .header h1 { font-size: 1.05rem; }
   .header-subtitle { display: none; }

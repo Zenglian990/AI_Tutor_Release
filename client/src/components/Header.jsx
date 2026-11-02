@@ -163,7 +163,7 @@ export default function Header({
       {/* 2. 学习情境胶囊 (Center) - 档案·年级·学科·名师 紧凑整合 */}
       <div className="header-capsule">
         {/* 学生档案 */}
-        <div className="capsule-item">
+        <div className="capsule-item capsule-profile-item">
           <select
             className="capsule-select"
             value={currentProfileId}
@@ -177,10 +177,10 @@ export default function Header({
           </select>
         </div>
 
-        <div className="capsule-divider" />
+        <div className="capsule-divider capsule-profile-divider" />
 
         {/* 年级 */}
-        <div className="capsule-item">
+        <div className="capsule-item capsule-grade-item">
           <select
             className="capsule-select"
             value={selectedGrade}
@@ -202,7 +202,7 @@ export default function Header({
         <div className="capsule-divider" />
 
         {/* 学科 */}
-        <div className="capsule-item">
+        <div className="capsule-item capsule-subject-item">
           <select
             className="capsule-select"
             value={selectedSubject}
@@ -222,7 +222,7 @@ export default function Header({
         {onOpenVoiceCompanion && (
           <button
             onClick={onOpenVoiceCompanion}
-            className="header-btn-pill"
+            className="header-btn-pill header-btn-voice"
             title="开启面对面伴学 (全屏沉浸实时语音对话·对标GPT-4o/Gemini Live)"
             aria-label="开启面对面伴学"
             style={{
@@ -242,7 +242,7 @@ export default function Header({
         {onOpenGamification && (
           <button
             onClick={onOpenGamification}
-            className="header-btn-pill"
+            className="header-btn-pill header-btn-streak"
             title="多邻国式连续学习连胜榜 · 查看连胜周历与同桌小明羁绊"
             aria-label="打开连续学习连胜榜"
             style={{
@@ -261,7 +261,7 @@ export default function Header({
         {/* 教学模式 (直答 / 启发 / 苏氏提问) */}
         <button
           onClick={handleSocraticClick}
-          className="header-btn-pill"
+          className="header-btn-pill header-btn-socratic"
           title={getTranslation(language, `mode.${currentSocratic.value}_title`)}
           aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
           style={{
@@ -274,12 +274,12 @@ export default function Header({
           <span className="btn-label">{currentSocratic.shortLabel}</span>
         </button>
 
-        <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+        <div className="header-actions-divider" style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
 
         {/* 主题明暗切换 */}
         <button
           onClick={onThemeToggle}
-          className="header-btn-icon"
+          className="header-btn-icon header-btn-theme"
           title={isLightMode ? '切换到深色模式' : '切换到浅色模式'}
           aria-label="主题切换"
         >
@@ -290,7 +290,7 @@ export default function Header({
         {onOpenEyeCare && (
           <button
             onClick={onOpenEyeCare}
-            className="header-btn-icon"
+            className="header-btn-icon header-btn-eyecare"
             title="国际眼科 20-20-20 视力守护与专注番茄钟"
             aria-label="打开视力守护番茄钟"
           >
@@ -300,7 +300,7 @@ export default function Header({
         {onOpenDailyCard && (
           <button
             onClick={onOpenDailyCard}
-            className="header-btn-icon"
+            className="header-btn-icon header-btn-daily"
             title="生成今日微信学情战报海报"
             aria-label="生成今日学情战报"
           >
@@ -311,7 +311,7 @@ export default function Header({
         {/* 基础偏好设置 */}
         <button
           onClick={onSettingsOpen}
-          className="header-btn-icon"
+          className="header-btn-icon header-btn-settings"
           title="基础偏好设置 (教材版本·名师风格·大模型引擎·护眼模式)"
           aria-label="打开基础偏好设置"
         >

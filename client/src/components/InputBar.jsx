@@ -60,6 +60,7 @@ const InputBar = React.memo(function InputBar({
 }) {
   const [localVal, setLocalVal] = useState(input);
   const [showSymbols, setShowSymbols] = useState(false);
+  const [showMoreTools, setShowMoreTools] = useState(false);
   const textareaRef = useRef(null);
 
   const { selectedGrade, selectedSubject, currentProfile } = useAppStore();
@@ -482,6 +483,170 @@ const InputBar = React.memo(function InputBar({
         </div>
       )}
 
+      {/* 🛠️ 智能助学工具箱抽屉 (展开式，杜绝底部按钮横向过度拥挤) */}
+      {showMoreTools && (
+        <div className="more-tools-drawer" role="region" aria-label="智能助学工具箱">
+          <div className="more-tools-header">
+            <span className="more-tools-title">
+              <span>🛠️</span> 智能助学工具箱
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowMoreTools(false)}
+              className="more-tools-close-btn"
+              aria-label="关闭工具箱"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="more-tools-grid">
+            {/* 1. 公式宝典 */}
+            {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenFormulaHandbook(); setShowMoreTools(false); }}
+                title="数理化必备公式定理速查宝典"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>📖</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">公式宝典</span>
+                  <span className="tool-card-desc">公式定理速查</span>
+                </div>
+              </button>
+            )}
+
+            {/* 2. 跨年级考点星图 */}
+            {onOpenPrerequisiteTrace && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenPrerequisiteTrace(); setShowMoreTools(false); }}
+                title="跨年级考点星图与断层溯源"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa' }}>🌌</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">考点星图</span>
+                  <span className="tool-card-desc">断层溯源基石</span>
+                </div>
+              </button>
+            )}
+
+            {/* 3. 费曼小老师模式 */}
+            {onToggleFeynmanMode && (
+              <button
+                type="button"
+                className={`more-tool-card ${isFeynmanMode ? 'active' : ''}`}
+                onClick={() => { onToggleFeynmanMode(); setShowMoreTools(false); }}
+                title="费曼小老师以教代学模式"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>🧑‍🏫</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">{isFeynmanMode ? '退出费曼' : '费曼模式'}</span>
+                  <span className="tool-card-desc">以教代学·同桌互动</span>
+                </div>
+              </button>
+            )}
+
+            {/* 4. 实时代数分步演算纸 */}
+            {onOpenStepScratchpad && isFeatureVisible('stepScratchpad', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenStepScratchpad(); setShowMoreTools(false); }}
+                title="步骤级代数演算纸"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>📐</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">分步演算纸</span>
+                  <span className="tool-card-desc">写一步验一步CAS</span>
+                </div>
+              </button>
+            )}
+
+            {/* 5. 物理虚拟微实验 */}
+            {onOpenPhysicsSimulator && isFeatureVisible('physicsSimulator', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenPhysicsSimulator(); setShowMoreTools(false); }}
+                title="物理动态虚拟微实验台"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8' }}>🔬</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">物理微实验</span>
+                  <span className="tool-card-desc">凸透镜·欧姆定律</span>
+                </div>
+              </button>
+            )}
+
+            {/* 6. 化学虚拟微实验 */}
+            {onOpenChemistry && isFeatureVisible('chemistryLab', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenChemistry(); setShowMoreTools(false); }}
+                title="化学虚拟微实验台"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(5, 150, 105, 0.15)', color: '#10b981' }}>⚗️</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">化学微实验</span>
+                  <span className="tool-card-desc">气体制备·分子重组</span>
+                </div>
+              </button>
+            )}
+
+            {/* 7. 中高考作文名师精批 */}
+            {onOpenEssay && isFeatureVisible('essay', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenEssay(); setShowMoreTools(false); }}
+                title="作文名师精批"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(217, 119, 6, 0.15)', color: '#f59e0b' }}>🖋️</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">作文精批</span>
+                  <span className="tool-card-desc">五维雷达·逐句升格</span>
+                </div>
+              </button>
+            )}
+
+            {/* 8. 英语听说情景对练 */}
+            {onOpenEnglishRolePlay && isFeatureVisible('englishRolePlay', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenEnglishRolePlay(); setShowMoreTools(false); }}
+                title="英语情景对练"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa' }}>🗣️</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">情景对练</span>
+                  <span className="tool-card-desc">口语对话·音标纠音</span>
+                </div>
+              </button>
+            )}
+
+            {/* 9. 整页秒批 */}
+            {onOpenBatchGrade && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenBatchGrade(); setShowMoreTools(false); }}
+                title="整页试卷作业秒级识别与批改"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(14, 165, 233, 0.15)', color: '#38bdf8' }}>📑</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">整页秒批</span>
+                  <span className="tool-card-desc">整页多题秒级识别</span>
+                </div>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="input-container" role="form" aria-label="消息输入区域">
         <form className="input-form" onSubmit={handleFormSubmit}>
           <input
@@ -515,7 +680,7 @@ const InputBar = React.memo(function InputBar({
           {/* 底层：操作工具栏 (左侧辅助学习工具，右侧语音与发送，人机工学双端适配) */}
           <div className="input-actions-bar">
             <div className="input-actions-left">
-              {/* 拍照或上传题目图片 */}
+              {/* 1. 拍照或上传题目图片 (核心最高频) */}
               <label
                 htmlFor="image-upload"
                 className="icon-btn camera-btn"
@@ -523,17 +688,34 @@ const InputBar = React.memo(function InputBar({
                 aria-label="拍照或上传题目图片"
                 style={isLoading ? { pointerEvents: 'none', opacity: 0.4 } : {}}
               >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
               </label>
 
-              {/* 常用数学理化符号开关 (仅在数理化学科开启) */}
+              {/* 2. 演练草稿纸 (手写几何/竖式草稿 - 高频动笔核心) */}
+              {onOpenScratchpad && (
+                <button
+                  type="button"
+                  className="icon-btn scratchpad-btn"
+                  onClick={onOpenScratchpad}
+                  title="打开演练草稿纸 (手写几何/竖式草稿)"
+                  aria-label="打开草稿纸"
+                  style={{ color: '#38bdf8' }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                </button>
+              )}
+
+              {/* 3. 常用数学理化符号开关 (仅在数理化学科开启) */}
               {isFeatureVisible('mathSymbols', activeGrade, activeSubject) && (
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn symbols-btn"
                   onClick={() => setShowSymbols(s => !s)}
                   title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
                   aria-label="切换常用数学理化符号"
@@ -550,49 +732,65 @@ const InputBar = React.memo(function InputBar({
                 </button>
               )}
 
-              {/* 数理化公式定理速查宝典 (初高中数理化学科) */}
+              {/* 4. 更多助学工具箱按钮 (点击抽屉式展开公式/星图/费曼/实验，杜绝窄屏拥挤) */}
+              <button
+                type="button"
+                className={`icon-btn more-tools-toggle-btn ${showMoreTools ? 'active' : ''}`}
+                onClick={() => setShowMoreTools(s => !s)}
+                title="展开智能助学工具箱 (公式宝典/考点星图/费曼/实验台等)"
+                aria-label="展开智能助学工具箱"
+                style={{
+                  color: showMoreTools ? '#60a5fa' : '#94a3b8',
+                  background: showMoreTools ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                  borderRadius: '10px',
+                  border: showMoreTools ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
+                  position: 'relative'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                </svg>
+                {isFeynmanMode && (
+                  <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
+                )}
+              </button>
+
+              {/* 5. 桌面宽屏快捷常驻按钮 (在平板/桌面宽屏下直接展现，移动窄屏下自动隐藏归入工具箱) */}
               {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn desktop-tool-btn"
                   onClick={onOpenFormulaHandbook}
-                  title="数理化必备公式定理速查宝典 (中考代数/几何/物理/化学)"
+                  title="数理化必备公式定理速查宝典"
                   aria-label="打开公式宝典"
-                  style={{
-                    color: '#c084fc',
-                    fontSize: '1.05rem',
-                    fontWeight: 700
-                  }}
+                  style={{ color: '#c084fc', fontSize: '1.05rem', fontWeight: 700 }}
                 >
                   📖
                 </button>
               )}
 
-              {/* 跨年级考点星图与断层溯源 */}
               {onOpenPrerequisiteTrace && (
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn desktop-tool-btn"
                   onClick={onOpenPrerequisiteTrace}
-                  title="🌌 跨年级考点星图与断层溯源 (溯源前置概念基石与断层)"
+                  title="🌌 跨年级考点星图与断层溯源"
                   aria-label="打开考点星图与断层溯源"
-                  style={{
-                    color: '#a78bfa',
-                    fontSize: '1.05rem',
-                    fontWeight: 700
-                  }}
+                  style={{ color: '#a78bfa', fontSize: '1.05rem', fontWeight: 700 }}
                 >
                   🌌
                 </button>
               )}
 
-              {/* 费曼小老师以教代学模式开关 */}
               {onToggleFeynmanMode && (
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn desktop-tool-btn"
                   onClick={onToggleFeynmanMode}
-                  title={isFeynmanMode ? '退出费曼小老师模式' : '开启费曼小老师模式 (以教代学·AI扮同桌)'}
+                  title={isFeynmanMode ? '退出费曼小老师模式' : '开启费曼小老师模式'}
                   aria-label="费曼小老师模式"
                   style={{
                     color: isFeynmanMode ? '#f59e0b' : '#94a3b8',
@@ -605,31 +803,14 @@ const InputBar = React.memo(function InputBar({
                   🧑‍🏫
                 </button>
               )}
-
-              {/* 演练草稿纸 (手写几何/竖式草稿) */}
-              {onOpenScratchpad && (
-                <button
-                  type="button"
-                  className="icon-btn"
-                  onClick={onOpenScratchpad}
-                  title="打开演练草稿纸 (手写几何/竖式草稿)"
-                  aria-label="打开草稿纸"
-                  style={{ color: '#38bdf8' }}
-                >
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                  </svg>
-                </button>
-              )}
             </div>
 
             <div className="input-actions-right">
-              {/* 面对面伴学 (全屏沉浸语音) */}
+              {/* 面对面伴学 (仅在桌面宽屏保留底部快捷入口；移动端已在顶栏与启发条常驻) */}
               {onOpenVoiceCompanion && (
                 <button
                   type="button"
-                  className="icon-btn voice-companion-btn"
+                  className="icon-btn voice-companion-btn desktop-only"
                   onClick={onOpenVoiceCompanion}
                   title="开启面对面伴学 (全屏沉浸语音对话)"
                   aria-label="开启面对面伴学"
@@ -651,7 +832,7 @@ const InputBar = React.memo(function InputBar({
                 </button>
               )}
 
-              {/* 语音输入 */}
+              {/* 语音输入按钮 */}
               <button
                 type="button"
                 className={`icon-btn voice-btn ${isListening ? 'listening' : ''}`}
@@ -665,7 +846,7 @@ const InputBar = React.memo(function InputBar({
                 aria-label={isListening ? '停止录音' : '开始语音输入'}
                 disabled={isLoading}
               >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                   <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
