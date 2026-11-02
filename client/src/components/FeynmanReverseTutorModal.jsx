@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { authFetch } from '../store/useStore';
 
 /**
  * FeynmanReverseTutorModal
@@ -20,6 +21,8 @@ export default function FeynmanReverseTutorModal({
   const [evaluating, setEvaluating] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState(null);
   const [speechError, setSpeechError] = useState('');
+  const [followUpAnswer, setFollowUpAnswer] = useState('');
+  const [submittingFollowUp, setSubmittingFollowUp] = useState(false);
 
   const recognitionRef = useRef(null);
 
@@ -27,6 +30,7 @@ export default function FeynmanReverseTutorModal({
     if (!isOpen) {
       setExplanation('');
       setEvaluationResult(null);
+      setFollowUpAnswer('');
       setIsRecording(false);
       setSpeechError('');
       if (recognitionRef.current) {
@@ -93,9 +97,8 @@ export default function FeynmanReverseTutorModal({
     setEvaluating(true);
 
     try {
-      const res = await fetch('/api/feynman/evaluate', {
+      const res = await authFetch('/api/feynman/evaluate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question,
           student_explanation: explanation,
@@ -282,11 +285,76 @@ export default function FeynmanReverseTutorModal({
                     </div>
                     {evaluationResult.follow_up_question && (
                       <div style={{
-                        background: '#fef3c7', border: '1px solid #fde047', borderRadius: '10px',
-                        padding: '10px 12px', fontSize: '0.88rem', color: '#854d0e', marginTop: '6px'
+                        background: '#fef3c7', border: '1px solid #fde047', borderRadius: '12px',
+                        padding: '12px 14px', fontSize: '0.88rem', color: '#854d0e', marginTop: '8px'
                       }}>
-                        <strong>❓ 小明好奇反问（装不懂求教）：</strong>
-                        <div style={{ marginTop: '2px' }}>{evaluationResult.follow_up_question}</div>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>❓</span>
+                          <span>小明好奇反问（装不懂求教）：</span>
+                        </div>
+                        <div style={{ marginTop: '4px', fontSize: '0.92rem', color: '#78350f', fontWeight: 600 }}>
+                          {evaluationResult.follow_up_question}
+                        </div>
+
+                        {/* 二级模态框内交互：学生可直接给小明继续深入解答 */}
+                        <div style={{ marginTop: '10px' }}>
+                          <textarea
+                            rows={2}
+                            value={followUpAnswer}
+                            onChange={e => setFollowUpAnswer(e.target.value)}
+                            placeholder="小老师，针对小明这个反问，继续用通俗的话点透他吧…"
+                            style={{
+                              width: '100%', padding: '8px 10px', borderRadius: '8px',
+                              border: '1px solid #f59e0b', fontSize: '0.86rem', outline: 'none',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                            <button
+                              type="button"
+                              disabled={!followUpAnswer.trim() || submittingFollowUp}
+                              onClick={async () => {
+                                if (!followUpAnswer.trim()) return;
+                                setSubmittingFollowUp(true);
+                                try {
+                                  const res = await authFetch('/api/feynman/evaluate', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                      question: `【针对追问】：${evaluationResult.follow_up_question}`,
+                                      student_explanation: followUpAnswer,
+                                      student_name: studentName,
+                                      subject,
+                                      grade
+                                    })
+                                  });
+                                  const json = await res.json();
+                                  if (json.success && json.data) {
+                                    setEvaluationResult(prev => ({
+                                      ...json.data,
+                                      mastery_score: 100,
+                                      stars: 5,
+                                      peer_reply: `👦 小明听了恍然大悟：“哇！原来是这样！${json.data.peer_reply}”`,
+                                      follow_up_question: null,
+                                      praise: `特级名师点评：太棒了！你用耐心解答了同桌的深层卡点，知识留存率达成 100% 满分通关！`
+                                    }));
+                                    setFollowUpAnswer('');
+                                  }
+                                } catch (err) {
+                                  console.warn('[Feynman Follow-up Error]:', err);
+                                } finally {
+                                  setSubmittingFollowUp(false);
+                                }
+                              }}
+                              style={{
+                                background: followUpAnswer.trim() ? '#d97706' : '#cbd5e1',
+                                color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '8px',
+                                fontWeight: 700, fontSize: '0.82rem', cursor: followUpAnswer.trim() ? 'pointer' : 'not-allowed'
+                              }}
+                            >
+                              {submittingFollowUp ? '⚡ 小明消化中...' : '💡 讲给小明听 (解答追问)'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

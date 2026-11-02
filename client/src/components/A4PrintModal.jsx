@@ -1300,7 +1300,7 @@ function A4PrintModalInner({
             }}>
               <span>{studentName}专属私教 · 知识图谱靶向实体卷</span>
               <span>打印日期：{currentDateStr}</span>
-              <span>第 1 页 (共 1 页)</span>
+              <span>第 1 页 (共 {Math.max(1, Math.ceil((displayQuestions?.length || 1) / (printMode === 'blank_student' ? 3 : 2)))} 页)</span>
             </div>
           </div>
         </div>
