@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.3_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.7.3_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-谷歌云亚太极速直达-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.3)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.7.3)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.6.3 FSRS科学记忆·交互画板·费曼同桌)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.7.3 整页红墨水秒批·3.9万真题防幻觉·人体工程学)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,15 +34,25 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📦 最新版安装包直链下载**：[AI_Tutor_v1.6.3.apk (约 10.5MB · FSRS科学记忆调度·Mafs可交互数学画板·费曼以教代学同桌模式)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
-- **📦 稳定备用直链**：[AI_Tutor_v1.6.2.apk (约 10.5MB · 三位一体认知架构·续学断点记忆·苏格拉底启发式版)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
-- **✅ v1.6.3 重磅体验跃升 (科学记忆调度 · 交互画板 · 费曼同桌旗舰版)**：
-  - **🧠 FSRS-v4.5 现代科学记忆调度引擎 (Free Spaced Repetition Scheduler)**：
-    - 告别经典 SM-2 粗糙固化间隔，采用 17 维认知参数驱动的动态遗忘曲线方程；
-    - 精准量化记忆稳定性（Stability $S$）、认知难度（Difficulty $D$）与实时提取概率（Retrievability $R$）；
-    - 错题复习自适应“重来/困难/良好/简单”四级反馈，实现错题复习周期的指数级精准调度。
-  - **📐 Mafs 原生手势/拖拽交互数学与几何画板 (Interactive Math Canvas)**：
-    - 告别死板静态图片与生硬只读公式，支持学生通过触控拖拽动态交互探索数学定理；
+- **📦 最新版安装包直链下载**：[AI_Tutor_v1.7.3.apk (约 4.5MB · 整页红墨水秒批改·39,114道全国权威真题防幻觉·移动端人体工程学自适应)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
+- **📦 稳定备用直链**：[AI_Tutor_v1.6.3.apk (约 10.5MB · FSRS现代科学记忆调度·Mafs可交互数学画板·费曼以教代学同桌模式)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
+- **✅ v1.7.3 重磅体验跃升 (整页红墨水秒批 · 权威真题硬锚定防幻觉 · 人体工程学旗舰版)**：
+  - **🔴 整页作业多题智能秒批改 (Homework Batch Grading)**：
+    - 告别单题拍照切图，支持整页试卷一键拍摄，多题自动定位（`box_2d` 外接矩形定位）；
+    - 名师红墨水原图勾叉覆写（✓/✕/步骤得分折线），多题高精度交互画框与一键错题归档；
+    - 多源大模型智能路由：优先调度国产百亿视觉模型（SiliconFlow / DashScope / 智谱）与云端双引擎。
+  - **🎯 39,114 道全国百强名校权威真题 Grounding 题库 (Anti-Hallucination Sandbox)**：
+    - 权威真题指纹与关键词毫秒级本地硬锚定，强行覆盖大模型几何计算幻觉；
+    - 确定性理科沙盒动态校验，做对题目绝对禁止误判，保护学生学习自信心与作答证据。
+  - **📱 移动端头部与输入栏人体工程学自适应优化**：
+    - 彻底解决年级学段长文本换行与顶部胶囊拥挤溢出，横向自适应流式排版；
+    - 底部工具栏与输入框层叠间距优化，大拇指单手握持轻松盲操。
+  - **🖨️ A4 纸质试卷动态页数联动与费曼反思追问闭环**：
+    - 支持试题量与字体行距智能排版自适应（自动计算 1/2/4 页标准 A4 面数）；
+    - 费曼同桌角色互换支持模态内多轮自然语音/文字深度复盘。
+- **🧠 延续 v1.6.3 FSRS-v4.5 现代科学记忆调度与 Mafs 可交互画板**：
+  - 采用 17 维认知参数驱动的动态遗忘曲线方程，量化记忆稳定性（$S$）、难度（$D$）与提取概率（$R$）；
+  - 动态拖拽二次函数与勾股定理，直观顿悟几何规律。
     - 内置“二次函数顶点抛物线探索器”：拖拽顶点与开合度，实时联动 $y = a(x-h)^2 + k$ 解析式与图像拓扑；
     - 内置“勾股定理与直角三角形交互验证板”：拖拽直角顶点动态演示边长变化与勾股数等式成立，直观顿悟几何规律；
     - 无缝内嵌至私教聊天流（````interactive-math`）与几何沙盒实验室中。

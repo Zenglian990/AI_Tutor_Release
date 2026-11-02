@@ -7,10 +7,10 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.6.3_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.7.3_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
 [![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Google_Cloud_Run-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.6.3)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.7.3)
 
 <br/>
 
@@ -21,7 +21,7 @@
 [![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.6.3 FSRS Modern Memory Scheduling·Interactive Math Canvas·Feynman Peer Mode)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.7.3 Full-Page Batch Grading·39k Grounding·Ergonomics)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,11 +34,20 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [AI_Tutor_v1.6.3.apk (~10.5MB · FSRS Scientific Memory Scheduler · Interactive Math Canvas · Feynman Peer Mode)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
-- **📥 Stable Fallback**: [AI_Tutor_v1.6.2.apk (~10.5MB · Tri-Engine Cognitive Architecture · Study Checkpoint Resume)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.2/AI_Tutor_v1.6.2.apk)
-- **✨ v1.6.3 Major Milestone Upgrades (FSRS Memory Engine & Interactive Canvas & Feynman Roleplay)**:
-  - **🧠 FSRS-v4.5 Modern Scientific Memory Engine (Free Spaced Repetition Scheduler)**:
-    - 17-parameter dynamic forgetting curve quantifying Stability $S$, Difficulty $D$, and Retrievability $R$ for optimal mistake review intervals.
+- **📥 Direct APK Download**: [AI_Tutor_v1.7.3.apk (~4.5MB · Full-Page Batch Grading · 39,114 Canonical Question Grounding · Mobile Ergonomics)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
+- **📥 Stable Fallback**: [AI_Tutor_v1.6.3.apk (~10.5MB · FSRS Scientific Memory Scheduler · Interactive Math Canvas · Feynman Peer Mode)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
+- **✨ v1.7.3 Major Milestone Upgrades (Batch Grading & 39k Grounding & Ergonomics)**:
+  - **🔴 Full-Page Homework Red Ink Batch Grading**:
+    - One-shot full-page sheet capture, automatic multiple question detection (`box_2d` coordinate bounding);
+    - Teacher red ink overlay (✓/✕/step score line), high-precision slice review, and one-click mistake notebook archiving;
+    - Multi-provider intelligent routing prioritizing domestic vision models (SiliconFlow / DashScope / Zhipu).
+  - **🎯 39,114 National Benchmark Exam Canonical Grounding Bank**:
+    - Millisecond exact fingerprint & fuzzy keyword anchoring eliminating LLM calculation hallucinations.
+  - **📱 Mobile Ergonomics & Responsive Layout Optimization**:
+    - Zero horizontal crowding or overflow on grade selectors; optimized thumb reach for bottom input bars.
+  - **🖨️ Dynamic A4 Paper Layout & In-Modal Feynman Dialogue**:
+    - Automatic page count adaptation (1/2/4 pages) and in-modal multi-turn reflective Feynman tutoring.
+- **🧠 Continued support for v1.6.3 FSRS-v4.5 Modern Memory Scheduler & Mafs Canvas**:
   - **📐 Mafs Native Interactive Math & Geometry Canvas**:
     - Gesture-draggable parabola and triangle explorers that link formula manipulation directly with spatial geometry.
   - **🧑‍🤝‍🧑 Feynman "Virtual Peer" Roleplay System**:
