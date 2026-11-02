@@ -279,15 +279,23 @@ ${contextSection}学生随附提问/诉求：${query}
       }
     };
 
+    const getReqHeader = (name) => {
+      const lower = name.toLowerCase();
+      for (const [k, v] of Object.entries(req.headers || {})) {
+        if (k.toLowerCase() === lower && v) return String(v).trim();
+      }
+      return '';
+    };
+
     const clientHeaders = {
-      'x-gemini-api-key': req.headers['x-gemini-api-key'] || req.headers['X-Gemini-Api-Key'] || '',
-      'x-deepseek-api-key': req.headers['x-deepseek-api-key'] || req.headers['X-DeepSeek-Api-Key'] || '',
-      'x-deepseek-api-url': req.headers['x-deepseek-api-url'] || req.headers['X-DeepSeek-Api-Url'] || '',
-      'x-siliconflow-api-key': req.headers['x-siliconflow-api-key'] || req.headers['X-Siliconflow-Api-Key'] || '',
-      'x-dashscope-api-key': req.headers['x-dashscope-api-key'] || req.headers['X-Dashscope-Api-Key'] || '',
-      'x-zhipu-api-key': req.headers['x-zhipu-api-key'] || req.headers['X-Zhipu-Api-Key'] || '',
-      'x-openai-api-key': req.headers['x-openai-api-key'] || req.headers['X-Openai-Api-Key'] || '',
-      'x-custom-api-url': req.headers['x-custom-api-url'] || req.headers['X-Custom-Api-Url'] || ''
+      'x-gemini-api-key': getReqHeader('x-gemini-api-key'),
+      'x-deepseek-api-key': getReqHeader('x-deepseek-api-key'),
+      'x-deepseek-api-url': getReqHeader('x-deepseek-api-url'),
+      'x-siliconflow-api-key': getReqHeader('x-siliconflow-api-key'),
+      'x-dashscope-api-key': getReqHeader('x-dashscope-api-key'),
+      'x-zhipu-api-key': getReqHeader('x-zhipu-api-key'),
+      'x-openai-api-key': getReqHeader('x-openai-api-key'),
+      'x-custom-api-url': getReqHeader('x-custom-api-url')
     };
 
     // Auto-switch to vision model if requested model lacks vision capability (e.g. DeepSeek-V3, DeepSeek-R1)

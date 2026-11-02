@@ -312,32 +312,66 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null) {
   const headers = originalOptions?.headers || {};
   const selectedModel = modelName && modelName !== 'default' ? modelName : (process.env.DEEPSEEK_CHAT_MODEL || DEEPSEEK_CHAT_MODEL || 'deepseek-chat');
 
-  const sfKey = (headers['x-siliconflow-api-key'] || headers['X-Siliconflow-Api-Key'] || process.env.SILICONFLOW_API_KEY || '').trim();
-  const dsKey = (headers['x-dashscope-api-key'] || headers['X-Dashscope-Api-Key'] || process.env.DASHSCOPE_API_KEY || '').trim();
-  const zpKey = (headers['x-zhipu-api-key'] || headers['X-Zhipu-Api-Key'] || process.env.ZHIPU_API_KEY || '').trim();
-  const deepseekKey = (headers['x-deepseek-api-key'] || headers['X-DeepSeek-Api-Key'] || process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
-  const customKey = (headers['x-openai-api-key'] || headers['X-Openai-Api-Key'] || process.env.OPENAI_API_KEY || '').trim();
+  const getHeader = (targetName) => {
+    const t = targetName.toLowerCase();
+    for (const [k, v] of Object.entries(headers)) {
+      if (k.toLowerCase() === t && v) return String(v).trim();
+    }
+    return '';
+  };
+
+  const clientSfKey = getHeader('x-siliconflow-api-key');
+  const clientDsKey = getHeader('x-dashscope-api-key');
+  const clientZpKey = getHeader('x-zhipu-api-key');
+  const clientDeepseekKey = getHeader('x-deepseek-api-key');
+  const clientCustomKey = getHeader('x-openai-api-key');
+
+  const sfKey = (clientSfKey || process.env.SILICONFLOW_API_KEY || '').trim();
+  const dsKey = (clientDsKey || process.env.DASHSCOPE_API_KEY || '').trim();
+  const zpKey = (clientZpKey || process.env.ZHIPU_API_KEY || '').trim();
+  const deepseekKey = (clientDeepseekKey || process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || '').trim();
+  const customKey = (clientCustomKey || process.env.OPENAI_API_KEY || '').trim();
 
   let targetUrl = '';
   let targetKey = '';
   let providerName = 'DeepSeek';
 
   const mLower = selectedModel.toLowerCase();
-  if (selectedModel.startsWith('Qwen/') || selectedModel.startsWith('Pro/') || (mLower.includes('qwen') && sfKey) || (sfKey && !dsKey && !deepseekKey)) {
+  if (
+    clientSfKey ||
+    selectedModel.startsWith('deepseek-ai/') ||
+    selectedModel.startsWith('Qwen/') ||
+    selectedModel.startsWith('Pro/') ||
+    selectedModel.startsWith('TeleMM/') ||
+    selectedModel.startsWith('internlm/') ||
+    mLower.includes('siliconflow') ||
+    (mLower.includes('qwen') && sfKey && !clientDsKey) ||
+    (sfKey && !clientDsKey && !clientDeepseekKey && !clientZpKey)
+  ) {
     providerName = 'SiliconFlow';
-    targetUrl = (headers['x-custom-api-url'] || process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
+    targetUrl = (getHeader('x-custom-api-url') || process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
     targetKey = sfKey || customKey || deepseekKey;
-  } else if (mLower.includes('dashscope') || (mLower.includes('qwen') && dsKey) || (dsKey && !sfKey && !deepseekKey)) {
+  } else if (
+    clientDsKey ||
+    mLower.includes('dashscope') ||
+    (mLower.includes('qwen') && dsKey) ||
+    (dsKey && !clientSfKey && !clientDeepseekKey && !clientZpKey)
+  ) {
     providerName = 'DashScope';
-    targetUrl = (headers['x-custom-api-url'] || process.env.DASHSCOPE_API_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, '');
+    targetUrl = (getHeader('x-custom-api-url') || process.env.DASHSCOPE_API_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, '');
     targetKey = dsKey || customKey;
-  } else if (mLower.includes('glm') || (zpKey && !sfKey && !dsKey && !deepseekKey)) {
+  } else if (
+    clientZpKey ||
+    mLower.includes('glm') ||
+    mLower.includes('zhipu') ||
+    (zpKey && !clientSfKey && !clientDsKey && !clientDeepseekKey)
+  ) {
     providerName = 'Zhipu';
-    targetUrl = (headers['x-custom-api-url'] || process.env.ZHIPU_API_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
+    targetUrl = (getHeader('x-custom-api-url') || process.env.ZHIPU_API_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
     targetKey = zpKey || customKey;
   } else {
     providerName = 'DeepSeek';
-    const clientUrl = (headers['x-deepseek-api-url'] || headers['X-DeepSeek-Api-Url'])?.trim();
+    const clientUrl = getHeader('x-deepseek-api-url');
     targetUrl = (clientUrl || process.env.DEEPSEEK_API_URL || DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
     targetKey = deepseekKey || customKey || sfKey;
   }
@@ -458,13 +492,19 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   if (hasImage && !isOpenAiVisionModel(currentModel)) {
     const isGeminiVision = currentModel.toLowerCase().includes('gemini');
     if (!isGeminiVision) {
-      const h = options?.headers || {};
-      const sfKey = (h['x-siliconflow-api-key'] || h['X-Siliconflow-Api-Key'] || process.env.SILICONFLOW_API_KEY || '').trim();
-      const dsKey = (h['x-dashscope-api-key'] || h['X-Dashscope-Api-Key'] || process.env.DASHSCOPE_API_KEY || '').trim();
-      const zpKey = (h['x-zhipu-api-key'] || h['X-Zhipu-Api-Key'] || process.env.ZHIPU_API_KEY || '').trim();
+      const getHeaderCase = (name) => {
+        const lower = name.toLowerCase();
+        for (const [k, v] of Object.entries(options?.headers || {})) {
+          if (k.toLowerCase() === lower && v) return String(v).trim();
+        }
+        return '';
+      };
+      const sfKey = (getHeaderCase('x-siliconflow-api-key') || process.env.SILICONFLOW_API_KEY || '').trim();
+      const dsKey = (getHeaderCase('x-dashscope-api-key') || process.env.DASHSCOPE_API_KEY || '').trim();
+      const zpKey = (getHeaderCase('x-zhipu-api-key') || process.env.ZHIPU_API_KEY || '').trim();
 
       if (sfKey) {
-        currentModel = 'Qwen/Qwen2.5-VL-72B-Instruct';
+        currentModel = 'deepseek-ai/deepseek-vl2';
         logger.info(`[Model Router] Text model '${rawModel}' lacks vision. Auto-switched to domestic SiliconFlow vision model '${currentModel}'.`);
       } else if (dsKey) {
         currentModel = 'qwen2.5-vl-72b-instruct';
@@ -484,7 +524,14 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
   const fallbackCanSeeImage = isOpenAiVisionModel(fallbackModel);
   const effectiveSkipDeepSeek = skipDeepSeek || (hasImage && !fallbackCanSeeImage);
 
-  const clientCustomKey = (options?.headers?.['x-gemini-api-key'] || options?.headers?.['X-Gemini-Api-Key'])?.trim();
+  const getClientHeader = (name) => {
+    const lower = name.toLowerCase();
+    for (const [k, v] of Object.entries(options?.headers || {})) {
+      if (k.toLowerCase() === lower && v) return String(v).trim();
+    }
+    return '';
+  };
+  const clientCustomKey = getClientHeader('x-gemini-api-key');
   if (clientCustomKey) {
     invalidKeys.delete(clientCustomKey);
     keyCooldown.delete(clientCustomKey);
