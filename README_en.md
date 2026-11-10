@@ -58,7 +58,7 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
     - Enforces Discovery ➔ Scaffolding ➔ Consolidation flow, rejecting lazy direct answer dumps.
   - **🧠 L1-L3 Auditable Cognitive State Evolution**:
     - Continuously measures mastery scores (0.0 - 1.0) and dynamically pinpoints prerequisite knowledge gaps.
-  *(Releases strictly maintain the 2 latest APK packages: v1.6.3 & v1.6.2)*
+  *(Releases strictly maintain the 2 latest Android APK packages: v1.7.3 & v1.6.3, plus the iOS IPA package)*
 
 ### 🍎 2. iOS (iPhone & iPad)
 - **🌟 Method A (Recommended · Zero-Certificate · Add to Home Screen in 1s)**:
