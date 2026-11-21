@@ -1,0 +1,1769 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { AppProvider, useAppStore, getApiUrl, authFetch, formatGrade } from './store/useStore';
+import Header from './components/Header';
+import ChatMessage from './components/ChatMessage';
+import InputBar from './components/InputBar';
+import LearningMap from './components/LearningMap';
+import ParentalGate from './components/ParentalGate';
+import StatsDashboard from './components/StatsDashboard';
+import MistakeNotebook from './components/MistakeNotebook';
+import AddProfileModal from './components/AddProfileModal';
+import SettingsModal from './components/SettingsModal';
+import ErrorBoundary from './components/ErrorBoundary';
+import ChapterStepper from './components/ChapterStepper';
+import WeeklyReportModal from './components/WeeklyReportModal';
+import KnowledgeTest from './components/KnowledgeTest';
+import ScratchpadModal from './components/ScratchpadModal';
+import VoiceDialogueOverlay from './components/VoiceDialogueOverlay';
+import A4PrintModal from './components/A4PrintModal';
+import CampaignRoadmapModal from './components/CampaignRoadmapModal';
+import ParentMemoModal from './components/ParentMemoModal';
+import HomeworkBatchModal from './components/HomeworkBatchModal';
+import GamificationBadgeModal from './components/GamificationBadgeModal';
+import ParentRemoteDashboard from './components/ParentRemoteDashboard';
+import PrimaryVisualManipulatives from './components/PrimaryVisualManipulatives';
+import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
+import AdminConsoleModal from './components/AdminConsoleModal';
+import ParentSharePosterModal from './components/ParentSharePosterModal';
+import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
+import FormulaHandbookModal from './components/FormulaHandbookModal';
+import DailyMentalMathModal from './components/DailyMentalMathModal';
+import StepByStepMathScratchpad from './components/StepByStepMathScratchpad';
+import PhysicsSimulatorsModal from './components/PhysicsSimulatorsModal';
+import EssayUpgraderModal from './components/EssayUpgraderModal';
+import ChemistryLabModal from './components/ChemistryLabModal';
+import EnglishRolePlayModal from './components/EnglishRolePlayModal';
+import DailyAchievementCardModal from './components/DailyAchievementCardModal';
+import EyeCareTimerModal from './components/EyeCareTimerModal';
+import PrerequisiteTraceModal from './components/PrerequisiteTraceModal';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { SpeechRecognition as NativeSpeechRecognition } from '@capacitor-community/speech-recognition';
+import { compressImage } from './utils/image';
+import { compressAudio } from './utils/audio';
+import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
+import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
+import { generateOfflineSocraticResponse } from './utils/offlineSocraticEngine';
+import OnboardingGuide from './components/OnboardingGuide';
+import WelcomeDashboard from './components/WelcomeDashboard';
+import PrivacyConsentModal from './components/PrivacyConsentModal';
+import { triggerHaptic } from './utils/sensoryFeedback';
+
+const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
+let hasInitializedTTS = false;
+
+// ── Main App ──
+function AppInner() {
+  const store = useAppStore();
+  const {
+    backendUrl, setBackendUrl, apiToken, setApiToken,
+    profiles, currentProfileId, currentProfile,
+    selectedSubject, setSelectedSubject, socraticLevel, setSocraticLevel,
+    autoRead, setAutoRead, isLightMode, setIsLightMode,
+    isEinkMode, toggleEinkMode,
+    handleGradeChange, handleEditionChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
+    setCurrentProfileId, handleProfileChange, getApiUrl: storeGetApiUrl,
+    language, t, chatModel, tutorPersona, setTutorPersona,
+    isFeynmanMode, toggleFeynmanMode
+  } = store;
+
+  const isOffline = useOfflineStatus();
+
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+
+  // UI state
+  const [showMistakes, setShowMistakes] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [showAddProfile, setShowAddProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showKnowledgeTest, setShowKnowledgeTest] = useState(false);
+  const [showScratchpad, setShowScratchpad] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [reportData, setReportData] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [activeChapterData, setActiveChapterData] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(() =>
+    localStorage.getItem('ai_tutor_onboarding_completed') !== 'true'
+  );
+
+  // Proactive Voice Dialogue States
+  const [voiceDialogueOpen, setVoiceDialogueOpen] = useState(false);
+  const [voiceDialogueMode, setVoiceDialogueMode] = useState('speaking'); // 'speaking' | 'listening' | 'processing'
+  const [currentFocusQuestion, setCurrentFocusQuestion] = useState('');
+  const [liveSpokenText, setLiveSpokenText] = useState('');
+
+  // Macro Evolution States (Roadmap, A4 Exam, Parent Memo, Homework Batch Grade, Gamification Badges)
+  const [showRoadmap, setShowRoadmap] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showParentMemo, setShowParentMemo] = useState(false);
+  const [showBatchGrade, setShowBatchGrade] = useState(false);
+  const [showGamification, setShowGamification] = useState(false);
+  const [showManipulatives, setShowManipulatives] = useState(false);
+  const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
+  const [showPosterModal, setShowPosterModal] = useState(false);
+  const [showAdminConsole, setShowAdminConsole] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [photoToCrop, setPhotoToCrop] = useState(null);
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [showMentalMathModal, setShowMentalMathModal] = useState(false);
+  const [showStepScratchpad, setShowStepScratchpad] = useState(false);
+  const [stepScratchpadEq, setStepScratchpadEq] = useState('2x + 4 = 10');
+  const [showPhysicsSimulator, setShowPhysicsSimulator] = useState(false);
+  const [showEssayModal, setShowEssayModal] = useState(false);
+  const [showChemistryModal, setShowChemistryModal] = useState(false);
+  const [showEnglishRolePlay, setShowEnglishRolePlay] = useState(false);
+  const [showDailyCard, setShowDailyCard] = useState(false);
+  const [showEyeCare, setShowEyeCare] = useState(false);
+  const [showPrerequisiteTrace, setShowPrerequisiteTrace] = useState(false);
+  const [traceTargetTopic, setTraceTargetTopic] = useState(null);
+  const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
+    return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== '1.5.4';
+  });
+
+  // Modern Non-Blocking Toast Notification & Quick Reason Tagging
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'info', id }
+  const [mistakeTagPrompt, setMistakeTagPrompt] = useState(null); // { id, query }
+
+  const handleOpenPrerequisiteTrace = useCallback((targetTopicOrMistake) => {
+    if (targetTopicOrMistake) {
+      if (typeof targetTopicOrMistake === 'object') {
+        setTraceTargetTopic(targetTopicOrMistake.knowledge_point || targetTopicOrMistake.query || targetTopicOrMistake.name || targetTopicOrMistake);
+      } else {
+        setTraceTargetTopic(targetTopicOrMistake);
+      }
+    } else {
+      setTraceTargetTopic(null);
+    }
+    setShowPrerequisiteTrace(true);
+  }, []);
+
+  const showToast = useCallback((message, type = 'info', duration = 2800) => {
+    setToast({ message, type, id: Date.now() });
+    if (type === 'success') {
+      triggerHaptic('success');
+    }
+    setTimeout(() => {
+      setToast(curr => (curr?.message === message ? null : curr));
+    }, duration);
+  }, []);
+
+  const handleInsertFormula = useCallback((formulaText) => {
+    setInput(prev => (prev ? `${prev} ${formulaText}` : `请帮我深入剖析这个公式定理的考法与推导：${formulaText}`));
+    showToast('📖 已将公式填入输入框', 'info');
+  }, [showToast]);
+
+  const handleAwardExp = useCallback((expAmount, reason) => {
+    showToast(`⚡ ${reason || '口算天天练'} 结算获得 +${expAmount} EXP！`, 'success');
+  }, [showToast]);
+
+  const handleSelectMistakeReason = useCallback(async (mistakeId, reasonTag) => {
+    try {
+      const res = await authFetch(`/api/mistakes/${encodeURIComponent(mistakeId)}/reason`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reasonTag, tags: reasonTag })
+      });
+      if (res.ok) {
+        showToast(`🎯 已标记错因：${reasonTag}`, 'success');
+        setMistakeTagPrompt(null);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(`标记错因失败：${err.error || '服务器响应异常'}`, 'error');
+      }
+    } catch {
+      showToast('网络连接异常，标记错因未同步', 'error');
+      setMistakeTagPrompt(null);
+    }
+  }, [showToast]);
+
+  // Subscribe to real-time TTS speaking state for Barge-in
+  useEffect(() => {
+    return subscribeSpeakingState(setIsSpeaking);
+  }, []);
+
+  const handleSendScratchpad = (blob, dataUrl) => {
+    setImageFile(blob);
+    setPreviewImage(dataUrl);
+    setInput(prev => prev || '老师，这是我在草稿纸上的手写演算过程，请帮我看看做对了没有，哪一步需要调整？');
+  };
+
+  // Parental gate
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateReason, setGateReason] = useState('');
+  const [gateAction, setGateAction] = useState(null);
+
+  // Refs
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const isDirectPhotoSolveRef = useRef(false);
+  const mediaRecorderRef = useRef(null);
+  const recordingTimerRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recognitionRef = useRef(null);
+  const liveTranscriptRef = useRef('');
+  const isListeningRef = useRef(false);
+  const vadTimerRef = useRef(null);
+  const vadAudioContextRef = useRef(null);
+  const nativeSpeechListeningRef = useRef(false);
+  const gradeRef = useRef(currentProfile?.grade || '7_up');
+  const subjectRef = useRef(selectedSubject);
+  const messagesRef = useRef(messages);
+  const lastBackPressRef = useRef(0);
+  const activeModalHandlerRef = useRef(null);
+
+  // Keep modal closing priority updated on each render
+  activeModalHandlerRef.current = () => {
+    if (showCropper) { setShowCropper(false); return true; }
+    if (showClearConfirm) { setShowClearConfirm(false); return true; }
+    if (gateOpen) { setGateOpen(false); setGateAction(null); return true; }
+    if (voiceDialogueOpen) { interruptSpeech(); stopVoiceRecording(); setVoiceDialogueOpen(false); return true; }
+    if (previewImage) { setPreviewImage(null); setImageFile(null); return true; }
+    if (showPosterModal) { setShowPosterModal(false); return true; }
+    if (showSettings) { setShowSettings(false); return true; }
+    if (showFormulaModal) { setShowFormulaModal(false); return true; }
+    if (showMentalMathModal) { setShowMentalMathModal(false); return true; }
+    if (showStepScratchpad) { setShowStepScratchpad(false); return true; }
+    if (showPhysicsSimulator) { setShowPhysicsSimulator(false); return true; }
+    if (showEssayModal) { setShowEssayModal(false); return true; }
+    if (showChemistryModal) { setShowChemistryModal(false); return true; }
+    if (showEnglishRolePlay) { setShowEnglishRolePlay(false); return true; }
+    if (showDailyCard) { setShowDailyCard(false); return true; }
+    if (showEyeCare) { setShowEyeCare(false); return true; }
+    if (showPrerequisiteTrace) { setShowPrerequisiteTrace(false); return true; }
+    if (showPrintModal) { setShowPrintModal(false); return true; }
+    if (showMistakes) { setShowMistakes(false); return true; }
+    if (showStats) { setShowStats(false); return true; }
+    if (showMap) { setShowMap(false); return true; }
+    if (showRoadmap) { setShowRoadmap(false); return true; }
+    if (showKnowledgeTest) { setShowKnowledgeTest(false); return true; }
+    if (showScratchpad) { setShowScratchpad(false); return true; }
+    if (showParentMemo) { setShowParentMemo(false); return true; }
+    if (showBatchGrade) { setShowBatchGrade(false); return true; }
+    if (showGamification) { setShowGamification(false); return true; }
+    if (showManipulatives) { setShowManipulatives(false); return true; }
+    if (showGeometrySandbox) { setShowGeometrySandbox(false); return true; }
+    if (showAdminConsole) { setShowAdminConsole(false); return true; }
+    if (showReportModal) { setShowReportModal(false); return true; }
+    if (showAddProfile) { setShowAddProfile(false); return true; }
+    if (showOnboarding) { setShowOnboarding(false); return true; }
+    return false;
+  };
+
+  // Android Native Hardware / Gesture Back Button & Immersion Handling
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // 1. Android Status Bar Styling
+    try {
+      StatusBar.setStyle({ style: Style.Dark });
+      StatusBar.setBackgroundColor({ color: '#0f172a' });
+    } catch (e) {
+      console.warn('StatusBar configuration notice:', e);
+    }
+
+    // 2. Android Hardware / Gesture Back Button Handling
+    let backListenerHandle = null;
+    CapApp.addListener('backButton', () => {
+      // If any overlay or modal is active, dismiss it first
+      const handled = activeModalHandlerRef.current && activeModalHandlerRef.current();
+      if (handled) return;
+
+      // When at root chat view, require double press within 2s to exit
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        CapApp.exitApp();
+      } else {
+        lastBackPressRef.current = now;
+        showToast('再按一次退出曾练专属私教', 'info', 2000);
+      }
+    }).then(handle => {
+      backListenerHandle = handle;
+    }).catch(err => {
+      console.warn('Native backButton setup notice:', err);
+    });
+
+    return () => {
+      if (backListenerHandle) {
+        backListenerHandle.remove();
+      }
+    };
+  }, [showToast]);
+  const editionRef = useRef(currentProfile?.edition || '人教版');
+  const handleSubmitRef = useRef(null);
+
+  gradeRef.current = currentProfile?.grade || '7_up';
+  subjectRef.current = selectedSubject;
+  messagesRef.current = messages;
+  editionRef.current = currentProfile?.edition || '人教版';
+
+  // Validate and auto-reset selectedSubject when grade changes to an incompatible one
+  useEffect(() => {
+    const grade = currentProfile?.grade;
+    if (!grade) return;
+    const gradeStr = String(grade);
+    const isPrimary = ['1_', '2_', '3_', '4_', '5_', '6_'].some(p => gradeStr.startsWith(p)) || ['1', '2', '3', '4', '5', '6'].includes(gradeStr);
+    
+    let allowed = [];
+    if (isPrimary) {
+      allowed = ['', '语文', '数学', '英语'];
+    } else if (gradeStr.startsWith('7')) {
+      allowed = ['', '语文', '数学', '英语', '道德与法治', '历史', '地理', '生物'];
+    } else if (gradeStr.startsWith('8')) {
+      allowed = ['', '语文', '数学', '英语', '道德与法治', '历史', '地理', '生物', '物理'];
+    } else if (gradeStr.startsWith('9')) {
+      allowed = ['', '语文', '数学', '英语', '道德与法治', '历史', '物理', '化学'];
+    } else {
+      allowed = ['', '语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '道德与法治'];
+    }
+    
+    if (selectedSubject && !allowed.includes(selectedSubject)) {
+      setSelectedSubject('');
+    }
+  }, [currentProfile?.grade, selectedSubject, setSelectedSubject]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  // Scroll
+  useEffect(() => {
+    if (!isLoading) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length, isLoading]);
+
+  // Sync messages to server (exclude transient offline guidance & error notices)
+  const syncMessages = useCallback(async (currentMessages, explicitGrade = currentProfile?.grade || '7_up', explicitSubject = selectedSubject) => {
+    try {
+      const persistableMessages = (currentMessages || []).filter(m => !m.isTransient && m.role !== 'system_notice');
+      await authFetch('/api/chat-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_id: currentProfileId, messages: persistableMessages, grade: explicitGrade, subject: explicitSubject })
+      });
+    } catch (e) { console.error('Failed to sync messages:', e); }
+  }, [currentProfileId, currentProfile?.grade, selectedSubject]);
+
+  // Load messages on profile/subject change with race-condition prevention
+  useEffect(() => {
+    let isCancelled = false;
+    const activeProfileId = currentProfileId;
+    const activeGrade = currentProfile?.grade || '7_up';
+    const activeSubject = selectedSubject;
+
+    const loadMessages = async () => {
+      try {
+        const res = await authFetch(`/api/chat-history?profile_id=${activeProfileId}&grade=${activeGrade}&subject=${activeSubject}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!isCancelled) {
+            setMessages(data.history || []);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+      if (!isCancelled) {
+        setMessages([]);
+      }
+    };
+    loadMessages();
+    return () => {
+      isCancelled = true;
+      if (messagesRef.current.length > 0) {
+        syncMessages(messagesRef.current, activeGrade, activeSubject);
+      }
+    };
+  }, [currentProfileId, currentProfile?.grade, selectedSubject, syncMessages]);
+
+  // Profile change handler (catches ADD_NEW)
+  const onProfileChange = useCallback((profileId) => {
+    const result = handleProfileChange(profileId);
+    if (result === 'ADD_NEW') setShowAddProfile(true);
+  }, [handleProfileChange]);
+
+  // Admin console gate handler (曾先生·管理员专属控制台安全密码锁)
+  const handleOpenAdminConsole = useCallback(() => {
+    const isVerified = sessionStorage.getItem('parent_gate_verified_pin_hash');
+    if (isVerified) {
+      setShowAdminConsole(true);
+    } else {
+      setGateAction(() => () => setShowAdminConsole(true));
+      setGateReason('进入【曾先生·管理员专属控制台】');
+      setGateOpen(true);
+    }
+  }, []);
+
+  // Triple-Engine Ultra-Speed Voice input & STT:
+  // 1. Android/iOS Native SpeechRecognizer (边说边出字，0ms 感知延迟)
+  // 2. Web Speech API (桌面 Chrome / 浏览器回退，0.3s 流式出字)
+  // 3. Web Audio VAD 智能静音检测 (说话停顿 850ms 自动截断提交，免除手动点击)
+  // 4. 原生 Opus/WebM 0 耗时直传 + 服务端 Gemini 2.5 Flash 0-Thinking 兜底 (0.7s 极速响应)
+  const startVoiceRecording = useCallback(async (isDialogueLoop = false) => {
+    try {
+      audioChunksRef.current = [];
+      liveTranscriptRef.current = '';
+      setLiveSpokenText('');
+      isListeningRef.current = true;
+      nativeSpeechListeningRef.current = false;
+
+      const sttLang = (selectedSubject === '英语' || subjectRef.current === '英语') ? 'en-US' : 'zh-CN';
+
+      // 1. 尝试激活移动端原生 Android/iOS SpeechRecognizer (边说边动态吐字，0ms 等待)
+      const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+      if (isNative) {
+        try {
+          const hasPerm = await NativeSpeechRecognition.hasAudioPermission();
+          if (!hasPerm.permission) {
+            await NativeSpeechRecognition.requestAudioPermission();
+          }
+          const isAvail = await NativeSpeechRecognition.available();
+          if (isAvail.available) {
+            NativeSpeechRecognition.removeAllListeners();
+            NativeSpeechRecognition.addListener('partialResults', (data) => {
+              if (data && data.matches && data.matches.length > 0) {
+                const spoken = data.matches[0]?.trim();
+                if (spoken) {
+                  liveTranscriptRef.current = spoken;
+                  setLiveSpokenText(spoken);
+                  if (!isDialogueLoop) {
+                    setInput(spoken);
+                  }
+                }
+              }
+            });
+
+            await NativeSpeechRecognition.start({
+              language: sttLang,
+              maxResults: 1,
+              prompt: sttLang === 'en-US' ? 'Listening...' : '正在倾听...',
+              partialResults: true,
+              popup: false
+            });
+
+            nativeSpeechListeningRef.current = true;
+            setIsListening(true);
+            if (isDialogueLoop) setVoiceDialogueMode('listening');
+
+            // Set timeout protection for native speech
+            if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+            recordingTimerRef.current = setTimeout(() => {
+              stopVoiceRecording(isDialogueLoop);
+            }, 15000);
+            return; // Exit early to avoid concurrent getUserMedia microphone conflict on Android
+          }
+        } catch (nativeErr) {
+          console.warn('[STT] Native SpeechRecognizer notice:', nativeErr);
+          nativeSpeechListeningRef.current = false;
+        }
+      }
+
+      // 2. 浏览器环境回退：尝试激活端侧原生 Web Speech 实时流式出字引擎
+      if (!nativeSpeechListeningRef.current) {
+        const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+        if (SpeechRecognition) {
+          try {
+            const rec = new SpeechRecognition();
+            rec.lang = sttLang;
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.maxAlternatives = 1;
+            recognitionRef.current = rec;
+
+            rec.onresult = (event) => {
+              let interim = '';
+              let final = '';
+              for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                  final += transcript;
+                } else {
+                  interim += transcript;
+                }
+              }
+              const currentSpoken = (final || interim).trim();
+              if (currentSpoken) {
+                liveTranscriptRef.current = currentSpoken;
+                setLiveSpokenText(currentSpoken);
+                if (!isDialogueLoop) {
+                  setInput(currentSpoken);
+                }
+              }
+            };
+
+            rec.onerror = (e) => {
+              console.warn('[STT] Web SpeechRecognition notice:', e.error);
+            };
+
+            rec.start();
+          } catch (recErr) {
+            console.warn('[STT] Web SpeechRecognition initialization warning:', recErr);
+          }
+        }
+      }
+
+      // 3. 同时启动底层 MediaRecorder 录音流（作为服务端高鲁棒兜底双引擎）
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let options = {};
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
+      else if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
+      else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
+      else if (MediaRecorder.isTypeSupported('audio/aac')) options = { mimeType: 'audio/aac' };
+      else if (MediaRecorder.isTypeSupported('audio/ogg')) options = { mimeType: 'audio/ogg' };
+      else if (MediaRecorder.isTypeSupported('audio/wav')) options = { mimeType: 'audio/wav' };
+
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data); };
+
+      // 4. 智能静音断句检测 (Web Audio VAD)：说话后停顿 850ms 自动截断并提交，免去手动按键延迟
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        try {
+          const vadCtx = new AudioCtx();
+          const analyser = vadCtx.createAnalyser();
+          analyser.fftSize = 256;
+          const source = vadCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          let hasSpeechSpoken = false;
+          let silenceStartTime = null;
+          const ENERGY_THRESHOLD = 20; // 语音能量阈值
+          const SILENCE_TIMEOUT_MS = 850; // 停顿 850ms 自动触发提交
+
+          const vadInterval = setInterval(() => {
+            if (!isListeningRef.current) {
+              clearInterval(vadInterval);
+              try { vadCtx.close(); } catch (e) {}
+              return;
+            }
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            const energy = sum / dataArray.length;
+
+            if (energy > ENERGY_THRESHOLD) {
+              hasSpeechSpoken = true;
+              silenceStartTime = null;
+            } else if (hasSpeechSpoken) {
+              if (!silenceStartTime) {
+                silenceStartTime = Date.now();
+              } else if (Date.now() - silenceStartTime > SILENCE_TIMEOUT_MS) {
+                // 停顿超过 850ms，自动触发停止
+                clearInterval(vadInterval);
+                try { vadCtx.close(); } catch (e) {}
+                vadTimerRef.current = null;
+                vadAudioContextRef.current = null;
+                stopVoiceRecording();
+              }
+            }
+          }, 80);
+
+          vadTimerRef.current = vadInterval;
+          vadAudioContextRef.current = vadCtx;
+        } catch (vadInitErr) {
+          console.warn('[VAD] Audio energy detector notice:', vadInitErr);
+        }
+      }
+
+      recorder.onstop = async () => {
+        isListeningRef.current = false;
+        if (recordingTimerRef.current) {
+          clearTimeout(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        if (vadTimerRef.current) {
+          clearInterval(vadTimerRef.current);
+          vadTimerRef.current = null;
+        }
+        if (vadAudioContextRef.current) {
+          try { await vadAudioContextRef.current.close(); } catch (e) {}
+          vadAudioContextRef.current = null;
+        }
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch (e) {}
+          recognitionRef.current = null;
+        }
+        if (nativeSpeechListeningRef.current) {
+          try {
+            await NativeSpeechRecognition.stop();
+            NativeSpeechRecognition.removeAllListeners();
+          } catch (e) {}
+          nativeSpeechListeningRef.current = false;
+        }
+        stream.getTracks().forEach(track => track.stop());
+
+        // 优先检查原生/Web实时流式文字是否已就位 (0ms 极致体验)
+        const instantText = liveTranscriptRef.current?.trim();
+        if (instantText && instantText.length > 0) {
+          setIsListening(false);
+          setIsLoading(false);
+          if (isDialogueLoop) {
+            setVoiceDialogueOpen(false);
+            handleSubmit(null, instantText, null, true);
+          } else {
+            setInput(instantText);
+          }
+          return;
+        }
+
+        const mime = options.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mime });
+        if (audioBlob.size < 300) {
+          setIsListening(false);
+          setIsLoading(false);
+          return;
+        }
+        setIsLoading(true);
+        if (isDialogueLoop) setVoiceDialogueMode('processing');
+        setInput('⚡ 正在极速识别您的声音...');
+        try {
+          // 直通传输：无损轻量原生 Opus/WebM 或 AAC/MP4，跳过耗时 1.5s 的客户端重采样与 WAV 转换
+          const fileName = mime.includes('mp4') ? 'voice.mp4' : (mime.includes('aac') ? 'voice.aac' : 'voice.webm');
+          const audioFile = (typeof File !== 'undefined')
+            ? new File([audioBlob], fileName, { type: mime })
+            : audioBlob;
+          const formData = new FormData();
+          formData.append('audio', audioFile, fileName);
+          const response = await authFetch('/api/transcribe', { method: 'POST', body: formData });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.text && data.text.trim()) {
+              const spokenText = data.text.trim();
+              if (isDialogueLoop) {
+                setVoiceDialogueOpen(false);
+                handleSubmit(null, spokenText, null, true);
+              } else {
+                setInput(prev => {
+                  const base = prev.startsWith('⚡') || prev.startsWith('🎙️') ? '' : prev.trim();
+                  return (base ? `${base} ` : '') + spokenText;
+                });
+              }
+            } else {
+              setInput('');
+              if (isDialogueLoop) setVoiceDialogueOpen(false);
+              showToast('没有听清您的说话，请靠近麦克风再试一次 🎤', 'info');
+            }
+          } else {
+            setInput('');
+            if (isDialogueLoop) setVoiceDialogueOpen(false);
+            const errJson = await response.json().catch(() => ({}));
+            if (response.status === 400 || response.status === 401 || errJson?.code === 'ERR_MISSING_API_KEY') {
+              showToast(errJson?.error || '⚙️ 语音识别需配置可用 AI 密钥，请先在右上角设置中填写 API Key，或直接打字提问~', 'warning');
+            } else if (response.status === 429) {
+              showToast(errJson?.error || '⏳ 今日语音识别额度已满，请直接打字提问或在设置中配置自定义 Key~', 'warning');
+            } else if (response.status === 503) {
+              showToast('⏳ 伴学服务正在热身启动中，请稍候几秒再试~', 'info');
+            } else {
+              showToast(errJson?.error || '🎙️ 没听清您的说话，请靠近麦克风再说一遍，或直接打字哦~', 'info');
+            }
+          }
+        } catch (err) {
+          setInput('');
+          if (isDialogueLoop) setVoiceDialogueOpen(false);
+          showToast('🎙️ 录音网络稍有波动，请再试一次或直接打字~', 'info');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      recorder.start();
+      setIsListening(true);
+      if (isDialogueLoop) setVoiceDialogueMode('listening');
+
+      // Auto-stop after 15 seconds to prevent unbounded recording
+      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          stopVoiceRecording();
+        }
+      }, 15000);
+
+    } catch (err) {
+      console.error('Mic recording error:', err);
+      showToast('无法启动麦克风录音，请在手机系统设置中授予【麦克风】权限 🎙️', 'error');
+      setIsListening(false);
+      isListeningRef.current = false;
+      setVoiceDialogueOpen(false);
+    }
+  }, [showToast]);
+
+  const stopVoiceRecording = useCallback((isDialogueLoop = false) => {
+    isListeningRef.current = false;
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (vadTimerRef.current) {
+      clearInterval(vadTimerRef.current);
+      vadTimerRef.current = null;
+    }
+    if (vadAudioContextRef.current) {
+      try { vadAudioContextRef.current.close(); } catch (e) {}
+      vadAudioContextRef.current = null;
+    }
+    const wasNative = nativeSpeechListeningRef.current;
+    if (wasNative) {
+      try {
+        NativeSpeechRecognition.stop().catch(() => {});
+        NativeSpeechRecognition.removeAllListeners();
+      } catch (e) {}
+      nativeSpeechListeningRef.current = false;
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+      recognitionRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    } else if (wasNative) {
+      const instantText = liveTranscriptRef.current?.trim();
+      setIsListening(false);
+      setIsLoading(false);
+      if (instantText) {
+        if (isDialogueLoop) {
+          setVoiceDialogueOpen(false);
+          if (handleSubmitRef.current) handleSubmitRef.current(null, instantText, null, true);
+        } else {
+          setInput(instantText);
+        }
+      }
+    }
+    setIsListening(false);
+  }, []);
+
+  const toggleVoice = () => {
+    if (isListening) {
+      stopVoiceRecording();
+    } else {
+      startVoiceRecording(false);
+    }
+  };
+
+  const handleOpenVoiceCompanion = useCallback(() => {
+    if (voiceDialogueOpen) {
+      interruptSpeech();
+      stopVoiceRecording();
+      setVoiceDialogueOpen(false);
+      return;
+    }
+
+    let starterText = '';
+    const msgs = messagesRef.current || [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'ai' && msgs[i].text) {
+        const focus = extractQuestionFocus(msgs[i].text);
+        if (focus) {
+          starterText = focus;
+          break;
+        }
+      }
+    }
+
+    const studentName = currentProfile?.name || '同学';
+    const subject = selectedSubject || '学习';
+    const greeting = starterText || `${studentName}你好！我是你的面对面伴学导师。关于${subject}，你有什么想问或者卡壳的地方吗？直接说给我听吧！`;
+
+    setCurrentFocusQuestion(greeting);
+    setVoiceDialogueOpen(true);
+    setVoiceDialogueMode('speaking');
+
+    playTTS(
+      greeting,
+      gradeRef.current,
+      () => {
+        setVoiceDialogueMode('speaking');
+      },
+      () => {
+        setVoiceDialogueMode('listening');
+        startVoiceRecording(true);
+      }
+    );
+  }, [voiceDialogueOpen, currentProfile?.name, selectedSubject, startVoiceRecording, stopVoiceRecording]);
+
+  const handleStartSocraticTutoring = useCallback(({ file, snippet, questionNumber }) => {
+    setShowBatchGrade(false);
+    setSocraticLevel('guided');
+    if (file) {
+      if (previewImage) URL.revokeObjectURL(previewImage);
+      setImageFile(file);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+    const cleanSnippet = snippet ? `【考点/题干】：${snippet}` : '';
+    const tutorPrompt = `老师，请帮我启发辅导这道第 ${questionNumber} 题。${cleanSnippet} 请一步步引导我推导，先不要直接告诉我最终答案。`;
+    setInput(tutorPrompt);
+  }, [previewImage]);
+
+  // Chat submit
+  const handleSubmit = useCallback(async (e, customText, directFile = null, isVoiceMode = false) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const activeFile = directFile || imageFile;
+    const textToSubmit = (customText !== undefined && customText !== null) ? customText : input;
+    if ((!textToSubmit && !activeFile) || isLoading) return;
+
+    const userQuery = textToSubmit || '请帮我解答这张图片里的题目。';
+    const hasImage = !!activeFile;
+    const historyContext = messagesRef.current
+      .filter(m => !m.isTransient && m.role !== 'system_notice')
+      .slice(-20)
+      .map(m => ({ role: m.role, text: m.text }));
+
+    let activePreview = previewImage;
+    if (!activePreview && activeFile) {
+      activePreview = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(activeFile);
+      });
+    }
+
+    const newMsgs = [...messagesRef.current, { id: genMsgId(), role: 'user', text: userQuery, imageUrl: activePreview }];
+    setMessages(newMsgs);
+    setInput('');
+    const currentImage = activeFile;
+    setPreviewImage(null);
+    setImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setIsLoading(true);
+
+    if (window.speechSynthesis && !hasInitializedTTS) {
+      hasInitializedTTS = true;
+      const silentUtterance = new SpeechSynthesisUtterance('');
+      silentUtterance.volume = 0;
+      window.speechSynthesis.speak(silentUtterance);
+    }
+
+    setMessages(prev => [...prev, { id: genMsgId(), role: 'ai', text: '思考中...', sources: [] }]);
+
+    let response;
+    try {
+      if (hasImage) {
+        const formData = new FormData();
+        const isAlreadyCropped = currentImage.name?.startsWith('crop_') || currentImage.name?.startsWith('warp_');
+        const uploadImageFile = isAlreadyCropped ? currentImage : await compressImage(currentImage, 1600, 1600, 0.88);
+        formData.append('image', uploadImageFile);
+        formData.append('query', userQuery);
+        formData.append('history', JSON.stringify(historyContext));
+        formData.append('profile_id', currentProfileId);
+        formData.append('student_name', currentProfile?.name || '');
+        if (gradeRef.current) formData.append('grade', gradeRef.current);
+        if (subjectRef.current) formData.append('subject', subjectRef.current);
+        formData.append('socratic', socraticLevel);
+        // Auto-switch to vision model if current chatModel lacks vision capability (e.g. DeepSeek-V3 is text-only)
+        const isVisionCapable = chatModel && (
+          chatModel.includes('gemini') || 
+          chatModel.includes('vl') || 
+          chatModel.includes('vision') || 
+          chatModel.includes('glm-4v')
+        );
+
+        let fallbackVisionModel = 'gemini-2.5-flash';
+        let fallbackDesc = 'Gemini 2.5 Flash';
+        const hasSfKey = !!(localStorage.getItem('ai_tutor_siliconflow_key') || '').trim();
+        const hasDsKey = !!(localStorage.getItem('ai_tutor_dashscope_key') || '').trim();
+        const hasZpKey = !!(localStorage.getItem('ai_tutor_zhipu_key') || '').trim();
+
+        if (hasSfKey) {
+          fallbackVisionModel = 'Qwen/Qwen2.5-VL-72B-Instruct';
+          fallbackDesc = '通义千问 Qwen2.5-VL-72B (硅基流动)';
+        } else if (hasDsKey) {
+          fallbackVisionModel = 'qwen2.5-vl-72b-instruct';
+          fallbackDesc = '通义千问 Qwen2.5-VL (阿里百炼)';
+        } else if (hasZpKey) {
+          fallbackVisionModel = 'glm-4v-flash';
+          fallbackDesc = '智谱 GLM-4V-Flash';
+        }
+
+        const visionModel = isVisionCapable ? chatModel : fallbackVisionModel;
+        formData.append('model', visionModel);
+        if (!isVisionCapable) {
+          showToast(`📷 检测到拍照解题，自动切换为视觉多模态大模型 (${fallbackDesc})`, 'info', 2500);
+        }
+        response = await authFetch('/api/chat-vision', { method: 'POST', body: formData });
+      } else {
+        response = await authFetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: userQuery,
+            grade: gradeRef.current || undefined,
+            subject: subjectRef.current || undefined,
+            history: historyContext,
+            profile_id: currentProfileId,
+            student_name: currentProfile?.name || '',
+            socratic: socraticLevel,
+            feynman_mode: isFeynmanMode,
+            teaching_mode: isFeynmanMode ? 'feynman_roleplay' : undefined,
+            edition: editionRef.current,
+            model: chatModel,
+            voice_mode: isVoiceMode
+          })
+        });
+      }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(String(errorData.error || `服务器响应错误 (状态码: ${response.status})`));
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let done = false;
+      let partialLine = '';
+      let answerText = '';
+      let sources = [];
+      let isFirstChunk = true;
+
+      let updatePending = false;
+      let lastFlushTime = 0;
+
+      const flushUpdate = () => {
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: answerText, sources }];
+          return prev;
+        });
+        lastFlushTime = performance.now();
+        updatePending = false;
+      };
+
+      try {
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            const chunk = decoder.decode(value, { stream: !done });
+            const lines = (partialLine + chunk).split('\n');
+            partialLine = lines.pop() || '';
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const dataStr = line.slice(6).trim();
+                if (dataStr === '[DONE]') continue;
+                let streamError = null;
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  if (parsed.sources) sources = parsed.sources;
+                  if (parsed.text) {
+                    if (isFirstChunk) {
+                      answerText = '';
+                      isFirstChunk = false;
+                      answerText += parsed.text;
+                      flushUpdate(); // Instant TTFT feedback: display first token immediately
+                    } else {
+                      answerText += parsed.text;
+                      const now = performance.now();
+                      if (now - lastFlushTime > 45) {
+                        flushUpdate();
+                      } else if (!updatePending) {
+                        updatePending = true;
+                        requestAnimationFrame(() => {
+                          if (updatePending) flushUpdate();
+                        });
+                      }
+                    }
+                  }
+                  if (parsed.error) streamError = parsed.error;
+                } catch (e) { console.warn("Error parsing SSE line:", line, e); }
+                if (streamError) throw new Error(streamError);
+              }
+            }
+          }
+        }
+        if (partialLine && partialLine.trim().startsWith('data: ')) {
+          const tailStr = partialLine.trim().slice(6).trim();
+          if (tailStr && tailStr !== '[DONE]') {
+            let tailErr = null;
+            try {
+              const parsed = JSON.parse(tailStr);
+              if (parsed.sources) sources = parsed.sources;
+              if (parsed.text) {
+                if (isFirstChunk) {
+                  answerText = parsed.text;
+                  isFirstChunk = false;
+                } else {
+                  answerText += parsed.text;
+                }
+              }
+              if (parsed.error) tailErr = parsed.error;
+            } catch {}
+            if (tailErr) throw new Error(tailErr);
+          }
+        }
+      } finally {
+        try { reader.releaseLock(); } catch {}
+      }
+      flushUpdate(); // Ensure complete stream content is committed to state
+      syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
+
+      // Proactive Spoken Question & Handover Trigger
+      if (answerText && autoRead) {
+        const questionFocus = extractQuestionFocus(answerText);
+        if (questionFocus) {
+          setCurrentFocusQuestion(questionFocus);
+          setVoiceDialogueOpen(true);
+          setVoiceDialogueMode('speaking');
+
+          // Play TTS, and when finished speaking, automatically hand over microphone to student
+          playTTS(answerText, gradeRef.current, () => {
+            setVoiceDialogueMode('speaking');
+          }, () => {
+            // Mentor finishes speaking -> immediately hand over mic to student
+            setVoiceDialogueMode('listening');
+            startVoiceRecording(true);
+          });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      const isNetError = error?.message?.includes('Failed to fetch') ||
+                         error?.message?.includes('NetworkError') ||
+                         error?.message?.includes('Load failed');
+      if (isNetError) {
+        // Fallback to pure client-side offline Socratic engine
+        const offlineSocraticText = generateOfflineSocraticResponse({
+          query: userQuery,
+          grade: gradeRef.current || currentProfile?.grade || '7',
+          subject: subjectRef.current || selectedSubject || '数学',
+          persona: tutorPersona,
+          studentName: currentProfile?.name || '同学'
+        });
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: offlineSocraticText, isTransient: true }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: offlineSocraticText, isTransient: true }];
+        });
+      } else {
+        let errorMsg = error.message || '对不起，系统忙碌中，请稍后再试。';
+        if (typeof errorMsg !== 'string') errorMsg = JSON.stringify(errorMsg);
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg), isTransient: true }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg), isTransient: true }];
+        });
+      }
+    } finally { setIsLoading(false); }
+  }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
+
+  handleSubmitRef.current = handleSubmit;
+
+  // Image handling with Smart Cropper (对标作业帮/小猿取景搜题)
+  const handleImageSelect = useCallback(e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setPhotoToCrop(file);
+    setShowCropper(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  const handleCropperConfirm = useCallback((croppedFile, croppedDataUrl) => {
+    setShowCropper(false);
+    setPhotoToCrop(null);
+    if (previewImage) URL.revokeObjectURL(previewImage);
+    setImageFile(croppedFile);
+    setPreviewImage(croppedDataUrl);
+
+    // 如果从首页“拍照讲题”入口触发，拍照裁剪后立即发起智能讲题，避免用户困惑“拍完照怎么没反应”
+    if (isDirectPhotoSolveRef.current) {
+      isDirectPhotoSolveRef.current = false;
+      handleSubmit(null, '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！', croppedFile);
+    }
+  }, [previewImage, handleSubmit]);
+
+  const clearImage = useCallback(() => {
+    if (previewImage) URL.revokeObjectURL(previewImage);
+    setPreviewImage(null);
+    setImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [previewImage]);
+
+  const clearChat = () => {
+    setShowClearConfirm(true);
+  };
+
+  const handlePlayTTS = useCallback((text, onStart, onEnd) => {
+    return playTTS(text, gradeRef.current, onStart, onEnd);
+  }, []);
+
+  const handleStopTTS = useCallback(() => {
+    stopTTS();
+  }, []);
+
+  const handleMarkMistake = useCallback(async (msg, customReason = null) => {
+    try {
+      const msgs = messagesRef.current;
+      const idx = msgs.findIndex(m => m.id === msg.id);
+      let userQuery = '';
+      if (idx !== -1) {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (msgs[i].role === 'user') {
+            userQuery = msgs[i].text;
+            break;
+          }
+        }
+      }
+      const res = await authFetch('/api/mistakes/mark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: userQuery || '无明确问题',
+          answer: msg.text,
+          grade: gradeRef.current,
+          subject: subjectRef.current,
+          profile_id: currentProfileId,
+          reason: customReason || '用户自主标记'
+        })
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("✅ 已成功加入错题本！", "success");
+        if (data && data.id) {
+          setMistakeTagPrompt({ id: data.id, query: (userQuery || '本题').substring(0, 36) });
+        }
+      } else {
+        showToast("❌ 加入错题本失败，请稍后重试", "error");
+      }
+    } catch (e) {
+      showToast("网络连接异常，加入错题本失败", "error");
+    }
+  }, [currentProfileId, showToast]);
+
+  return (
+    <div className="app-container">
+      {isOffline && (
+        <div className="offline-banner" style={{ background: '#ef4444', color: 'white', padding: '8px 24px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem', zIndex: 10 }}>
+          ⚠️ {language === 'zh-CN' ? '离线模式：仅允许阅读本地缓存的错题本和进度。' : 'Offline Mode: Read-only access to local mistake history.'}
+        </div>
+      )}
+      <Header
+        profiles={profiles}
+        currentProfileId={currentProfileId}
+        onProfileChange={onProfileChange}
+        onRenameProfile={handleRenameProfile}
+        onDeleteProfile={() => {
+          if (currentProfileId === 'default') { showToast('默认学生档案受保护，无法删除', 'info'); return; }
+          setGateAction(() => () => {
+            if (window.confirm(`确定要删除档案 "${currentProfile?.name || ''}" 及其所有记录吗？`)) {
+              authFetch('/api/profile?profile_id=' + currentProfileId, { method: 'DELETE' })
+                .then(res => { if (!res.ok) throw new Error('删除失败'); handleDeleteProfile(currentProfileId); showToast('已成功删除学生档案', 'success'); })
+                .catch(() => showToast('删除档案失败，请稍后重试', 'error'));
+            }
+          });
+          setGateReason(`删除学生档案 "${currentProfile?.name || ''}"`);
+          setGateOpen(true);
+        }}
+        selectedGrade={currentProfile?.grade || '7_up'}
+        onGradeChange={handleGradeChange}
+        selectedSubject={selectedSubject}
+        onSubjectChange={setSelectedSubject}
+        onClearChat={clearChat}
+        socraticLevel={socraticLevel}
+        onSocraticCycle={(level) => {
+          const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
+          if (level === 'direct' && isAntiCheatLocked) {
+            setGateAction(() => () => setSocraticLevel('direct'));
+            setGateReason('切换至【直接解答】模式（家长防抄题监督锁已生效）');
+            setGateOpen(true);
+          } else {
+            setSocraticLevel(level);
+          }
+        }}
+        isLightMode={isLightMode}
+        onThemeToggle={() => setIsLightMode(!isLightMode)}
+        onSettingsOpen={() => setShowSettings(true)}
+        onOpenAdminConsole={handleOpenAdminConsole}
+        onOpenGamification={() => setShowGamification(true)}
+        onOpenManipulatives={() => setShowManipulatives(true)}
+        onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
+        onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenDailyCard={() => setShowDailyCard(true)}
+        onOpenVoiceCompanion={handleOpenVoiceCompanion}
+      />
+
+      {/* 仅在对话进行中时显示轻量级返回首页条 */}
+      {messages.length > 0 && (
+        <div className="chat-nav-bar no-print" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+        }}>
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '16px',
+              border: '1px solid rgba(59, 130, 246, 0.35)',
+              background: 'rgba(59, 130, 246, 0.12)',
+              color: '#93c5fd',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+            title="结束当前对话，返回今日导学看板"
+          >
+            <span>🏠</span>
+            <span>返回今日看板</span>
+          </button>
+          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            💬 正在名师辅导中
+          </span>
+        </div>
+      )}
+
+      {/* Chapter Progress Stepper */}
+      <ChapterStepper
+        activeChapterData={activeChapterData}
+        setActiveChapterData={setActiveChapterData}
+        currentProfileId={currentProfileId}
+        currentGrade={currentProfile?.grade || '7_up'}
+        selectedSubject={selectedSubject}
+        onSubmit={handleSubmit}
+        authFetch={authFetch}
+      />
+
+      {/* Chat messages */}
+      <div className="chat-container">
+        {messages.length === 0 ? (
+          <WelcomeDashboard
+            currentProfile={currentProfile}
+            selectedGrade={currentProfile?.grade || '7_up'}
+            selectedSubject={selectedSubject}
+            onGradeChange={handleGradeChange}
+            onSubjectChange={setSelectedSubject}
+            onPersonaChange={setTutorPersona}
+            onCameraClick={() => {
+              isDirectPhotoSolveRef.current = true;
+              fileInputRef.current?.click();
+            }}
+            onReviewMistakes={() => setShowMistakes(true)}
+            onOpenMap={() => setShowMap(true)}
+            onOpenTest={() => setShowKnowledgeTest(true)}
+            onOpenRoadmap={() => setShowRoadmap(true)}
+            onOpenPrint={() => setShowPrintModal(true)}
+            onOpenParentMemo={() => setShowParentMemo(true)}
+            onOpenBatchGrade={() => setShowBatchGrade(true)}
+            onOpenGamification={() => setShowGamification(true)}
+            onOpenManipulatives={() => setShowManipulatives(true)}
+            onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
+            onOpenMentalMath={() => setShowMentalMathModal(true)}
+            onOpenFormulaHandbook={() => setShowFormulaModal(true)}
+            onOpenStepScratchpad={() => {
+              setStepScratchpadEq('2x + 4 = 10');
+              setShowStepScratchpad(true);
+            }}
+            onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
+            onOpenEssay={() => setShowEssayModal(true)}
+            onOpenChemistry={() => setShowChemistryModal(true)}
+            onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
+            onOpenDailyCard={() => setShowDailyCard(true)}
+            onOpenEyeCare={() => setShowEyeCare(true)}
+            onOpenPrerequisiteTrace={() => handleOpenPrerequisiteTrace(null)}
+            onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
+          />
+        ) : (
+          messages.map((msg, idx) => (
+            <ChatMessage
+              key={msg.id || idx}
+              msg={msg}
+              autoRead={autoRead}
+              isLatest={idx === messages.length - 1}
+              isStreaming={idx === messages.length - 1 && isLoading}
+              playTTS={handlePlayTTS}
+              stopTTS={handleStopTTS}
+              onMarkMistake={msg.role === 'ai' ? handleMarkMistake : undefined}
+              onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
+              onRewardExp={(exp) => {
+                try {
+                  const currentExp = parseInt(localStorage.getItem('ai_tutor_user_exp') || '0', 10);
+                  localStorage.setItem('ai_tutor_user_exp', String(currentExp + (exp || 5)));
+                } catch (e) {}
+              }}
+            />
+          ))
+        )}
+        {isLoading && <div className="typing-indicator"><div className="dot" /><div className="dot" /><div className="dot" /></div>}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Modals */}
+      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile?.grade || '7_up'} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
+      {showStats && <StatsDashboard profiles={profiles} onClose={() => setShowStats(false)} currentProfileId={currentProfileId} />}
+      {showMap && (
+        <LearningMap
+          currentGrade={currentProfile?.grade || '7_up'}
+          currentSubject={selectedSubject || '数学'}
+          currentEdition={currentProfile?.edition || '人教版'}
+          currentProfileName={currentProfile?.name || '曾练'}
+          onClose={() => setShowMap(false)}
+          authFetch={authFetch}
+          onSelectChapter={(chapter) => {
+            setShowMap(false);
+            setActiveChapterData(chapter);
+            if (chapter.status === 'not_started') {
+              setActiveChapterData({ ...chapter, status: 'in_progress', progress_pct: 25 });
+              authFetch('/api/chapters/update-progress', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile_id: currentProfileId, grade: currentProfile?.grade || '7_up', subject: selectedSubject || '数学', chapter_id: chapter.id, status: 'in_progress', progress_pct: 25 })
+              }).catch(err => console.error('Failed to sync progress:', err));
+            }
+            handleSubmit(null, `[ACTION_START_CHAPTER] 我选择了关卡《${chapter.name}》，请给我发放【25%：新知导读与热身】的主动导学指引吧！`);
+          }}
+        />
+      )}
+      <ParentalGate isOpen={gateOpen} reason={gateReason} onVerify={async () => { if (gateAction) { try { await gateAction(); } catch (e) { console.error('Gate action failed:', e); } } }} onClose={() => { setGateOpen(false); setGateAction(null); }} />
+      <AddProfileModal isOpen={showAddProfile} onClose={() => setShowAddProfile(false)} onConfirm={handleAddProfile} />
+      {showClearConfirm && (
+        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '24px', borderRadius: '20px', background: 'var(--bg-secondary, #1e293b)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'white' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧹</div>
+            <h2 style={{ marginBottom: '12px' }}>清空对话历史</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
+              确定要清空当前的对话记录吗？此操作无法撤销。
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                className="secondary-btn" 
+                onClick={() => setShowClearConfirm(false)}
+                style={{ flex: 1, padding: '10px' }}
+              >
+                取消
+              </button>
+              <button 
+                className="primary-btn" 
+                style={{ flex: 1, padding: '10px', background: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
+                onClick={() => {
+                  setMessages([]);
+                  syncMessages([]);
+                  setShowClearConfirm(false);
+                }}
+              >
+                确定清空
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        socraticLevel={socraticLevel}
+        onSocraticToggle={(level) => setSocraticLevel(level)}
+        autoRead={autoRead}
+        onAutoReadToggle={() => setAutoRead(!autoRead)}
+        currentProfileId={currentProfileId}
+        currentProfileEdition={currentProfile?.edition || '人教版'}
+        onEditionChange={handleEditionChange}
+        backendUrl={backendUrl}
+        onSaveBackendUrl={setBackendUrl}
+        apiToken={apiToken}
+        onSaveApiToken={setApiToken}
+      />
+      <AdminConsoleModal
+        isOpen={showAdminConsole}
+        onClose={() => setShowAdminConsole(false)}
+        backendUrl={backendUrl}
+        onSaveBackendUrl={setBackendUrl}
+        apiToken={apiToken}
+        onSaveApiToken={setApiToken}
+      />
+
+      {/* Weekly Report Modal */}
+      <WeeklyReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportLoading={reportLoading}
+        reportData={reportData}
+      />
+
+      {showKnowledgeTest && (
+        <KnowledgeTest
+          onClose={() => setShowKnowledgeTest(false)}
+          currentProfileId={currentProfileId}
+          currentGrade={currentProfile?.grade || '7_up'}
+          selectedSubject={selectedSubject}
+          currentEdition={currentProfile?.edition || '人教版'}
+          authFetch={authFetch}
+        />
+      )}
+      {showOnboarding && <OnboardingGuide language={language} onClose={() => setShowOnboarding(false)} />}
+
+      {/* 沉浸式演练草稿纸与白板 */}
+      <ScratchpadModal
+        isOpen={showScratchpad}
+        onClose={() => setShowScratchpad(false)}
+        onSendToTutor={handleSendScratchpad}
+      />
+
+      {/* 名师面对面主动语音设问与递麦光环 */}
+      <VoiceDialogueOverlay
+        isOpen={voiceDialogueOpen}
+        mode={voiceDialogueMode}
+        studentName={currentProfile?.name || '曾练'}
+        currentQuestionText={currentFocusQuestion}
+        liveSpokenText={liveSpokenText}
+        countdownSeconds={8}
+        onInterrupt={() => {
+          if (voiceDialogueMode === 'speaking') {
+            interruptSpeech();
+            setVoiceDialogueMode('listening');
+            startVoiceRecording(true);
+          } else if (voiceDialogueMode === 'listening') {
+            stopVoiceRecording();
+          }
+        }}
+        onCancel={() => {
+          interruptSpeech();
+          stopVoiceRecording();
+          setVoiceDialogueOpen(false);
+        }}
+      />
+
+      {/* 宏观高阶进阶模态框：A4 真题密卷、长周期战报与提分测算、家长每日 Insights 简报 */}
+      <A4PrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        studentName={currentProfile?.name || '曾练'}
+        grade={currentProfile?.grade || '八年级'}
+        subject={selectedSubject || '数学'}
+      />
+
+      <CampaignRoadmapModal
+        isOpen={showRoadmap}
+        onClose={() => setShowRoadmap(false)}
+        currentProfileId={currentProfileId}
+        grade={currentProfile?.grade || '7_up'}
+        subject={selectedSubject || '数学'}
+        studentName={currentProfile?.name || '曾练'}
+      />
+
+      <ParentMemoModal
+        isOpen={showParentMemo}
+        onClose={() => setShowParentMemo(false)}
+        currentProfileId={currentProfileId}
+        grade={currentProfile?.grade || '7_up'}
+        subject={selectedSubject || '数学'}
+        studentName={currentProfile?.name || '曾练'}
+      />
+
+      <HomeworkBatchModal
+        isOpen={showBatchGrade}
+        onClose={() => setShowBatchGrade(false)}
+        currentProfileId={currentProfileId}
+        grade={currentProfile?.grade || '7_up'}
+        subject={selectedSubject || '数学'}
+        studentName={currentProfile?.name || '曾练'}
+        onReviewMistakes={() => setShowMistakes(true)}
+        onStartSocraticTutoring={handleStartSocraticTutoring}
+      />
+
+      <GamificationBadgeModal
+        isOpen={showGamification}
+        onClose={() => setShowGamification(false)}
+        currentProfileId={currentProfileId}
+        studentName={currentProfile?.name || '曾练'}
+      />
+
+      <PrimaryVisualManipulatives
+        isOpen={showManipulatives}
+        onClose={() => setShowManipulatives(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      <DynamicGeometrySandbox
+        isOpen={showGeometrySandbox}
+        onClose={() => setShowGeometrySandbox(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 智能拍照搜题取景框与去阴影裁剪器 (对标作业帮/小猿) */}
+      <SmartPhotoCropperModal
+        isOpen={showCropper}
+        imageFile={photoToCrop}
+        onConfirm={handleCropperConfirm}
+        onClose={() => {
+          setShowCropper(false);
+          setPhotoToCrop(null);
+        }}
+      />
+
+      <PrivacyConsentModal
+        isOpen={showPrivacyConsent}
+        onAccept={() => setShowPrivacyConsent(false)}
+      />
+
+      {/* 📖 中考数理化必备公式速查宝典 */}
+      <FormulaHandbookModal
+        isOpen={showFormulaModal}
+        onClose={() => setShowFormulaModal(false)}
+        onInsertFormula={handleInsertFormula}
+      />
+
+      {/* ⚡ 60秒趣味口算天天练 */}
+      <DailyMentalMathModal
+        isOpen={showMentalMathModal}
+        onClose={() => setShowMentalMathModal(false)}
+        currentGrade={parseInt(String(currentProfile?.grade || '3').split('_')[0], 10) || 3}
+        onAwardExp={handleAwardExp}
+      />
+
+      {/* 📐 步骤级实时代数演算纸与 CAS 校验卫士 */}
+      <StepByStepMathScratchpad
+        isOpen={showStepScratchpad}
+        initialEquation={stepScratchpadEq}
+        onClose={() => setShowStepScratchpad(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🔬 初中物理动态虚拟微实验台 (凸透镜光路·滑动变阻器欧姆定律) */}
+      <PhysicsSimulatorsModal
+        isOpen={showPhysicsSimulator}
+        onClose={() => setShowPhysicsSimulator(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🖋️ 中高考作文五维精批与逐句升格台 */}
+      <EssayUpgraderModal
+        isOpen={showEssayModal}
+        onClose={() => setShowEssayModal(false)}
+        currentGrade={currentProfile?.grade || '7_up'}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* ⚗️ 初中化学动态虚拟微实验台 (O2/CO2制备与分子重组) */}
+      <ChemistryLabModal
+        isOpen={showChemistryModal}
+        onClose={() => setShowChemistryModal(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🗣️ 中考英语听说情景对练与音标雷达 */}
+      <EnglishRolePlayModal
+        isOpen={showEnglishRolePlay}
+        onClose={() => setShowEnglishRolePlay(false)}
+        onApplyToChat={(text) => setInput(text)}
+      />
+
+      {/* 🌟 微信级晚间学情成果日报卡 */}
+      <DailyAchievementCardModal
+        isOpen={showDailyCard}
+        onClose={() => setShowDailyCard(false)}
+        studentName={currentProfile?.name || '曾练'}
+        currentGrade={currentProfile?.grade || '7_up'}
+        studyMinutes={45}
+        masteredCount={4}
+        feynmanStars={5}
+      />
+
+      {/* 🌿 国际眼科 20-20-20 视力守护番茄钟 */}
+      <EyeCareTimerModal
+        isOpen={showEyeCare}
+        onClose={() => setShowEyeCare(false)}
+        onToggleEink={toggleEinkMode}
+      />
+
+      {/* 🌌 跨年级考点星图与先修断层溯源模态框 */}
+      <PrerequisiteTraceModal
+        isOpen={showPrerequisiteTrace}
+        onClose={() => setShowPrerequisiteTrace(false)}
+        initialTopic={traceTargetTopic}
+        initialSubject={selectedSubject || '数学'}
+        initialGrade={currentProfile?.grade || '7_up'}
+        onAskTutor={(prompt) => {
+          setInput(prompt);
+          showToast('📖 已将先修基石攻坚设问填入案头，点击发送即可开始', 'info');
+        }}
+      />
+
+      <InputBar
+        input={input} setInput={setInput}
+        isLoading={isLoading} isListening={isListening}
+        previewImage={previewImage} fileInputRef={fileInputRef}
+        onSubmit={handleSubmit} onToggleVoice={toggleVoice}
+        onImageSelect={handleImageSelect} onClearImage={clearImage}
+        autoRead={autoRead} setAutoRead={setAutoRead}
+        isSpeaking={isSpeaking}
+        onInterruptSpeech={interruptSpeech}
+        onOpenScratchpad={() => setShowScratchpad(true)}
+        onOpenBatchGrade={() => setShowBatchGrade(true)}
+        onOpenFormulaHandbook={() => setShowFormulaModal(true)}
+        onOpenStepScratchpad={() => {
+          setStepScratchpadEq('2x + 4 = 10');
+          setShowStepScratchpad(true);
+        }}
+        onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
+        onOpenEssay={() => setShowEssayModal(true)}
+        onOpenChemistry={() => setShowChemistryModal(true)}
+        onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
+        onOpenDailyCard={() => setShowDailyCard(true)}
+        onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenPrerequisiteTrace={() => handleOpenPrerequisiteTrace(null)}
+        onOpenVoiceCompanion={handleOpenVoiceCompanion}
+        isFeynmanMode={isFeynmanMode}
+        onToggleFeynmanMode={toggleFeynmanMode}
+        hasActiveChat={messages.length > 0}
+      />
+
+      {/* 现代移动端渐隐 Toast 状态提示 (替代原生阻塞式 alert，安全漂浮在 Header 下方) */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top, 0px) + 72px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '10px 20px',
+          borderRadius: '30px',
+          maxWidth: '90%',
+          boxSizing: 'border-box',
+          background: toast.type === 'error'
+            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95))'
+            : toast.type === 'success'
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95))'
+              : 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))',
+          color: '#ffffff',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          fontSize: '0.9rem',
+          fontWeight: 600,
+          pointerEvents: 'none'
+        }}>
+          <span>{toast.type === 'error' ? '❌' : toast.type === 'success' ? '✅' : '💡'}</span>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* 错题归档快速错因标签选择浮条 (三维极简标记：粗心/公式生疏/无思路) */}
+      {mistakeTagPrompt && (
+        <div style={{
+          position: 'fixed',
+          bottom: '120px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: '1px solid rgba(59, 130, 246, 0.4)',
+          borderRadius: '16px',
+          padding: '10px 14px',
+          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          maxWidth: '92%',
+          width: '380px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <span style={{ fontSize: '0.8rem', color: '#93c5fd', fontWeight: 600 }}>
+              🏷️ 请选择本题错因（自动分类错题本）：
+            </span>
+            <button
+              type="button"
+              onClick={() => setMistakeTagPrompt(null)}
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', width: '100%', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleSelectMistakeReason(mistakeTagPrompt.id, '粗心看错/算错')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                color: '#fca5a5',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              🤦‍♂️ 粗心看错
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectMistakeReason(mistakeTagPrompt.id, '公式概念生疏')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                color: '#fcd34d',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              📐 公式生疏
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectMistakeReason(mistakeTagPrompt.id, '完全毫无思路')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.35)',
+                color: '#c4b5fd',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              🤯 完全无思路
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const isParentRemoteView = urlParams && (urlParams.has('parent_view') || (urlParams.has('token') && !urlParams.has('admin')));
+
+  if (isParentRemoteView) {
+    return (
+      <ErrorBoundary>
+        <ParentRemoteDashboard token={urlParams.get('token')} />
+      </ErrorBoundary>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <AppProvider><AppInner /></AppProvider>
+    </ErrorBoundary>
+  );
+}

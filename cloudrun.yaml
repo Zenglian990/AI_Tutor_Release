@@ -1,0 +1,48 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ai-tutor
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: asia-east1-docker.pkg.dev/ai-tutor-79709693345/ai-tutor/server:latest
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "8080"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=384"
+            - name: ALLOWED_ORIGINS
+              value: "https://ai-tutor-79709693345.asia-east1.run.app,http://localhost:5173"
+            - name: CHAT_MODEL
+              value: gemini-2.5-flash
+            - name: DEFAULT_PROVIDER
+              value: gemini
+            - name: DEEPSEEK_API_URL
+              value: https://api.deepseek.com/v1
+            - name: DEEPSEEK_CHAT_MODEL
+              value: deepseek-chat
+            - name: JEV_ENABLED
+              value: "true"
+            - name: JEV_CONFIDENCE_THRESHOLD
+              value: "0.85"

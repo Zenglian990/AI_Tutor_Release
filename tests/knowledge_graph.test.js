@@ -1,0 +1,82 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const {
+  KNOWLEDGE_GRAPH,
+  getPrerequisites,
+  matchKnowledgeNodes,
+  diagnosePrerequisiteKnowledge,
+  formatGraphRAGPromptSection
+} = require('../server/services/knowledgeGraph');
+
+test('Knowledge Graph — topology integrity & no self-cycles', () => {
+  assert.ok(Object.keys(KNOWLEDGE_GRAPH).length >= 80, 'Should define comprehensive K-9 topics including PEP taxonomy');
+
+  for (const [nodeId, node] of Object.entries(KNOWLEDGE_GRAPH)) {
+    assert.strictEqual(node.id, nodeId);
+    assert.ok(node.name, 'Node must have name');
+    assert.ok(node.subject, 'Node must have subject');
+    assert.ok(Array.isArray(node.prerequisites), 'Prerequisites must be array');
+    assert.ok(!node.prerequisites.includes(nodeId), 'Node cannot depend on itself');
+
+    // Verify all prerequisites exist in graph
+    for (const preId of node.prerequisites) {
+      assert.ok(KNOWLEDGE_GRAPH[preId], `Prerequisite ${preId} must exist in KNOWLEDGE_GRAPH`);
+    }
+  }
+});
+
+test('Knowledge Graph — PEP math taxonomy deep prerequisite tracing', () => {
+  // mt_ch1_004 (有理数的分类) -> mt_ch1_003 (有理数的概念) -> mt_ch1_001 (正数和负数的概念)
+  const prereqs = getPrerequisites('mt_ch1_004', 2);
+  assert.ok(prereqs.length >= 1, 'Should find prerequisites for rational number classification');
+  assert.strictEqual(prereqs[0].id, 'mt_ch1_003');
+  assert.strictEqual(prereqs[1].id, 'mt_ch1_001');
+});
+
+test('Knowledge Graph — getPrerequisites recursive tracing', () => {
+  // 因式分解 (8_up) -> 整式乘法 (7_down) -> 整式加减 (7_up)
+  const prereqs = getPrerequisites('math_factorization', 2);
+  assert.ok(prereqs.length >= 1, 'Should find prerequisites for factorization');
+  assert.strictEqual(prereqs[0].id, 'math_polynomial_multiplication');
+
+  // 勾股定理 (8_down) -> 二次根式 & 全等三角形
+  const pythagoreanPrereqs = getPrerequisites('math_pythagorean', 2);
+  const ids = pythagoreanPrereqs.map(p => p.id);
+  assert.ok(ids.includes('math_square_root'), 'Pythagorean must depend on square root');
+  assert.ok(ids.includes('math_congruent_triangles'), 'Pythagorean must depend on congruent triangles');
+});
+
+test('Knowledge Graph — matchKnowledgeNodes by query keywords', () => {
+  const matched = matchKnowledgeNodes('老师，这道因式分解题十字相乘我不会做', '数学');
+  assert.ok(matched.length >= 1);
+  assert.strictEqual(matched[0].id, 'math_factorization');
+
+  const physicsMatched = matchKnowledgeNodes('浮力与阿基米德原理的公式是什么', '物理');
+  assert.ok(physicsMatched.length >= 1);
+  assert.strictEqual(physicsMatched[0].id, 'phys_buoyancy');
+});
+
+test('Knowledge Graph — diagnosePrerequisiteKnowledge & formatGraphRAGPromptSection', () => {
+  const diagnosis = diagnosePrerequisiteKnowledge('求二次函数抛物线顶点坐标和极值', '数学', []);
+  assert.ok(diagnosis);
+  assert.strictEqual(diagnosis.hasPrerequisites, true);
+  assert.strictEqual(diagnosis.currentTopic.id, 'math_quadratic_function');
+  assert.ok(diagnosis.rootCauseNode);
+
+  const promptSection = formatGraphRAGPromptSection(diagnosis);
+  assert.ok(promptSection.includes('【🔗 知识图谱跨学期根因穿透（GraphRAG）】'));
+  assert.ok(promptSection.includes('二次函数'));
+});
+
+test('Knowledge Graph — getCrossGradeRootCause & foundation remedy', () => {
+  const { getCrossGradeRootCause } = require('../server/services/knowledgeGraph');
+  const result = getCrossGradeRootCause('勾股定理直角三角形斜边计算', '数学', '8_down');
+  assert.ok(result);
+  assert.strictEqual(result.currentNode.id, 'math_pythagorean');
+  assert.ok(result.chainPath.length >= 2, 'Should construct multi-hop prerequisite chain');
+  assert.strictEqual(result.hasCrossGradeGap, true, 'Should detect cross-grade gap');
+  assert.ok(result.remedy);
+  assert.ok(result.remedy.question, 'Remedy must have diagnostic foundation question');
+  assert.ok(result.remedy.answer, 'Remedy must have standard answer');
+  assert.ok(result.remedy.diagnosisReason.includes('勾股定理'), 'Must explain root cause in diagnosis reason');
+});

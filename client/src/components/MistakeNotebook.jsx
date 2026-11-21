@@ -1,0 +1,675 @@
+import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import rehypeKatex from 'rehype-katex';
+import { getApiUrl, authFetch, formatGrade, useAppStore } from '../store/useStore';
+import { preprocessLatex } from '../utils/math';
+import A4PrintModal from './A4PrintModal';
+import VariantPracticeModal from './VariantPracticeModal';
+import FSRSFlashcardSprintModal from './FSRSFlashcardSprintModal';
+import PrerequisiteTraceModal from './PrerequisiteTraceModal';
+
+export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject, onOpenPrerequisiteTrace }) {
+  const { currentProfile } = useAppStore();
+  const studentName = currentProfile?.name || '曾练';
+  const [mistakes, setMistakes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [deletingIds, setDeletingIds] = useState(new Set());
+  const [filterGrade, setFilterGrade] = useState(defaultGrade || '');
+  const [filterSubject, setFilterSubject] = useState(defaultSubject || '');
+  const [searchWord, setSearchWord] = useState('');
+  const [testMode, setTestMode] = useState(false);
+  const [showReviewOnly, setShowReviewOnly] = useState(false);
+  const [variations, setVariations] = useState({});
+  const [variationSolutions, setVariationSolutions] = useState({});
+  const [studentAnswers, setStudentAnswers] = useState({});
+  const [variationFeedbacks, setVariationFeedbacks] = useState({});
+  const [generatingVarId, setGeneratingVarId] = useState(null);
+  const [gradingVarId, setGradingVarId] = useState(null);
+  const [filterTag, setFilterTag] = useState('');
+  const [editingTagsId, setEditingTagsId] = useState(null);
+  const [tempTags, setTempTags] = useState('');
+  const [showA4Modal, setShowA4Modal] = useState(false);
+  const [showFlashcardSprint, setShowFlashcardSprint] = useState(false);
+  const [generatingTargetedPaper, setGeneratingTargetedPaper] = useState(false);
+  const [variantPaperQuestions, setVariantPaperQuestions] = useState([]);
+  const [selectedPrereqMistake, setSelectedPrereqMistake] = useState(null);
+  const [selectedTraceMistake, setSelectedTraceMistake] = useState(null);
+
+  const handleGenerateTargetedVariantPaper = async () => {
+    if (mistakes.length === 0) {
+      alert('错题本暂无记录，请先在作业批改中拍照批改或日常学习中归档错题！');
+      return;
+    }
+    setGeneratingTargetedPaper(true);
+    try {
+      const res = await authFetch('/api/test-paper/generate-from-mistakes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: currentProfileId || 'default',
+          subject: filterSubject || defaultSubject || '数学',
+          grade: filterGrade || defaultGrade || '7_up'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.testPaper) {
+        setVariantPaperQuestions(data.testPaper.questions || []);
+        setShowA4Modal(true);
+      } else {
+        alert(data.error || '生成靶向变式卷失败');
+      }
+    } catch (err) {
+      alert('网络超时，生成靶向变式卷失败');
+    } finally {
+      setGeneratingTargetedPaper(false);
+    }
+  };
+
+  const ATTRIBUTION_TAGS = [
+    { label: '计算粗心', key: 'careless', icon: '🟡' },
+    { label: '审题不清', key: 'reading', icon: '🔵' },
+    { label: '公式遗忘', key: 'formula', icon: '🟣' },
+    { label: '概念盲区', key: 'concept', icon: '🔴' }
+  ];
+
+  const handleSaveTags = async (mistakeId, customTags) => {
+    const tagsToSave = customTags !== undefined ? customTags : tempTags;
+    try {
+      const res = await authFetch(`/api/mistakes/${mistakeId}/tags?profile_id=${currentProfileId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: tagsToSave })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMistakes(prev => prev.map(m => m.id === mistakeId ? { ...m, tags: data.tags } : m));
+        if (customTags === undefined) setEditingTagsId(null);
+      } else {
+        alert(data.error || '保存标签失败');
+      }
+    } catch (e) {
+      alert('网络错误');
+    }
+  };
+
+  const handleToggleAttributionTag = async (mistake, tagLabel) => {
+    const existingTags = mistake.tags ? mistake.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    let updatedTags;
+    if (existingTags.includes(tagLabel)) {
+      updatedTags = existingTags.filter(t => t !== tagLabel);
+    } else {
+      updatedTags = [...existingTags, tagLabel];
+    }
+    await handleSaveTags(mistake.id, updatedTags.join(','));
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    authFetch(`/api/mistakes?profile_id=${currentProfileId}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load mistakes');
+        return res.json();
+      })
+      .then(data => {
+        setMistakes(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [currentProfileId]);
+
+  const filtered = mistakes.filter(m => {
+    if (filterGrade) {
+      const mGrade = String(m.grade);
+      const fGrade = String(filterGrade);
+      if (mGrade !== fGrade) {
+        const mBase = mGrade.split('_')[0];
+        const fBase = fGrade.split('_')[0];
+        if (mBase !== fBase) return false;
+      }
+    }
+    if (filterSubject && m.subject !== filterSubject) return false;
+    if (filterTag) {
+      const mTags = m.tags ? m.tags.split(',').map(t => t.trim().toLowerCase()) : [];
+      if (!mTags.includes(filterTag.toLowerCase())) return false;
+    }
+    if (searchWord && (!m.query || !m.query.includes(searchWord)) && (!m.answer || !m.answer.includes(searchWord))) return false;
+    if (showReviewOnly) {
+      if (!m.next_review_date) return false;
+      if (new Date(m.next_review_date) > new Date()) return false;
+    }
+    return true;
+  });
+
+  const allTags = Array.from(new Set(mistakes.flatMap(m => m.tags ? m.tags.split(',').map(t => t.trim()).filter(Boolean) : [])));
+
+  const handlePrint = () => window.print();
+
+  const handleGenerateVariation = async (mistake) => {
+    setGeneratingVarId(mistake.id);
+    try {
+      const res = await authFetch('/api/generate-variation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: mistake.query, answer: mistake.answer, grade: mistake.grade })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setVariations(prev => ({ ...prev, [mistake.id]: data.variation }));
+        setVariationSolutions(prev => ({ ...prev, [mistake.id]: data.solution }));
+        setStudentAnswers(prev => ({ ...prev, [mistake.id]: '' }));
+        setVariationFeedbacks(prev => { const next = { ...prev }; delete next[mistake.id]; return next; });
+      } else {
+        alert(data.error || '生成变式题失败');
+      }
+    } catch (e) {
+      alert('网络错误，请稍后再试');
+    } finally {
+      setGeneratingVarId(null);
+    }
+  };
+
+  const handleSubmitVariationAnswer = async (mistake) => {
+    const answer = studentAnswers[mistake.id];
+    if (!answer?.trim()) return;
+    setGradingVarId(mistake.id);
+    try {
+      const res = await authFetch('/api/grade-variation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: variations[mistake.id],
+          solution: variationSolutions[mistake.id],
+          student_answer: answer,
+          grade: mistake.grade,
+          subject: mistake.subject
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setVariationFeedbacks(prev => ({ ...prev, [mistake.id]: data.feedback }));
+      } else {
+        alert(data.error || '批改失败');
+      }
+    } catch (e) {
+      alert('网络错误');
+    } finally {
+      setGradingVarId(null);
+    }
+  };
+
+  const handleDeleteMistake = (id) => {
+    if (deletingIds.has(id)) return;
+    onGuardAction(async () => {
+      setDeletingIds(prev => new Set(prev).add(id));
+      try {
+        const res = await authFetch(`/api/mistakes/${id}?profile_id=${currentProfileId}`, { method: 'DELETE' });
+        if (res.ok) {
+          setMistakes(prev => prev.filter(m => m.id !== id));
+        } else {
+          alert('删除失败');
+        }
+      } catch (e) {
+        alert('网络错误');
+      } finally {
+        setDeletingIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    }, '删除错题记录');
+  };
+
+  return (
+    <div className="mistake-overlay">
+      <div className={`mistake-modal ${testMode ? 'print-mode' : ''}`}>
+        <div className="mistake-header no-print">
+          <h2>📚 专属错题本</h2>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="mistake-btn" onClick={() => setShowReviewOnly(!showReviewOnly)} style={{ borderColor: showReviewOnly ? '#a78bfa' : 'var(--accent-color)', color: showReviewOnly ? '#a78bfa' : 'var(--accent-color)' }}>
+              {showReviewOnly ? '📅 全部错题' : '⏰ 艾宾浩斯复习推送'}
+            </button>
+            <button
+              className="mistake-btn"
+              onClick={() => setShowFlashcardSprint(true)}
+              style={{
+                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                borderColor: '#818cf8',
+                color: '#ffffff',
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.4)'
+              }}
+              title="3分钟 FSRS 记忆闪卡冲刺，科学快速消灭到期错题"
+            >
+              ⚡ 3分钟闪卡冲刺
+            </button>
+            <button className="mistake-btn" onClick={() => setTestMode(!testMode)}>
+              {testMode ? '👁️ 显示答案' : '📝 生成复习卷'}
+            </button>
+            <button
+              className="mistake-btn"
+              onClick={handleGenerateTargetedVariantPaper}
+              disabled={generatingTargetedPaper}
+              style={{
+                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                borderColor: '#38bdf8',
+                color: '#fff',
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)'
+              }}
+            >
+              {generatingTargetedPaper ? '⏳ 正在溯源组卷...' : '🎯 靶向变式巩固卷'}
+            </button>
+            <button className="mistake-btn" onClick={() => { setVariantPaperQuestions([]); setShowA4Modal(true); }} style={{ borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>
+              📄 A4 错题排版
+            </button>
+            <button className="mistake-btn" onClick={handlePrint}>🖨️ 快速打印</button>
+            <button onClick={onClose} className="close-btn" title="关闭" aria-label="关闭错题本">×</button>
+          </div>
+        </div>
+
+        <div className="mistake-filters no-print" style={{ padding: '15px 20px 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <select className="grade-selector" value={filterGrade} onChange={e => setFilterGrade(e.target.value)} aria-label="筛选年级">
+              <option value="">全部年级</option>
+              {['1_up','1_down','2_up','2_down','3_up','3_down','4_up','4_down','5_up','5_down','6_up','6_down','7_up','7_down','8_up','8_down','9_up','9_down'].map(g =>
+                <option key={g} value={g}>{formatGrade(g)}</option>
+              )}
+            </select>
+            <select className="grade-selector" value={filterSubject} onChange={e => setFilterSubject(e.target.value)} aria-label="筛选学科">
+              <option value="">全部学科</option>
+              {['语文','数学','英语','物理','化学','生物','历史','地理','道德与法治'].map(s =>
+                <option key={s} value={s}>{s === '道德与法治' ? '道法' : s}</option>
+              )}
+            </select>
+            <select className="grade-selector" value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="筛选标签">
+              <option value="">全部标签</option>
+              {allTags.map(tag => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              className="search-input"
+              aria-label="搜索错题"
+              placeholder="搜索题目或知识点关键字..."
+              value={searchWord}
+              onChange={e => setSearchWord(e.target.value)}
+              style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', outline: 'none' }}
+            />
+          </div>
+          {/* 4大失分归因快捷筛选 (对标作业帮错题本) */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>🎯 4大失分根因快筛：</span>
+            {ATTRIBUTION_TAGS.map(at => {
+              const active = filterTag === at.label;
+              return (
+                <button
+                  key={at.key}
+                  onClick={() => setFilterTag(active ? '' : at.label)}
+                  className={`attribution-chip ${at.key}`}
+                  style={{
+                    border: active ? '1.5px solid currentColor' : undefined,
+                    boxShadow: active ? '0 0 10px currentColor' : undefined,
+                    opacity: active ? 1 : 0.75
+                  }}
+                >
+                  <span>{at.icon}</span>
+                  <span>{at.label}</span>
+                  {active && <span style={{ marginLeft: '2px' }}>✕</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mistakes-list">
+          {error ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚠️</div>
+              <div>无法加载错题本: {error}</div>
+              <button onClick={() => {
+                setLoading(true);
+                setError(null);
+                authFetch(`/api/mistakes?profile_id=${currentProfileId}`)
+                  .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
+                  .then(d => { setMistakes(Array.isArray(d) ? d : []); setLoading(false); })
+                  .catch(e => { setError(e.message); setLoading(false); });
+              }} style={{ marginTop: '15px', padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>重试</button>
+            </div>
+          ) : loading ? (
+            <div className="loading-text">加载错题中...</div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-text">目前还没有记录哦，继续加油！</div>
+          ) : (
+            filtered.map(m => (
+              <div key={m.id} className="mistake-item">
+                <div className="mistake-meta no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    <span className="grade-tag">{formatGrade(m.grade)} {m.subject && m.subject !== 'unknown' ? m.subject : ''}</span>
+                    <span className="time-tag">{new Date(m.timestamp).toLocaleString()}</span>
+                    
+                    {editingTagsId === m.id ? (
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={tempTags}
+                          onChange={e => setTempTags(e.target.value)}
+                          placeholder="标签以逗号分隔"
+                          style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            background: 'rgba(0,0,0,0.5)',
+                            color: '#fff',
+                            fontSize: '0.75rem',
+                            outline: 'none',
+                            width: '120px'
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSaveTags(m.id)}
+                          style={{
+                            padding: '2px 8px',
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          保存
+                        </button>
+                        <button
+                          onClick={() => setEditingTagsId(null)}
+                          style={{
+                            padding: '2px 8px',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                        {m.tags ? m.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                          <span key={tag} style={{
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            background: 'rgba(167, 139, 250, 0.15)',
+                            border: '1px solid rgba(167, 139, 250, 0.3)',
+                            color: '#c084fc',
+                            fontSize: '0.7rem',
+                            fontWeight: '500'
+                          }}>
+                            #{tag}
+                          </span>
+                        )) : (
+                          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem', fontStyle: 'italic' }}>无标签</span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setEditingTagsId(m.id);
+                            setTempTags(m.tags || '');
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#a78bfa',
+                            cursor: 'pointer',
+                            fontSize: '0.7rem',
+                            textDecoration: 'underline',
+                            padding: 0,
+                            marginLeft: '4px'
+                          }}
+                        >
+                          🏷️ 编辑
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteMistake(m.id)} 
+                    disabled={deletingIds.has(m.id)}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: deletingIds.has(m.id) ? 'not-allowed' : 'pointer', opacity: deletingIds.has(m.id) ? 0.5 : 1 }} 
+                    title="删除错题" aria-label="删除此错题">
+                    {deletingIds.has(m.id) ? '⏳ 删除中' : '🗑️ 删除'}
+                  </button>
+                </div>
+
+                {/* 4大失分归因一键打标 (对标作业帮错因深度自省) */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', margin: '6px 0 10px 0' }} className="no-print">
+                  <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>失分根因标记：</span>
+                  {ATTRIBUTION_TAGS.map(at => {
+                    const currentTags = m.tags ? m.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+                    const hasTag = currentTags.includes(at.label);
+                    return (
+                      <button
+                        key={at.key}
+                        onClick={() => handleToggleAttributionTag(m, at.label)}
+                        className={`attribution-chip ${at.key}`}
+                        style={{
+                          opacity: hasTag ? 1 : 0.45,
+                          border: hasTag ? '1px solid currentColor' : '1px dashed rgba(255,255,255,0.2)',
+                          fontWeight: hasTag ? '700' : 'normal'
+                        }}
+                        title={`点击${hasTag ? '取消' : '添加'}【${at.label}】归因`}
+                      >
+                        <span>{at.icon}</span>
+                        <span>{at.label}</span>
+                        {hasTag && <span>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mistake-query"><strong>问题：</strong>{m.query}</div>
+                {m.image_url && (
+                  <div style={{ margin: '8px 0' }} className="mistake-photo-box no-print">
+                    <img
+                      src={m.image_url}
+                      alt="作业原图切片"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '200px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        objectFit: 'contain',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => window.open(m.image_url, '_blank')}
+                      title="点击在新窗口查看作业原图"
+                    />
+                  </div>
+                )}
+                {!testMode ? (
+                  <div className="mistake-answer">
+                    <strong>解析：</strong>
+                    <div className="md-content">
+                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(m.answer)}</ReactMarkdown>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="test-blank-space" style={{ height: '150px', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '8px', marginTop: '15px' }}></div>
+                )}
+                {!testMode && (
+                  <div className="mistake-actions no-print" style={{ marginTop: '10px' }}>
+                    <button
+                      onClick={() => handleGenerateVariation(m)}
+                      disabled={generatingVarId === m.id}
+                      style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer' }}
+                    >
+                      {generatingVarId === m.id ? '⏳ 正在生成变式题...' : (variations[m.id] ? '🔄 换一题' : '🔄 举一反三')}
+                    </button>
+                    <button
+                      onClick={() => setSelectedPrereqMistake(m)}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3))',
+                        border: '1px solid #10b981',
+                        borderRadius: '6px',
+                        color: '#34d399',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginLeft: '8px'
+                      }}
+                      title="向下溯源该题底层的跨学期知识漏洞，攻克底层基石"
+                    >
+                      🌱 根因溯源
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (onOpenPrerequisiteTrace) {
+                          onOpenPrerequisiteTrace(m);
+                        } else {
+                          setSelectedTraceMistake(m);
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.3))',
+                        border: '1px solid #8b5cf6',
+                        borderRadius: '6px',
+                        color: '#c084fc',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginLeft: '8px'
+                      }}
+                      title="溯源先修断层：递归排查该考点在更早年级的前置知识链与认知漏洞"
+                    >
+                      🔍 溯源先修断层
+                    </button>
+                    {variations[m.id] && (
+                      <div className="mistake-variation" style={{ marginTop: '24px', padding: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))', border: '1px solid rgba(96, 165, 250, 0.2)', borderLeft: '5px solid #3b82f6', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(10px)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '14px', color: '#60a5fa', fontSize: '1.05rem', textShadow: '0 0 10px rgba(96,165,250,0.2)' }}>🎯 变式提优挑战</div>
+                        <div className="md-content">
+                          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(variations[m.id])}</ReactMarkdown>
+                        </div>
+                        {!variationFeedbacks[m.id] && (
+                          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <textarea
+                              placeholder="✍️ 请在这里写下你的解答步骤和答案..."
+                              value={studentAnswers[m.id] || ''}
+                              onChange={e => setStudentAnswers(prev => ({ ...prev, [m.id]: e.target.value }))}
+                              style={{ width: '100%', minHeight: '120px', padding: '14px', borderRadius: '12px', background: 'rgba(0,0,0,0.4)', color: '#f8fafc', border: '1px solid rgba(255,255,255,0.15)', outline: 'none', resize: 'vertical', fontSize: '0.95rem', lineHeight: '1.6' }}
+                            />
+                            <button
+                              onClick={() => handleSubmitVariationAnswer(m)}
+                              disabled={gradingVarId === m.id || !studentAnswers[m.id]?.trim()}
+                              style={{ alignSelf: 'flex-end', padding: '10px 24px', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '0.9rem', cursor: (gradingVarId === m.id || !studentAnswers[m.id]?.trim()) ? 'not-allowed' : 'pointer', opacity: (gradingVarId === m.id || !studentAnswers[m.id]?.trim()) ? 0.5 : 1 }}
+                            >
+                              {gradingVarId === m.id ? '⚡ 正在深度批改中...' : '🚀 提交给 AI 老师批改'}
+                            </button>
+                          </div>
+                        )}
+                        {variationFeedbacks[m.id] && (
+                          <div style={{ marginTop: '20px', padding: '20px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(4, 120, 87, 0.18))', border: '1px solid rgba(16, 185, 129, 0.25)', borderLeft: '5px solid #10b981', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '12px', color: '#10b981', fontSize: '1.02rem' }}>👨‍🏫 专属AI私教点评：</div>
+                            <div className="md-content">
+                              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(variationFeedbacks[m.id])}</ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* A4 Clean Paper & Answer Key Modal */}
+      {showA4Modal && (
+        <A4PrintModal
+          isOpen={showA4Modal}
+          onClose={() => { setShowA4Modal(false); setVariantPaperQuestions([]); }}
+          studentName={studentName}
+          grade={filterGrade || defaultGrade || '7_up'}
+          subject={filterSubject || defaultSubject || '数学'}
+          questions={variantPaperQuestions.length > 0 ? variantPaperQuestions.map((q, idx) => ({
+            id: q.id || idx + 1,
+            questionNumber: idx + 1,
+            title: `第 ${idx + 1} 题 (${q.type === 'choice' ? '选择题' : q.type === 'blank' ? '填空题' : '解答题'}) [${q.category === 'prerequisite_grounding' ? '🌱 前置概念保底' : q.category === 'isomorphic_variant' ? '🔄 同构变式强化' : '🚀 综合拓展拔高'}]`,
+            body: q.question + (Array.isArray(q.options) && q.options.length > 0 ? '\n' + q.options.join('\n') : ''),
+            score: q.score || 15,
+            standardAnswer: q.answer,
+            keyInsight: q.explanation || '名师解析与思维破局点',
+            mistakeReason: q.category === 'prerequisite_grounding' ? '针对该题此前暴露的前置基础断层进行保底测评' : '',
+            status: 'wrong',
+            imageUrl: q.imageUrl || q.image_url || null
+          })) : filtered.map((m, idx) => ({
+            id: m.id,
+            questionNumber: idx + 1,
+            title: `第 ${idx + 1} 题 (${m.subject || '错题'})`,
+            body: m.query,
+            score: 10,
+            standardAnswer: m.answer,
+            keyInsight: '考点巩固：注意题干关键字提取、审题防坑与规范书写。',
+            mistakeReason: m.mistake_reason || '',
+            status: 'wrong',
+            imageUrl: m.image_url || null,
+            variant: m.variant || (Array.isArray(m.variants) && m.variants[0]) || null,
+            variantQuestion: m.variantQuestion || null
+          }))}
+          initialMode="blank_student"
+          initialFilter="all"
+        />
+      )}
+
+      {selectedPrereqMistake && (
+        <VariantPracticeModal
+          isOpen={!!selectedPrereqMistake}
+          onClose={() => setSelectedPrereqMistake(null)}
+          originalQuestion={selectedPrereqMistake.query}
+          originalAnswer={selectedPrereqMistake.answer}
+          grade={selectedPrereqMistake.grade || filterGrade || '7_up'}
+          subject={selectedPrereqMistake.subject || filterSubject || '数学'}
+          studentName={studentName}
+          initialStep={-1}
+        />
+      )}
+
+      {showFlashcardSprint && (
+        <FSRSFlashcardSprintModal
+          isOpen={showFlashcardSprint}
+          mistakes={filtered}
+          onClose={() => setShowFlashcardSprint(false)}
+          onMistakeUpdated={(id, data) => {
+            setMistakes(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
+          }}
+        />
+      )}
+
+      {selectedTraceMistake && (
+        <PrerequisiteTraceModal
+          isOpen={!!selectedTraceMistake}
+          onClose={() => setSelectedTraceMistake(null)}
+          initialTopic={selectedTraceMistake.knowledge_point || selectedTraceMistake.query}
+          initialSubject={selectedTraceMistake.subject || filterSubject || defaultSubject || '数学'}
+          initialGrade={selectedTraceMistake.grade || filterGrade || defaultGrade || '7_up'}
+        />
+      )}
+    </div>
+  );
+}

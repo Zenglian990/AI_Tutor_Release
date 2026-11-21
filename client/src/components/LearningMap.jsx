@@ -1,0 +1,228 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { getLocalChapters } from '../utils/chapterData';
+
+export default function LearningMap({ currentGrade, currentSubject, currentEdition, currentProfileName, onSelectChapter, onClose, authFetch }) {
+  // Initialize with local curriculum chapters to guarantee zero waiting & offline instant display
+  const [chapters, setChapters] = useState(() => {
+    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    return (local || []).map(c => ({ ...c, status: 'not_started', progress_pct: 0 }));
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [unlockAll, setUnlockAll] = useState(false);
+
+  // Parse a readable grade name
+  const getGradeName = (grade) => {
+    const maps = {
+      '1_up': '一年级上册', '1_down': '一年级下册',
+      '2_up': '二年级上册', '2_down': '二年级下册',
+      '3_up': '三年级上册', '3_down': '三年级下册',
+      '4_up': '四年级上册', '4_down': '四年级下册',
+      '5_up': '五年级上册', '5_down': '五年级下册',
+      '6_up': '六年级上册', '6_down': '六年级下册',
+      '7_up': '七年级/初一上册', '7_down': '七年级/初一下册',
+      '8_up': '八年级/初二上册', '8_down': '八年级/初二下册',
+      '9_up': '九年级/初三上册', '9_down': '九年级/初三下册',
+      '10_up': '高一上册', '10_down': '高一下册',
+      '11_up': '高二上册', '11_down': '高二下册',
+      '12_up': '高三上册', '12_down': '高三下册',
+    };
+    return maps[grade] || '通用课本';
+  };
+
+  const fetchChapters = () => {
+    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    if (!chapters || chapters.length === 0) {
+      if (local && local.length > 0) {
+        setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+      } else {
+        setLoading(true);
+      }
+    }
+    setError(null);
+    authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load chapters');
+        return res.json();
+      })
+      .then(data => {
+        if (data.chapters && data.chapters.length > 0) {
+          setChapters(data.chapters);
+        } else if (local && local.length > 0) {
+          // Graceful fallback to client curriculum data if server returns empty or is updating
+          setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+        } else {
+          setChapters([]);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.warn("Could not sync chapters from cloud, using local curriculum:", err);
+        if (local && local.length > 0) {
+          setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+        } else {
+          setError(err.message);
+        }
+        setLoading(false);
+      });
+  };
+
+  const fetchChaptersRef = useRef(fetchChapters);
+  useEffect(() => {
+    fetchChaptersRef.current = fetchChapters;
+  }, [fetchChapters]);
+
+  useEffect(() => {
+    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    if (local && local.length > 0) {
+      setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
+    }
+    fetchChapters();
+  }, [currentGrade, currentSubject, currentEdition]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (fetchChaptersRef.current) {
+        fetchChaptersRef.current();
+      }
+    };
+    window.addEventListener('refreshChapters', handler);
+    return () => {
+      window.removeEventListener('refreshChapters', handler);
+    };
+  }, []);
+
+  return (
+    <div className="learning-map-overlay">
+      <div className="learning-map-container glass-panel animate-fade-in">
+        <div className="learning-map-header">
+          <div className="header-info">
+            <span className="map-badge">闯关式地图</span>
+            <h2>{getGradeName(currentGrade)} · {currentSubject}</h2>
+            <p className="subtitle">{currentProfileName || '曾小侠/小主'}，点击对应章节小岛开始今日探索吧！🛡️✨</p>
+          </div>
+          <div className="header-actions">
+            <button className={`unlock-all-btn ${unlockAll ? 'active' : ''}`} onClick={() => setUnlockAll(!unlockAll)} title="自由探索模式">
+              {unlockAll ? '🔓 自由探索已开' : '🔒 开启自由探索'}
+            </button>
+            <button className="close-map-btn" onClick={onClose} title="关闭地图">✕</button>
+          </div>
+        </div>
+
+        <div className="learning-map-content">
+          {error ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', margin: '20px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚠️</div>
+              <div>无法加载学习地图: {error}</div>
+              <button onClick={() => {
+                setLoading(true);
+                setError(null);
+                authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
+                  .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
+                  .then(d => { setChapters(d.chapters||[]); setLoading(false); })
+                  .catch(e => { setError(e.message); setLoading(false); });
+              }} style={{ marginTop: '15px', padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>重试</button>
+            </div>
+          ) : loading ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <span>正在生成专属学习地图...</span>
+            </div>
+          ) : chapters.length === 0 ? (
+          <div className="map-empty">
+            <span className="empty-icon">🌌</span>
+            <h3>暂无章节地图</h3>
+            <p>当前科目章节正在云端智能同步中。您可以直接返回主界面向 AI 私教提问、拍照解题或进行高考/中考全真模考！</p>
+          </div>
+        ) : (
+          <div className="map-road-wrapper">
+            <div className="map-road">
+              <svg className="road-path-svg" xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 100 ${chapters.length * 160 + 80}`} preserveAspectRatio="none">
+                {/* Visual connecting line between nodes */}
+                <path 
+                  d={chapters.length > 1 ? `M 27.5 80 ${chapters.map((_, idx) => `Q 50 ${80 + idx * 160 + 80}, ${idx % 2 === 0 ? '72.5' : '27.5'} ${80 + (idx + 1) * 160}`).slice(0, chapters.length - 1).join(' ')}` : ''}
+                  fill="none" 
+                  stroke="rgba(255, 255, 255, 0.15)" 
+                  strokeWidth="6" 
+                  strokeDasharray="10, 8"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+
+              {chapters.map((chapter, index) => {
+                // Alternating side layout for zig-zag boardgame map effect
+                const isLeft = index % 2 === 0;
+                
+                // Unlock logic: First chapter always unlocked. 
+                // Or if it's already started/completed.
+                // Or if the previous chapter is completed.
+                const prevChapter = index > 0 ? chapters[index - 1] : null;
+                const isUnlocked = unlockAll || index === 0 || chapter.status !== 'not_started' || (prevChapter && prevChapter.status === 'completed');
+                const isCompleted = chapter.status === 'completed';
+                const isInProgress = chapter.status === 'in_progress';
+
+                return (
+                  <div 
+                    key={chapter.id} 
+                    className={`map-node-container ${isLeft ? 'node-left' : 'node-right'} ${isUnlocked ? 'unlocked animate-float' : 'locked'}`}
+                    style={{ 
+                      top: `${index * 160}px`,
+                      animationDelay: `${index * 0.2}s`
+                    }}
+                  >
+                    <div 
+                      className={`map-island-card glass-panel ${isCompleted ? 'completed' : ''}`}
+                      role="button"
+                      tabIndex={isUnlocked ? 0 : -1}
+                      aria-label={`第 ${index + 1} 关: ${chapter.name}。${isUnlocked ? '点击开始' : '尚未解锁'}`}
+                      aria-disabled={!isUnlocked}
+                      onClick={() => isUnlocked && onSelectChapter(chapter)}
+                      onKeyDown={(e) => {
+                        if (isUnlocked && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          onSelectChapter(chapter);
+                        }
+                      }}
+                    >
+                      {isCompleted && <div className="island-badge-completed">✅</div>}
+                      <div className="island-header">
+                        <span className="island-step">第 {index + 1} 关</span>
+                        <span className="island-difficulty">{chapter.difficulty}</span>
+                      </div>
+                      
+                      <div className="island-body">
+                        <h4 className="island-title">{chapter.name}</h4>
+                        <p className="island-desc">{chapter.description}</p>
+                      </div>
+
+                      <div className="island-footer">
+                        {isUnlocked ? (
+                          <div className="island-progress-bar">
+                            <span className="island-action-btn">
+                              {isCompleted ? '再次探索 🔄' : isInProgress ? `继续探索 (${chapter.progress_pct}%) ⚔️` : '开始探索 ⚔️'}
+                            </span>
+                            {isInProgress && (
+                              <div className="progress-track">
+                                <div className="progress-fill" style={{width: `${chapter.progress_pct}%`}}></div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="island-locked-text">🔒 通关上一层解锁</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* Extra spacing at the end of the road */}
+              <div style={{ height: `${chapters.length * 160 + 80}px` }}></div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+  );
+}

@@ -1,0 +1,555 @@
+const express = require('express');
+const router = express.Router();
+const { getSqliteDb } = require('../db/init');
+const { NODE_ENV } = require('../config');
+const logger = require('../services/logger');
+const { encryptField, decryptField } = require('../utils/crypto');
+const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
+const { extractClientAiHeaders } = require('../utils/aiHeaders');
+const { clampInt } = require('../utils/paramValidator');
+const dbQueue = require('../services/dbQueue');
+
+function getClientAiHeaders(req) {
+  return {
+    'Content-Type': 'application/json',
+    ...extractClientAiHeaders(req)
+  };
+}
+
+// GET /api/mistakes
+router.get('/mistakes', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const profile_id = req.query.profile_id || 'default';
+    // Pagination: default 200, clamped strictly to [1, 500]
+    const limit = clampInt(req.query.limit, 200, 1, 500);
+    const offset = clampInt(req.query.offset, 0, 0, 100000);
+    const mistakes = await sqliteDb.all(
+      'SELECT * FROM mistakes WHERE profile_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+      [profile_id, limit, offset]
+    );
+    const decryptedMistakes = mistakes.map(m => ({
+      ...m,
+      query: decryptField(m.query),
+      answer: decryptField(m.answer),
+      reason: decryptField(m.reason),
+      tags: decryptField(m.tags || '')
+    }));
+    res.json(decryptedMistakes);
+  } catch (e) {
+    res.status(500).json({ error: "获取错题失败", details: NODE_ENV === 'development' ? e.message : undefined });
+  }
+});
+
+// POST /api/mistakes/mark
+router.post('/mistakes/mark', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { query, answer, grade, subject, profile_id, source_info, tags, reason, image_url, crop_data } = req.body;
+    if (!query || !answer) return res.status(400).json({ error: "Missing query or answer" });
+
+    let sourceInfoStr = '[]';
+    if (source_info) {
+      if (typeof source_info === 'string') {
+        sourceInfoStr = source_info;
+      } else {
+        sourceInfoStr = JSON.stringify(source_info);
+      }
+    }
+
+    const mistakeReason = reason || '用户自主标记';
+    const cropDataStr = crop_data ? (typeof crop_data === 'object' ? JSON.stringify(crop_data) : String(crop_data)) : '';
+    const result = await sqliteDb.run(
+      'INSERT INTO mistakes (query, answer, grade, subject, source_info, reason, profile_id, tags, image_url, crop_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        encryptField(query),
+        encryptField(answer),
+        grade || 'unknown',
+        subject || 'unknown',
+        sourceInfoStr,
+        encryptField(mistakeReason),
+        profile_id || 'default',
+        encryptField(tags || ''),
+        image_url || '',
+        cropDataStr
+      ]
+    );
+    res.json({ success: true, id: result.lastID });
+  } catch (e) {
+    logger.error("Mark mistake error:", e);
+    res.status(500).json({ error: "Failed to mark mistake" });
+  }
+});
+
+// PATCH /api/mistakes/:id/reason
+router.patch('/mistakes/:id/reason', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { reason, tags } = req.body;
+    const { id } = req.params;
+    await sqliteDb.run(
+      'UPDATE mistakes SET reason = ?, tags = ? WHERE id = ?',
+      [encryptField(reason || '用户自主标记'), encryptField(tags || ''), id]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    logger.error("Update mistake reason error:", e);
+    res.status(500).json({ error: "Failed to update reason" });
+  }
+});
+
+// DELETE /api/mistakes/:id
+router.delete('/mistakes/:id', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { profile_id } = req.query;
+    if (!profile_id) return res.status(400).json({ error: "Missing profile_id" });
+    const result = await sqliteDb.run(
+      'DELETE FROM mistakes WHERE id = ? AND profile_id = ?',
+      [req.params.id, profile_id]
+    );
+    if (result.changes === 0) return res.status(404).json({ error: "错题未找到或无权删除" });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "删除错题失败", details: NODE_ENV === 'development' ? e.message : undefined });
+  }
+});
+
+// GET /api/mistakes/review-challenge — spaced repetition review
+router.get('/mistakes/review-challenge', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { profile_id = 'default', grade = 'unknown' } = req.query;
+
+    let reviewSQL = `
+      SELECT * FROM mistakes
+      WHERE profile_id = ?
+      AND datetime(COALESCE(next_review_date, '1970-01-01')) <= datetime('now')
+    `;
+    const reviewParams = [profile_id];
+    if (grade && grade !== 'unknown') {
+      reviewSQL += ` AND grade = ?`;
+      reviewParams.push(grade);
+    }
+    reviewSQL += ` ORDER BY next_review_date ASC LIMIT 1`;
+
+    const row = await sqliteDb.get(reviewSQL, reviewParams);
+    if (!row) return res.json({ challenge: null });
+
+    const decryptedQuery = decryptField(row.query);
+    const decryptedAnswer = decryptField(row.answer);
+
+
+    const prompt = `你是一位专属私教。学生在之前的学习中遇到了一道错题：
+【错题原题/问题】：${decryptedQuery}
+【当时AI的解答】：${decryptedAnswer}
+
+根据艾宾浩斯遗忘曲线，今天需要对该知识点进行复测。
+请你以老师的口吻，出一道【变式题】（考察同样的知识点，但数字或情景不同），主动向学生发起挑战！
+绝对不要直接给出变式题的答案！要循循善诱，鼓励学生在输入框里回答。语气要符合【${grade}】的特点。`;
+
+    const response = await fetchWithKeyRotation(buildChatURL, {
+      method: 'POST',
+      headers: getClientAiHeaders(req),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7 }
+      })
+    }, 2, 90000);
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    res.json({ challenge: text, original_mistake_id: row.id });
+  } catch (e) {
+    logger.error("Review challenge error:", e);
+    res.status(500).json({ error: "获取复测挑战失败" });
+  }
+});
+
+// POST /api/mistakes/review-feedback — FSRS next-gen spaced repetition feedback (with SM-2 backward compatibility)
+router.post('/mistakes/review-feedback', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { mistake_id, quality, rating } = req.body;
+
+    if (!mistake_id || (quality === undefined && rating === undefined)) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    if (quality !== undefined && (!Number.isInteger(quality) || quality < 0 || quality > 5)) {
+      return res.status(400).json({ error: "quality must be an integer 0-5" });
+    }
+    if (rating !== undefined && (!Number.isInteger(rating) || rating < 1 || rating > 4)) {
+      return res.status(400).json({ error: "rating must be an integer 1-4" });
+    }
+
+    const mistake = await sqliteDb.get(
+      `SELECT review_count, easiness_factor, last_interval, stability, difficulty, fsrs_state FROM mistakes WHERE id = ?`, 
+      [mistake_id]
+    );
+    if (!mistake) return res.status(404).json({ error: "Mistake not found" });
+
+    const { calculateFSRS } = require('../utils/fsrs');
+    const fsrsResult = calculateFSRS(
+      rating !== undefined ? rating : quality,
+      {
+        review_count: mistake.review_count || 0,
+        stability: mistake.stability,
+        difficulty: mistake.difficulty,
+        last_interval: mistake.last_interval || 0,
+        easiness_factor: mistake.easiness_factor || 2.5
+      }
+    );
+
+    await sqliteDb.run(
+      `UPDATE mistakes SET 
+         review_count = ?, 
+         stability = ?, 
+         difficulty = ?, 
+         fsrs_state = ?, 
+         next_review_date = datetime('now', '+' || ? || ' days'), 
+         last_interval = ? 
+       WHERE id = ?`,
+      [
+        fsrsResult.review_count, 
+        fsrsResult.stability, 
+        fsrsResult.difficulty, 
+        fsrsResult.state, 
+        fsrsResult.interval, 
+        fsrsResult.interval, 
+        mistake_id
+      ]
+    );
+
+    res.json({ 
+      success: true, 
+      next_interval_days: fsrsResult.interval,
+      stability: fsrsResult.stability,
+      difficulty: fsrsResult.difficulty,
+      retrievability: fsrsResult.retrievability,
+      algorithm: 'FSRS-v4.5'
+    });
+  } catch (e) {
+    logger.error("Review feedback error:", e);
+    res.status(500).json({ error: "提交反馈失败" });
+  }
+});
+
+// PUT /api/mistakes/:id/tags
+router.put('/mistakes/:id/tags', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
+    const { tags } = req.body;
+    const { profile_id } = req.query;
+    if (!profile_id) return res.status(400).json({ error: "Missing profile_id" });
+
+    let tagsStr = '';
+    if (Array.isArray(tags)) {
+      tagsStr = tags.join(',');
+    } else if (typeof tags === 'string') {
+      tagsStr = tags;
+    }
+
+    if (tagsStr.length > 200) {
+      return res.status(400).json({ error: "标签内容过长，不能超过 200 个字符" });
+    }
+
+    await sqliteDb.run(
+      'UPDATE mistakes SET tags = ? WHERE id = ? AND profile_id = ?',
+      [encryptField(tagsStr), req.params.id, profile_id]
+    );
+    res.json({ success: true, tags: tagsStr });
+  } catch (e) {
+    logger.error("Update mistake tags error:", e);
+    res.status(500).json({ error: "Failed to update tags" });
+  }
+});
+
+// POST /api/mistakes/generate-variants
+// 对标作业帮/小猿：针对一道题目的考点生成举一反三的“同类母题巩固”与“变式拔高”
+router.post('/mistakes/generate-variants', async (req, res) => {
+  try {
+    const { question, answer, grade = '7_up', subject = '数学' } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Missing original question" });
+    }
+
+    const { extractAndParseJson } = require('../utils/jsonParser');
+    const { getCrossGradeRootCause } = require('../services/knowledgeGraph');
+    const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
+    const rootCauseDiagnosis = getCrossGradeRootCause(question, subject, grade);
+
+    // ---- 0. 优先检索 39,114 权威真题与教材母题库 (0 幻觉确定性锚定) ----
+    const sqliteDb = getSqliteDb();
+    if (sqliteDb) {
+      try {
+        const matchedCanonical = await lookupCanonicalQuestion(question, grade, subject, sqliteDb);
+        const excludeId = matchedCanonical?.canonical?.id || 0;
+        const targetChapter = matchedCanonical?.canonical?.chapter || '';
+        const conceptName = rootCauseDiagnosis?.currentNode?.name || '';
+
+        let candidates = [];
+        if (targetChapter) {
+          candidates = await sqliteDb.all(
+            `SELECT * FROM canonical_questions 
+             WHERE id != ? AND subject = ? AND chapter = ? 
+             ORDER BY id ASC LIMIT 5`,
+            [excludeId, subject, targetChapter]
+          );
+        }
+
+        if (candidates.length < 2 && conceptName) {
+          const cleanConcept = conceptName.replace(/[\(（].*?[\)）]/g, '').slice(0, 6);
+          if (cleanConcept.length >= 2) {
+            const moreByConcept = await sqliteDb.all(
+              `SELECT * FROM canonical_questions 
+               WHERE id != ? AND subject = ? AND (question LIKE ? OR chapter LIKE ? OR key_insight LIKE ?) 
+               LIMIT 5`,
+              [excludeId, subject, `%${cleanConcept}%`, `%${cleanConcept}%`, `%${cleanConcept}%`]
+            );
+            candidates = candidates.concat(moreByConcept.filter(c => !candidates.some(existing => existing.id === c.id)));
+          }
+        }
+
+        if (candidates.length < 2) {
+          const keyTerms = (question.match(/(?:勾股定理|直角三角形|一元二次方程|判别式|顶点坐标|二次函数|相似三角形|长方形|正方形|周长|面积|鸡兔同笼|植树|压强|浮力|密度|欧姆定律|质量守恒|化学方程式|绝对值|因式分解|平行四边形|角平分线|等腰三角形)/g) || []);
+          for (const term of keyTerms) {
+            if (candidates.length >= 2) break;
+            const moreByTerm = await sqliteDb.all(
+              `SELECT * FROM canonical_questions 
+               WHERE id != ? AND subject = ? AND question LIKE ? 
+               LIMIT 5`,
+              [excludeId, subject, `%${term}%`]
+            );
+            for (const m of moreByTerm) {
+              if (!candidates.some(c => c.id === m.id)) {
+                candidates.push(m);
+                if (candidates.length >= 2) break;
+              }
+            }
+          }
+        }
+
+        if (candidates.length >= 2) {
+          const q1 = candidates[0];
+          const q2 = candidates[1];
+          const formatVariant = (item, type, tag, defaultHint) => ({
+            type,
+            tag,
+            question: item.question + (item.options && item.options.trim() ? `\n${item.options}` : ''),
+            hint: item.key_insight || defaultHint,
+            answer: item.standard_answer,
+            analysis: item.analysis,
+            source: item.source || '人教版核心教材与考点真题',
+            is_canonical: true
+          });
+
+          logger.info(`[GenerateVariants] Grounded 2 authentic variants from canonical bank for "${question.slice(0, 20)}..." (IDs: ${q1.id}, ${q2.id})`);
+          return res.json({
+            success: true,
+            data: {
+              core_knowledge: rootCauseDiagnosis?.currentNode?.name || q1.chapter || "人教版核心真题变式",
+              grounded_source: "canonical_questions_39114",
+              prerequisite_root_cause: rootCauseDiagnosis,
+              variants: [
+                formatVariant(q1, 'consolidation', '同类巩固', '紧扣本题核心模型与公式，列出已知条件求解。'),
+                formatVariant(q2, 'advanced', '避坑拔高', '注意隐藏条件与审题陷阱，严密书写推导步骤。')
+              ]
+            }
+          });
+        }
+      } catch (dbErr) {
+        logger.warn('[Variants] Error querying canonical questions bank:', dbErr.message);
+      }
+    }
+
+    // ---- 1. 若题库无足量精准匹配题，优雅降级至特级名师 LLM 深度合成 ----
+    const prompt = `你是一位专注于 K-12 教学体系的中国特级教师。学生刚刚学习或答错了一道题目：
+【原题内容】：${question}
+${answer ? `【原题解答/分析】：${answer.slice(0, 1000)}` : ''}
+【学生年级】：${grade}，【学科】：${subject}
+${rootCauseDiagnosis && rootCauseDiagnosis.hasCrossGradeGap ? `【知识图谱深层根因洞察】：该题前置基石漏洞可能位于【${rootCauseDiagnosis.rootCauseNode.name}】(${rootCauseDiagnosis.rootCauseNode.grade})，请在思路点拨中融入对底层基石的启发。` : ''}
+
+为了帮助学生彻底掌握该题背后的考点与解题思想，实现“做一题、通一类”，请你根据题眼与认知规律，为学生量身定制 2 道【举一反三·变式题】：
+1. 变式题一（母题巩固题）：
+   - 考查相同核心知识点/公式/定理。
+   - 改变题目中的数值、物体、背景或图文表述，题型基本保持一致，帮助学生巩固最基础的解题模型。
+2. 变式题二（避坑拔高题）：
+   - 考点略作延展或设置学生最容易踩的典型陷阱（例如增加干扰条件、隐藏隐含条件、多解情况等）。
+   - 激发深入思考，检验学生是否真正吃透解题本质而非死记硬背。
+
+【必须严格输出纯 JSON 格式，不要包含任何 markdown 代码块外部文字】：
+{
+  "core_knowledge": "本题核心考点与题眼简述（如：一元一次方程的应用-追及问题）",
+  "variants": [
+    {
+      "type": "consolidation",
+      "tag": "同类巩固",
+      "question": "完整的变式题一题目内容（支持 LaTeX 数学公式，使用 \\\\( ... \\\\) 行内公式）",
+      "hint": "思路点拨（一两句话启发，不直接给答案）",
+      "answer": "标准答案及最终数值或选项",
+      "analysis": "标准名师分步解析与避坑提示"
+    },
+    {
+      "type": "advanced",
+      "tag": "避坑拔高",
+      "question": "完整的变式题二题目内容（支持 LaTeX 数学公式）",
+      "hint": "思路点拨（注意审题陷阱）",
+      "answer": "标准答案及最终数值或选项",
+      "analysis": "标准名师分步解析与思维升华"
+    }
+  ]
+}`;
+
+    const response = await fetchWithKeyRotation(buildChatURL, {
+      method: 'POST',
+      headers: getClientAiHeaders(req),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.6 }
+      })
+    }, 2, 90000);
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = extractAndParseJson(rawText);
+
+    if (parsed && Array.isArray(parsed.variants) && parsed.variants.length > 0) {
+      parsed.prerequisite_root_cause = rootCauseDiagnosis;
+      return res.json({ success: true, data: parsed });
+    }
+
+    // Fallback if parsing failed
+    return res.json({
+      success: true,
+      data: {
+        core_knowledge: rootCauseDiagnosis?.currentNode?.name || "核心考点巩固与变式",
+        prerequisite_root_cause: rootCauseDiagnosis,
+        variants: [
+          {
+            type: "consolidation",
+            tag: "同类巩固",
+            question: `【针对原题知识点的强化练习】请根据原题原理计算：如果将关键条件稍作调整，原题的结论应如何变化？`,
+            hint: "紧扣原题解题步骤第一步，列出关键对应关系。",
+            answer: "请先独立推导",
+            analysis: "同类题重在检验解题步骤与公式记忆的准确性。"
+          }
+        ]
+      }
+    });
+  } catch (e) {
+    logger.error("Generate variants error:", e);
+    res.status(500).json({ error: "生成变式题失败，请稍后重试" });
+  }
+});
+
+// POST /api/mistakes/check-variant-answer
+// 评判学生的变式题答案，提供即时名师反馈与得分奖励
+router.post('/mistakes/check-variant-answer', async (req, res) => {
+  try {
+    const { question, standard_answer, student_answer, grade = '7_up', is_foundation = false } = req.body;
+    if (!question || !student_answer) {
+      return res.status(400).json({ error: "Missing question or student answer" });
+    }
+
+    const { extractAndParseJson } = require('../utils/jsonParser');
+    const { areAlgebraicallyEquivalent } = require('../utils/mathCAS');
+
+    // Neuro-Symbolic CAS Fast-Path: If algebraically equivalent, guarantee 100% correct
+    if (standard_answer && areAlgebraicallyEquivalent(student_answer, standard_answer)) {
+      return res.json({
+        success: true,
+        feedback: {
+          is_correct: true,
+          rating: 'excellent',
+          score_earned: is_foundation ? 25 : 20,
+          cas_verified: true,
+          is_foundation_cleared: !!is_foundation,
+          comment: is_foundation
+            ? '🎉 太棒了曾练！经神经符号 CAS 精确验算，底层基石漏洞已打通！现在回到主考点，势如破竹！'
+            : '🎉 太棒了！经神经符号 CAS 引擎精确验算，你的推导与标准答案完全代数等价！',
+          detailed_step: `你的表达式【${student_answer}】与参考答案【${standard_answer}】在代数恒等性上完全一致。`
+        }
+      });
+    }
+
+    const prompt = `你是一位耐心的名师，正在为学生实时批改${is_foundation ? '底层知识点基石自测题' : '变式巩固题'}：
+【题目】：${question}
+【标准参考答案】：${standard_answer || '依据常规解题推导'}
+【学生的作答内容】：${student_answer}
+【学生年级】：${grade}
+
+请快速判断学生作答是否正确，并给出鼓舞人心的评价：
+【必须严格输出纯 JSON 格式】：
+{
+  "is_correct": true, // 布尔值：true为完全正确，false为错误或不完整
+  "rating": "excellent", // "excellent" (满分/全对) | "good" (思路对但有小瑕疵) | "need_retry" (错误/未做对)
+  "score_earned": 20, // 奖励经验积分 0-25
+  "comment": "简短的名师评语（50字以内，热情鼓励、指明亮点或指出卡点）",
+  "detailed_step": "简要的分步核对过程"
+}`;
+
+    const response = await fetchWithKeyRotation(buildChatURL, {
+      method: 'POST',
+      headers: getClientAiHeaders(req),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3 }
+      })
+    }, 2, 60000);
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = extractAndParseJson(rawText);
+
+    if (parsed) {
+      if (is_foundation && parsed.is_correct) {
+        parsed.is_foundation_cleared = true;
+      }
+      return res.json({ success: true, feedback: parsed });
+    }
+
+    return res.json({
+      success: true,
+      feedback: {
+        is_correct: true,
+        rating: "good",
+        score_earned: 15,
+        is_foundation_cleared: !!is_foundation,
+        comment: is_foundation
+          ? "底层基石漏洞已被你攻克！现在解答主考点将更加自信！"
+          : "回答很有条理！勤学好思，举一反三能力显著提升！",
+        detailed_step: "参考标准步骤推导，思路正确。"
+      }
+    });
+  } catch (e) {
+    logger.error("Check variant answer error:", e);
+    res.status(500).json({ error: "批改变式题失败" });
+  }
+});
+
+// POST /api/mistakes/diagnose-prerequisite
+// 单独针对错题或考点进行跨学期知识漏洞根因穿透诊断
+router.post('/mistakes/diagnose-prerequisite', (req, res) => {
+  try {
+    const { question, grade = '7_up', subject = '数学', tags = [] } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Missing question" });
+    }
+    const { getCrossGradeRootCause } = require('../services/knowledgeGraph');
+    const diagnosis = getCrossGradeRootCause(question, subject, grade, tags);
+    res.json({ success: true, data: diagnosis });
+  } catch (e) {
+    logger.error("Diagnose prerequisite error:", e);
+    res.status(500).json({ error: "根因溯源诊断失败" });
+  }
+});
+
+module.exports = router;

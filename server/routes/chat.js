@@ -1,0 +1,358 @@
+const express = require('express');
+const router = express.Router();
+const { checkSafetyAndRedirect } = require('../trie');
+const { streamChatToClient } = require('../services/stream');
+const { getChatPrompt, getChapterStartPrompt, correctPageOffset } = require('../prompts/guidelines');
+const { performHybridSearch } = require('../services/search');
+const { getStudentCognitiveMemory, formatStudentMemoryForPrompt } = require('../services/studentMemory');
+const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('../services/knowledgeGraph');
+const { NODE_ENV, RAG_TOP_K } = require('../config');
+const logger = require('../services/logger');
+const jev = require('../services/jevDecisionService');
+const { coordinateTriEngine } = require('../services/triEngineCoordinator');
+const { getSqliteDb } = require('../db/init');
+const { saveStudyCheckpoint, formatCheckpointPromptSection } = require('../services/checkpointService');
+
+/**
+ * Isolates turnCount per problem / question session rather than dividing global history.length / 2.
+ * Prevents subsequent problems in the same conversation from skipping discovery and scaffolding stages.
+ */
+function computeProblemTurnCount(history, currentQuery) {
+  if (!Array.isArray(history) || history.length === 0) {
+    return 1;
+  }
+
+  const cleanQuery = (currentQuery || '').trim();
+
+  // If query is an explicit transition to a new problem or chapter
+  const isNewProblemQuery = /^(?:下一题|再来一道|换一道|帮我看另一道|还有一道题|新题目|再出一条|下一道)/i.test(cleanQuery) ||
+    cleanQuery.startsWith('[ACTION_START_CHAPTER]') ||
+    (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算[：:]|求解方程[：:]?|求值[：:]|化简[：:]|证明[：:])/i.test(cleanQuery) && cleanQuery.length >= 8);
+
+  // Follow-up indicator (only when NOT starting with explicit problem stem)
+  const isFollowUp = !isNewProblemQuery && (cleanQuery.length <= 15 ||
+    /^(?:好的|对|不对|是的|不是|不懂|不会|为什么|然后呢|下一步|算完了|做完了|我算的是|等于|是不是|怎么算|老师你看|没思路)/i.test(cleanQuery));
+
+  if (isNewProblemQuery && !isFollowUp) {
+    return 1;
+  }
+
+  // Scan backwards from the end of history to count user turns for the CURRENT problem session
+  let turnsInCurrentSession = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg && msg.role === 'user') {
+      turnsInCurrentSession++;
+      const text = (msg.text || '').trim();
+
+      // Check if this user message was the start of a distinct problem
+      const isStartOfProblem = /^(?:下一题|再来一道|换一道|帮我看另一道|新题目)/i.test(text) ||
+        text.startsWith('[ACTION_START_CHAPTER]') ||
+        (/^(?:已知|如图|求证|若|设|在△|在Rt△|平面直角坐标系|计算[：:]|求解方程[：:]?|求值[：:]|化简[：:]|证明[：:])/i.test(text) && text.length >= 8);
+
+      if (isStartOfProblem) {
+        break;
+      }
+
+      if (turnsInCurrentSession >= 8) {
+        break;
+      }
+    }
+  }
+
+  return Math.max(1, turnsInCurrentSession + 1);
+}
+
+// POST /api/chat — main chat endpoint with SSE streaming
+router.post('/chat', async (req, res) => {
+  try {
+    const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode, teaching_mode, feynman_mode, turn_count } = req.body;
+    if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
+    if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
+
+    // Trie Safety Check
+    const safetyRedirect = checkSafetyAndRedirect(query);
+    if (safetyRedirect) {
+      logger.info(`[Safety Check] Query blocked: "${query}"`);
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+      res.write(`data: ${JSON.stringify({ sources: [] })}\n\n`);
+      res.write(`data: ${JSON.stringify({ text: safetyRedirect })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // Context-aware query expansion for conversational greetings & short follow-ups
+    const cleanQuery = (query || '').trim();
+    const isGreeting = /^(你好|您好|哈喽|hello|hi|在吗|在么|早上好|中午好|晚上好|老师好)[\s!！?？~～]*$/i.test(cleanQuery);
+    const isShortFollowUp = cleanQuery.length <= 4 && /^(好的|对|不对|是的|不是|不懂|不会|为什么|然后呢|下一步|算完了|做完了)$/.test(cleanQuery);
+
+    let searchQuery = query;
+    if ((isGreeting || isShortFollowUp) && Array.isArray(history) && history.length > 0) {
+      for (let i = history.length - 1; i >= 0; i--) {
+        const hMsg = history[i];
+        if (hMsg && hMsg.role === 'user' && hMsg.text && hMsg.text.trim().length > 5) {
+          searchQuery = hMsg.text.trim();
+          break;
+        }
+      }
+    }
+
+    let results = [];
+    let isQuotaExhausted = false;
+    let memory = null;
+    let studentMemoryStr = '';
+    let graphRAGStr = '';
+
+    const getReqHeader = (name) => {
+      const lower = name.toLowerCase();
+      for (const [k, v] of Object.entries(req.headers || {})) {
+        if (k.toLowerCase() === lower && v) return String(v).trim();
+      }
+      return '';
+    };
+
+    const clientHeaders = {
+      'x-gemini-api-key': getReqHeader('x-gemini-api-key'),
+      'x-deepseek-api-key': getReqHeader('x-deepseek-api-key'),
+      'x-deepseek-api-url': getReqHeader('x-deepseek-api-url'),
+      'x-siliconflow-api-key': getReqHeader('x-siliconflow-api-key'),
+      'x-dashscope-api-key': getReqHeader('x-dashscope-api-key'),
+      'x-zhipu-api-key': getReqHeader('x-zhipu-api-key'),
+      'x-openai-api-key': getReqHeader('x-openai-api-key'),
+      'x-custom-api-url': getReqHeader('x-custom-api-url')
+    };
+
+    // Parallelize RAG Search and Student Cognitive Memory Retrieval
+    const searchPromise = (async () => {
+      if (isGreeting) return []; // Greeting skips heavy RAG search for instant response
+      try {
+        return await performHybridSearch(searchQuery, grade, subject, RAG_TOP_K, edition, clientHeaders);
+      } catch (err) {
+        logger.error("[RAG Error] Hybrid search failed:", err);
+        if (err.message === 'EMBED_QUOTA_EXHAUSTED' || err.message === 'QUOTA_EXHAUSTED' || (err.message && err.message.includes('Quota exceeded'))) {
+          isQuotaExhausted = true;
+          if (err.partialResults && Array.isArray(err.partialResults)) {
+            return err.partialResults;
+          }
+        }
+        return [];
+      }
+    })();
+
+    const memoryPromise = (async () => {
+      try {
+        const mem = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
+        const memStr = formatStudentMemoryForPrompt(mem);
+        
+        let triPrompt = '';
+        const db = getSqliteDb();
+        const turnCount = (typeof turn_count === 'number' && turn_count >= 1) 
+          ? turn_count 
+          : computeProblemTurnCount(history, query);
+        const triCoord = await coordinateTriEngine({
+          db,
+          query,
+          profileId: profile_id || 'default',
+          subject: subject || '数学',
+          turnCount,
+          teachingMode: teaching_mode || (feynman_mode ? 'feynman_roleplay' : 'standard'),
+          studentName: student_name || '曾练'
+        });
+        if (triCoord && triCoord.prompts && triCoord.prompts.compositeSystemPrompt) {
+          triPrompt = '\n' + triCoord.prompts.compositeSystemPrompt;
+        }
+
+        if (db && !isGreeting && cleanQuery.length > 5) {
+          saveStudyCheckpoint(db, {
+            profileId: profile_id || 'default',
+            subject: subject || '数学',
+            conceptId: triCoord?.matchedConceptId || '',
+            conceptName: triCoord?.matchedConcept?.name || '',
+            lastQuerySnippet: cleanQuery,
+            progressPct: 50
+          }).catch(e => {});
+        }
+
+        if (isGreeting && mem?.checkpoint) {
+          triPrompt += formatCheckpointPromptSection(mem.checkpoint, student_name || '曾练', true);
+        }
+
+        return { mem, memStr, gStr: triPrompt };
+      } catch (memErr) {
+        logger.warn('[Chat] Could not load student memory or Tri-Engine:', memErr.message);
+        return { mem: null, memStr: '', gStr: '' };
+      }
+    })();
+
+    const [searchResults, memoryResult] = await Promise.all([searchPromise, memoryPromise]);
+    results = searchResults || [];
+    memory = memoryResult?.mem || null;
+    studentMemoryStr = memoryResult?.memStr || '';
+    graphRAGStr = memoryResult?.gStr || '';
+
+    // Apply page offset correction and filename cleanup
+    const correctedResults = results.map(r => {
+      const { source, page } = correctPageOffset(r.source, r.page);
+      return {
+        ...r,
+        source,
+        page
+      };
+    });
+
+    const sources = correctedResults.map(r => ({
+      source: r.source,
+      page: r.page || '未知',
+      text_snippet: r.text ? (r.text.length > 100 ? r.text.substring(0, 100) + "..." : r.text) : "无文本"
+    }));
+
+    if (isQuotaExhausted) {
+      sources.push({
+        source: "系统提示",
+        page: 0,
+        text_snippet: "⚠️ 警告：AI 教材关联服务（Embedding）额度已耗尽，当前回答将无法结合教材内容，仅使用 AI 本地知识库解答。"
+      });
+    } else if (sources.length === 0 && !isGreeting) {
+      sources.push({
+        source: "系统提示",
+        page: 0,
+        text_snippet: "⚠️ 提示：未能在本地教材库中找到相关内容（数据库为空或无匹配），当前回答基于 AI 通识知识库。"
+      });
+    }
+
+    const slicedHistory = Array.isArray(history) ? history.slice(-10) : [];
+    const fullContextMemory = `${studentMemoryStr}${graphRAGStr}`;
+
+    // ── Jev Decision Layer ──────────────────────────────────────────
+    // Fast (~70ms) structured decisions before hitting the LLM
+    let jevDecision = null;
+    let jevRetrievalEval = null;
+    let jevStrategy = null;
+
+    if (jev.isEnabled() && !isGreeting && !isShortFollowUp) {
+      try {
+        // 1) Route: classify question intent
+        jevDecision = await jev.routeQuestion(query, grade, subject);
+        logger.info(`[Jev Route] ${query.slice(0, 30)}... → ${jevDecision.route} (confidence: ${jevDecision.confidence})`);
+
+        // Off-topic interception — politely refuse non-educational queries
+        if (jevDecision.route === 'off_topic' && jevDecision.confidence >= 0.85) {
+          logger.info(`[Jev] Off-topic interception for: "${query.slice(0, 50)}"`);
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          res.flushHeaders();
+          res.write(`data: ${JSON.stringify({ sources: [] })}\n\n`);
+          res.write(`data: ${JSON.stringify({ text: '😊 这个问题好像不属于我们的课堂范围哦～我是你的专属学科辅导老师，咱们还是聊聊学习上的问题吧！有什么不懂的题目尽管问我～' })}\n\n`);
+          res.write('data: [DONE]\n\n');
+          return res.end();
+        }
+
+        // 2) Evaluate RAG retrieval quality (only if we have results)
+        if (correctedResults.length > 0) {
+          jevRetrievalEval = await jev.evaluateRetrievalQuality(query, correctedResults);
+          logger.info(`[Jev RAG Eval] relevant=${jevRetrievalEval.isRelevant}, sufficient=${jevRetrievalEval.isSufficient}`);
+        }
+
+        // 3) Select teaching strategy based on grade + student memory
+        const memoryForJev = {
+          recentAccuracy: memory?.topWeakTags?.length > 0 ? 'has_weak_points' : 'unknown',
+          consecutiveErrors: memory?.totalMistakes || 0,
+          weakPoints: memory?.recentWeakPoints?.join('、') || 'none'
+        };
+        jevStrategy = await jev.selectTeachingStrategy(grade, jevDecision.route, memoryForJev);
+        logger.info(`[Jev Strategy] strategy=${jevStrategy.strategy}, hintLevel=${jevStrategy.hintLevel}`);
+
+      } catch (jevErr) {
+        logger.warn('[Jev] Decision layer error (falling back to default flow):', jevErr.message);
+        // Graceful degradation: continue with original flow
+      }
+    }
+
+    // Build Jev context enrichment for prompt
+    let jevContextStr = '';
+    if (jevDecision && !jevDecision.fallback) {
+      jevContextStr += `\n【Jev 智能决策参考（本段信息用于指导你的回答策略，不要对学生提及）】：\n`;
+      jevContextStr += `- 问题类型路由：${jevDecision.route}（置信度：${(jevDecision.confidence * 100).toFixed(0)}%）\n`;
+      jevContextStr += `- 估算难度：${jevDecision.difficulty}/10\n`;
+      if (jevDecision.route === 'direct_answer_demand') {
+        jevContextStr += `- ⚠️ 防套答案坚固护栏触发：学生在催促直接给最终答案或选项。严禁直接告知答案或选项字母！请以亲切幽默且坚定的名师口吻拒绝直接给答案（如‘老师进不了考场，咱们花30秒攻破第一步，你一定能自己做出来！’），并抛出草稿纸上的第一步动笔设问引导他。\n`;
+      }
+      if (jevDecision.needsEncouragement) {
+        jevContextStr += `- ⚠️ 检测到学生可能感到困惑或沮丧，请在回答开头给予温暖的情感鼓励\n`;
+      }
+      if (jevRetrievalEval && !jevRetrievalEval.fallback) {
+        jevContextStr += `- 教材检索相关性：${jevRetrievalEval.isRelevant ? '✅ 命中' : '⚠️ 未命中'}`;
+        jevContextStr += `，充分性：${jevRetrievalEval.isSufficient ? '✅ 足够' : '需要你补充推理'}\n`;
+      }
+      if (jevStrategy && !jevStrategy.fallback) {
+        const strategyNames = {
+          visual_decompose: '可视化拆解（适合低年级）',
+          scenario_memorize: '场景化记忆（适合低年级）',
+          mind_map: '思维导图结构化（适合高年级）',
+          error_correction_loop: '错题闭环纠正',
+          dialogue_practice: '情景对话练习',
+          step_by_step_scaffold: '分步脚手架引导'
+        };
+        jevContextStr += `- 推荐教学策略：${strategyNames[jevStrategy.strategy] || jevStrategy.strategy}\n`;
+        jevContextStr += `- 提示等级：${jevStrategy.hintLevel}/5（1=仅给方向，5=接近完整答案）\n`;
+      }
+    }
+
+    let voiceModeStr = '';
+    if (voice_mode) {
+      voiceModeStr = `\n【🚨 面对面语音交流特别指令（对标真人名师口头辅导）】：\n当前学生正在与你进行【口语实时对话互动】！你的回答将直接合成为语音播放。\n1. 严禁输出长篇大论、Markdown复杂排版、大面积公式罗列！\n2. 每次开口只能讲 1~3 句话（严格控制在 35~55 字以内），口吻亲切自然、充满启发。\n3. 结尾必须抛出一个关键设问或第一步动笔支架，引导学生开口作答。\n`;
+    }
+
+    const enrichedContextMemory = `${fullContextMemory}${jevContextStr}${voiceModeStr}`;
+    let prompt = getChatPrompt(query, correctedResults, slicedHistory, grade, subject, socratic, enrichedContextMemory);
+
+    // Intercept Active Chapter Start Action
+    if (query.startsWith('[ACTION_START_CHAPTER]')) {
+      const chapterName = query.match(/《([^》]+)》/)?.[1] || query.replace('[ACTION_START_CHAPTER]', '').trim() || '未知章节';
+      prompt = getChapterStartPrompt(chapterName, correctedResults, grade, subject);
+    }
+
+    // Dynamic thinking budget for complex STEM reasoning in secondary grades (7-12)
+    const rawGradeNum = parseInt(String(grade).split('_')[0], 10);
+    const isStemSubject = ['数学', '物理', '化学', '生物', '科学'].includes(subject);
+    const isSecondaryGrade = rawGradeNum >= 7 && rawGradeNum <= 12;
+    const isProofOrDerivation = /(?:证明|推导|求证|解方程|二次函数|动点|辅助线|压轴题|配方|受力分析|离子方程式|平衡常数|遗传概率)/i.test(query || '');
+
+    let thinkingBudget = 0;
+    if (!voice_mode && ((isSecondaryGrade && isStemSubject) || isProofOrDerivation)) {
+      thinkingBudget = isProofOrDerivation ? 2048 : 1024;
+    }
+
+    const generationConfig = {
+      temperature: 0.2,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget }
+    };
+
+    const contentsPayload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig
+    };
+
+    await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id, model, clientHeaders });
+
+  } catch (e) {
+    logger.error("Chat Error:", e);
+    if (e.message === 'QUOTA_EXHAUSTED' || e.message === 'EMBED_QUOTA_EXHAUSTED') {
+      return res.status(429).json({
+        error: "今日额度已用完",
+        details: "由于使用的是免费版 API，今日的 4000 次查询额度已耗尽。请明天早上 8 点后再试，或联系管理员增加 API Key。"
+      });
+    }
+    res.status(500).json({
+      error: "服务器内部错误",
+      details: NODE_ENV === 'development' ? e.message : undefined
+    });
+  }
+});
+
+module.exports = router;

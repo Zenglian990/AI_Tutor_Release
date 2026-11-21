@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: zenglian-ai-tutor
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: singapore
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=384"
+      - key: API_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://ai-tutor-79709693345.asia-east1.run.app,https://zenglian-ai-tutor.onrender.com,https://ai-tutor-release.onrender.com,http://localhost:5173
+      - key: REQUIRE_AUTH
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CHAT_MODEL
+        value: gemini-2.5-flash
+      - key: DEFAULT_PROVIDER
+        value: gemini
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_URL
+        value: https://api.deepseek.com/v1
+      - key: DEEPSEEK_CHAT_MODEL
+        value: deepseek-chat
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: JEV_ENABLED
+        value: "true"
+      - key: JEV_CONFIDENCE_THRESHOLD
+        value: "0.85"
+

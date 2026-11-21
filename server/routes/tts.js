@@ -1,0 +1,48 @@
+const express = require('express');
+const router = express.Router();
+const { synthesizeSpeech } = require('../services/tts-service');
+const logger = require('../services/logger');
+
+// POST /api/tts
+router.post('/tts', async (req, res) => {
+  try {
+    const { text, grade, voice } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Text parameter is required' });
+    }
+    if (text.length > 5000) {
+      return res.status(400).json({ error: 'Text is too long for TTS (max 5000 chars)', code: 'ERR_VALIDATION' });
+    }
+
+    // Determine voice based on grade or parameters
+    // Child: zh-CN-XiaoxiaoNeural (1-3 grade) → mapped to Kore inside tts-service
+    // Teen/Adult: zh-CN-YunxiNeural (4-9 grade) → mapped to Puck inside tts-service
+    let selectedVoice = voice || 'zh-CN-XiaoxiaoNeural';
+    if (!voice && grade) {
+      const rawGradeNum = parseInt(String(grade).split('_')[0], 10);
+      const isLowerGrade = !isNaN(rawGradeNum) && rawGradeNum >= 1 && rawGradeNum <= 3;
+      if (!isLowerGrade) {
+        selectedVoice = 'zh-CN-YunxiNeural'; // Teen/Adult male mentor
+      }
+    }
+
+    const clientGeminiKey = req.headers['x-gemini-api-key'];
+    logger.info(`[TTS] Synthesizing text: "${text.substring(0, 30)}..." with voice ${selectedVoice}`);
+    const audioBuffer = await synthesizeSpeech(text, selectedVoice, clientGeminiKey);
+
+    if (!audioBuffer || audioBuffer.length === 0) {
+      return res.status(204).send(); // No content (empty text after cleaning)
+    }
+
+    // Returns audio/mp3 or audio/wav
+    res.setHeader('Content-Type', audioBuffer.contentType || 'audio/mp3');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    res.send(audioBuffer);
+  } catch (err) {
+    logger.error('[TTS] Synthesis API failed:', err);
+    res.status(500).json({ error: 'TTS语音合成失败', details: err.message });
+  }
+});
+
+
+module.exports = router;

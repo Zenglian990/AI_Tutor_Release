@@ -1,0 +1,876 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { useAppStore } from '../store/useStore';
+import { isFeatureVisible } from '../utils/gradeFeatureGate';
+
+const QUICK_MATH_SYMBOLS = [
+  { label: '+', insert: '+' },
+  { label: '-', insert: '-' },
+  { label: '×', insert: '×' },
+  { label: '÷', insert: '÷' },
+  { label: '=', insert: '=' },
+  { label: '( )', insert: '()' },
+  { label: 'x²', insert: '²' },
+  { label: 'x³', insert: '³' },
+  { label: '√', insert: '√' },
+  { label: 'π', insert: 'π' },
+  { label: '△', insert: '△' },
+  { label: '∠', insert: '∠' },
+  { label: '⊥', insert: '⊥' },
+  { label: '∥', insert: '∥' },
+  { label: '≌', insert: '≌' },
+  { label: '∽', insert: '∽' },
+  { label: '∵', insert: '∵' },
+  { label: '∴', insert: '∴' },
+  { label: '≥', insert: '≥' },
+  { label: '≤', insert: '≤' },
+  { label: '°', insert: '°' },
+  { label: '%', insert: '%' },
+];
+
+const InputBar = React.memo(function InputBar({
+  input,
+  setInput,
+  isLoading,
+  isListening,
+  previewImage,
+  fileInputRef,
+  onSubmit,
+  onToggleVoice,
+  onOpenVoiceCompanion,
+  onImageSelect,
+  onClearImage,
+  autoRead,
+  setAutoRead,
+  isSpeaking,
+  onInterruptSpeech,
+  onOpenScratchpad,
+  onOpenBatchGrade,
+  onOpenFormulaHandbook,
+  onOpenStepScratchpad,
+  onOpenPhysicsSimulator,
+  onOpenEssay,
+  onOpenChemistry,
+  onOpenEnglishRolePlay,
+  onOpenDailyCard,
+  onOpenEyeCare,
+  onOpenPrerequisiteTrace,
+  isFeynmanMode = false,
+  onToggleFeynmanMode = null,
+  hasActiveChat
+}) {
+  const [localVal, setLocalVal] = useState(input);
+  const [showSymbols, setShowSymbols] = useState(false);
+  const [showMoreTools, setShowMoreTools] = useState(false);
+  const textareaRef = useRef(null);
+
+  const { selectedGrade, selectedSubject, currentProfile } = useAppStore();
+  const activeGrade = selectedGrade || currentProfile?.grade || '7_up';
+  const activeSubject = selectedSubject || '';
+
+  const handleInsertSymbol = (sym) => {
+    const ta = textareaRef.current;
+    const currentVal = localVal || '';
+    if (!ta) {
+      const updated = currentVal + sym;
+      setLocalVal(updated);
+      if (setInput) setInput(updated);
+      return;
+    }
+    const start = ta.selectionStart !== undefined ? ta.selectionStart : currentVal.length;
+    const end = ta.selectionEnd !== undefined ? ta.selectionEnd : currentVal.length;
+    const updated = currentVal.substring(0, start) + sym + currentVal.substring(end);
+    setLocalVal(updated);
+    if (setInput) setInput(updated);
+
+    setTimeout(() => {
+      ta.focus();
+      const newPos = sym === '()' ? start + 1 : start + sym.length;
+      ta.setSelectionRange(newPos, newPos);
+    }, 10);
+  };
+
+  useEffect(() => {
+    setLocalVal(input);
+  }, [input]);
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if ((localVal.trim() || previewImage) && !isLoading) {
+      onSubmit(e, localVal);
+      setLocalVal('');
+    }
+  };
+
+  // 自动调整高度
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    if (!localVal) {
+      ta.style.height = '38px';
+      return;
+    }
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  }, [localVal]);
+
+  const handleKeyDown = (e) => {
+    // Enter 发送，Shift+Enter 换行
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if ((localVal.trim() || previewImage) && !isLoading) {
+        onSubmit(e, localVal);
+        setLocalVal('');
+      }
+    }
+  };
+
+  return (
+    <>
+      {/* Barge-in 实时语音打断浮条 */}
+      {isSpeaking && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '6px 12px',
+          marginBottom: '6px',
+          borderRadius: '20px',
+          background: 'rgba(239, 68, 68, 0.15)',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          color: '#f87171',
+          fontSize: '0.85rem',
+          animation: 'pulse 1.5s infinite'
+        }}>
+          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+          <span>AI 专属名师正在为您语音讲解...</span>
+          <button
+            type="button"
+            onClick={onInterruptSpeech}
+            style={{
+              marginLeft: '6px',
+              padding: '3px 10px',
+              borderRadius: '12px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '0.78rem',
+              cursor: 'pointer'
+            }}
+            title="立刻打断AI讲解，插话或提问"
+          >
+            🛑 老师暂停 / 我要插话
+          </button>
+        </div>
+      )}
+
+      {/* 实时录音动态指示卡 */}
+      {isListening && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          padding: '8px 16px',
+          marginBottom: '6px',
+          borderRadius: '20px',
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(220, 38, 38, 0.15))',
+          border: '1px solid rgba(239, 68, 68, 0.45)',
+          color: '#fca5a5',
+          fontSize: '0.85rem',
+          animation: 'pulse 1.5s infinite'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', maxWidth: '75%' }}>
+            <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {localVal ? `🎙️ “${localVal}”` : '🎤 正在倾听中... 说完停顿将自动发送'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleVoice}
+            style={{
+              padding: '4px 14px',
+              borderRadius: '12px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)'
+            }}
+          >
+            ✓ 说完了，发送
+          </button>
+        </div>
+      )}
+
+      {previewImage && (
+        <div className="image-preview-bar" role="status" aria-label="图片预览" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '12px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+            <img src={previewImage} alt="上传的题目预览" className="preview-thumb" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
+            <span className="preview-label" style={{ fontSize: '0.85rem', color: '#93c5fd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              题目图片已就绪 ➔
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => onSubmit(null, input.trim() || '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！')}
+              disabled={isLoading}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: 'white',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.4)'
+              }}
+            >
+              🚀 立即讲题
+            </button>
+            <button className="clear-image-btn" onClick={onClearImage} title="移除图片" aria-label="移除已上传的图片" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer', padding: '4px' }}>✕</button>
+          </div>
+        </div>
+      )}
+
+      {hasActiveChat && (
+        <div className="quick-hints-bar" role="toolbar" aria-label="名师启发快捷支架">
+          {onOpenVoiceCompanion && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{
+                borderColor: '#ec4899',
+                color: '#f43f5e',
+                background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.18), rgba(244, 63, 94, 0.18))',
+                fontWeight: 700
+              }}
+              title="开启名师面对面全双工实时语音伴学（随时张口插话打断）"
+              onClick={onOpenVoiceCompanion}
+            >
+              🎙️ 面对面伴学
+            </button>
+          )}
+          {onOpenPrerequisiteTrace && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{
+                borderColor: '#8b5cf6',
+                color: '#c084fc',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(99, 102, 241, 0.18))',
+                fontWeight: 700
+              }}
+              title="跨年级考点星图与断层溯源（从当前年级考点溯源至小学初中先修基石）"
+              onClick={onOpenPrerequisiteTrace}
+            >
+              🌌 跨年级考点星图与断层溯源
+            </button>
+          )}
+          <button
+            type="button"
+            className="quick-hint-chip"
+            title="一句话点破出题人在哪里藏了陷阱与核心突破口"
+            disabled={isLoading}
+            onClick={() => onSubmit(null, "老师，请一句话点破这道题的【核心题眼】和出题人套路陷阱！")}
+          >
+            🎯 题眼与陷阱
+          </button>
+          <button
+            type="button"
+            className="quick-hint-chip"
+            title="给草稿纸上的第一步画线或公式支架，不要直接给答案"
+            disabled={isLoading}
+            onClick={() => onSubmit(null, "老师，请给我草稿纸上的【第一步动笔支架】（辅助线画法或公式首步），引导我动手算！")}
+          >
+            ✏️ 动笔支架
+          </button>
+          <button
+            type="button"
+            className="quick-hint-chip"
+            title="出一道同类型母题考考我，检验我是否真正掌握"
+            disabled={isLoading}
+            onClick={() => onSubmit(null, "老师，请出一道同类型的【母题变式微测题】考考我，我算完发给您！")}
+          >
+            🔥 举一反三闯关
+          </button>
+          {onOpenScratchpad && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#3b82f6', color: '#60a5fa' }}
+              title="打开白板草稿纸手写演算或画几何辅助线"
+              onClick={onOpenScratchpad}
+            >
+              📝 演练草稿纸
+            </button>
+          )}
+          {onOpenBatchGrade && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#0ea5e9', color: '#38bdf8', background: 'rgba(14, 165, 233, 0.1)' }}
+              title="拍照上传整页作业或试卷，多题秒级识别与批改"
+              onClick={onOpenBatchGrade}
+            >
+              📑 整页秒批
+            </button>
+          )}
+          {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#a855f7', color: '#c084fc', background: 'rgba(168, 85, 247, 0.1)' }}
+              title="打开数理化必备公式定理速查宝典"
+              onClick={onOpenFormulaHandbook}
+            >
+              📖 公式宝典
+            </button>
+          )}
+          {onOpenStepScratchpad && isFeatureVisible('stepScratchpad', activeGrade, activeSubject) && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#10b981', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)' }}
+              title="打开步骤级实时代数演算纸，写一步验一步实时CAS防移项变号失误"
+              onClick={onOpenStepScratchpad}
+            >
+              📐 分步演算纸
+            </button>
+          )}
+          {onOpenPhysicsSimulator && isFeatureVisible('physicsSimulator', activeGrade, activeSubject) && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#0284c7', color: '#38bdf8', background: 'rgba(2, 132, 199, 0.1)' }}
+              title="打开物理动态虚拟微实验台（凸透镜光路折射·欧姆定律滑动变阻器）"
+              onClick={onOpenPhysicsSimulator}
+            >
+              🔬 物理微实验
+            </button>
+          )}
+          {onOpenEssay && isFeatureVisible('essay', activeGrade, activeSubject) && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#d97706', color: '#f59e0b', background: 'rgba(217, 119, 6, 0.1)' }}
+              title="作文名师五维精批与逐句升格"
+              onClick={onOpenEssay}
+            >
+              🖋️ 作文精批
+            </button>
+          )}
+          {onOpenChemistry && isFeatureVisible('chemistryLab', activeGrade, activeSubject) && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#059669', color: '#10b981', background: 'rgba(5, 150, 105, 0.1)' }}
+              title="化学气体制备装置拼装与微观分子重组模型"
+              onClick={onOpenChemistry}
+            >
+              ⚗️ 化学微实验
+            </button>
+          )}
+          {onOpenEnglishRolePlay && isFeatureVisible('englishRolePlay', activeGrade, activeSubject) && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#2563eb', color: '#60a5fa', background: 'rgba(37, 99, 235, 0.1)' }}
+              title="英语听说情景对练与音标级发音雷达"
+              onClick={onOpenEnglishRolePlay}
+            >
+              🗣️ 英语情景对练
+            </button>
+          )}
+          {onOpenDailyCard && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#4f46e5', color: '#818cf8', background: 'rgba(79, 70, 229, 0.1)' }}
+              title="生成微信级每日学情成长战报海报"
+              onClick={onOpenDailyCard}
+            >
+              🌟 今日战报
+            </button>
+          )}
+          {onOpenEyeCare && (
+            <button
+              type="button"
+              className="quick-hint-chip"
+              style={{ borderColor: '#10b981', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)' }}
+              title="国际眼科 20-20-20 视力守护与专注番茄钟"
+              onClick={onOpenEyeCare}
+            >
+              🌿 护眼番茄钟
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 快捷数学理化符号吸附条 */}
+      {showSymbols && (
+        <div className="math-symbols-scroll-bar" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          overflowX: 'auto',
+          padding: '6px 8px',
+          marginBottom: '6px',
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderRadius: '12px',
+          border: '1px solid rgba(59, 130, 246, 0.35)',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none'
+        }}>
+          <span style={{ fontSize: '0.75rem', color: '#60a5fa', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 600 }}>
+            ∑ 快捷符号:
+          </span>
+          {QUICK_MATH_SYMBOLS.map((item, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleInsertSymbol(item.insert)}
+              className="symbol-pill-chip"
+              style={{
+                background: 'rgba(30, 41, 59, 0.9)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                color: '#e2e8f0',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '0.86rem',
+                cursor: 'pointer',
+                flexShrink: 0,
+                fontWeight: 600,
+                userSelect: 'none'
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isFeynmanMode && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '5px 12px',
+          marginBottom: '6px',
+          background: 'rgba(245, 158, 11, 0.12)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: '10px',
+          fontSize: '0.8rem',
+          color: '#d97706'
+        }}>
+          <span>🧑‍🏫 <b>费曼小老师模式已激活</b>：你现在是名师，AI是好学的小同桌小明，把解题思路讲给ta听吧！</span>
+          {onToggleFeynmanMode && (
+            <button
+              type="button"
+              onClick={onToggleFeynmanMode}
+              style={{ background: 'transparent', border: 'none', color: '#d97706', cursor: 'pointer', fontWeight: 700 }}
+            >✕ 退出</button>
+          )}
+        </div>
+      )}
+
+      {/* 🛠️ 智能助学工具箱抽屉 (展开式，杜绝底部按钮横向过度拥挤) */}
+      {showMoreTools && (
+        <div className="more-tools-drawer" role="region" aria-label="智能助学工具箱">
+          <div className="more-tools-header">
+            <span className="more-tools-title">
+              <span>🛠️</span> 智能助学工具箱
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowMoreTools(false)}
+              className="more-tools-close-btn"
+              aria-label="关闭工具箱"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="more-tools-grid">
+            {/* 1. 公式宝典 */}
+            {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenFormulaHandbook(); setShowMoreTools(false); }}
+                title="数理化必备公式定理速查宝典"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>📖</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">公式宝典</span>
+                  <span className="tool-card-desc">公式定理速查</span>
+                </div>
+              </button>
+            )}
+
+            {/* 2. 跨年级考点星图 */}
+            {onOpenPrerequisiteTrace && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenPrerequisiteTrace(); setShowMoreTools(false); }}
+                title="跨年级考点星图与断层溯源"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa' }}>🌌</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">考点星图</span>
+                  <span className="tool-card-desc">断层溯源基石</span>
+                </div>
+              </button>
+            )}
+
+            {/* 3. 费曼小老师模式 */}
+            {onToggleFeynmanMode && (
+              <button
+                type="button"
+                className={`more-tool-card ${isFeynmanMode ? 'active' : ''}`}
+                onClick={() => { onToggleFeynmanMode(); setShowMoreTools(false); }}
+                title="费曼小老师以教代学模式"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>🧑‍🏫</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">{isFeynmanMode ? '退出费曼' : '费曼模式'}</span>
+                  <span className="tool-card-desc">以教代学·同桌互动</span>
+                </div>
+              </button>
+            )}
+
+            {/* 4. 实时代数分步演算纸 */}
+            {onOpenStepScratchpad && isFeatureVisible('stepScratchpad', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenStepScratchpad(); setShowMoreTools(false); }}
+                title="步骤级代数演算纸"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>📐</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">分步演算纸</span>
+                  <span className="tool-card-desc">写一步验一步CAS</span>
+                </div>
+              </button>
+            )}
+
+            {/* 5. 物理虚拟微实验 */}
+            {onOpenPhysicsSimulator && isFeatureVisible('physicsSimulator', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenPhysicsSimulator(); setShowMoreTools(false); }}
+                title="物理动态虚拟微实验台"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8' }}>🔬</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">物理微实验</span>
+                  <span className="tool-card-desc">凸透镜·欧姆定律</span>
+                </div>
+              </button>
+            )}
+
+            {/* 6. 化学虚拟微实验 */}
+            {onOpenChemistry && isFeatureVisible('chemistryLab', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenChemistry(); setShowMoreTools(false); }}
+                title="化学虚拟微实验台"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(5, 150, 105, 0.15)', color: '#10b981' }}>⚗️</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">化学微实验</span>
+                  <span className="tool-card-desc">气体制备·分子重组</span>
+                </div>
+              </button>
+            )}
+
+            {/* 7. 中高考作文名师精批 */}
+            {onOpenEssay && isFeatureVisible('essay', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenEssay(); setShowMoreTools(false); }}
+                title="作文名师精批"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(217, 119, 6, 0.15)', color: '#f59e0b' }}>🖋️</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">作文精批</span>
+                  <span className="tool-card-desc">五维雷达·逐句升格</span>
+                </div>
+              </button>
+            )}
+
+            {/* 8. 英语听说情景对练 */}
+            {onOpenEnglishRolePlay && isFeatureVisible('englishRolePlay', activeGrade, activeSubject) && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenEnglishRolePlay(); setShowMoreTools(false); }}
+                title="英语情景对练"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa' }}>🗣️</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">情景对练</span>
+                  <span className="tool-card-desc">口语对话·音标纠音</span>
+                </div>
+              </button>
+            )}
+
+            {/* 9. 整页秒批 */}
+            {onOpenBatchGrade && (
+              <button
+                type="button"
+                className="more-tool-card"
+                onClick={() => { onOpenBatchGrade(); setShowMoreTools(false); }}
+                title="整页试卷作业秒级识别与批改"
+              >
+                <span className="tool-card-icon" style={{ background: 'rgba(14, 165, 233, 0.15)', color: '#38bdf8' }}>📑</span>
+                <div className="tool-card-info">
+                  <span className="tool-card-name">整页秒批</span>
+                  <span className="tool-card-desc">整页多题秒级识别</span>
+                </div>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="input-container" role="form" aria-label="消息输入区域">
+        <form className="input-form" onSubmit={handleFormSubmit}>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            ref={fileInputRef}
+            onChange={onImageSelect}
+            style={{ display: 'none' }}
+            id="image-upload"
+            disabled={isLoading}
+            aria-hidden="true"
+          />
+
+          {/* 顶层：全宽自适应水平输入框 (彻底杜绝狭窄挤压导致的竖排文字) */}
+          <textarea
+            ref={textareaRef}
+            value={localVal}
+            onChange={e => setLocalVal(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isListening ? '🎤 正在倾听您的提问，说完停顿将自动发送...' : (isFeynmanMode ? '🧑‍🏫 小老师，把你的思路或原理解释给小同桌听吧…' : '输入课本难题、公式，或拍照/语音提问…')}
+            disabled={isLoading}
+            maxLength={2000}
+            rows={1}
+            aria-label="输入你的问题"
+            aria-disabled={isLoading}
+            autoComplete="off"
+            className="chat-textarea"
+          />
+
+          {/* 底层：操作工具栏 (左侧辅助学习工具，右侧语音与发送，人机工学双端适配) */}
+          <div className="input-actions-bar">
+            <div className="input-actions-left">
+              {/* 1. 拍照或上传题目图片 (核心最高频) */}
+              <label
+                htmlFor="image-upload"
+                className="icon-btn camera-btn"
+                title="拍照或上传题目图片"
+                aria-label="拍照或上传题目图片"
+                style={isLoading ? { pointerEvents: 'none', opacity: 0.4 } : {}}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </label>
+
+              {/* 2. 演练草稿纸 (手写几何/竖式草稿 - 高频动笔核心) */}
+              {onOpenScratchpad && (
+                <button
+                  type="button"
+                  className="icon-btn scratchpad-btn"
+                  onClick={onOpenScratchpad}
+                  title="打开演练草稿纸 (手写几何/竖式草稿)"
+                  aria-label="打开草稿纸"
+                  style={{ color: '#38bdf8' }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                </button>
+              )}
+
+              {/* 3. 常用数学理化符号开关 (仅在数理化学科开启) */}
+              {isFeatureVisible('mathSymbols', activeGrade, activeSubject) && (
+                <button
+                  type="button"
+                  className="icon-btn symbols-btn"
+                  onClick={() => setShowSymbols(s => !s)}
+                  title="快捷数学理化符号栏 (+ - × ÷ √ x² △ ∠ ⊥ 等)"
+                  aria-label="切换常用数学理化符号"
+                  style={{
+                    color: showSymbols ? '#3b82f6' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '1.05rem',
+                    background: showSymbols ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
+                    borderRadius: '10px',
+                    border: showSymbols ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent'
+                  }}
+                >
+                  ∑
+                </button>
+              )}
+
+              {/* 4. 更多助学工具箱按钮 (点击抽屉式展开公式/星图/费曼/实验，杜绝窄屏拥挤) */}
+              <button
+                type="button"
+                className={`icon-btn more-tools-toggle-btn ${showMoreTools ? 'active' : ''}`}
+                onClick={() => setShowMoreTools(s => !s)}
+                title="展开智能助学工具箱 (公式宝典/考点星图/费曼/实验台等)"
+                aria-label="展开智能助学工具箱"
+                style={{
+                  color: showMoreTools ? '#60a5fa' : '#94a3b8',
+                  background: showMoreTools ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                  borderRadius: '10px',
+                  border: showMoreTools ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
+                  position: 'relative'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                </svg>
+                {isFeynmanMode && (
+                  <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
+                )}
+              </button>
+
+              {/* 5. 桌面宽屏快捷常驻按钮 (在平板/桌面宽屏下直接展现，移动窄屏下自动隐藏归入工具箱) */}
+              {onOpenFormulaHandbook && isFeatureVisible('formulaHandbook', activeGrade, activeSubject) && (
+                <button
+                  type="button"
+                  className="icon-btn desktop-tool-btn"
+                  onClick={onOpenFormulaHandbook}
+                  title="数理化必备公式定理速查宝典"
+                  aria-label="打开公式宝典"
+                  style={{ color: '#c084fc', fontSize: '1.05rem', fontWeight: 700 }}
+                >
+                  📖
+                </button>
+              )}
+
+              {onOpenPrerequisiteTrace && (
+                <button
+                  type="button"
+                  className="icon-btn desktop-tool-btn"
+                  onClick={onOpenPrerequisiteTrace}
+                  title="🌌 跨年级考点星图与断层溯源"
+                  aria-label="打开考点星图与断层溯源"
+                  style={{ color: '#a78bfa', fontSize: '1.05rem', fontWeight: 700 }}
+                >
+                  🌌
+                </button>
+              )}
+
+              {onToggleFeynmanMode && (
+                <button
+                  type="button"
+                  className="icon-btn desktop-tool-btn"
+                  onClick={onToggleFeynmanMode}
+                  title={isFeynmanMode ? '退出费曼小老师模式' : '开启费曼小老师模式'}
+                  aria-label="费曼小老师模式"
+                  style={{
+                    color: isFeynmanMode ? '#f59e0b' : '#94a3b8',
+                    fontSize: '1.05rem',
+                    background: isFeynmanMode ? 'rgba(245, 158, 11, 0.18)' : 'transparent',
+                    borderRadius: '10px',
+                    border: isFeynmanMode ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent'
+                  }}
+                >
+                  🧑‍🏫
+                </button>
+              )}
+            </div>
+
+            <div className="input-actions-right">
+              {/* 面对面伴学 (仅在桌面宽屏保留底部快捷入口；移动端已在顶栏与启发条常驻) */}
+              {onOpenVoiceCompanion && (
+                <button
+                  type="button"
+                  className="icon-btn voice-companion-btn desktop-only"
+                  onClick={onOpenVoiceCompanion}
+                  title="开启面对面伴学 (全屏沉浸语音对话)"
+                  aria-label="开启面对面伴学"
+                  style={{
+                    color: '#10b981',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    borderRadius: '10px',
+                    padding: '4px 6px',
+                    marginRight: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <span style={{ fontSize: '1.05rem' }}>🎙️</span>
+                  <span className="hidden sm:inline" style={{ fontSize: '0.78rem' }}>伴学</span>
+                </button>
+              )}
+
+              {/* 语音输入按钮 */}
+              <button
+                type="button"
+                className={`icon-btn voice-btn ${isListening ? 'listening' : ''}`}
+                onClick={() => {
+                  if (isSpeaking && onInterruptSpeech) {
+                    onInterruptSpeech();
+                  }
+                  onToggleVoice();
+                }}
+                title={isListening ? '点击停止' : (isSpeaking ? '打断讲解并语音提问' : '按下说话')}
+                aria-label={isListening ? '停止录音' : '开始语音输入'}
+                disabled={isLoading}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+
+              {/* 发送按钮 */}
+              <button
+                type="submit"
+                disabled={(!localVal.trim() && !previewImage) || isLoading}
+                aria-label="发送消息"
+                title="发送消息"
+                className="send-btn"
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+});
+
+export default InputBar;

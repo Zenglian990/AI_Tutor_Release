@@ -1,0 +1,1570 @@
+import React, { useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import rehypeKatex from 'rehype-katex';
+import { getApiUrl, authFetch } from '../store/useStore';
+import { compressImage } from '../utils/image';
+import { enhanceDocumentFile, sliceQuestionsLocally, eraseTeacherRedInkFile } from '../utils/documentEnhancer';
+import { inspectImageQuality } from '../utils/imageQualityInspector';
+import { preprocessLatex } from '../utils/math';
+import A4PrintModal from './A4PrintModal';
+import VariantPracticeModal from './VariantPracticeModal';
+
+/**
+ * Robust Client-Side JSON Recovery Safeguard
+ * In case network proxy or legacy fallback returns embedded JSON inside standardAnswer
+ */
+function recoverJsonIfEmbedded(data) {
+  if (!data || !Array.isArray(data.results) || data.results.length !== 1) return data;
+  const single = data.results[0];
+  const ans = typeof single.standardAnswer === 'string' ? single.standardAnswer.trim() : '';
+
+  if (ans.includes('"results"') || ans.includes('results:')) {
+    try {
+      const clean = ans.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      const first = clean.indexOf('{');
+      const last = clean.lastIndexOf('}');
+      if (first !== -1 && last !== -1 && last > first) {
+        const jsonStr = clean.substring(first, last + 1);
+        const repaired = jsonStr
+          .replace(/,\s*([\]}])/g, '$1')
+          .replace(/\\(?:([^"\\/bfnrtu])|([bft][a-zA-Z]))/g, (m, p1, p2) => (p1 ? '\\\\' + p1 : '\\\\' + p2));
+        const parsed = JSON.parse(repaired);
+        if (parsed && Array.isArray(parsed.results)) {
+          const total = parsed.totalCount ?? parsed.results.length;
+          const correct = parsed.correctCount ?? parsed.results.filter(r => r.status === 'correct').length;
+          const wrong = parsed.wrongCount ?? parsed.results.filter(r => r.status === 'wrong').length;
+          return {
+            ...data,
+            totalCount: total,
+            correctCount: correct,
+            wrongCount: wrong,
+            accuracyPct: parsed.accuracyPct ?? (total > 0 ? Math.round((correct / Math.max(1, total)) * 100) : 0),
+            summaryHeadline: parsed.summaryHeadline || data.summaryHeadline,
+            teacherPraise: parsed.teacherPraise || data.teacherPraise,
+            teacherAdvice: parsed.teacherAdvice || data.teacherAdvice,
+            results: parsed.results
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[HomeworkBatch] Frontend recovery failed:', e);
+    }
+  }
+  return data;
+}
+
+/**
+ * Render Markdown + KaTeX safely without throwing
+ */
+function MathMarkdown({ content }) {
+  if (!content) return <span style={{ color: '#94a3b8' }}>（空）</span>;
+  return (
+    <div className="math-markdown-container" style={{ lineHeight: '1.6', wordBreak: 'break-word' }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkMath, remarkGfm]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+        components={{
+          p: ({ children }) => <span style={{ display: 'inline' }}>{children}</span>
+        }}
+      >
+        {preprocessLatex(String(content))}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+/**
+ * 试卷多题局部选框精确切片工具函数
+ * 将 0..1000 归一化坐标转换并基于离屏 Canvas 裁切高清单题图片
+ */
+export async function cropQuestionBox(imageFile, box2d) {
+  if (!imageFile || !box2d || !Array.isArray(box2d) || box2d.length !== 4) return imageFile;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objUrl = URL.createObjectURL(imageFile);
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const [ymin, xmin, ymax, xmax] = box2d;
+        const nw = img.naturalWidth || img.width;
+        const nh = img.naturalHeight || img.height;
+        if (!nw || !nh) {
+          URL.revokeObjectURL(objUrl);
+          return resolve(imageFile);
+        }
+
+        // 归一化 0..1000 转实际物理像素
+        let x = (Math.max(0, xmin) / 1000) * nw;
+        let y = (Math.max(0, ymin) / 1000) * nh;
+        let w = ((Math.min(1000, xmax) - Math.max(0, xmin)) / 1000) * nw;
+        let h = ((Math.min(1000, ymax) - Math.max(0, ymin)) / 1000) * nh;
+
+        // 边缘各扩展 4% 缓冲边距，避免压字
+        const padX = Math.max(10, w * 0.04);
+        const padY = Math.max(10, h * 0.04);
+        x = Math.max(0, x - padX);
+        y = Math.max(0, y - padY);
+        w = Math.min(nw - x, w + padX * 2);
+        h = Math.min(nh - y, h + padY * 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w);
+        canvas.height = Math.round(h);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objUrl);
+          if (blob) {
+            const croppedFile = new File([blob], `cropped_q_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            resolve(croppedFile);
+          } else {
+            resolve(imageFile);
+          }
+        }, 'image/jpeg', 0.92);
+      } catch (err) {
+        console.warn('[HomeworkBatch] Canvas crop error:', err);
+        URL.revokeObjectURL(objUrl);
+        resolve(imageFile);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objUrl);
+      resolve(imageFile);
+    };
+    img.src = objUrl;
+  });
+}
+
+/**
+ * HomeworkBatchModal
+ * 整页作业/整张试卷智能秒批与错题一键自动归档模态框
+ */
+export default function HomeworkBatchModal({
+  isOpen,
+  onClose,
+  currentProfileId,
+  grade = '7_up',
+  subject = '数学',
+  studentName = '曾练',
+  onReviewMistakes,
+  onStartSocraticTutoring
+}) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [filterTab, setFilterTab] = useState('all'); // 'all', 'wrong', 'correct'
+  const [enableEnhancer, setEnableEnhancer] = useState(true);
+  const [showA4Print, setShowA4Print] = useState(false);
+  const [showVisualMap, setShowVisualMap] = useState(true);
+  const [highlightedQNum, setHighlightedQNum] = useState(null);
+  const [activeInspectQ, setActiveInspectQ] = useState(null);
+  const [variantTargetQ, setVariantTargetQ] = useState(null);
+  const [cleanedPaperUrl, setCleanedPaperUrl] = useState(null);
+  const [erasingInk, setErasingInk] = useState(false);
+  const [showCleanModal, setShowCleanModal] = useState(false);
+  const [qualityInfo, setQualityInfo] = useState(null);
+  const fileInputRef = useRef(null);
+
+  if (!isOpen) return null;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setErrorMsg('');
+    setBatchResult(null);
+    setFilterTab('all');
+
+    // 端侧毫秒级拍照质量与模糊度预检
+    try {
+      const objUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const q = inspectImageQuality(img);
+        setQualityInfo(q);
+        URL.revokeObjectURL(objUrl);
+      };
+      img.src = objUrl;
+    } catch (err) {
+      console.warn('[HomeworkBatch] Quality inspector error:', err);
+    }
+  };
+
+  const handleStartBatchGrade = async () => {
+    if (!selectedFile) {
+      setErrorMsg('请先拍照或上传整页作业图片');
+      return;
+    }
+
+    setAnalyzing(true);
+    setErrorMsg('');
+    try {
+      let fileToUpload = selectedFile;
+      if (enableEnhancer) {
+        try {
+          fileToUpload = await enhanceDocumentFile(selectedFile);
+        } catch (enhErr) {
+          console.warn('[HomeworkBatch] Document enhancer warning:', enhErr);
+        }
+      }
+      const compressed = await compressImage(fileToUpload);
+      const formData = new FormData();
+      formData.append('image', compressed);
+      formData.append('profile_id', currentProfileId || 'default');
+      formData.append('grade', grade);
+      formData.append('subject', subject);
+      formData.append('student_name', studentName);
+
+      const res = await authFetch('/api/homework/batch-grade', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `批改失败 (状态码: ${res.status})`);
+      }
+
+      const result = await res.json();
+      let processed = recoverJsonIfEmbedded(result);
+
+      // 本地离线投影切片安全兜底：如果模型未返回 box_2d 或个别题缺少定位，调用 sliceQuestionsLocally 毫秒补齐
+      if (processed && Array.isArray(processed.results) && processed.results.length > 0) {
+        const hasBoxes = processed.results.some(r => Array.isArray(r.box_2d) && r.box_2d.length === 4);
+        if (!hasBoxes && fileToUpload) {
+          try {
+            const img = new Image();
+            img.src = URL.createObjectURL(fileToUpload);
+            await new Promise(res => { img.onload = res; });
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            const localBoxes = sliceQuestionsLocally(canvas);
+            if (localBoxes.length > 0) {
+              processed.results = processed.results.map((r, i) => ({
+                ...r,
+                box_2d: localBoxes[i % localBoxes.length].box_2d
+              }));
+            }
+          } catch (sliceErr) {
+            console.warn('[HomeworkBatch] Local slice fallback warning:', sliceErr);
+          }
+        }
+      }
+
+      setBatchResult(processed);
+      setFilterTab('all');
+    } catch (err) {
+      console.error('Batch grade error:', err);
+      setErrorMsg(err.message || '网络连接超时，请重试');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleGenerateCleanPaper = async () => {
+    if (!selectedFile) return;
+    setErasingInk(true);
+    try {
+      const cleaned = await eraseTeacherRedInkFile(selectedFile);
+      if (cleanedPaperUrl) URL.revokeObjectURL(cleanedPaperUrl);
+      const url = URL.createObjectURL(cleaned);
+      setCleanedPaperUrl(url);
+      setShowCleanModal(true);
+    } catch (err) {
+      console.error('Clean paper error:', err);
+      alert('试卷翻新失败，请重试');
+    } finally {
+      setErasingInk(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setBatchResult(null);
+    setErrorMsg('');
+    setFilterTab('all');
+    setHighlightedQNum(null);
+    setActiveInspectQ(null);
+    setQualityInfo(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleTutorQuestion = async (q) => {
+    if (!onStartSocraticTutoring) return;
+    let targetImage = selectedFile;
+    if (selectedFile && q.box_2d && Array.isArray(q.box_2d) && q.box_2d.length === 4) {
+      try {
+        targetImage = await cropQuestionBox(selectedFile, q.box_2d);
+      } catch (e) {
+        console.warn('[HomeworkBatch] Failed to crop question box:', e);
+      }
+    }
+    onClose();
+    onStartSocraticTutoring({
+      file: targetImage,
+      snippet: q.questionSnippet,
+      questionNumber: q.questionNumber || 1
+    });
+  };
+
+  const filteredQuestions = (batchResult?.results || []).filter(q => {
+    if (filterTab === 'wrong') return q.status === 'wrong' || q.status === 'partial';
+    if (filterTab === 'correct') return q.status === 'correct';
+    return true;
+  });
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(15, 23, 42, 0.82)',
+      backdropFilter: 'blur(10px)',
+      display: 'flex', justifyContent: 'center', alignItems: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        background: 'var(--bg-secondary, #1e293b)',
+        color: 'var(--text-primary, #f8fafc)',
+        width: '92%',
+        maxWidth: '880px',
+        maxHeight: '92vh',
+        borderRadius: '20px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        border: '1px solid rgba(255, 255, 255, 0.12)'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'rgba(30, 41, 59, 0.95)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '1.8rem' }}>📑</span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>
+                整页作业/试卷多题秒级批改
+              </h3>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                学生：<strong>{studentName}</strong> · 学科：<strong>{subject}</strong> · AI 名师逐题审阅 · 公式级 LaTeX 渲染
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="关闭窗口"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              transition: 'background 0.2s'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+          {errorMsg && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#f87171',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              marginBottom: '18px',
+              fontSize: '0.9rem'
+            }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
+          {!batchResult ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Upload Box */}
+              <div
+                onClick={() => !analyzing && fileInputRef.current?.click()}
+                style={{
+                  border: '2px dashed rgba(56, 189, 248, 0.45)',
+                  borderRadius: '16px',
+                  padding: previewUrl ? '16px' : '44px 20px',
+                  textAlign: 'center',
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  cursor: analyzing ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                  disabled={analyzing}
+                />
+
+                {previewUrl ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img
+                      src={previewUrl}
+                      alt="整页作业待批改"
+                      style={{ maxHeight: '360px', maxWidth: '100%', borderRadius: '12px', objectFit: 'contain', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}
+                    />
+                    <p style={{ marginTop: '12px', marginBottom: '6px', fontSize: '0.85rem', color: '#38bdf8' }}>
+                      📸 已选取图片，点击可重新更换照片
+                    </p>
+                    {qualityInfo && (
+                      <div style={{
+                        padding: '6px 14px',
+                        borderRadius: '12px',
+                        fontSize: '0.84rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: qualityInfo.isGood ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.2)',
+                        border: `1px solid ${qualityInfo.isGood ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.45)'}`,
+                        color: qualityInfo.isGood ? '#34d399' : '#fbbf24'
+                      }}>
+                        <span>{qualityInfo.isGood ? '✅' : '💡'}</span>
+                        <span>{qualityInfo.message}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: '3.2rem', marginBottom: '12px' }}>📷</div>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.15rem', color: '#f1f5f9' }}>
+                      点击拍照或上传整页作业 / 练习册 / 试卷
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                      支持清晰演算手迹、选择题、填空题与几何大题，特级名师将自动进行逐题定位判分
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Document Enhancer Switch */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: 'rgba(15, 23, 42, 0.55)',
+                borderRadius: '12px',
+                border: '1px solid rgba(56, 189, 248, 0.2)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '1.2rem' }}>✨</span>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
+                      智能文档去阴影增强 (媲美作业帮/扫描全能王)
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                      自动消除手机拍照阴影、提高字迹对比度、100%保留老师红笔批阅勾叉标记
+                    </div>
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={enableEnhancer}
+                    onChange={(e) => setEnableEnhancer(e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    cursor: 'pointer',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: enableEnhancer ? '#0284c7' : '#334155',
+                    transition: '.3s',
+                    borderRadius: '24px'
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      height: '18px',
+                      width: '18px',
+                      left: enableEnhancer ? '23px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: 'white',
+                      transition: '.3s',
+                      borderRadius: '50%'
+                    }} />
+                  </span>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                {previewUrl && (
+                  <button
+                    onClick={handleReset}
+                    disabled={analyzing}
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: 'none',
+                      color: '#cbd5e1',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    重新上传
+                  </button>
+                )}
+                <button
+                  onClick={handleStartBatchGrade}
+                  disabled={!selectedFile || analyzing}
+                  style={{
+                    background: analyzing ? '#0284c7' : 'linear-gradient(135deg, #0284c7, #2563eb)',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '12px 28px',
+                    borderRadius: '10px',
+                    cursor: analyzing ? 'wait' : 'pointer',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {analyzing ? (
+                    <>
+                      <span className="dot" style={{ animation: 'pulse 1s infinite' }}>⏳</span>
+                      <span>AI 特级名师正在逐题严密审阅批改中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⚡</span>
+                      <span>开始整页智能批改</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (!batchResult.results || batchResult.results.length === 0) ? (
+            /* Unclear / Empty Homework Result Guidance Card */
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '20px',
+              padding: '32px 20px',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85))',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: '16px'
+            }}>
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '50%',
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem'
+              }}>
+                📷
+              </div>
+
+              <div style={{ maxWidth: '640px' }}>
+                <div style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '6px' }}>
+                  【{subject}】作业识别提醒
+                </div>
+                <h3 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', color: '#fff', fontWeight: 700, lineHeight: 1.4 }}>
+                  {batchResult.summaryHeadline || '未能在图片中识别出清晰完整的题目'}
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.95rem', color: '#94a3b8', lineHeight: '1.6' }}>
+                  {batchResult.teacherAdvice || '请重新对准试卷平铺拍摄，确保字迹清晰、光线均匀，以便 AI 名师进行精准秒批。'}
+                </p>
+              </div>
+
+              {/* 拍摄建议指南 */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                maxWidth: '600px',
+                width: '100%',
+                textAlign: 'left'
+              }}>
+                <div style={{ fontSize: '0.88rem', color: '#38bdf8', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💡</span>
+                  <span>拍摄提升小贴士（对标小猿/作业帮拍题标准）：</span>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.8' }}>
+                  <li><strong>垂直正对平铺</strong>：将试卷平铺在桌面上，手机正对试卷俯拍，避免角度过大倾斜。</li>
+                  <li><strong>光线明亮均匀</strong>：在明亮光线下拍摄，避免阴影遮挡或反光虚化。</li>
+                  <li><strong>原图直接拍摄</strong>：建议直接拍摄纸质试卷或习题册，避免使用手机截图内嵌小图。</li>
+                  <li><strong>对焦清晰稳定</strong>：轻触手机屏幕对焦，确保手写答案与印刷字体清晰锐利。</li>
+                </ul>
+              </div>
+
+              {/* 操作按钮 */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  onClick={handleReset}
+                  style={{
+                    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '12px 28px',
+                    borderRadius: '10px',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <span>📸</span>
+                  <span>重新拍照或选取作业</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    color: '#cbd5e1',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  稍后再试
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Results View */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Summary Dashboard Banner */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85))',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                borderRadius: '16px',
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ maxWidth: '60%' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, letterSpacing: '0.5px' }}>
+                      【{subject}】整卷智能诊断报告
+                    </span>
+                    <h4 style={{ margin: '4px 0 0 0', fontSize: '1.2rem', color: '#fff', lineHeight: 1.4 }}>
+                      {batchResult.summaryHeadline}
+                    </h4>
+                  </div>
+                  {/* Score Pills */}
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#7dd3fc' }}>识别题数</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#38bdf8' }}>{batchResult.totalCount || batchResult.results?.length || 0}</div>
+                    </div>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#6ee7b7' }}>答对题目</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#34d399' }}>{batchResult.correctCount} 道</div>
+                    </div>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>待订正</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f87171' }}>{batchResult.wrongCount} 道</div>
+                    </div>
+                    <div style={{ background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '8px 14px', borderRadius: '12px', textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#d8b4fe' }}>正确率</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#c084fc' }}>{batchResult.accuracyPct}%</div>
+                    </div>
+                  </div>
+                </div>
+
+                {batchResult.autoArchivedCount > 0 && (
+                  <div style={{
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    fontSize: '0.88rem',
+                    color: '#fbbf24',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}>
+                    <span>📥 已自动将本次发现的 <strong>{batchResult.autoArchivedCount}</strong> 道失分题归档进抗遗忘错题本！</span>
+                    {onReviewMistakes && (
+                      <button
+                        onClick={() => { onClose(); onReviewMistakes(); }}
+                        style={{
+                          background: '#d97706',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          boxShadow: '0 2px 6px rgba(217, 119, 6, 0.4)'
+                        }}
+                      >
+                        去错题本强化变式 →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* A4 Paper Generation Quick Banner */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.15), rgba(16, 185, 129, 0.08))',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '0.88rem',
+                  color: '#6ee7b7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🖨️</span>
+                    <span>
+                      {batchResult.wrongCount > 0
+                        ? <>推荐生成 <strong>A4 空白复测卷</strong>，隐藏答案与老师红笔痕迹，让孩子在纸上真实动笔彻底搞懂！</>
+                        : <>恭喜全对！可一键生成 <strong>A4 纸质留存/巩固微测卷</strong> 备战期末。</>}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={handleGenerateCleanPaper}
+                      disabled={erasingInk}
+                      title="自动抹除老师红笔打勾打叉与学生笔迹，还原崭新空白卷"
+                      style={{
+                        background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.84rem',
+                        cursor: erasingInk ? 'wait' : 'pointer',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 8px rgba(14, 165, 233, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🧼</span>
+                      <span>{erasingInk ? '正在翻新...' : '一键翻新空白卷 (抹除字迹)'}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowA4Print(true)}
+                      style={{
+                        background: 'linear-gradient(135deg, #059669, #10b981)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 16px',
+                        borderRadius: '8px',
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🖨️</span>
+                      <span>生成 A4 考卷排版 ({batchResult.wrongCount > 0 ? `重点练错题 ${batchResult.wrongCount} 道` : '全卷重练'})</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6', background: 'rgba(0, 0, 0, 0.25)', padding: '12px 16px', borderRadius: '10px' }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    <span style={{ color: '#fbbf24', fontWeight: 600 }}>🌟 名师寄语：</span>
+                    {batchResult.teacherPraise}
+                  </div>
+                  <div>
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>💡 考点锦囊：</span>
+                    {batchResult.teacherAdvice}
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Bounding Box Worksheet Visualizer */}
+              {previewUrl && batchResult && (
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.2rem' }}>🎯</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#f8fafc' }}>
+                        卷面多题视觉定位对照 (对标作业帮原卷切片)
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                        点击下方题框或详析卡片，可一键将该题切片送入苏格拉底深度启发
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowVisualMap(!showVisualMap)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#38bdf8',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
+                    >
+                      {showVisualMap ? '收起卷面原图' : '展开卷面原图'}
+                    </button>
+                  </div>
+
+                  {showVisualMap && (
+                    <div style={{
+                      position: 'relative',
+                      display: 'inline-block',
+                      maxWidth: '100%',
+                      margin: '0 auto',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <img
+                        src={previewUrl}
+                        alt="批改原图"
+                        style={{
+                          display: 'block',
+                          maxWidth: '100%',
+                          maxHeight: '440px',
+                          objectFit: 'contain'
+                        }}
+                      />
+
+                      {/* Overlay Bounding Boxes */}
+                      {(batchResult.results || []).map((q, idx) => {
+                        const total = (batchResult.results || []).length || 1;
+                        const box = q.box_2d;
+                        // 智能网格兜底，确保若模型未返回box_2d时原图上依然百分之百打上红叉绿勾
+                        const [ymin, xmin, ymax, xmax] = (box && Array.isArray(box) && box.length === 4)
+                          ? box
+                          : [
+                              Math.floor((idx / total) * 880) + 40,
+                              30,
+                              Math.floor(((idx + 1) / total) * 880) + 20,
+                              970
+                            ];
+
+                        const top = `${ymin / 10}%`;
+                        const left = `${xmin / 10}%`;
+                        const height = `${Math.max(6, (ymax - ymin) / 10)}%`;
+                        const width = `${Math.max(10, (xmax - xmin) / 10)}%`;
+                        const isCorrect = q.status === 'correct';
+                        const isWrong = q.status === 'wrong';
+                        const isHighlighted = highlightedQNum === q.questionNumber;
+
+                        const borderColor = isHighlighted
+                          ? '#38bdf8'
+                          : (isCorrect ? '#10b981' : (isWrong ? '#ef4444' : '#f59e0b'));
+                        const bgColor = isHighlighted
+                          ? 'rgba(56, 189, 248, 0.28)'
+                          : (isCorrect ? 'rgba(16, 185, 129, 0.16)' : (isWrong ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.18)'));
+
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setActiveInspectQ(q);
+                              setHighlightedQNum(q.questionNumber);
+                            }}
+                            onMouseEnter={() => setHighlightedQNum(q.questionNumber)}
+                            title={`第${q.questionNumber || (idx + 1)}题 (${isCorrect ? '正确' : '需订正'}) - 点击查看即时讲评`}
+                            style={{
+                              position: 'absolute',
+                              top, left, width, height,
+                              border: `2px ${isHighlighted ? 'solid' : 'dashed'} ${borderColor}`,
+                              background: bgColor,
+                              boxShadow: isHighlighted ? '0 0 16px rgba(56, 189, 248, 0.85)' : 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              zIndex: isHighlighted ? 20 : 2
+                            }}
+                          >
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              transform: 'translateY(-100%)',
+                              background: borderColor,
+                              color: '#fff',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: '4px 4px 0 0',
+                              whiteSpace: 'nowrap',
+                              pointerEvents: 'none'
+                            }}>
+                              第{q.questionNumber || (idx + 1)}题 {isCorrect ? '✓' : '✕'}
+                            </div>
+
+                            {/* 教师红笔/绿勾批改图章 (对标小猿口算与作业帮原卷打勾叉) */}
+                            <div
+                              className={`grading-stamp-badge ${isCorrect ? 'correct' : (isWrong ? 'wrong' : 'partial')}`}
+                              style={{
+                                top: '4px',
+                                right: '4px',
+                                transform: isHighlighted ? 'scale(1.2)' : 'scale(1)'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveInspectQ(q);
+                                setHighlightedQNum(q.questionNumber);
+                              }}
+                              title={`点击查看第${q.questionNumber || (idx + 1)}题即时精讲`}
+                            >
+                              {isCorrect ? '✔' : (isWrong ? '✘' : '~')}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* 小猿级即时讲评浮层卡片 (Visual Inspect Popover) */}
+                      {activeInspectQ && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '12px',
+                          left: '12px',
+                          right: '12px',
+                          maxHeight: '260px',
+                          background: 'rgba(15, 23, 42, 0.94)',
+                          backdropFilter: 'blur(16px)',
+                          border: `2px solid ${activeInspectQ.status === 'correct' ? '#10b981' : '#ef4444'}`,
+                          borderRadius: '14px',
+                          padding: '14px 16px',
+                          boxShadow: '0 20px 40px rgba(0,0,0,0.75)',
+                          zIndex: 50,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          animation: 'stamp-pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '1.2rem' }}>
+                                {activeInspectQ.status === 'correct' ? '🎉' : '🔍'}
+                              </span>
+                              <strong style={{ fontSize: '0.98rem', color: activeInspectQ.status === 'correct' ? '#34d399' : '#f87171' }}>
+                                第 {activeInspectQ.questionNumber} 题 · {activeInspectQ.status === 'correct' ? '作答准确 (得分)' : '发现解题薄弱点 (需订正)'}
+                              </strong>
+                            </div>
+                            <button
+                              onClick={() => setActiveInspectQ(null)}
+                              style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer', padding: '2px 6px' }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.5' }}>
+                            <strong>原题提炼：</strong>{activeInspectQ.questionSnippet}
+                          </div>
+
+                          {activeInspectQ.status !== 'correct' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.83rem', background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '8px' }}>
+                              <div style={{ color: '#fca5a5' }}>
+                                <strong>✍️ 孩子原答：</strong>{activeInspectQ.studentAnswer || '（未作答或演算有误）'}
+                              </div>
+                              <div style={{ color: '#86efac' }}>
+                                <strong>🎯 标准答案：</strong>{activeInspectQ.standardAnswer}
+                              </div>
+                              {(activeInspectQ.reasoning || activeInspectQ.errorAnalysis) && (
+                                <div style={{ color: '#93c5fd' }}>
+                                  <strong>💡 名师批注：</strong>{activeInspectQ.reasoning || activeInspectQ.errorAnalysis}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                            <button
+                              onClick={() => {
+                                const num = activeInspectQ.questionNumber;
+                                setActiveInspectQ(null);
+                                const el = document.getElementById(`q-card-${num}`);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }}
+                              style={{
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                color: '#cbd5e1',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              📋 查看完整长解析
+                            </button>
+                            <button
+                              onClick={() => {
+                                setVariantTargetQ(activeInspectQ);
+                              }}
+                              style={{
+                                background: 'linear-gradient(135deg, #059669, #10b981)',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="针对本题考点，立即做2道同类巩固与拔高变式题（对标作业帮）"
+                            >
+                              <span>🎯</span>
+                              <span>举一反三变式通关</span>
+                            </button>
+                            <button
+                              onClick={() => handleTutorQuestion(activeInspectQ)}
+                              style={{
+                                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <span>🚀</span>
+                              <span>送入苏格拉底私教带我做</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#f1f5f9', fontWeight: 700 }}>
+                  逐题详析与批注清单：
+                </h4>
+                <div style={{ display: 'flex', gap: '6px', background: 'rgba(15, 23, 42, 0.5)', padding: '3px', borderRadius: '10px' }}>
+                  <button
+                    onClick={() => setFilterTab('all')}
+                    style={{
+                      background: filterTab === 'all' ? '#2563eb' : 'transparent',
+                      color: filterTab === 'all' ? '#fff' : '#94a3b8',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    全部 ({batchResult.results?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('wrong')}
+                    style={{
+                      background: filterTab === 'wrong' ? '#ef4444' : 'transparent',
+                      color: filterTab === 'wrong' ? '#fff' : '#94a3b8',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    需订正 ({batchResult.wrongCount || 0})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('correct')}
+                    style={{
+                      background: filterTab === 'correct' ? '#10b981' : 'transparent',
+                      color: filterTab === 'correct' ? '#fff' : '#94a3b8',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    正确 ({batchResult.correctCount || 0})
+                  </button>
+                </div>
+              </div>
+
+              {/* Question By Question List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {filteredQuestions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '12px' }}>
+                    当前分类下暂无题目
+                  </div>
+                ) : (
+                  filteredQuestions.map((q, idx) => {
+                    const qNum = q.questionNumber || (idx + 1);
+                    const isCardHighlighted = highlightedQNum === qNum;
+                    const statusBorderColor = q.status === 'correct'
+                      ? 'rgba(16, 185, 129, 0.35)'
+                      : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)');
+
+                    return (
+                      <div
+                        key={idx}
+                        id={`q-card-${qNum}`}
+                        onMouseEnter={() => setHighlightedQNum(qNum)}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.5)',
+                          border: isCardHighlighted ? '2px solid #38bdf8' : `1px solid ${statusBorderColor}`,
+                          borderRadius: '14px',
+                          padding: '16px 20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          boxShadow: isCardHighlighted ? '0 0 18px rgba(56, 189, 248, 0.35)' : '0 4px 12px rgba(0,0,0,0.2)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                      >
+                        {/* Question Card Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              background: q.status === 'correct' ? 'rgba(16, 185, 129, 0.2)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
+                              color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24'),
+                              border: `1px solid ${q.status === 'correct' ? 'rgba(16, 185, 129, 0.4)' : (q.status === 'wrong' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)')}`,
+                              fontWeight: 700
+                            }}>
+                              {q.status === 'correct' ? '✓ 正确' : (q.status === 'wrong' ? '✕ 需订正' : '~ 步骤分')}
+                            </span>
+                            <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f8fafc' }}>
+                              第 {qNum} 题
+                              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500, marginLeft: '6px' }}>
+                                ({q.type || '试题'})
+                              </span>
+                            </span>
+                          </div>
+                          <span style={{
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: q.status === 'correct' ? '#34d399' : (q.status === 'wrong' ? '#f87171' : '#fbbf24')
+                          }}>
+                            得分：{q.score ?? (q.status === 'correct' ? 10 : 0)} / {q.maxScore || 10} 分
+                          </span>
+                        </div>
+
+                        {/* Question Stem / Snippet */}
+                        <div style={{
+                          fontSize: '0.95rem',
+                          color: '#f1f5f9',
+                          lineHeight: '1.5',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          borderLeft: '3px solid #38bdf8'
+                        }}>
+                          <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>题目考点：</span>
+                          <MathMarkdown content={q.questionSnippet} />
+                        </div>
+
+                        {/* Side by side / stacked Answer Comparison */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                          gap: '12px'
+                        }}>
+                          {/* Student Answer */}
+                          <div style={{
+                            background: 'rgba(0, 0, 0, 0.25)',
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255,255,255,0.06)'
+                          }}>
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginBottom: '4px' }}>
+                              ✍️ 学生卷面作答
+                            </div>
+                            <div style={{ color: '#f1f5f9', fontSize: '0.92rem' }}>
+                              <MathMarkdown content={q.studentAnswer || '卷面未作答 / 留白'} />
+                            </div>
+                          </div>
+
+                          {/* Standard Answer */}
+                          <div style={{
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(16, 185, 129, 0.2)'
+                          }}>
+                            <div style={{ fontSize: '0.8rem', color: '#6ee7b7', fontWeight: 600, marginBottom: '4px' }}>
+                              🎯 名师标准答案与推导
+                            </div>
+                            <div style={{ color: '#e2e8f0', fontSize: '0.92rem' }}>
+                              <MathMarkdown content={q.standardAnswer} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mistake Diagnosis */}
+                        {q.mistakeReason && (
+                          <div style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            borderLeft: '3px solid #ef4444',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <span style={{ color: '#f87171', fontWeight: 600, marginRight: '6px' }}>⚠️ 错因剖析：</span>
+                            <span style={{ color: '#fca5a5' }}><MathMarkdown content={q.mistakeReason} /></span>
+                          </div>
+                        )}
+
+                        {/* Key Insight */}
+                        {q.keyInsight && (
+                          <div style={{
+                            background: 'rgba(56, 189, 248, 0.08)',
+                            borderLeft: '3px solid #0284c7',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <span style={{ color: '#38bdf8', fontWeight: 600, marginRight: '6px' }}>💡 题眼穿透与心法：</span>
+                            <span style={{ color: '#bae6fd' }}><MathMarkdown content={q.keyInsight} /></span>
+                          </div>
+                        )}
+
+                        {/* Step-by-step Deduction / Scratchpad Analysis */}
+                        {q.stepByStepDeduction && (
+                          <div style={{
+                            background: 'rgba(168, 85, 247, 0.08)',
+                            borderLeft: '3px solid #a855f7',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <span style={{ color: '#c084fc', fontWeight: 600, marginRight: '6px' }}>🔍 草稿演算与步骤透视：</span>
+                            <span style={{ color: '#e9d5ff' }}><MathMarkdown content={q.stepByStepDeduction} /></span>
+                          </div>
+                        )}
+
+                        {/* Socratic Tutoring Direct Action */}
+                        {onStartSocraticTutoring && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                            <button
+                              onClick={() => handleTutorQuestion(q)}
+                              title="自动切出本题在卷面上的原图，并无缝进入苏格拉底名师启发"
+                              style={{
+                                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '8px 18px',
+                                borderRadius: '8px',
+                                fontSize: '0.86rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 2px 10px rgba(37, 99, 235, 0.35)',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              <span>⚡</span>
+                              <span>苏格拉底单题精讲 (原卷切片直达)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Bottom Action Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setShowA4Print(true)}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.18)',
+                    border: '1px solid rgba(16, 185, 129, 0.45)',
+                    color: '#34d399',
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>🖨️</span>
+                  <span>A4 纸质复测卷 ({batchResult.wrongCount > 0 ? `错题 ${batchResult.wrongCount} 道` : '全卷'})</span>
+                </button>
+                {batchResult.wrongCount > 0 && onReviewMistakes && (
+                  <button
+                    onClick={() => { onClose(); onReviewMistakes(); }}
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.2)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      color: '#fbbf24',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    前往错题本攻坚 ({batchResult.wrongCount}) →
+                  </button>
+                )}
+                <button
+                  onClick={handleReset}
+                  style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 24px',
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                  }}
+                >
+                  批改下一张作业 📷
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* A4 Clean Paper & Answer Key Generator Modal */}
+      {showA4Print && (
+        <A4PrintModal
+          isOpen={showA4Print}
+          onClose={() => setShowA4Print(false)}
+          studentName={studentName}
+          grade={grade}
+          subject={subject}
+          questions={(batchResult?.results || []).map((r, idx) => ({
+            id: idx + 1,
+            questionNumber: r.questionNumber || (idx + 1),
+            title: `第 ${r.questionNumber || (idx + 1)} 题 (${r.type || '试题'})`,
+            body: r.questionSnippet || `题目 #${r.questionNumber || (idx + 1)}`,
+            score: r.maxScore || 10,
+            status: r.status,
+            standardAnswer: r.standardAnswer,
+            keyInsight: r.keyInsight,
+            mistakeReason: r.mistakeReason,
+            studentAnswer: r.studentAnswer
+          }))}
+          initialMode="blank_student"
+          initialFilter={batchResult?.wrongCount > 0 ? 'wrong_only' : 'all'}
+        />
+      )}
+      {/* Cleaned Blank Paper Direct Preview & Download Modal */}
+      {showCleanModal && cleanedPaperUrl && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999
+        }}>
+          <div style={{
+            background: '#fff',
+            color: '#0f172a',
+            width: '92%',
+            maxWidth: '720px',
+            maxHeight: '90vh',
+            borderRadius: '20px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.4rem' }}>✨</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>崭新空白试卷 (字迹与红笔已抹除)</h3>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>已自动去除手写铅笔字、圆珠笔痕迹与老师批阅勾叉，还原全新印刷质感</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCleanModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '12px',
+              textAlign: 'center'
+            }}>
+              <img
+                src={cleanedPaperUrl}
+                alt="空白翻新试卷"
+                style={{ maxWidth: '100%', maxHeight: '55vh', objectFit: 'contain', boxShadow: '0 4px 14px rgba(0,0,0,0.1)', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <a
+                href={cleanedPaperUrl}
+                download={`${studentName}_空白翻新重练卷_${Date.now()}.jpg`}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                  color: '#fff',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  textDecoration: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>💾</span>
+                <span>保存/下载高清图片</span>
+              </a>
+              <button
+                onClick={() => {
+                  const w = window.open(cleanedPaperUrl);
+                  if (w) {
+                    setTimeout(() => w.print(), 300);
+                  }
+                }}
+                style={{
+                  background: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>🖨️</span>
+                <span>直接打印</span>
+              </button>
+              <button
+                onClick={() => setShowCleanModal(false)}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 举一反三·变式通关弹窗 (对标作业帮) */}
+      {variantTargetQ && (
+        <VariantPracticeModal
+          isOpen={!!variantTargetQ}
+          onClose={() => setVariantTargetQ(null)}
+          originalQuestion={variantTargetQ.questionSnippet || `第${variantTargetQ.questionNumber}题`}
+          originalAnswer={variantTargetQ.standardAnswer || variantTargetQ.stepByStepDeduction || ''}
+          grade={grade}
+          subject={subject}
+          studentName={studentName}
+        />
+      )}
+    </div>
+  );
+}

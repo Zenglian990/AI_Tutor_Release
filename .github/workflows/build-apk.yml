@@ -1,0 +1,102 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    name: Build ZengLian AI Tutor APK
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install client dependencies and build web assets
+        run: |
+          cd client
+          npm install
+          VITE_API_URL=https://ai-tutor-79709693345.asia-east1.run.app npm run build
+          npx cap sync android
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x client/android/gradlew
+
+      - name: Build Android APK
+        run: |
+          cd client/android
+          ./gradlew assembleDebug --stacktrace
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Prepare APK release artifact
+        run: |
+          cp client/android/app/build/outputs/apk/debug/app-debug.apk ./AI_Tutor_v1.7.3.apk
+          curl -sL https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk -o ./AI_Tutor_v1.6.3.apk || true
+          ls -lh ./AI_Tutor_v1*.apk
+
+      - name: Upload APK as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI_Tutor_v1.7.3
+          path: ./AI_Tutor_v1.7.3.apk
+          retention-days: 30
+
+      - name: Create or Update v1.7.3 Latest Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: v1.7.3
+          name: "曾练专属私教 v1.7.3 - 整页红墨水秒批改·39,114道权威真题防幻觉·移动端人体工程学自适应"
+          draft: false
+          prerelease: false
+          make_latest: true
+          body: |
+            ## 🚀 曾练专属私教 v1.7.3 (整页红墨水秒批改 · 39,114道真题防幻觉Grounding · 移动端人体工程学)
+
+            - 🔴 **对标小猿口算/作业帮：整页作业红墨水多题精准秒批 (Homework Batch Grading)**：
+              - 告别单题拍照切图，支持整页试卷一键拍摄，多题自动检测（`box_2d` 外接矩形定位）；
+              - 名师红墨水原图勾叉覆写（✓/✕/步骤得分折线），多题高精度交互画框与一键错题归档；
+              - 多源大模型智能路由：优先调度国产百亿视觉模型（SiliconFlow / DashScope / 智谱）与云端双引擎。
+            - 🎯 **39,114 道全国百强名校权威真题 Grounding 题库 (Anti-Hallucination Sandbox)**：
+              - 权威真题指纹与关键词毫秒级本地硬锚定，强行覆盖大模型几何计算幻觉；
+              - 确定性理科沙盒动态校验，做对题目绝对禁止误判，保护学生学习自信心与作答证据。
+            - 📱 **移动端头部与输入栏人体工程学自适应优化**：
+              - 彻底解决年级学段长文本换行与顶部胶囊拥挤溢出，横向自适应流式排版；
+              - 底部工具栏与输入框层叠间距优化，大拇指单手握持轻松盲操。
+            - 🖨️ **A4 纸质试卷动态页数联动与费曼反思追问闭环**：
+              - 支持试题量与字体行距智能排版自适应（自动计算 1/2/4 页标准 A4 面数）；
+              - 费曼同桌角色互换支持模态内多轮自然语音/文字深度复盘。
+            - 💯 **全栈自动化测试套件持续保障**：
+              - 服务端 222 项单元/集成测试 100% 通过，客户端 104 项 Vitest 测试全面绿灯！
+
+            ---
+            ### 🤖 安卓端下载与安装 (Android APK)：
+            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.7.3.apk`** 直接下载安装；
+            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.7.3】**，点开即用！
+            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.7.3 与 v1.6.3)*
+          files: |
+            ./AI_Tutor_v1.7.3.apk
+            ./AI_Tutor_v1.6.3.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

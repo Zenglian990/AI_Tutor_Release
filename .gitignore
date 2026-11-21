@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+
+# Environment (contains API keys)
+.env
+.env.*
+.env.local
+.env.*.local
+*.env
+
+# Database files & local training/backup datasets
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.sqlite
+data/*.sqlite3
+data/mistakes.db*
+data/textbooks/
+data/backups/
+data/lancedb/
+data/*.jsonl
+data/Math_23K.json
+data/cmmath.json
+data/szzk*.json
+data/tal*.jsonl
+data/gaokao_biology.json
+data/gaokao_chemistry.json
+data/gaokao_chinese.json
+data/gaokao_physics.json
+data/valid.ape.json
+api_token
+db_key
+
+# Build output
+# client/dist/
+client/.vite/
+client/.vite-temp/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+*.lnk
+
+# Logs
+logs/
+*.log
+
+# Scratch / debug scripts
+scratch/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+# Temporary artifacts
+temp_apk/
+temp_*/
+*.apk
+*.keystore
+*.jks

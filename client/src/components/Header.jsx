@@ -1,0 +1,323 @@
+import React from 'react';
+import { getTranslation } from '../utils/i18n';
+import { useAppStore } from '../store/useStore';
+
+const GRADES = [
+  { value: '', label: '全部年级' },
+  { value: '1_up', label: '一年级上册' }, { value: '1_down', label: '一年级下册' },
+  { value: '2_up', label: '二年级上册' }, { value: '2_down', label: '二年级下册' },
+  { value: '3_up', label: '三年级上册' }, { value: '3_down', label: '三年级下册' },
+  { value: '4_up', label: '四年级上册' }, { value: '4_down', label: '四年级下册' },
+  { value: '5_up', label: '五年级上册' }, { value: '5_down', label: '五年级下册' },
+  { value: '6_up', label: '六年级上册' }, { value: '6_down', label: '六年级下册' },
+  { value: '7_up', label: '初一上册' }, { value: '7_down', label: '初一下册' },
+  { value: '8_up', label: '初二上册' }, { value: '8_down', label: '初二下册' },
+  { value: '9_up', label: '初三上册' }, { value: '9_down', label: '初三下册' },
+  { value: '10_up', label: '高一上册' }, { value: '10_down', label: '高一下册' },
+  { value: '11_up', label: '高二上册' }, { value: '11_down', label: '高二下册' },
+  { value: '12_up', label: '高三上册' }, { value: '12_down', label: '高三下册' },
+];
+
+const SUBJECTS = [
+  { value: '', label: '全部科目' },
+  { value: '语文', label: '语文' }, { value: '数学', label: '数学' },
+  { value: '英语', label: '英语' }, { value: '物理', label: '物理' },
+  { value: '化学', label: '化学' }, { value: '生物', label: '生物学' },
+  { value: '历史', label: '历史' }, { value: '地理', label: '地理' },
+  { value: '道德与法治', label: '道法/思政' },
+];
+
+function getValidSubjectsForGrade(grade) {
+  if (!grade) return SUBJECTS;
+  const gradeStr = String(grade);
+  const isHighSchool = ['10', '11', '12'].some(num => gradeStr.startsWith(num));
+  if (isHighSchool) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '数学', label: '数学' },
+      { value: '物理', label: '物理' },
+      { value: '化学', label: '化学' },
+      { value: '生物', label: '生物学' },
+      { value: '语文', label: '语文' },
+      { value: '英语', label: '英语' },
+      { value: '历史', label: '历史' },
+      { value: '地理', label: '地理' },
+      { value: '道德与法治', label: '思想政治' },
+    ];
+  }
+  const isPrimary = ['1_', '2_', '3_', '4_', '5_', '6_'].some(prefix => gradeStr.startsWith(prefix)) ||
+                    ['1', '2', '3', '4', '5', '6'].includes(gradeStr);
+  if (isPrimary) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '语文', label: '语文' },
+      { value: '数学', label: '数学' },
+      { value: '英语', label: '英语' },
+    ];
+  }
+  if (gradeStr.startsWith('7')) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '语文', label: '语文' },
+      { value: '数学', label: '数学' },
+      { value: '英语', label: '英语' },
+      { value: '道德与法治', label: '道法' },
+      { value: '历史', label: '历史' },
+      { value: '地理', label: '地理' },
+      { value: '生物', label: '生物学' },
+    ];
+  }
+  if (gradeStr.startsWith('8')) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '语文', label: '语文' },
+      { value: '数学', label: '数学' },
+      { value: '英语', label: '英语' },
+      { value: '道德与法治', label: '道法' },
+      { value: '历史', label: '历史' },
+      { value: '地理', label: '地理' },
+      { value: '生物', label: '生物学' },
+      { value: '物理', label: '物理' },
+    ];
+  }
+  if (gradeStr.startsWith('9')) {
+    return [
+      { value: '', label: '全部科目' },
+      { value: '语文', label: '语文' },
+      { value: '数学', label: '数学' },
+      { value: '英语', label: '英语' },
+      { value: '道德与法治', label: '道法' },
+      { value: '历史', label: '历史' },
+      { value: '物理', label: '物理' },
+      { value: '化学', label: '化学' },
+    ];
+  }
+  return SUBJECTS;
+}
+
+const SOCRATIC_LEVELS = [
+  { value: 'direct', icon: '💡', shortLabel: '直答', label: '💡 直答', title: 'AI直接给出完整答案和解析' },
+  { value: 'guided', icon: '🤔', shortLabel: '启发', label: '🤔 启发', title: 'AI先给提示引导学生自己思考' },
+  { value: 'strict', icon: '🦉', shortLabel: '苏氏', label: '🦉 提问', title: 'AI只用提问引导，绝不直接给答案' },
+];
+
+const PERSONAS = [
+  { value: 'owl', label: '🦉 智多星', title: '深度苏格拉底推理·严谨治学' },
+  { value: 'lion', label: '🦁 聪聪狮', title: '趣味互动·实物比喻·耐心肯定（推荐低年级）' },
+  { value: 'sister', label: '🌸 晓晴姐', title: '温柔亲切·草稿步步拆解·温和陪伴' }
+];
+
+export default function Header({
+  profiles, currentProfileId, onProfileChange, onDeleteProfile, onRenameProfile,
+  selectedGrade, onGradeChange, selectedSubject, onSubjectChange,
+  onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
+  onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
+  onOpenPoster, onOpenAdminConsole,
+  onOpenEyeCare, onOpenDailyCard, onOpenVoiceCompanion
+}) {
+  const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, chatModel, setChatModel } = useAppStore();
+  const normalizedSocratic = socraticLevel === 'socratic' ? 'guided' : socraticLevel;
+  const currentSocratic = SOCRATIC_LEVELS.find(l => l.value === normalizedSocratic) || SOCRATIC_LEVELS[1];
+  const nextSocratic = SOCRATIC_LEVELS[(SOCRATIC_LEVELS.findIndex(l => l.value === normalizedSocratic) + 1) % SOCRATIC_LEVELS.length];
+
+  const handleSocraticClick = () => {
+    onSocraticCycle(nextSocratic.value);
+  };
+
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+  const selectedEdition = currentProfile?.edition || '人教版';
+
+  const logoClicksRef = React.useRef([]);
+  const handleLogoClick = () => {
+    const now = Date.now();
+    const recentClicks = [...logoClicksRef.current.filter(t => now - t < 2500), now];
+    logoClicksRef.current = recentClicks;
+    if (recentClicks.length >= 5) {
+      logoClicksRef.current = [];
+      if (onOpenAdminConsole) onOpenAdminConsole();
+    }
+  };
+
+  return (
+    <header className="header" role="banner" aria-label="应用顶栏">
+      {/* 1. 品牌与标题 (Left) */}
+      <div className="header-left">
+        <div
+          className="header-icon"
+          onClick={handleLogoClick}
+          title="曾练专属私教"
+          role="button"
+          tabIndex={0}
+          aria-label="应用图标"
+          onKeyDown={e => e.key === 'Enter' && onClearChat && onClearChat()}
+          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+        >
+          <img src="/pwa-192x192.png" alt="曾练专属私教" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 2px 8px rgba(59,130,246,0.2)' }} />
+        </div>
+        <div className="header-brand">
+          <h1>{getTranslation(language, 'app.title')}</h1>
+          <span className="brand-badge">{['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) ? '人教版 高中全科' : '人教版 1-12年级 (全学段)'}</span>
+        </div>
+      </div>
+
+      {/* 2. 学习情境胶囊 (Center) - 档案·年级·学科·名师 紧凑整合 */}
+      <div className="header-capsule">
+        {/* 学生档案 */}
+        <div className="capsule-item capsule-profile-item">
+          <select
+            className="capsule-select"
+            value={currentProfileId}
+            onChange={e => onProfileChange(e.target.value)}
+            aria-label="选择学生档案"
+            title={`当前学生：${currentProfile?.name || '曾练'}`}
+            style={{ fontWeight: 'bold', color: '#60a5fa' }}
+          >
+            {profiles?.map(p => <option key={p.id} value={p.id}>👤 {p.name}</option>)}
+            <option value="ADD_NEW">➕ 新建档案...</option>
+          </select>
+        </div>
+
+        <div className="capsule-divider capsule-profile-divider" />
+
+        {/* 年级 */}
+        <div className="capsule-item capsule-grade-item">
+          <select
+            className="capsule-select"
+            value={selectedGrade}
+            onChange={e => {
+              const val = e.target.value;
+              onGradeChange(val);
+              const gradeNum = parseInt(String(val).replace(/\D/g, '')) || 7;
+              if (gradeNum <= 3) setTutorPersona('lion');
+              else if (gradeNum <= 6) setTutorPersona('sister');
+              else setTutorPersona('owl');
+            }}
+            aria-label="选择年级"
+            title="切换年级教材"
+          >
+            {GRADES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+          </select>
+        </div>
+
+        <div className="capsule-divider" />
+
+        {/* 学科 */}
+        <div className="capsule-item capsule-subject-item">
+          <select
+            className="capsule-select"
+            value={selectedSubject}
+            onChange={e => onSubjectChange(e.target.value)}
+            aria-label="选择学科"
+            title="切换学科"
+          >
+            {getValidSubjectsForGrade(selectedGrade).map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* 3. 核心功能与操作区 (Right) */}
+      <div className="header-actions">
+
+        {/* 面对面伴学 (全屏沉浸语音对话) */}
+        {onOpenVoiceCompanion && (
+          <button
+            onClick={onOpenVoiceCompanion}
+            className="header-btn-pill header-btn-voice"
+            title="开启面对面伴学 (全屏沉浸实时语音对话·对标GPT-4o/Gemini Live)"
+            aria-label="开启面对面伴学"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15))',
+              color: '#34d399',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ filter: 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.6))' }}>🎙️</span>
+            <span className="btn-label">伴学</span>
+          </button>
+        )}
+
+        {/* 连续学习连胜与同桌羁绊 (Duolingo-style Streak Flywheel) */}
+        {onOpenGamification && (
+          <button
+            onClick={onOpenGamification}
+            className="header-btn-pill header-btn-streak"
+            title="多邻国式连续学习连胜榜 · 查看连胜周历与同桌小明羁绊"
+            aria-label="打开连续学习连胜榜"
+            style={{
+              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(234, 88, 12, 0.15))',
+              color: '#fb923c',
+              borderColor: 'rgba(249, 115, 22, 0.4)',
+              boxShadow: '0 0 10px rgba(249, 115, 22, 0.2)',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ filter: 'drop-shadow(0 0 4px rgba(249, 115, 22, 0.6))' }}>🔥</span>
+            <span className="btn-label">连胜</span>
+          </button>
+        )}
+
+        {/* 教学模式 (直答 / 启发 / 苏氏提问) */}
+        <button
+          onClick={handleSocraticClick}
+          className="header-btn-pill header-btn-socratic"
+          title={getTranslation(language, `mode.${currentSocratic.value}_title`)}
+          aria-label={`当前教学模式：${currentSocratic.label}，点击切换`}
+          style={{
+            background: socraticLevel !== 'direct' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+            color: socraticLevel !== 'direct' ? '#60a5fa' : '#94a3b8',
+            borderColor: socraticLevel !== 'direct' ? 'rgba(59, 130, 246, 0.35)' : 'rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <span>{currentSocratic.icon}</span>
+          <span className="btn-label">{currentSocratic.shortLabel}</span>
+        </button>
+
+        <div className="header-actions-divider" style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+
+        {/* 主题明暗切换 */}
+        <button
+          onClick={onThemeToggle}
+          className="header-btn-icon header-btn-theme"
+          title={isLightMode ? '切换到深色模式' : '切换到浅色模式'}
+          aria-label="主题切换"
+        >
+          {isLightMode ? '🌙' : '☀️'}
+        </button>
+
+        {/* 视力守护与学情日报 */}
+        {onOpenEyeCare && (
+          <button
+            onClick={onOpenEyeCare}
+            className="header-btn-icon header-btn-eyecare"
+            title="国际眼科 20-20-20 视力守护与专注番茄钟"
+            aria-label="打开视力守护番茄钟"
+          >
+            🌿
+          </button>
+        )}
+        {onOpenDailyCard && (
+          <button
+            onClick={onOpenDailyCard}
+            className="header-btn-icon header-btn-daily"
+            title="生成今日微信学情战报海报"
+            aria-label="生成今日学情战报"
+          >
+            🌟
+          </button>
+        )}
+
+        {/* 基础偏好设置 */}
+        <button
+          onClick={onSettingsOpen}
+          className="header-btn-icon header-btn-settings"
+          title="基础偏好设置 (教材版本·名师风格·大模型引擎·护眼模式)"
+          aria-label="打开基础偏好设置"
+        >
+          ⚙️
+        </button>
+      </div>
+    </header>
+  );
+}

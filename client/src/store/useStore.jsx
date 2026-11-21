@@ -1,0 +1,739 @@
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { getTranslation } from '../utils/i18n';
+import { encryptData, decryptData } from '../utils/crypto_helper';
+import hmacSHA256 from 'crypto-js/hmac-sha256';
+import Hex from 'crypto-js/enc-hex';
+
+const AppContext = createContext(null);
+
+const GRADE_MAP = {
+  '1_up': '一年级上册', '1_down': '一年级下册',
+  '2_up': '二年级上册', '2_down': '二年级下册',
+  '3_up': '三年级上册', '3_down': '三年级下册',
+  '4_up': '四年级上册', '4_down': '四年级下册',
+  '5_up': '五年级上册', '5_down': '五年级下册',
+  '6_up': '六年级上册', '6_down': '六年级下册',
+  '7_up': '初一上册', '7_down': '初一下册',
+  '8_up': '初二上册', '8_down': '初二下册',
+  '9_up': '初三上册', '9_down': '初三下册',
+  '10_up': '高一上册', '10_down': '高一下册',
+  '11_up': '高二上册', '11_down': '高二下册',
+  '12_up': '高三上册', '12_down': '高三下册',
+  '1': '一年级', '2': '二年级', '3': '三年级', '4': '四年级', '5': '五年级', '6': '六年级',
+  '7': '初一', '8': '初二', '9': '初三',
+  '10': '高一', '11': '高二', '12': '高三'
+};
+
+export function formatGrade(grade) {
+  if (!grade || grade === 'unknown') return '通用';
+  return GRADE_MAP[String(grade)] || `${grade}年级`;
+}
+
+function isNativeMobilePlatform() {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    window.Capacitor?.isNativePlatform?.() ||
+    window.location?.protocol === 'capacitor:' ||
+    window.location?.protocol === 'ionic:'
+  );
+}
+
+function getDefaultBackendUrl() {
+  if (typeof window !== 'undefined') {
+    // If running in a browser (localhost, LAN IP, or public domain), default to same-origin relative path
+    if (!isNativeMobilePlatform() && window.location?.origin && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      return '';
+    }
+  }
+  // For native mobile apps (Capacitor APK/IPA) or non-browser builds:
+  return import.meta.env.VITE_API_URL || 'https://ai-tutor-79709693345.asia-east1.run.app';
+}
+
+export const DEFAULT_BACKEND_URL = getDefaultBackendUrl();
+
+/**
+ * Get the full API URL for a path or return base URL if no path provided.
+ * Handles:
+ * 1. Web browser on localhost/server -> relative '/api/chat' or origin
+ * 2. Native mobile app -> 'https://ai-tutor-79709693345.asia-east1.run.app/api/chat'
+ * 3. Custom backendUrl configured in localStorage (auto-migrating legacy Render URLs)
+ */
+function getApiUrl(path = '') {
+  let backendUrl = localStorage.getItem('ai_tutor_backend_url') || '';
+  if (backendUrl && (backendUrl.includes('onrender.com') || backendUrl.includes('render.com'))) {
+    backendUrl = 'https://ai-tutor-79709693345.asia-east1.run.app';
+    localStorage.setItem('ai_tutor_backend_url', backendUrl);
+  }
+
+  if (!backendUrl) {
+    backendUrl = getDefaultBackendUrl();
+  }
+
+  const cleanBase = backendUrl ? backendUrl.replace(/\/+$/, '') : '';
+
+  if (!path) {
+    if (cleanBase) return cleanBase;
+    if (typeof window !== 'undefined' && window.location?.origin && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      return window.location.origin;
+    }
+    return 'https://ai-tutor-79709693345.asia-east1.run.app';
+  }
+
+  if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {
+    return path;
+  }
+
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return cleanBase ? cleanBase + cleanPath : cleanPath;
+}
+
+export const DEFAULT_API_TOKEN = '';
+
+const DEPRECATED_PUBLIC_TOKENS = new Set([
+  'ait_ca1b54fffe5ac87ec1c65026ed0636aa7712941d053f3359f399e117200938a3',
+  'ai-tutor-zenglian-2026-auth-token-prod-v1'
+]);
+
+/**
+ * Get the stored custom API token (ignores deprecated hardcoded public tokens).
+ */
+function getApiToken() {
+  const encrypted = localStorage.getItem('ai_tutor_api_token');
+  const decrypted = decryptData(encrypted);
+  if (decrypted && decrypted.trim()) {
+    const trimmed = decrypted.trim();
+    if (!DEPRECATED_PUBLIC_TOKENS.has(trimmed)) {
+      return trimmed;
+    }
+  }
+  const envToken = (import.meta.env.VITE_API_TOKEN || '').trim();
+  if (envToken && !DEPRECATED_PUBLIC_TOKENS.has(envToken)) {
+    return envToken;
+  }
+  return '';
+}
+
+async function generateSignature(token, path, method, body, timestamp, formFieldsStr = '', fileFieldsStr = '') {
+  try {
+    const msg = `${method}:${path}:${body || ''}:${timestamp}:${formFieldsStr}:${fileFieldsStr}`;
+    
+    // Use Web Crypto API if available (HTTPS or localhost)
+    if (window.crypto && window.crypto.subtle) {
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(token);
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const sigBuffer = await window.crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(msg));
+      return Array.from(new Uint8Array(sigBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    } else {
+      // Fallback for insecure contexts (HTTP LAN IP like 192.168.x.x)
+      return hmacSHA256(msg, token).toString(Hex);
+    }
+  } catch (err) {
+    console.error('Failed to generate signature:', err);
+    return '';
+  }
+}
+
+/**
+ * Authenticated fetch wrapper.
+ * Automatically injects Authorization header for all API requests.
+ * Falls back gracefully if no token is configured (dev mode).
+ */
+async function authFetch(path, options = {}) {
+  const url = getApiUrl(path);
+  const token = getApiToken();
+
+  const fetchOptions = { ...options };
+  const headers = { ...(fetchOptions.headers || {}) };
+
+  // Normalize path to check if this is an API call
+  let relativePath = '';
+  if (typeof path === 'string') {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      try {
+        relativePath = new URL(path).pathname;
+      } catch {
+        relativePath = path;
+      }
+    } else {
+      relativePath = path.split('?')[0];
+    }
+  }
+
+  // Inject auth and custom headers for API calls
+  if (relativePath.startsWith('/api/')) {
+    if (!headers['Authorization'] && token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const studentSessionToken = sessionStorage.getItem('student_session_token');
+    if (studentSessionToken && !headers['x-student-session-token']) {
+      headers['x-student-session-token'] = studentSessionToken;
+    }
+
+    const isAdminOrParentRoute =
+      relativePath.startsWith('/api/admin') ||
+      relativePath.startsWith('/api/config') ||
+      relativePath.startsWith('/api/membership/admin') ||
+      relativePath.startsWith('/api/system') ||
+      relativePath.startsWith('/api/parent') ||
+      relativePath.startsWith('/api/export') ||
+      relativePath.startsWith('/api/import') ||
+      relativePath.startsWith('/api/printer');
+
+    if (isAdminOrParentRoute) {
+      const parentSessionToken = sessionStorage.getItem('parent_session_token');
+      if (parentSessionToken) {
+        headers['x-parent-session-token'] = parentSessionToken;
+      }
+
+      let parentPinHash = sessionStorage.getItem('parent_gate_verified_pin_hash');
+      if (!parentPinHash) {
+        const savedHash = localStorage.getItem('parent_gate_pin_hash_v2');
+        if (savedHash) parentPinHash = decryptData(savedHash);
+      }
+      // Security hardening: Never inject weak default 888888 hash as a fallback header
+      if (parentPinHash && parentPinHash !== '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e') {
+        headers['x-parent-pin-hash'] = parentPinHash;
+      }
+    }
+
+    const isLlmRoute = relativePath.startsWith('/api/chat') ||
+                       relativePath.startsWith('/api/vision') ||
+                       relativePath.startsWith('/api/detect-questions') ||
+                       relativePath.startsWith('/api/test-paper') ||
+                       relativePath.startsWith('/api/homework') ||
+                       relativePath.startsWith('/api/mistakes') ||
+                       relativePath.startsWith('/api/essay') ||
+                       relativePath.startsWith('/api/generate-variation') ||
+                       relativePath.startsWith('/api/grade-variation') ||
+                       relativePath.startsWith('/api/report/weekly') ||
+                       relativePath.startsWith('/api/active-plan') ||
+                       relativePath.startsWith('/api/feynman') ||
+                       relativePath.startsWith('/api/mentor') ||
+                       relativePath.startsWith('/api/config') ||
+                       relativePath.startsWith('/api/tts') ||
+                       relativePath.startsWith('/api/transcribe');
+
+    if (isLlmRoute) {
+      const customGeminiKey = localStorage.getItem('ai_tutor_gemini_key');
+      if (customGeminiKey && customGeminiKey.trim()) {
+        headers['x-gemini-api-key'] = customGeminiKey.trim();
+      }
+
+      const customDeepseekKey = localStorage.getItem('ai_tutor_deepseek_key');
+      if (customDeepseekKey && customDeepseekKey.trim()) {
+        headers['x-deepseek-api-key'] = customDeepseekKey.trim();
+      }
+
+      const customDeepseekUrl = localStorage.getItem('ai_tutor_deepseek_url');
+      if (customDeepseekUrl && customDeepseekUrl.trim()) {
+        headers['x-deepseek-api-url'] = customDeepseekUrl.trim();
+      }
+
+      const customSiliconflowKey = localStorage.getItem('ai_tutor_siliconflow_key');
+      if (customSiliconflowKey && customSiliconflowKey.trim()) {
+        headers['x-siliconflow-api-key'] = customSiliconflowKey.trim();
+      }
+
+      const customDashscopeKey = localStorage.getItem('ai_tutor_dashscope_key');
+      if (customDashscopeKey && customDashscopeKey.trim()) {
+        headers['x-dashscope-api-key'] = customDashscopeKey.trim();
+      }
+
+      const customZhipuKey = localStorage.getItem('ai_tutor_zhipu_key');
+      if (customZhipuKey && customZhipuKey.trim()) {
+        headers['x-zhipu-api-key'] = customZhipuKey.trim();
+      }
+
+      const customOpenaiKey = localStorage.getItem('ai_tutor_openai_key');
+      if (customOpenaiKey && customOpenaiKey.trim()) {
+        headers['x-openai-api-key'] = customOpenaiKey.trim();
+      }
+
+      const customApiUrl = localStorage.getItem('ai_tutor_custom_api_url');
+      if (customApiUrl && customApiUrl.trim()) {
+        headers['x-custom-api-url'] = customApiUrl.trim();
+      }
+    }
+
+    // Generate and inject request signature if token is available
+    if (token) {
+      const method = (fetchOptions.method || 'GET').toUpperCase();
+      const cleanPath = relativePath.split('?')[0];
+      const timestamp = Date.now().toString();
+      const bodyStr = typeof fetchOptions.body === 'string' ? fetchOptions.body : '';
+
+      let formFieldsStr = '';
+      let fileFieldsStr = '';
+
+      if (fetchOptions.body instanceof FormData) {
+        const formFields = {};
+        const fileFields = [];
+        for (const [key, value] of fetchOptions.body.entries()) {
+          if (typeof value === 'string') {
+            formFields[key] = value;
+          } else if (value instanceof File) {
+            fileFields.push(`${key}:${value.name}:${value.size}`);
+          } else if (value instanceof Blob) {
+            let defaultName = value.name;
+            if (!defaultName) {
+              if (key === 'audio') {
+                defaultName = value.type?.includes('mp4') ? 'voice.mp4' : (value.type?.includes('aac') ? 'voice.aac' : (value.type?.includes('webm') ? 'voice.webm' : 'voice.wav'));
+              } else if (key === 'image') {
+                defaultName = 'image.jpg';
+              } else {
+                defaultName = `${key}.bin`;
+              }
+            }
+            fileFields.push(`${key}:${defaultName}:${value.size}`);
+          }
+        }
+        formFieldsStr = JSON.stringify(formFields);
+        fileFieldsStr = fileFields.join(',');
+      }
+
+      const encodedFormFields = encodeURIComponent(formFieldsStr);
+      const encodedFileFields = encodeURIComponent(fileFieldsStr);
+
+      const signature = await generateSignature(token, cleanPath, method, bodyStr, timestamp, encodedFormFields, encodedFileFields);
+      if (signature) {
+        headers['x-timestamp'] = timestamp;
+        headers['x-signature'] = signature;
+        if (fetchOptions.body instanceof FormData) {
+          headers['x-form-fields'] = encodedFormFields;
+          headers['x-file-fields'] = encodedFileFields;
+        }
+      }
+    }
+  }
+
+  fetchOptions.headers = headers;
+  return fetch(url, fetchOptions);
+}
+
+const migrateGrade = (g) => {
+  if (!g) return '';
+  const sg = String(g);
+  
+  // Legacy exact matches
+  const legacyMap = {
+    '一年级上册': '1_up', '一年级下册': '1_down',
+    '二年级上册': '2_up', '二年级下册': '2_down',
+    '三年级上册': '3_up', '三年级下册': '3_down',
+    '四年级上册': '4_up', '四年级下册': '4_down',
+    '五年级上册': '5_up', '五年级下册': '5_down',
+    '六年级上册': '6_up', '六年级下册': '6_down',
+    '七年级上册': '7_up', '七年级下册': '7_down',
+    '八年级上册': '8_up', '八年级下册': '8_down',
+    '九年级上册': '9_up', '九年级下册': '9_down',
+    '高一上册': '10_up', '高一下册': '10_down',
+    '高二上册': '11_up', '高二下册': '11_down',
+    '高三上册': '12_up', '高三下册': '12_down',
+  };
+  if (legacyMap[sg]) return legacyMap[sg];
+  
+  // If it's a raw number 1-12 without '_', append '_up'
+  if (/^(?:[1-9]|1[0-2])$/.test(sg)) return sg + '_up';
+  
+  return sg;
+};
+
+function loadProfiles() {
+  const saved = localStorage.getItem('ai_tutor_profiles');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(p => ({
+          ...p,
+          name: (!p.name || p.name === '默认用户') ? '曾练' : p.name,
+          grade: (!p.grade || p.grade === 'unknown') ? '7_up' : (migrateGrade(p.grade) || '7_up'),
+          edition: p.edition || '人教版'
+        }));
+      }
+    } catch (e) { /* ignore */ }
+  }
+  const existingGrade = localStorage.getItem('ai_tutor_grade') || '';
+  return [{ id: 'default', name: '曾练', grade: migrateGrade(existingGrade) || '7_up', edition: '人教版' }];
+}
+
+const getProfileDefaultPreferences = (grade) => {
+  const rawGrade = grade ? parseInt(String(grade).replace(/\D/g, ''), 10) : 7;
+  return {
+    subject: rawGrade <= 3 ? '语文' : '数学',
+    socraticLevel: 'guided',
+    persona: rawGrade <= 3 ? 'lion' : (rawGrade <= 6 ? 'sister' : 'owl'),
+    pinyinMode: rawGrade <= 3
+  };
+};
+
+const sanitizeSubjectForGrade = (grade, subject) => {
+  const rawGrade = grade ? parseInt(String(grade).replace(/\D/g, ''), 10) : 7;
+  if (rawGrade <= 6) {
+    const primarySubjects = ['语文', '数学', '英语', ''];
+    if (primarySubjects.includes(subject)) return subject;
+    return rawGrade <= 3 ? '语文' : '数学';
+  }
+  if (rawGrade === 7) {
+    const g7Subjects = ['语文', '数学', '英语', '道德与法治', '历史', '地理', '生物', ''];
+    if (g7Subjects.includes(subject)) return subject;
+    return '数学';
+  }
+  if (rawGrade === 8) {
+    const g8Subjects = ['语文', '数学', '英语', '道德与法治', '历史', '地理', '生物', '物理', ''];
+    if (g8Subjects.includes(subject)) return subject;
+    return '数学';
+  }
+  if (rawGrade === 9) {
+    const g9Subjects = ['语文', '数学', '英语', '道德与法治', '历史', '物理', '化学', ''];
+    if (g9Subjects.includes(subject)) return subject;
+    return '数学';
+  }
+  return subject || '数学';
+};
+
+const getProfilePref = (profileId, key, fallback) => {
+  if (typeof window === 'undefined' || !window.localStorage) return fallback;
+  const scopedKey = `ai_tutor_${profileId}_${key}`;
+  const val = localStorage.getItem(scopedKey);
+  if (val !== null && val !== undefined && val !== '') return val;
+  if (profileId === 'default') {
+    const legacyVal = localStorage.getItem(`ai_tutor_${key}`);
+    if (legacyVal !== null && legacyVal !== undefined && legacyVal !== '') {
+      localStorage.setItem(scopedKey, legacyVal);
+      return legacyVal;
+    }
+  }
+  return fallback;
+};
+
+const setProfilePref = (profileId, key, val) => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  const scopedKey = `ai_tutor_${profileId}_${key}`;
+  localStorage.setItem(scopedKey, String(val));
+};
+
+export function AppProvider({ children }) {
+  const [backendUrl, setBackendUrl] = useState(() => {
+    const saved = localStorage.getItem('ai_tutor_backend_url');
+    return saved || getDefaultBackendUrl();
+  });
+  const [apiToken, setApiToken] = useState(() => {
+    const encrypted = localStorage.getItem('ai_tutor_api_token');
+    return decryptData(encrypted) || '';
+  });
+  const [profiles, setProfiles] = useState(loadProfiles);
+  const [currentProfileId, setCurrentProfileId] = useState(() =>
+    localStorage.getItem('ai_tutor_active_profile') || 'default'
+  );
+  const currentProfileIdRef = useRef(currentProfileId);
+
+  const [selectedSubject, setSelectedSubjectState] = useState(() => {
+    const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
+    const initProfiles = loadProfiles();
+    const p = initProfiles.find(x => x.id === initialId) || initProfiles[0];
+    const def = getProfileDefaultPreferences(p?.grade);
+    const sub = getProfilePref(initialId, 'subject', def.subject);
+    return sanitizeSubjectForGrade(p?.grade, sub);
+  });
+  const [socraticLevel, setSocraticLevelState] = useState(() => {
+    const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
+    const lvl = getProfilePref(initialId, 'socratic_level', 'guided');
+    return lvl === 'socratic' ? 'guided' : lvl;
+  });
+  const [autoRead, setAutoRead] = useState(false);
+  const [settings, setSettings] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ai_tutor_settings') || '{"parentName":"家长"}');
+    } catch {
+      return { parentName: '家长' };
+    }
+  });
+  const [language, setLanguage] = useState(() => localStorage.getItem('ai_tutor_language') || 'zh-CN');
+  const [isLightMode, setIsLightMode] = useState(() =>
+    localStorage.getItem('ai_tutor_theme') === 'light'
+  );
+  const [isEinkMode, setIsEinkMode] = useState(() =>
+    localStorage.getItem('ai_tutor_eink_mode') === 'true'
+  );
+  const [chatModel, setChatModel] = useState(() => {
+    const saved = localStorage.getItem('ai_tutor_chat_model');
+    if (!saved || saved === 'default') return 'deepseek-chat';
+    return saved;
+  });
+  const [tutorPersona, setTutorPersonaState] = useState(() => {
+    const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
+    const initProfiles = loadProfiles();
+    const p = initProfiles.find(x => x.id === initialId) || initProfiles[0];
+    const def = getProfileDefaultPreferences(p?.grade);
+    return getProfilePref(initialId, 'persona', def.persona);
+  });
+
+  const [pinyinMode, setPinyinModeState] = useState(() => {
+    const initialId = localStorage.getItem('ai_tutor_active_profile') || 'default';
+    const initProfiles = loadProfiles();
+    const p = initProfiles.find(x => x.id === initialId) || initProfiles[0];
+    const def = getProfileDefaultPreferences(p?.grade);
+    const val = getProfilePref(initialId, 'pinyin_mode', String(def.pinyinMode));
+    return val === 'true';
+  });
+
+  const setSelectedSubject = useCallback((sub) => {
+    setSelectedSubjectState(sub);
+    const pid = currentProfileIdRef.current;
+    if (pid) {
+      setProfilePref(pid, 'subject', sub);
+      if (pid === 'default') localStorage.setItem('ai_tutor_subject', sub);
+    }
+  }, []);
+
+  const setSocraticLevel = useCallback((lvl) => {
+    const normalized = (lvl === 'socratic') ? 'guided' : lvl;
+    setSocraticLevelState(normalized);
+    const pid = currentProfileIdRef.current;
+    if (pid) {
+      setProfilePref(pid, 'socratic_level', normalized);
+      if (pid === 'default') localStorage.setItem('ai_tutor_socratic_level', normalized);
+    }
+  }, []);
+
+  const setTutorPersona = useCallback((persona) => {
+    setTutorPersonaState(persona);
+    const pid = currentProfileIdRef.current;
+    if (pid) {
+      setProfilePref(pid, 'persona', persona);
+      if (pid === 'default') localStorage.setItem('ai_tutor_persona', persona);
+    }
+  }, []);
+
+  const setPinyinMode = useCallback((mode) => {
+    setPinyinModeState(mode);
+    const pid = currentProfileIdRef.current;
+    if (pid) {
+      setProfilePref(pid, 'pinyin_mode', String(mode));
+      if (pid === 'default') localStorage.setItem('ai_tutor_pinyin_mode', String(mode));
+    }
+  }, []);
+
+  const [isFeynmanMode, setIsFeynmanMode] = useState(() => {
+    return localStorage.getItem('ai_tutor_feynman_mode') === 'true';
+  });
+
+  const toggleFeynmanMode = useCallback(() => {
+    setIsFeynmanMode(prev => {
+      const next = !prev;
+      localStorage.setItem('ai_tutor_feynman_mode', String(next));
+      return next;
+    });
+  }, []);
+
+  const [membershipStatus, setMembershipStatus] = useState({
+    tier: 'free',
+    is_vip: false,
+    days_remaining: 0
+  });
+
+  const checkMembership = useCallback(async () => {
+    try {
+      const res = await authFetch(`/api/membership/status?profile_id=${currentProfileId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMembershipStatus(data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch membership status:', err);
+    }
+  }, [currentProfileId]);
+
+  useEffect(() => {
+    checkMembership();
+  }, [checkMembership]);
+
+  const t = useCallback((key) => getTranslation(language, key), [language]);
+
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+
+  // Persist to localStorage & sync profile-scoped preferences
+  useEffect(() => { localStorage.setItem('ai_tutor_profiles', JSON.stringify(profiles)); }, [profiles]);
+  useEffect(() => {
+    localStorage.setItem('ai_tutor_active_profile', currentProfileId);
+    currentProfileIdRef.current = currentProfileId;
+    const target = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+    const def = getProfileDefaultPreferences(target?.grade);
+    const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(currentProfileId, 'subject', def.subject));
+    const prefSocratic = getProfilePref(currentProfileId, 'socratic_level', def.socraticLevel);
+    const prefPersona = getProfilePref(currentProfileId, 'persona', def.persona);
+    const prefPinyin = getProfilePref(currentProfileId, 'pinyin_mode', String(def.pinyinMode)) === 'true';
+
+    setSelectedSubjectState(prefSubject);
+    setSocraticLevelState(prefSocratic === 'socratic' ? 'guided' : prefSocratic);
+    setTutorPersonaState(prefPersona);
+    setPinyinModeState(prefPinyin);
+  }, [currentProfileId, profiles]);
+  useEffect(() => {
+    if (backendUrl && backendUrl !== getDefaultBackendUrl()) {
+      localStorage.setItem('ai_tutor_backend_url', backendUrl);
+    } else {
+      localStorage.removeItem('ai_tutor_backend_url');
+    }
+  }, [backendUrl]);
+  useEffect(() => { 
+    if (apiToken) {
+      localStorage.setItem('ai_tutor_api_token', encryptData(apiToken)); 
+    } else {
+      localStorage.removeItem('ai_tutor_api_token');
+    }
+  }, [apiToken]);
+  useEffect(() => { localStorage.setItem('ai_tutor_language', language); }, [language]);
+  useEffect(() => { localStorage.setItem('ai_tutor_chat_model', chatModel); }, [chatModel]);
+
+  useEffect(() => {
+    localStorage.setItem('ai_tutor_theme', isLightMode ? 'light' : 'dark');
+    if (isLightMode) {
+      document.body.classList.add('light-mode');
+    } else {
+      document.body.classList.remove('light-mode');
+    }
+  }, [isLightMode]);
+
+  useEffect(() => {
+    localStorage.setItem('ai_tutor_eink_mode', isEinkMode ? 'true' : 'false');
+    if (isEinkMode) {
+      document.body.classList.add('eink-mode');
+    } else {
+      document.body.classList.remove('eink-mode');
+    }
+  }, [isEinkMode]);
+
+  const toggleEinkMode = useCallback(() => {
+    setIsEinkMode(prev => !prev);
+  }, []);
+
+  const handleProfileChange = useCallback((profileId) => {
+    if (profileId === 'ADD_NEW') {
+      return 'ADD_NEW';
+    }
+    currentProfileIdRef.current = profileId;
+    setCurrentProfileId(profileId);
+
+    const target = profiles?.find(p => p.id === profileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+    const def = getProfileDefaultPreferences(target?.grade);
+    const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(profileId, 'subject', def.subject));
+    const prefSocratic = getProfilePref(profileId, 'socratic_level', def.socraticLevel);
+    const prefPersona = getProfilePref(profileId, 'persona', def.persona);
+    const prefPinyin = getProfilePref(profileId, 'pinyin_mode', String(def.pinyinMode)) === 'true';
+
+    setSelectedSubjectState(prefSubject);
+    setSocraticLevelState(prefSocratic === 'socratic' ? 'guided' : prefSocratic);
+    setTutorPersonaState(prefPersona);
+    setPinyinModeState(prefPinyin);
+    return 'changed';
+  }, [profiles]);
+
+  const handleAddProfile = useCallback((name, grade, edition) => {
+    const newProfile = { id: 'p_' + Date.now(), name, grade, edition: edition || '人教版' };
+    setProfiles(prev => [...prev, newProfile]);
+    currentProfileIdRef.current = newProfile.id;
+    setCurrentProfileId(newProfile.id);
+
+    const rawGrade = grade ? parseInt(String(grade).split('_')[0], 10) : 7;
+    const defaultSubject = rawGrade <= 3 ? '语文' : '数学';
+    const defaultPersona = rawGrade <= 3 ? 'lion' : 'owl';
+    const defaultPinyin = rawGrade <= 3;
+    const defaultSocratic = 'guided';
+
+    setProfilePref(newProfile.id, 'subject', defaultSubject);
+    setProfilePref(newProfile.id, 'socratic_level', defaultSocratic);
+    setProfilePref(newProfile.id, 'persona', defaultPersona);
+    setProfilePref(newProfile.id, 'pinyin_mode', String(defaultPinyin));
+
+    setSelectedSubjectState(defaultSubject);
+    setSocraticLevelState(defaultSocratic);
+    setTutorPersonaState(defaultPersona);
+    setPinyinModeState(defaultPinyin);
+    return newProfile;
+  }, []);
+
+  const handleDeleteProfile = useCallback((profileId) => {
+    try {
+      localStorage.removeItem(`ai_tutor_${profileId}_subject`);
+      localStorage.removeItem(`ai_tutor_${profileId}_socratic_level`);
+      localStorage.removeItem(`ai_tutor_${profileId}_persona`);
+      localStorage.removeItem(`ai_tutor_${profileId}_pinyin_mode`);
+    } catch {}
+    setProfiles(prev => {
+      const remaining = prev.filter(p => p.id !== profileId);
+      const nextId = remaining[0]?.id || 'default';
+      setCurrentProfileId(nextId);
+      currentProfileIdRef.current = nextId;
+      return remaining.length > 0 ? remaining : [{ id: 'default', name: '曾练', grade: '7_up', edition: '人教版' }];
+    });
+  }, []);
+
+  const handleRenameProfile = useCallback((profileId, newName) => {
+    if (!newName || !newName.trim()) return;
+    setProfiles(prev => prev.map(p => p.id === profileId ? { ...p, name: newName.trim() } : p));
+  }, []);
+
+  const handleGradeChange = useCallback((val) => {
+    setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, grade: val } : p));
+    const validSubject = sanitizeSubjectForGrade(val, selectedSubject);
+    if (validSubject !== selectedSubject) {
+      setSelectedSubject(validSubject);
+    }
+  }, [currentProfileId, selectedSubject, setSelectedSubject]);
+
+  const handleEditionChange = useCallback((val) => {
+    setProfiles(prev => prev.map(p => p.id === currentProfileId ? { ...p, edition: val } : p));
+  }, [currentProfileId]);
+
+  const selectedGrade = currentProfile?.grade || '7_up';
+
+  const value = useMemo(() => ({
+    backendUrl, setBackendUrl,
+    apiToken, setApiToken,
+    profiles, currentProfileId, currentProfile,
+    selectedGrade,
+    setCurrentProfileId, handleProfileChange,
+    handleAddProfile, handleDeleteProfile, handleRenameProfile,
+    selectedSubject, setSelectedSubject,
+    socraticLevel, setSocraticLevel,
+    autoRead, setAutoRead,
+    settings, setSettings,
+    isLightMode, setIsLightMode,
+    isEinkMode, setIsEinkMode, toggleEinkMode,
+    tutorPersona, setTutorPersona,
+    membershipStatus, setMembershipStatus, checkMembership,
+    handleGradeChange,
+    handleEditionChange,
+    getApiUrl,
+    authFetch,
+    language, setLanguage, t,
+    chatModel, setChatModel,
+    pinyinMode, setPinyinMode,
+    isFeynmanMode, setIsFeynmanMode, toggleFeynmanMode
+  }), [
+    backendUrl, setBackendUrl, apiToken, setApiToken, profiles, currentProfileId, currentProfile, selectedGrade,
+    setCurrentProfileId, handleProfileChange, handleAddProfile, handleDeleteProfile, handleRenameProfile,
+    selectedSubject, setSelectedSubject, socraticLevel, setSocraticLevel, autoRead, setAutoRead,
+    settings, setSettings, isLightMode, setIsLightMode, isEinkMode, setIsEinkMode, toggleEinkMode,
+    tutorPersona, setTutorPersona, membershipStatus, setMembershipStatus, checkMembership,
+    handleGradeChange, handleEditionChange, language, setLanguage, t,
+    chatModel, setChatModel, pinyinMode, setPinyinMode, isFeynmanMode, setIsFeynmanMode, toggleFeynmanMode
+  ]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function useAppStore() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useAppStore must be used within AppProvider');
+  return ctx;
+}
+
+export { getApiUrl, authFetch, getApiToken, GRADE_MAP, isNativeMobilePlatform, getDefaultBackendUrl };
