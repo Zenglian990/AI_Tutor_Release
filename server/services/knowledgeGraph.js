@@ -348,6 +348,168 @@ const KNOWLEDGE_GRAPH = {
     prerequisites: ['math_linear_equation_one', 'math_fraction_basic'],
     coreRule: 'I = U / R。串联电路中电流处处相等，电压按电阻正比例分配；并联电路中各支路电压相等，总电流等于各支路电流之和。',
     commonMistake: '分析滑动变阻器滑片移动时，没先画出等效电路图，电表所测对象搞错。'
+  },
+
+  // === 高中数学 (10-12年级新高考核心知识链) ===
+  'hs_math_conic_sections': {
+    id: 'hs_math_conic_sections',
+    name: '圆锥曲线与方程（椭圆、双曲线、抛物线）',
+    subject: '数学',
+    grade: '11_up',
+    chapter: '选择性必修第一册 · 第三章 圆锥曲线的方程',
+    domain: '解析几何',
+    keywords: ['圆锥曲线', '椭圆', '双曲线', '抛物线', '离心率', '焦点弦', '韦达定理', '弦长公式'],
+    prerequisites: ['math_quadratic_function', 'math_quadratic_equation', 'math_pythagorean'],
+    coreRule: '椭圆满足 |PF₁|+|PF₂|=2a (2a>|F₁F₂|)，a²=b²+c²，离心率 e=c/a∈(0,1)；双曲线 ||PF₁|-|PF₂||=2a，c²=a²+b²，e>1；抛物线 y²=2px 焦半径 |PF|=x₀+p/2。直线与圆锥曲线联立必先验 Δ>0 与斜率是否存在！',
+    commonMistake: '混淆椭圆 a²=b²+c² 与双曲线 c²=a²+b²；设直线方程 y=kx+m 时漏讨论斜率不存在情况；焦点坐标位置(x轴/y轴)判断颠倒。',
+    teacherMnemonic: '椭圆a老大，双曲c称王；联立先看Δ，设线防漏竖直斜率！'
+  },
+  'hs_math_derivative_app': {
+    id: 'hs_math_derivative_app',
+    name: '导数的概念与函数单调性、极值',
+    subject: '数学',
+    grade: '11_down',
+    chapter: '选择性必修第二册 · 第五章 一元函数的导数及其应用',
+    domain: '函数与微积分',
+    keywords: ['导数', '导数的概念', '求导', '切线方程', '单调区间', '极值', '最值', '恒成立'],
+    prerequisites: ['math_quadratic_function', 'math_linear_function'],
+    coreRule: '函数在某点的导数 f\'(x₀) 是曲线在该点处的切线斜率。在区间内 f\'(x)>0 则单调递增，f\'(x)<0 则单调递减；求极值必须检验导数在零点两侧是否变号，且定义域优先！',
+    commonMistake: '忽略函数定义域（如 ln x 要求 x>0）；混淆“在某点处的切线”与“过某点的切线”；误以为 f\'(x₀)=0 就一定是极值点。',
+    teacherMnemonic: '求导先看定义域，切线分清“在”与“过”；导零未必是极值，左右变号才算数！'
+  },
+  'hs_math_sequence': {
+    id: 'hs_math_sequence',
+    name: '等差数列、等比数列与数列求和',
+    subject: '数学',
+    grade: '11_down',
+    chapter: '选择性必修第二册 · 第四章 数列',
+    domain: '数列与归纳',
+    keywords: ['数列', '等差数列', '等比数列', '错位相减', '裂项相消', '递推公式'],
+    prerequisites: ['math_linear_function', 'math_algebraic_expression'],
+    coreRule: '等差通项 aₙ=a₁+(n-1)d；等比求和必须讨论公比 q=1 与 q≠1。由 Sₙ 求 aₙ 必分 n=1 和 n≥2 并检验首项是否合并！',
+    commonMistake: '等比数列求和直接套 a₁(1-qⁿ)/(1-q) 忘记讨论 q=1；由 Sₙ-Sₙ₋₁ 求通项忘记验证 n=1。'
+  },
+  'hs_math_solid_vectors': {
+    id: 'hs_math_solid_vectors',
+    name: '空间向量与立体几何建系',
+    subject: '数学',
+    grade: '11_up',
+    chapter: '选择性必修第一册 · 第一章 空间向量与立体几何',
+    domain: '立体几何',
+    keywords: ['空间向量', '立体几何', '法向量', '二面角', '线面角', '点到平面距离'],
+    prerequisites: ['math_pythagorean', 'math_similar_triangles'],
+    coreRule: '建系前必须证明三条坐标轴两两垂直；线面角正弦 sinθ=|cos<a,n>|；二面角余弦需结合图形观察判断锐角还是钝角。',
+    commonMistake: '建系未证明垂直关系直接写坐标；法向量求解算错负号；线面角误用 cos 代替 sin。'
+  },
+
+  // === 高中物理 / 化学 / 生物 / 历史 / 地理 (10-12年级) ===
+  'hs_phys_lorentz_force': {
+    id: 'hs_phys_lorentz_force',
+    name: '洛伦兹力与带电粒子在匀强磁场中的运动',
+    subject: '物理',
+    grade: '11_up',
+    chapter: '选择性必修第二册 · 第一章 安培力与洛伦兹力',
+    domain: '电磁学',
+    keywords: ['洛伦兹力', '左手定则', '磁场圆周运动', '回旋加速器', '质谱仪'],
+    prerequisites: ['phys_ohm_law', 'math_pythagorean'],
+    coreRule: '洛伦兹力 f=qvB 始终与速度垂直不做功，充当向心力：qvB=mv²/R ⇒ R=mv/(qB)，周期 T=2πm/(qB) 与速度无关。',
+    commonMistake: '负电荷应用左手定则时四指忘记指向运动反方向；几何找圆心与圆心角 θ 算错导致运动时间 t=θT/(2π) 出错。'
+  },
+  'hs_chem_galvanic_cell': {
+    id: 'hs_chem_galvanic_cell',
+    name: '原电池工作原理与双液盐桥',
+    subject: '化学',
+    grade: '11_up',
+    chapter: '选择性必修一 · 第四章 化学反应与电能',
+    domain: '电化学',
+    keywords: ['原电池', '双液盐桥', '负极氧化', '正极还原', '电极反应式', '电解池'],
+    prerequisites: ['phys_ohm_law'],
+    coreRule: '负极失电子发生氧化反应，正极得电子发生还原反应；外电路电子从负极流向正极，内电路阳离子移向正极、阴离子移向负极。',
+    commonMistake: '误以为电子可以通过电解质溶液或盐桥；书写电极反应式漏配电荷守恒与介质（酸性/碱性）。'
+  },
+  'hs_bio_genetics': {
+    id: 'hs_bio_genetics',
+    name: '减数分裂与孟德尔遗传定律',
+    subject: '生物',
+    grade: '10_down',
+    chapter: '必修二 · 遗传与进化',
+    domain: '遗传学',
+    keywords: ['减数分裂', '基因分离定律', '自由组合定律', '伴性遗传', '遗传系谱图', '遗传概率'],
+    prerequisites: ['math_fraction_add_sub'],
+    coreRule: '减数第一次分裂后期同源染色体分离、非同源染色体自由组合是两大遗传定律的细胞学基础；多对性状拆分为单对分离比再相乘。',
+    commonMistake: '混淆减数分裂与有丝分裂中期/后期图像；伴X隐性遗传系谱图漏判携带者概率。'
+  },
+  'hs_bio_photosynthesis': {
+    id: 'hs_bio_photosynthesis',
+    name: '光合作用与细胞呼吸综合分析',
+    subject: '生物',
+    grade: '10_up',
+    chapter: '必修一 · 分子与细胞',
+    domain: '细胞代谢',
+    keywords: ['光合作用', '细胞呼吸', '光反应', '暗反应', '净光合速率', '呼吸熵'],
+    prerequisites: ['math_linear_function'],
+    coreRule: '真光合速率 = 净光合速率 + 呼吸速率；光反应在类囊体薄膜产生 ATP 与 NADPH，暗反应在叶绿体基质固定并还原 CO₂。',
+    commonMistake: '混淆“CO₂吸收量（净光合）”与“CO₂固定量（总光合）”；光照骤降时误判 C₃ 与 C₅ 的瞬时变化趋势。'
+  },
+  'hs_bio_neuro_humoral': {
+    id: 'hs_bio_neuro_humoral',
+    name: '神经调节、体液调节与内环境稳态',
+    subject: '生物',
+    grade: '11_up',
+    chapter: '选择性必修一 · 稳态与调节',
+    domain: '生命活动调节',
+    keywords: ['神经调节', '反射弧', '动作电位', '突触传递', '激素分级调节', '反馈调节', '稳态'],
+    prerequisites: ['hs_bio_photosynthesis'],
+    coreRule: '神经纤维上双向传导（Na⁺内流形成动作电位），突触处单向传递（电信号→化学信号→电信号）；下丘脑-垂体-靶腺构成激素分级与负反馈调节。',
+    commonMistake: '混淆静息电位（K⁺外流）与动作电位（Na⁺内流）离子通道机制；误以为刺激传出神经引起肌肉收缩属于反射（缺少完整反射弧）。'
+  },
+  'hs_hist_modern_china': {
+    id: 'hs_hist_modern_china',
+    name: '鸦片战争与近代中国的救亡图存探索',
+    subject: '历史',
+    grade: '10_up',
+    chapter: '中外历史纲要（上）· 晚清时期的内忧外患与救亡图存',
+    domain: '中国近代史',
+    keywords: ['鸦片战争', '洋务运动', '戊戌变法', '辛亥革命', '新文化运动', '半殖民地半封建'],
+    prerequisites: [],
+    coreRule: '近代中国探索呈现出由“器物（洋务运动）”到“制度（戊戌变法、辛亥革命）”再到“思想文化（新文化运动）”层层递进的历史脉络。',
+    commonMistake: '混淆《南京条约》《马关条约》《辛丑条约》对中国社会性质演变的不同阶段影响。'
+  },
+  'hs_hist_industrial_rev': {
+    id: 'hs_hist_industrial_rev',
+    name: '两次工业革命与资本主义世界市场形成',
+    subject: '历史',
+    grade: '10_down',
+    chapter: '中外历史纲要（下）· 工业革命与马克思主义的诞生',
+    domain: '世界近代史',
+    keywords: ['工业革命', '蒸汽时代', '电气时代', '垄断组织', '世界市场', '马克思主义'],
+    prerequisites: ['hs_hist_modern_china'],
+    coreRule: '第一次工业革命以英国为中心、蒸汽机为标志、促使世界市场初步形成；第二次工业革命美德领先、科学与技术紧密结合、垄断组织出现、世界市场最终确立。',
+    commonMistake: '混淆两次工业革命的新兴工业部门（纺织/煤炭/铁路 vs 电力/内燃机/化工）与生产组织形式（工厂制 vs 垄断组织）。'
+  },
+  'hs_geo_atmospheric_circ': {
+    id: 'hs_geo_atmospheric_circ',
+    name: '大气热力环流、气压带风带与气候成因',
+    subject: '地理',
+    grade: '10_up',
+    chapter: '必修第一册 / 选择性必修一 · 大气运动与气候',
+    domain: '自然地理',
+    keywords: ['大气环流', '热力环流', '三圈环流', '气压带风带', '季风气候', '地中海气候', '锋面气旋'],
+    prerequisites: [],
+    coreRule: '近地面冷热不均引起空气垂直运动→同一水平面气压差→空气水平流动；气压带风带随太阳直射点季节移动（北半球夏偏北、冬偏南）塑造地中海与热带草原气候。',
+    commonMistake: '画热力环流时混淆高空与近地面等压面凹凸方向（“高高低低”规律）；将冷锋过境前后的气温气压变化颠倒。'
+  },
+  'hs_geo_lithosphere': {
+    id: 'hs_geo_lithosphere',
+    name: '岩石圈物质循环与内外力地貌演化',
+    subject: '地理',
+    grade: '11_up',
+    chapter: '选择性必修一 · 地表形态的塑造',
+    domain: '自然地理',
+    keywords: ['地壳物质循环', '板块构造', '背斜向斜', '断层', '流水地貌', '风成地貌', '区位因素'],
+    prerequisites: ['hs_geo_atmospheric_circ'],
+    coreRule: '内力作用奠定地表起伏格局（背斜成山/谷、向斜成谷/山，背斜储油气、向斜储水），外力作用（风化、侵蚀、搬运、堆积）削高填低。',
+    commonMistake: '仅凭地形高低判断背斜向斜（正确判据是岩层新老关系：中老翼新为背斜，中新翼老为向斜）。'
   }
 };
 
@@ -366,10 +528,18 @@ const SUBJECT_MAP = {
   'morality': '道德与法治',
   '道德与法治': '道德与法治',
   '道法': '道德与法治',
-  'politics': '道德与法治',
-  '政治': '道德与法治',
+  'politics': '政治',
+  '思想政治': '政治',
+  '政治': '政治',
   'chemistry': '化学',
-  '化学': '化学'
+  '化学': '化学',
+  'biology': '生物',
+  '生物': '生物',
+  '生物学': '生物',
+  'history': '历史',
+  '历史': '历史',
+  'geography': '地理',
+  '地理': '地理'
 };
 
 function normalizeSubject(subj) {
@@ -589,27 +759,39 @@ function getGradeRank(gradeStr) {
     if (gradeStr >= 1 && gradeStr <= 6) return gradeStr * 10;
     if (gradeStr >= 7 && gradeStr <= 9) return 70 + (gradeStr - 7) * 10;
     if (gradeStr >= 10 && gradeStr <= 12) return 100 + (gradeStr - 10) * 10;
-    return gradeStr * 10;
+    // 兼容 pep_topics.json 中高中选必册次编码 grade=13/14，映射到高二/高三段位，绝不跌回初一
+    if (gradeStr === 13) return 115;
+    if (gradeStr >= 14) return 125;
+    return 70;
   }
   const str = String(gradeStr).trim().toLowerCase();
-  if (str === '1' || str.includes('1_') || str.includes('1年级') || str.includes('一年级')) return 10;
-  if (str === '2' || str.includes('2_') || str.includes('2年级') || str.includes('二年级')) return 20;
-  if (str === '3' || str.includes('3_') || str.includes('3年级') || str.includes('三年级')) return 30;
-  if (str === '4' || str.includes('4_') || str.includes('4年级') || str.includes('四年级')) return 40;
-  if (str === '5' || str.includes('5_') || str.includes('5年级') || str.includes('五年级')) return 50;
-  if (str === '6' || str.includes('6_') || str.includes('6年级') || str.includes('六年级')) return 60;
-  if (str.includes('7_up') || str.includes('7上') || str.includes('七年级上')) return 71;
-  if (str.includes('7_down') || str.includes('7下') || str.includes('七年级下')) return 72;
-  if (str === '7' || str.includes('7') || str.includes('初一') || str.includes('七年级')) return 70;
-  if (str.includes('8_up') || str.includes('8上') || str.includes('八年级上')) return 81;
-  if (str.includes('8_down') || str.includes('8下') || str.includes('八年级下')) return 82;
-  if (str === '8' || str.includes('8') || str.includes('初二') || str.includes('八年级')) return 80;
+  // 先匹配两位数（10-14），避免 '10_up'/'11_up'/'12_up' 误命中 '1_'/'2_'
+  if (str === '14' || str.startsWith('14_') || str.includes('14年级')) return 125;
+  if (str === '13' || str.startsWith('13_') || str.includes('13年级')) return 115;
+  if (str.includes('12_up') || str.includes('12上') || str.includes('高三上')) return 121;
+  if (str.includes('12_down') || str.includes('12下') || str.includes('高三下')) return 122;
+  if (str === '12' || str.startsWith('12') || str.includes('高三') || str.includes('十二年级')) return 120;
+  if (str.includes('11_up') || str.includes('11上') || str.includes('高二上')) return 111;
+  if (str.includes('11_down') || str.includes('11下') || str.includes('高二下')) return 112;
+  if (str === '11' || str.startsWith('11') || str.includes('高二') || str.includes('十一年级')) return 110;
+  if (str.includes('10_up') || str.includes('10上') || str.includes('高一上')) return 101;
+  if (str.includes('10_down') || str.includes('10下') || str.includes('高一下')) return 102;
+  if (str === '10' || str.startsWith('10') || str.includes('高一') || str.includes('十年级')) return 100;
   if (str.includes('9_up') || str.includes('9上') || str.includes('九年级上')) return 91;
   if (str.includes('9_down') || str.includes('9下') || str.includes('九年级下')) return 92;
-  if (str === '9' || str.includes('9') || str.includes('初三') || str.includes('九年级')) return 90;
-  if (str === '10' || str.includes('10') || str.includes('高一') || str.includes('十年级')) return 100;
-  if (str === '11' || str.includes('11') || str.includes('高二') || str.includes('十一年级')) return 110;
-  if (str === '12' || str.includes('12') || str.includes('高三') || str.includes('十二年级')) return 120;
+  if (str === '9' || str.startsWith('9') || str.includes('初三') || str.includes('九年级')) return 90;
+  if (str.includes('8_up') || str.includes('8上') || str.includes('八年级上')) return 81;
+  if (str.includes('8_down') || str.includes('8下') || str.includes('八年级下')) return 82;
+  if (str === '8' || str.startsWith('8') || str.includes('初二') || str.includes('八年级')) return 80;
+  if (str.includes('7_up') || str.includes('7上') || str.includes('七年级上')) return 71;
+  if (str.includes('7_down') || str.includes('7下') || str.includes('七年级下')) return 72;
+  if (str === '7' || str.startsWith('7') || str.includes('初一') || str.includes('七年级')) return 70;
+  if (str === '1' || str.startsWith('1_') || str.includes('1年级') || str.includes('一年级')) return 10;
+  if (str === '2' || str.startsWith('2_') || str.includes('2年级') || str.includes('二年级')) return 20;
+  if (str === '3' || str.startsWith('3_') || str.includes('3年级') || str.includes('三年级')) return 30;
+  if (str === '4' || str.startsWith('4_') || str.includes('4年级') || str.includes('四年级')) return 40;
+  if (str === '5' || str.startsWith('5_') || str.includes('5年级') || str.includes('五年级')) return 50;
+  if (str === '6' || str.startsWith('6_') || str.includes('6年级') || str.includes('六年级')) return 60;
   return 70;
 }
 
@@ -620,16 +802,26 @@ function formatGradeLabel(grade, semester) {
     if (g >= 1 && g <= 6) return `小学${g}年级${semStr}`;
     if (g >= 7 && g <= 9) return `初中${g - 6}年级(${g}年级)${semStr}`;
     if (g >= 10 && g <= 12) return `高中${g - 9}年级(${g}年级)${semStr}`;
-    return `${g}年级${semStr}`;
+    if (g === 13) return `高中2年级(11年级)选择性必修${semStr}`;
+    if (g >= 14) return `高中3年级(12年级)选择性必修${semStr}`;
+    return `综合学段${semStr}`;
   }
-  const str = String(grade || '');
-  if (str === '7_up') return '初一(7年级)上学期';
-  if (str === '7_down') return '初一(7年级)下学期';
-  if (str === '8_up') return '初二(8年级)上学期';
-  if (str === '8_down') return '初二(8年级)下学期';
-  if (str === '9_up') return '初三(9年级)上学期';
-  if (str === '9_down') return '初三(9年级)下学期';
-  return str || '综合学段';
+  const str = String(grade || '').trim();
+  const map = {
+    '1_up': '小学1年级上学期', '1_down': '小学1年级下学期',
+    '2_up': '小学2年级上学期', '2_down': '小学2年级下学期',
+    '3_up': '小学3年级上学期', '3_down': '小学3年级下学期',
+    '4_up': '小学4年级上学期', '4_down': '小学4年级下学期',
+    '5_up': '小学5年级上学期', '5_down': '小学5年级下学期',
+    '6_up': '小学6年级上学期', '6_down': '小学6年级下学期',
+    '7_up': '初一(7年级)上学期', '7_down': '初一(7年级)下学期',
+    '8_up': '初二(8年级)上学期', '8_down': '初二(8年级)下学期',
+    '9_up': '初三(9年级)上学期', '9_down': '初三(9年级)下学期',
+    '10_up': '高一(10年级)上学期', '10_down': '高一(10年级)下学期',
+    '11_up': '高二(11年级)上学期', '11_down': '高二(11年级)下学期',
+    '12_up': '高三(12年级)上学期', '12_down': '高三(12年级)下学期'
+  };
+  return map[str] || str || '综合学段';
 }
 
 function findTopicsByKeyword(keyword, options = {}) {
@@ -722,12 +914,21 @@ function findTopicsByKeyword(keyword, options = {}) {
       }
 
       if (score > 0) {
-        // Soft grade boost for current grade affinity
+        // 强化同学段亲和与跨学段防误匹配（例如高中生搜“圆锥曲线”优先匹配高中圆锥曲线，避免误配小学六年级“圆锥的认识”）
         if (gradeRank !== null) {
-          if (nodeRank === gradeRank) {
-            score += 35;
-          } else if (Math.abs(nodeRank - gradeRank) <= 10) {
-            score += 15;
+          const getStage = (r) => (r >= 100 ? 3 : r >= 70 ? 2 : 1);
+          const reqStage = getStage(gradeRank);
+          const nodeStage = getStage(nodeRank);
+          if (Math.abs(nodeRank - gradeRank) <= 5) {
+            score += 120;
+          } else if (reqStage === nodeStage) {
+            score += 65;
+          } else if (reqStage === 3 && nodeStage === 1) {
+            score -= 180;
+          } else if (reqStage === 1 && nodeStage === 3) {
+            score -= 180;
+          } else {
+            score -= 40;
           }
         }
         scored.push({ node, score });

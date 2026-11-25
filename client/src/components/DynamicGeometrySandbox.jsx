@@ -7,8 +7,21 @@ import { AUXILIARY_LINE_MODELS } from '../utils/geometryScaffolding';
  * 初中压轴动点、二次函数与几何辅助线因果动因逆推沙盒
  * 专为 7-9 年级心智模型打造：化抽象逻辑为动态轨迹，击穿中考动点与几何压轴痛点
  */
-export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat }) {
-  const [activeTab, setActiveTab] = useState('moving_point'); // 'moving_point' | 'parabola' | 'auxiliary_line' | 'interactive_canvas'
+export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat, currentGrade = '7_up' }) {
+  const rawGradeNum = parseInt(String(currentGrade || '7').split('_')[0], 10) || 7;
+  const isHighSchool = rawGradeNum >= 10;
+  const [activeTab, setActiveTab] = useState(isHighSchool ? 'conic_ellipse' : 'moving_point'); // 'conic_ellipse' | 'moving_point' | 'parabola' | 'auxiliary_line' | 'interactive_canvas'
+
+  // High School Conic Section (Ellipse) States
+  const [ellipseA, setEllipseA] = useState(5);
+  const [ellipseB, setEllipseB] = useState(3);
+  const [ellipseTheta, setEllipseTheta] = useState(45); // degrees
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(isHighSchool ? 'conic_ellipse' : 'moving_point');
+    }
+  }, [isOpen, isHighSchool]);
 
   // Moving Point States
   const [timeT, setTimeT] = useState(3); // t from 0 to 10 seconds
@@ -53,7 +66,62 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
 
     ctx.clearRect(0, 0, width, height);
 
-    if (activeTab === 'moving_point') {
+    if (activeTab === 'conic_ellipse') {
+      const midX = width / 2;
+      const midY = height / 2;
+      const scale = 24;
+      const a = Math.max(2, ellipseA);
+      const b = Math.min(a - 0.5, Math.max(1, ellipseB));
+      const c = Math.sqrt(Math.max(0, a * a - b * b));
+
+      // Grid & Axes
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += scale) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+      }
+      for (let y = 0; y < height; y += scale) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+      }
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, midY); ctx.lineTo(width, midY);
+      ctx.moveTo(midX, 0); ctx.lineTo(midX, height);
+      ctx.stroke();
+
+      // Ellipse Curve
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(midX, midY, a * scale, b * scale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Foci F1, F2 & Moving Point P
+      const f1 = { x: midX - c * scale, y: midY };
+      const f2 = { x: midX + c * scale, y: midY };
+      const rad = (ellipseTheta * Math.PI) / 180;
+      const ptP = { x: midX + a * Math.cos(rad) * scale, y: midY - b * Math.sin(rad) * scale };
+
+      // Focal Radii PF1, PF2
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(f1.x, f1.y); ctx.lineTo(ptP.x, ptP.y); ctx.lineTo(f2.x, f2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const drawNode = (pt, label, color) => {
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 5.5, 0, Math.PI * 2); ctx.fill();
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(label, pt.x - 10, pt.y + (pt.y >= midY ? 18 : -10));
+      };
+      drawNode(f1, `F₁(-${c.toFixed(1)},0)`, '#2563eb');
+      drawNode(f2, `F₂(${c.toFixed(1)},0)`, '#2563eb');
+      drawNode(ptP, 'P', '#dc2626');
+    } else if (activeTab === 'moving_point') {
       // 1. Draw Grid
       ctx.strokeStyle = '#f1f5f9';
       ctx.lineWidth = 1;
@@ -271,8 +339,64 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
           ctx.fillText(pt.label, pt.x - 8, pt.y - 10);
         }
       }
+    } else if (activeTab === 'conic_ellipse') {
+      // High School Conic Section: Ellipse x²/a² + y²/b² = 1 with moving focal radii PF1, PF2
+      const midX = width / 2;
+      const midY = height / 2;
+      const scale = 24;
+      const a = Math.max(2, ellipseA);
+      const b = Math.min(a - 0.5, Math.max(1, ellipseB));
+      const c = Math.sqrt(Math.max(0, a * a - b * b));
+
+      // Grid & Axes
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += scale) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+      }
+      for (let y = 0; y < height; y += scale) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+      }
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, midY); ctx.lineTo(width, midY);
+      ctx.moveTo(midX, 0); ctx.lineTo(midX, height);
+      ctx.stroke();
+
+      // Ellipse Curve
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(midX, midY, a * scale, b * scale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Foci F1, F2 & Moving Point P
+      const f1 = { x: midX - c * scale, y: midY };
+      const f2 = { x: midX + c * scale, y: midY };
+      const rad = (ellipseTheta * Math.PI) / 180;
+      const ptP = { x: midX + a * Math.cos(rad) * scale, y: midY - b * Math.sin(rad) * scale };
+
+      // Focal Radii PF1, PF2
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(f1.x, f1.y); ctx.lineTo(ptP.x, ptP.y); ctx.lineTo(f2.x, f2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const drawNode = (pt, label, color) => {
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 5.5, 0, Math.PI * 2); ctx.fill();
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(label, pt.x - 10, pt.y + (pt.y >= midY ? 18 : -10));
+      };
+      drawNode(f1, `F₁(-${c.toFixed(1)},0)`, '#2563eb');
+      drawNode(f2, `F₂(${c.toFixed(1)},0)`, '#2563eb');
+      drawNode(ptP, 'P', '#dc2626');
     }
-  }, [isOpen, activeTab, timeT, paramA, paramH, paramK, auxiliaryModelKey, showAuxiliary]);
+  }, [isOpen, activeTab, timeT, paramA, paramH, paramK, auxiliaryModelKey, showAuxiliary, ellipseA, ellipseB, ellipseTheta]);
 
   if (!isOpen) return null;
 
@@ -283,7 +407,13 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
 
   const handleSendToChat = () => {
     let text = '';
-    if (activeTab === 'moving_point') {
+    if (activeTab === 'conic_ellipse') {
+      const a = Math.max(2, ellipseA);
+      const b = Math.min(a - 0.5, Math.max(1, ellipseB));
+      const c = Math.sqrt(Math.max(0, a * a - b * b));
+      const eVal = (c / a).toFixed(3);
+      text = `老师，我在高中圆锥曲线沙盒中演练了标准椭圆方程 x²/${(a * a).toFixed(1)} + y²/${(b * b).toFixed(1)} = 1：\n- 长半轴 a = ${a.toFixed(1)}，短半轴 b = ${b.toFixed(1)}，半焦距 c ≈ ${c.toFixed(2)}，离心率 e = c/a ≈ ${eVal}，且焦半径之和 |PF₁| + |PF₂| = 2a = ${(2 * a).toFixed(1)}。\n请问在新高考解析几何压轴题中，遇到“焦点三角形面积、离心率取值范围或直线联立韦达定理求弦长”时，怎样设方程和消元最不易算错？`;
+    } else if (activeTab === 'moving_point') {
       text = `老师，我在动点沙盒中演练了动点 P 从 A 向 B 运动的问题：\n- 当 t = ${timeT} 秒时，AP = ${currentAP}，△PAC 面积为 ${currentArea}（总面积为 ${totalArea}）。\n请问在实际中考压轴题中，如果点 P 越过 B 点继续运动，或者求 △PAC 与原三角形面积比为 1:2 时，具体的分类讨论分段函数应如何严谨书写？`;
     } else if (activeTab === 'parabola') {
       text = `老师，我在二次函数沙盒中调整了解析式 y = ${paramA}(x - ${paramH})^2 + (${paramK})：\n- 顶点为 (${paramH}, ${paramK})，对称轴为 x = ${paramH}。\n请问如何利用顶点式与韦达定理，快速确定抛物线与 x 轴的交点距离以及割线斜率？`;
@@ -317,10 +447,10 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
             <span style={{ fontSize: '1.6rem' }}>📐</span>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>
-                初中压轴动点与函数动态沙盒
+                {isHighSchool ? '高中解析几何圆锥曲线与函数极值沙盒' : '初中压轴动点与函数动态沙盒'}
               </h3>
               <div style={{ fontSize: '0.82rem', color: '#bfdbfe', marginTop: '2px' }}>
-                7-9年级动点轨迹模拟 · 直观攻克中考压轴综合题
+                {isHighSchool ? '10-12年级椭圆焦点轨迹 · 离心率演化与抛物线极值可视化探究' : '7-9年级动点轨迹模拟 · 直观攻克中考压轴综合题'}
               </div>
             </div>
           </div>
@@ -328,7 +458,20 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
         </div>
 
         {/* Tab switcher */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 16px', gap: '8px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 16px', gap: '8px' }}>
+          <button
+            onClick={() => setActiveTab('conic_ellipse')}
+            style={{
+              padding: '8px 14px', borderRadius: '12px', border: 'none',
+              background: activeTab === 'conic_ellipse' ? '#7c3aed' : 'transparent',
+              color: activeTab === 'conic_ellipse' ? '#fff' : '#64748b',
+              fontWeight: '700', fontSize: '0.88rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <span>🪐</span>
+            <span>高中圆锥曲线与离心率</span>
+          </button>
           <button
             onClick={() => setActiveTab('moving_point')}
             style={{
@@ -399,7 +542,32 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
                 <canvas ref={canvasRef} width={440} height={260} style={{ display: 'block', maxWidth: '100%' }} />
               </div>
 
-          {activeTab === 'moving_point' ? (
+          {activeTab === 'conic_ellipse' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: '#f5f3ff', padding: '12px 16px', borderRadius: '14px', border: '1px solid #ddd6fe', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontWeight: '700', color: '#4c1d95' }}>
+                  标准方程：x²/{(ellipseA ** 2).toFixed(0)} + y²/{(Math.min(ellipseA - 0.5, ellipseB) ** 2).toFixed(1)} = 1
+                </span>
+                <span style={{ fontSize: '0.85rem', color: '#7c3aed', fontWeight: '700' }}>
+                  离心率 e = c/a = {(Math.sqrt(Math.max(0, ellipseA ** 2 - Math.min(ellipseA - 0.5, ellipseB) ** 2)) / ellipseA).toFixed(2)} · |PF₁|+|PF₂| = {(2 * ellipseA).toFixed(1)}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                <div style={{ background: '#f5f3ff', padding: '10px', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#5b21b6', marginBottom: '4px' }}>半长轴 a ({ellipseA})</div>
+                  <input type="range" min="3" max="7" step="0.5" value={ellipseA} onChange={e => setEllipseA(parseFloat(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                <div style={{ background: '#eff6ff', padding: '10px', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#1e40af', marginBottom: '4px' }}>半短轴 b ({Math.min(ellipseA - 0.5, ellipseB).toFixed(1)})</div>
+                  <input type="range" min="1.5" max="6" step="0.5" value={ellipseB} onChange={e => setEllipseB(parseFloat(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                <div style={{ background: '#fef3c7', padding: '10px', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#92400e', marginBottom: '4px' }}>动点 P 离心角 θ ({ellipseTheta}°)</div>
+                  <input type="range" min="0" max="360" step="5" value={ellipseTheta} onChange={e => setEllipseTheta(parseInt(e.target.value, 10))} style={{ width: '100%' }} />
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'moving_point' ? (
             /* Moving Point Controls & Insights */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Slider for t */}
@@ -604,7 +772,7 @@ export default function DynamicGeometrySandbox({ isOpen, onClose, onApplyToChat 
               }}
             >
               <span>💬</span>
-              <span>带入中考压轴题向名师提问</span>
+              <span>{isHighSchool ? '带入高考压轴题向名师提问' : '带入中考压轴题向名师提问'}</span>
             </button>
           </div>
         </div>

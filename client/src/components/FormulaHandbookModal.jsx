@@ -74,6 +74,7 @@ function FormulaDisplay({ formula }) {
 const FORMULA_DATABASE = {
   math: [
     {
+      stage: 'middle',
       category: '🔢 代数与乘法公式',
       items: [
         { name: '平方差公式', formula: '(a + b)(a - b) = a^2 - b^2', desc: '两数和与差之积等于平方差' },
@@ -84,6 +85,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '📈 函数模型与图象',
       items: [
         { name: '一次函数斜截式', formula: 'y = kx + b \\quad (k \\ne 0)', desc: 'k决定方向，b为y轴截距' },
@@ -95,6 +97,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '📐 几何定理与全等相似',
       items: [
         { name: '勾股定理', formula: 'a^2 + b^2 = c^2 \\quad (\\angle C = 90^\\circ)', desc: '常用勾股数: (3,4,5), (5,12,13), (7,24,25), (8,15,17)' },
@@ -105,6 +108,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '⭕ 圆的性质与面积公式',
       items: [
         { name: '垂径定理', formula: 'r^2 = d^2 + \\left(\\frac{l}{2}\\right)^2', desc: '垂直于弦的直径平分弦及所对弧，常构造Rt△: r² = d² + (l/2)²' },
@@ -114,6 +118,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '📊 特殊角三角函数值速查',
       items: [
         { name: '30° 特殊角', formula: '\\sin 30^\\circ = \\frac{1}{2}, \\; \\cos 30^\\circ = \\frac{\\sqrt{3}}{2}, \\; \\tan 30^\\circ = \\frac{\\sqrt{3}}{3}', desc: '1:√3:2 直角三角形' },
@@ -122,6 +127,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '📐 高中立体几何与空间向量',
       items: [
         { name: '空间向量数量积与夹角', formula: '\\cos \\theta = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}||\\vec{b}|}', desc: '空间向量求解夹角与垂直的核心判定公式' },
@@ -131,6 +137,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '📈 高中导数核心工具箱',
       items: [
         { name: '基本初等函数求导表', formula: "(x^n)' = nx^{n-1}, \\; (e^x)' = e^x, \\; (\\ln x)' = \\frac{1}{x}, \\; (\\sin x)' = \\cos x", desc: '高考导数大题计算化简基石' },
@@ -140,6 +147,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '⭕ 高中解析几何圆锥曲线',
       items: [
         { name: '椭圆标准方程与性质', formula: '\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1, \\quad c^2 = a^2 - b^2, \\quad e = \\frac{c}{a}', desc: '焦点在x轴，离心率 0 < e < 1，通径为 2b²/a' },
@@ -149,6 +157,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '🔢 高中数列与二项式定理',
       items: [
         { name: '等差数列通项与求和', formula: 'a_n = a_1 + (n - 1)d, \\quad S_n = \\frac{n(a_1 + a_n)}{2} = na_1 + \\frac{n(n - 1)}{2}d', desc: '等差中项 2an = an-1 + an+1' },
@@ -159,6 +168,7 @@ const FORMULA_DATABASE = {
   ],
   physics: [
     {
+      stage: 'middle',
       category: '🏎️ 力学运动与密度',
       items: [
         { name: '速度公式', formula: 'v = \\frac{s}{t} \\iff s = vt, \\; t = \\frac{s}{v}', desc: '1 m/s = 3.6 km/h' },
@@ -172,6 +182,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '🌊 浮力四大计算核心法',
       items: [
         { name: '称重法', formula: 'F_\\text{浮} = G - F\'', desc: '物体重力减去在液体中弹簧测力计拉力' },
@@ -181,6 +192,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '⚡ 电学三大定律与电功率',
       items: [
         { name: '欧姆定律', formula: 'I = \\frac{U}{R} \\iff U = IR, \\; R = \\frac{U}{I}', desc: '导体中的电流与导体两端电压成正比，与电阻成反比' },
@@ -192,6 +204,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '🪐 高中万有引力与天体运动',
       items: [
         { name: '万有引力充当向心力', formula: 'G\\frac{Mm}{r^2} = m\\frac{v^2}{r} = m\\omega^2 r = m\\frac{4\\pi^2}{T^2}r', desc: '核心规律：高轨低速大周期，轨道半径r决定一切参量' },
@@ -200,6 +213,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '⚡ 高中动量守恒与动能定理',
       items: [
         { name: '动量定理', formula: 'I = F\\Delta t = \\Delta p = mv_2 - mv_1', desc: '合外力的冲量等于系统动量的变化量（注意矢量性）' },
@@ -208,7 +222,8 @@ const FORMULA_DATABASE = {
       ]
     },
     {
-      category: '🧲 电场偏转与电磁感应微元',
+      stage: 'high',
+      category: '🧲 高中电场偏转与电磁感应微元',
       items: [
         { name: '带电粒子在电场偏转位移', formula: 'y = \\frac{1}{2}at^2 = \\frac{qUL^2}{2mdv_0^2}', desc: '垂直电场匀速运动，沿电场做初速度为零的匀加速运动' },
         { name: '法拉第电磁感应定律', formula: 'E = n\\frac{\\Delta \\Phi}{\\Delta t}, \\quad E = BLv', desc: '穿过闭合回路磁通量变化产生感应电动势，棒切割' },
@@ -219,6 +234,7 @@ const FORMULA_DATABASE = {
   ],
   chemistry: [
     {
+      stage: 'middle',
       category: '💎 化合价口诀顺口溜',
       items: [
         { name: '常见元素化合价顺口溜', formula: '一价氯氢钾钠银，二价氧钙钡镁锌；三铝四硅五价磷，二三铁二四碳；二四六硫都齐全，铜汞二价最常见；单质化合价为零。', desc: '化学式书写基础：正负化合价代数和为零' },
@@ -226,6 +242,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '🧲 金属活动性顺序表',
       items: [
         { name: '金属活动性由强到弱', formula: 'K \\; Ca \\; Na \\; Mg \\; Al \\quad Zn \\; Fe \\; Sn \\; Pb \\; (H) \\quad Cu \\; Hg \\; Ag \\; Pt \\; Au', desc: '谐音记忆：钾钙钠镁铝，锌铁锡铅氢，铜汞银铂金' },
@@ -233,6 +250,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'middle',
       category: '🧪 初中常见沉淀与气体标志',
       items: [
         { name: '五大白色沉淀', formula: 'BaSO_4 \\downarrow, \\; AgCl \\downarrow, \\; CaCO_3 \\downarrow, \\; BaCO_3 \\downarrow, \\; Mg(OH)_2 \\downarrow', desc: '注：BaSO₄与AgCl不溶于稀硝酸！' },
@@ -241,14 +259,16 @@ const FORMULA_DATABASE = {
       ]
     },
     {
-      category: '⚖️ 化学反应速率与平衡常数 Kp',
+      stage: 'high',
+      category: '⚖️ 高中化学反应速率与平衡常数 Kp',
       items: [
         { name: '平衡常数 K 与 Kp', formula: 'K = \\frac{[C]^c [D]^d}{[A]^a [B]^b}, \\quad K_p = \\frac{p(C)^c p(D)^d}{p(A)^a p(B)^b}', desc: 'K只受温度影响；吸热反应升温K增大，放热反应升温K减小' },
         { name: '勒夏特列平衡移动原理', formula: '\\text{改变外界条件，平衡向减弱该改变的方向移动}', desc: '加压向气体分子数减小的方向移动，催化剂不影响平衡' }
       ]
     },
     {
-      category: '💧 溶液三大守恒与沉淀溶解 Ksp',
+      stage: 'high',
+      category: '💧 高中溶液三大守恒与沉淀溶解 Ksp',
       items: [
         { name: '水的离子积常数', formula: 'K_w = c(H^+) \\cdot c(OH^-) = 1.0 \\times 10^{-14} \\text{ (25℃)}', desc: '水是弱电解质，25℃纯水 c(H+)=c(OH-)=10⁻⁷ mol/L' },
         { name: '溶液三大守恒定律', formula: '\\text{电荷守恒 / 物料守恒 / 质子守恒}', desc: '比较溶液中微粒浓度大小与配平离子反应的王牌工具' },
@@ -256,6 +276,7 @@ const FORMULA_DATABASE = {
       ]
     },
     {
+      stage: 'high',
       category: '🔋 高中电化学原电池与电解池',
       items: [
         { name: '原电池与电解池电极规律', formula: '\\text{负极失电子氧化，正极得电子还原；阳极氧化，阴极还原}', desc: '原电池电子从负极流向正极；电解池阳极连电源正极' },
@@ -265,8 +286,10 @@ const FORMULA_DATABASE = {
   ]
 };
 
-export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject = '数学', onApplyFormula, onInsertFormula }) {
+export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject = '数学', currentGrade = '7_up', onApplyFormula, onInsertFormula }) {
   const handleApply = onApplyFormula || onInsertFormula;
+  const isHighSchoolGrade = ['10', '11', '12'].some(n => String(currentGrade || '').startsWith(n));
+  const [stageFilter, setStageFilter] = useState(isHighSchoolGrade ? 'high' : 'middle'); // 'all' | 'middle' | 'high'
   const [activeTab, setActiveTab] = useState(() => {
     if (defaultSubject.includes('物')) return 'physics';
     if (defaultSubject.includes('化')) return 'chemistry';
@@ -275,7 +298,17 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedFormula, setCopiedFormula] = useState(null);
 
-  const currentCategories = FORMULA_DATABASE[activeTab] || FORMULA_DATABASE.math;
+  React.useEffect(() => {
+    if (isOpen) {
+      setStageFilter(isHighSchoolGrade ? 'high' : 'middle');
+    }
+  }, [isOpen, isHighSchoolGrade]);
+
+  const currentCategories = useMemo(() => {
+    const raw = FORMULA_DATABASE[activeTab] || FORMULA_DATABASE.math;
+    if (stageFilter === 'all') return raw;
+    return raw.filter(cat => cat.stage === stageFilter);
+  }, [activeTab, stageFilter]);
 
   const filteredCategories = useMemo(() => {
     if (!searchTerm.trim()) return currentCategories;
@@ -317,9 +350,10 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
+        padding: '12px',
         paddingBottom: 'max(env(safe-area-inset-bottom, 24px), 36px)',
-        color: '#ffffff'
+        color: '#ffffff',
+        boxSizing: 'border-box'
       }}
     >
       <div style={{
@@ -327,51 +361,84 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
         border: '1px solid rgba(59, 130, 246, 0.35)',
         borderRadius: '20px',
         width: '100%',
-        maxWidth: '640px',
+        maxWidth: 'min(640px, calc(100vw - 24px))',
         maxHeight: '85vh',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7)',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        boxSizing: 'border-box'
       }}>
         {/* Header */}
         <div style={{
-          padding: '14px 20px',
+          padding: '14px 18px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(15, 23, 42, 0.6)'
+          background: 'rgba(15, 23, 42, 0.6)',
+          gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.3rem' }}>📖</span>
-            <div>
-              <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#60a5fa' }}>
-                中考数理化必备公式与定理速查
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>📖</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#60a5fa' }}>
+                中高考数理化必备公式与定理速查（初高中分学段）
               </div>
               <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                做题卡壳时秒查，点击公式直接复制，不打断解题思路
+                按学段精准过滤，避免超纲干扰，点击公式一键复制
               </div>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="关闭公式宝典"
             style={{
-              background: 'transparent',
+              background: 'rgba(255, 255, 255, 0.08)',
               border: 'none',
-              color: '#94a3b8',
-              fontSize: '1.3rem',
+              color: '#e2e8f0',
+              fontSize: '1.2rem',
               cursor: 'pointer',
-              padding: '4px'
+              padding: '4px 10px',
+              borderRadius: '8px',
+              flexShrink: 0
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* Search Bar & Subject Tabs */}
-        <div style={{ padding: '12px 18px', background: 'rgba(0, 0, 0, 0.25)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+        {/* Search Bar, Stage Filter & Subject Tabs */}
+        <div style={{ padding: '12px 16px', background: 'rgba(0, 0, 0, 0.25)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          {/* 学段分流栏 */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+            {[
+              { id: 'middle', label: '🏫 初中 7-9 年级' },
+              { id: 'high', label: '🎓 高中 10-12 年级' },
+              { id: 'all', label: '📚 全部学段' }
+            ].map(st => (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => setStageFilter(st.id)}
+                style={{
+                  flex: 1,
+                  padding: '5px 8px',
+                  borderRadius: '8px',
+                  border: stageFilter === st.id ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                  background: stageFilter === st.id ? 'rgba(139, 92, 246, 0.28)' : 'rgba(255,255,255,0.04)',
+                  color: stageFilter === st.id ? '#f5f3ff' : '#94a3b8',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {st.label}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
             <button
               type="button"
@@ -388,7 +455,7 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
                 cursor: 'pointer'
               }}
             >
-              📐 初中数学
+              📐 数学公式
             </button>
             <button
               type="button"
@@ -405,7 +472,7 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
                 cursor: 'pointer'
               }}
             >
-              ⚡ 初中物理
+              ⚡ 物理公式
             </button>
             <button
               type="button"
@@ -422,7 +489,7 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
                 cursor: 'pointer'
               }}
             >
-              🧪 初中化学
+              🧪 化学公式
             </button>
           </div>
 

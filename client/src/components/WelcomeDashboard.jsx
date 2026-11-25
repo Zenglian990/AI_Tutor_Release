@@ -42,13 +42,15 @@ export default function WelcomeDashboard({
     return '晚上好';
   };
 
-  const studentName = currentProfile?.name || '曾练';
+  const studentName = currentProfile?.name || '同学';
   const gradeLabel = formatGrade(selectedGrade);
   const subjectLabel = selectedSubject || '数学';
+  const editionLabel = currentProfile?.edition || '人教版';
 
-  // Fetch daily proactive briefing
+  // Fetch daily proactive briefing (immediately clear stale grade briefing on grade/subject switch)
   useEffect(() => {
     let isMounted = true;
+    setBriefing(null);
     async function fetchDailyBriefing() {
       setLoadingBriefing(true);
       try {
@@ -77,7 +79,18 @@ export default function WelcomeDashboard({
   if (['10', '11', '12'].some(num => gradeStr.startsWith(num))) {
     stageName = '高中冲刺与高考拔高';
     stageIcon = '🎓';
-    stageDescription = '高考核心考点精讲 · 步骤采分点剖析 · 导数与圆锥曲线大题突破';
+    const highSchoolSubjectDesc = {
+      '数学': '高考核心考点精讲 · 步骤采分点剖析 · 导数与圆锥曲线大题突破',
+      '物理': '力学电磁复合场深度拆解 · 实验探究模型 · 高考物理压轴题破局',
+      '化学': '电化学与反应原理精析 · 工艺流程推断 · 有机合成大题专项突破',
+      '生物': '遗传规律与代谢机理精讲 · 高考长句规范作答 · 实验设计突破',
+      '语文': '现代文思辨阅读 · 文言文实词迁移 · 新高考高分思辨作文升格',
+      '英语': '高考完形与七选五逻辑 · 读后续写高分句型 · 听说读写全面提分',
+      '历史': '中外通史时空线索 · 材料解析采分点 · 开放论述题模板构建',
+      '地理': '自然与人文地理原理 · 区域综合分析 · 等值线与图表精准判读',
+      '道德与法治': '新高考思想政治大题拆解 · 时政热点迁移 · 逻辑与哲学精讲'
+    };
+    stageDescription = highSchoolSubjectDesc[selectedSubject] || '新高考核心考点精讲 · 步骤采分点剖析 · 全科压轴题突破';
   } else if (['1_', '2_', '3_'].some(n => gradeStr.startsWith(n)) || ['1', '2', '3'].includes(gradeStr)) {
     stageName = '小学低段启蒙';
     stageIcon = '🎈';
@@ -100,7 +113,7 @@ export default function WelcomeDashboard({
           {studentName}同学，{getGreeting()}！🎓
         </h2>
         <p className="welcome-subtitle">
-          当前辅导：<strong className="highlight-tag">{gradeLabel} · {subjectLabel}</strong>（人教版教材同步）
+          当前辅导：<strong className="highlight-tag">{gradeLabel} · {subjectLabel}</strong>（{editionLabel}教材同步）
         </p>
 
         {/* Proactive Mentor Briefing Memo */}
@@ -113,7 +126,7 @@ export default function WelcomeDashboard({
             marginTop: '14px',
             textAlign: 'left'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
               <span style={{ fontWeight: '600', color: '#2563eb', fontSize: '0.95rem' }}>
                 📋 今日专属突破任务：{briefing.suggestedMission.title}
               </span>
@@ -307,7 +320,11 @@ export default function WelcomeDashboard({
               <span className="action-card-icon">📐</span>
               <span className="action-card-name" style={{ color: '#60a5fa' }}>动点压轴几何沙盒</span>
             </div>
-            <p className="action-card-desc">中考动点轨迹动态推演，二次函数系数滑杆直观击穿难点</p>
+            <p className="action-card-desc">
+              {['10', '11', '12'].some(num => gradeStr.startsWith(num))
+                ? '高中函数图像与动点轨迹动态推演，数形结合直击圆锥曲线与极值难点'
+                : '中考动点轨迹动态推演，二次函数系数滑杆直观击穿难点'}
+            </p>
             <div className="action-card-cta" style={{ color: '#60a5fa' }}>推演动点 →</div>
           </div>
         )}
@@ -331,7 +348,11 @@ export default function WelcomeDashboard({
               <span className="action-card-icon">🔬</span>
               <span className="action-card-name" style={{ color: '#38bdf8' }}>物理动态微实验台</span>
             </div>
-            <p className="action-card-desc">凸透镜光路折射成像与滑动变阻器欧姆定律电路动态探究</p>
+            <p className="action-card-desc">
+              {['10', '11', '12'].some(num => gradeStr.startsWith(num))
+                ? '高中电磁洛伦兹力磁场圆周运动、光学与电路动态探究实验台'
+                : '凸透镜光路折射成像与滑动变阻器欧姆定律电路动态探究'}
+            </p>
             <div className="action-card-cta" style={{ color: '#38bdf8' }}>动手探究 →</div>
           </div>
         )}
@@ -358,7 +379,11 @@ export default function WelcomeDashboard({
               <span className="action-card-icon">⚗️</span>
               <span className="action-card-name" style={{ color: '#10b981' }}>化学虚拟微实验台</span>
             </div>
-            <p className="action-card-desc">中考氧气/二氧化碳气体制备大题装置拼装与水电解微观分子重组</p>
+            <p className="action-card-desc">
+              {['10', '11', '12'].some(num => gradeStr.startsWith(num))
+                ? '高中铜锌双液原电池与盐桥电化学、气体制备及分子重组动态探究'
+                : '中考氧气/二氧化碳气体制备大题装置拼装与水电解微观分子重组'}
+            </p>
             <div className="action-card-cta" style={{ color: '#10b981' }}>拼装实验 →</div>
           </div>
         )}

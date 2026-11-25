@@ -5,7 +5,7 @@ const path = require('path');
 const { fetch: undiciFetch, ProxyAgent } = require('undici');
 const config = require('../config');
 const logger = require('../services/logger');
-const { isSafeExternalUrl, validateSafeUrlAsync, isAllowedDeepseekUrl } = require('../utils/urlValidator');
+const { isSafeExternalUrl, validateSafeUrlAsync, isAllowedDeepseekUrl, createPinnedDispatcher } = require('../utils/urlValidator');
 const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 
 const proxyAgent = config.proxyUrl ? new ProxyAgent(config.proxyUrl) : null;
@@ -55,14 +55,19 @@ router.get('/config/providers', (req, res) => {
  * Helper to update or append key-value in .env file
  */
 function updateEnvFile(key, value) {
+  const safeVal = String(value ?? '');
+  if (/[\r\n\0]/.test(safeVal) || !/^[A-Z0-9_]+$/.test(String(key))) {
+    throw new Error('非法环境变量配置项：禁止包含换行符或特殊控制字符');
+  }
   const envPath = path.join(__dirname, '..', '..', '.env');
   let envContent = '';
   if (fs.existsSync(envPath)) {
     envContent = fs.readFileSync(envPath, 'utf8');
   }
 
-  const regex = new RegExp(`^\s*${key}\s*=.*$`, 'm');
-  const newLine = `${key}=${value}`;
+  const escapedKey = String(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`^\\s*${escapedKey}\\s*=.*$`, 'm');
+  const newLine = `${key}=${safeVal}`;
 
   if (regex.test(envContent)) {
     envContent = envContent.replace(regex, newLine);
@@ -71,7 +76,7 @@ function updateEnvFile(key, value) {
   }
 
   fs.writeFileSync(envPath, envContent, 'utf8');
-  process.env[key] = value;
+  process.env[key] = safeVal;
 }
 
 /**
@@ -189,7 +194,7 @@ router.post('/config/update-keys', async (req, res) => {
     });
   } catch (err) {
     logger.error('[ConfigAPI] Failed to update keys:', err);
-    res.status(500).json({ error: '保存配置失败', details: err.message });
+    res.status(500).json({ error: '保存配置失败', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
   }
 });
 
@@ -207,13 +212,15 @@ router.post('/config/test-llm', async (req, res) => {
     const { apiKey, apiUrl, model } = body;
 
     if (provider === 'siliconflow') {
-      const keyToUse = (apiKey || process.env.SILICONFLOW_API_KEY || '').trim();
+      // 安全加固：当用户传入自定义 apiUrl 时，绝不回退使用服务端环境变量中的商业 API Key（防止凭证外泄）
+      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.SILICONFLOW_API_KEY) || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'siliconflow',
           error: '缺少 SiliconFlow API Key',
-          details: '请在上方输入有效的硅基流动 API 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的硅基流动 API 密钥',
           latencyMs: 0
         });
       }
@@ -244,6 +251,9 @@ router.post('/config/test-llm', async (req, res) => {
       let lastErrorDetails = '';
       let successfulModel = null;
       let latencyMs = 0;
+      const pinnedDispatcher = (urlCheck.hostname && Array.isArray(urlCheck.addresses) && urlCheck.addresses.length > 0)
+        ? createPinnedDispatcher(urlCheck.hostname, urlCheck.addresses)
+        : undefined;
 
       for (const m of candidateModels) {
         try {
@@ -259,6 +269,8 @@ router.post('/config/test-llm', async (req, res) => {
               messages: [{ role: 'user', content: 'hi' }],
               max_tokens: 5
             }),
+            redirect: 'error',
+            ...(pinnedDispatcher ? { dispatcher: pinnedDispatcher } : {}),
             signal: AbortSignal.timeout(6000)
           });
 
@@ -313,13 +325,14 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'dashscope') {
-      const keyToUse = (apiKey || process.env.DASHSCOPE_API_KEY || '').trim();
+      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.DASHSCOPE_API_KEY) || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'dashscope',
           error: '缺少 DashScope API Key',
-          details: '请在上方输入有效的阿里百炼 API 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的阿里百炼 API 密钥',
           latencyMs: 0
         });
       }
@@ -336,6 +349,9 @@ router.post('/config/test-llm', async (req, res) => {
       }
 
       const testModel = model || 'qwen2.5-vl-72b-instruct';
+      const pinnedDispatcher = (urlCheck.hostname && Array.isArray(urlCheck.addresses) && urlCheck.addresses.length > 0)
+        ? createPinnedDispatcher(urlCheck.hostname, urlCheck.addresses)
+        : undefined;
 
       const response = await undiciFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -349,6 +365,8 @@ router.post('/config/test-llm', async (req, res) => {
           messages: [{ role: 'user', content: 'hi' }],
           max_tokens: 5
         }),
+        redirect: 'error',
+        ...(pinnedDispatcher ? { dispatcher: pinnedDispatcher } : {}),
         signal: AbortSignal.timeout(10000)
       });
 
@@ -382,13 +400,14 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'zhipu') {
-      const keyToUse = (apiKey || process.env.ZHIPU_API_KEY || '').trim();
+      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.ZHIPU_API_KEY) || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'zhipu',
           error: '缺少智谱 API Key',
-          details: '请在上方输入有效的智谱 AI 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的智谱 AI 密钥',
           latencyMs: 0
         });
       }
@@ -405,6 +424,9 @@ router.post('/config/test-llm', async (req, res) => {
       }
 
       const testModel = model || 'glm-4v-flash';
+      const pinnedDispatcher = (urlCheck.hostname && Array.isArray(urlCheck.addresses) && urlCheck.addresses.length > 0)
+        ? createPinnedDispatcher(urlCheck.hostname, urlCheck.addresses)
+        : undefined;
 
       const response = await undiciFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -418,6 +440,8 @@ router.post('/config/test-llm', async (req, res) => {
           messages: [{ role: 'user', content: 'hi' }],
           max_tokens: 5
         }),
+        redirect: 'error',
+        ...(pinnedDispatcher ? { dispatcher: pinnedDispatcher } : {}),
         signal: AbortSignal.timeout(10000)
       });
 
@@ -451,13 +475,14 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'deepseek') {
-      const keyToUse = (apiKey || process.env.DEEPSEEK_API_KEY || '').trim();
+      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.DEEPSEEK_API_KEY) || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'deepseek',
           error: '缺少 DeepSeek API Key',
-          details: '请在上方输入有效的 DeepSeek API 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的 DeepSeek API 密钥',
           latencyMs: 0
         });
       }
@@ -474,9 +499,14 @@ router.post('/config/test-llm', async (req, res) => {
       }
 
       const testModel = model || 'deepseek-chat';
+      const pinnedDispatcher = (urlCheck.hostname && Array.isArray(urlCheck.addresses) && urlCheck.addresses.length > 0)
+        ? createPinnedDispatcher(urlCheck.hostname, urlCheck.addresses)
+        : undefined;
 
       const response = await undiciFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
+        redirect: 'error',
+        ...(pinnedDispatcher ? { dispatcher: pinnedDispatcher } : {}),
         headers: {
           'Content-Type': 'application/json',
           'Accept-Encoding': 'gzip, deflate, br',
@@ -544,12 +574,18 @@ router.post('/config/test-llm', async (req, res) => {
         });
       }
 
-      let testModel = model || config.CHAT_MODEL || 'gemini-2.5-flash';
-      let url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${keyToUse}`;
+      let testModel = String(model || config.CHAT_MODEL || 'gemini-3-flash-preview').trim();
+      if (!/^[a-zA-Z0-9._-]+$/.test(testModel)) {
+        return res.status(400).json({ success: false, provider: 'gemini', error: '非法的模型名称格式', latencyMs: 0 });
+      }
+      let url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent`;
 
       const fetchOptions = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': keyToUse
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: 'hi' }] }],
           generationConfig: { maxOutputTokens: 2 }
@@ -560,10 +596,11 @@ router.post('/config/test-llm', async (req, res) => {
 
       let response = await undiciFetch(url, fetchOptions);
 
-      // Mutual fallback between 2.5 and 3.6 if rate-limited or unavailable
+      // Mutual fallback between primary flash and lite flash if rate-limited or unavailable
       if (!response.ok && (response.status === 429 || response.status === 503 || response.status === 404)) {
-        const fallbackModel = testModel === 'gemini-2.5-flash' ? 'gemini-3.6-flash' : 'gemini-2.5-flash';
-        const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${keyToUse}`;
+        const primary = config.CHAT_MODEL || 'gemini-3-flash-preview';
+        const fallbackModel = testModel === primary ? 'gemini-3.1-flash-lite' : primary;
+        const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent`;
         try {
           const fallbackRes = await undiciFetch(fallbackUrl, fetchOptions);
           if (fallbackRes.ok) {
@@ -676,8 +713,8 @@ router.post('/config/test-llm', async (req, res) => {
     return res.json({
       success: false,
       provider,
-      error: isTimeout ? '网络连接超时（可能需要配置代理或检查国内网络）' : `连通性检测失败: ${err.message}`,
-      details: err.message,
+      error: isTimeout ? '网络连接超时（可能需要配置代理或检查国内网络）' : (process.env.NODE_ENV === 'development' ? `连通性检测失败: ${err.message}` : '连通性检测失败，请核对密钥或网络配置'),
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined,
       latencyMs: Date.now() - start
     });
   }

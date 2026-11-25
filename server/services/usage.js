@@ -16,7 +16,7 @@ function estimateTokens(text, isPrompt = true) {
 /**
  * Log API usage in database
  */
-async function logApiUsage(model, type, promptData, completionData, status = 'success') {
+async function logApiUsage(model, type, promptData, completionData, status = 'success', profileId = 'default') {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return;
@@ -45,8 +45,8 @@ async function logApiUsage(model, type, promptData, completionData, status = 'su
 
     dbQueue.enqueue(async () => {
       await sqliteDb.run(
-        'INSERT INTO api_usage (model, type, prompt_tokens, completion_tokens, status) VALUES (?, ?, ?, ?, ?)',
-        [model || 'unknown-model', type || 'chat', promptTokens, completionTokens, status]
+        'INSERT INTO api_usage (model, type, prompt_tokens, completion_tokens, status, profile_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [model || 'unknown-model', type || 'chat', promptTokens, completionTokens, status, profileId || 'default']
       );
     }).catch(err => {
       logger.error('[Usage] Database enqueue failed:', err);

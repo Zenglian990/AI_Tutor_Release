@@ -36,8 +36,8 @@ export async function saveOrShareImage({ dataUrl, filename, title, text }) {
       const canShareResult = await Share.canShare();
       if (canShareResult && canShareResult.value) {
         await Share.share({
-          title: title || '曾练专属私教',
-          text: text || '曾练专属私教 · 学习档案',
+          title: title || 'AI 智慧私教',
+          text: text || 'AI 智慧私教 · 学习档案',
           url: fileResult.uri,
           dialogTitle: '分享或保存到相册'
         });

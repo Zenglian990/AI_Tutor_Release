@@ -4,7 +4,8 @@ const { synthesizeSpeech } = require('../services/tts-service');
 const logger = require('../services/logger');
 
 // POST /api/tts
-router.post('/tts', async (req, res) => {
+const { requireQuotaOrVip } = require('../middleware/quota');
+router.post('/tts', requireQuotaOrVip('tts'), async (req, res) => {
   try {
     const { text, grade, voice } = req.body;
     if (!text) {
@@ -28,7 +29,7 @@ router.post('/tts', async (req, res) => {
 
     const clientGeminiKey = req.headers['x-gemini-api-key'];
     logger.info(`[TTS] Synthesizing text: "${text.substring(0, 30)}..." with voice ${selectedVoice}`);
-    const audioBuffer = await synthesizeSpeech(text, selectedVoice, clientGeminiKey);
+    const audioBuffer = await synthesizeSpeech(text, selectedVoice, clientGeminiKey, req.auth?.activeProfileId || 'default');
 
     if (!audioBuffer || audioBuffer.length === 0) {
       return res.status(204).send(); // No content (empty text after cleaning)
@@ -40,7 +41,7 @@ router.post('/tts', async (req, res) => {
     res.send(audioBuffer);
   } catch (err) {
     logger.error('[TTS] Synthesis API failed:', err);
-    res.status(500).json({ error: 'TTS语音合成失败', details: err.message });
+    res.status(500).json({ error: 'TTS语音合成失败', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
   }
 });
 

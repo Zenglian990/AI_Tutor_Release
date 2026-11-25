@@ -564,23 +564,27 @@ export default function DailyMentalMathModal({
                 </button>
               ))}
 
-              {/* 负号/小数点/清空/退格 */}
+              {/* 负号/小数点/清空（低年级1-3年级仅考整数，隐藏小数点改为快捷清空） */}
               <button
                 type="button"
-                onClick={() => handleKeypadPress(grade >= 7 ? '-' : '.')}
+                onClick={() => {
+                  if (grade >= 7) handleKeypadPress('-');
+                  else if (grade >= 4) handleKeypadPress('.');
+                  else setInputVal('');
+                }}
                 style={{
                   height: '52px',
                   borderRadius: '12px',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   background: 'rgba(15, 23, 42, 0.8)',
                   color: '#94a3b8',
-                  fontSize: '1.2rem',
+                  fontSize: '1.1rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   userSelect: 'none'
                 }}
               >
-                {grade >= 7 ? '± 负数' : '• 小数点'}
+                {grade >= 7 ? '± 负数' : (grade >= 4 ? '• 小数点' : '🧹 清空')}
               </button>
 
               <button

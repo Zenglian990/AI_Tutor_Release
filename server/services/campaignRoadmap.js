@@ -35,34 +35,45 @@ async function computeCampaignRoadmap(profileId = 'default', grade = '7_up', sub
     }
   }
 
+  // Dynamic exam scale across K12 (1-12 grades): High school main subjects 150 / electives 100; Middle school 120; Primary 100
+  const gradeNum = parseInt(String(grade || '7').replace(/\D/g, ''), 10) || 7;
+  const isHighSchool = gradeNum >= 10;
+  const isPrimary = gradeNum <= 6;
+  const isMainSubject = ['语文', '数学', '英语'].includes(subject);
+  const maxScore = isHighSchool ? (isMainSubject ? 150 : 100) : (isPrimary ? 100 : 120);
+  const examName = isHighSchool ? '新高考/月考' : (isPrimary ? '单元/期末' : '中考/期末');
+
   // Calculate mastery index (0 - 100)
   const baseCoveragePct = Math.min(Math.round(((masteredCount * 1.0 + inProgressCount * 0.4) / Math.max(totalNodesCount, 8)) * 100), 100);
-  // Score projection for Middle School Entrance / Midterm (out of 120 standard points in Chinese Exams)
-  const baseScore = 65;
-  const simulatedScore = Math.min(120, Math.round(baseScore + (baseCoveragePct * 0.55) - (totalMistakeCount > 5 ? 3 : 0)));
+  const baseScore = Math.round(maxScore * 0.55);
+  const simulatedScore = Math.min(maxScore, Math.round(baseScore + (baseCoveragePct * (maxScore - baseScore) / 100) - (totalMistakeCount > 5 ? 3 : 0)));
+
+  const fmtRange = (lowRatio, highRatio) => `${Math.round(maxScore * lowRatio)}-${Math.round(maxScore * highRatio)}分`;
 
   // Milestones
   const milestones = [
-    { id: 1, title: '阶段一：课本定理与核心概念筑基', targetPct: 30, achieved: baseCoveragePct >= 30, scoreRange: '75-85分' },
-    { id: 2, title: '阶段二：高频母题与常规解题模型', targetPct: 65, achieved: baseCoveragePct >= 65, scoreRange: '88-102分' },
-    { id: 3, title: '阶段三：易错陷阱穿透与草稿闭环', targetPct: 85, achieved: baseCoveragePct >= 85, scoreRange: '105-112分' },
-    { id: 4, title: '阶段四：中考/期末压轴突破与拔尖', targetPct: 100, achieved: baseCoveragePct >= 95, scoreRange: '115-120分冲刺' }
+    { id: 1, title: '阶段一：课本定理与核心概念筑基', targetPct: 30, achieved: baseCoveragePct >= 30, scoreRange: fmtRange(0.62, 0.72) },
+    { id: 2, title: '阶段二：高频母题与常规解题模型', targetPct: 65, achieved: baseCoveragePct >= 65, scoreRange: fmtRange(0.74, 0.85) },
+    { id: 3, title: '阶段三：易错陷阱穿透与草稿闭环', targetPct: 85, achieved: baseCoveragePct >= 85, scoreRange: fmtRange(0.86, 0.93) },
+    { id: 4, title: `阶段四：${examName}压轴突破与拔尖`, targetPct: 100, achieved: baseCoveragePct >= 95, scoreRange: `${fmtRange(0.95, 1.0)}冲刺` }
   ];
 
   return {
     profileId,
     subject,
     grade,
+    maxScore,
+    examName,
     totalNodesCount,
     masteredCount,
     inProgressCount,
     coveragePercentage: baseCoveragePct,
-    simulatedScore: `${simulatedScore} / 120`,
-    scoreTier: simulatedScore >= 108 ? '特优·学霸梯队' : (simulatedScore >= 90 ? '良好·中坚梯队' : '筑基·潜力梯队'),
+    simulatedScore: `${simulatedScore} / ${maxScore}`,
+    scoreTier: simulatedScore >= maxScore * 0.9 ? '特优·学霸梯队' : (simulatedScore >= maxScore * 0.75 ? '良好·中坚梯队' : '筑基·潜力梯队'),
     milestones,
     strategicAdvice: baseCoveragePct < 50
-      ? '当前阶段首要目标是夯实课本定理基础，跟紧教材章节闯关，每天拿下 1 个核心概念。'
-      : '当前已进入进阶攻坚期，建议强化靶向错题与母题举一反三，重点突破易错题。'
+      ? `当前阶段首要目标是夯实${isHighSchool ? '高中选修/必修' : '课本'}定理基础，跟紧教材章节闯关，每天拿下 1 个核心概念。`
+      : `当前已进入${examName}进阶攻坚期，建议强化靶向错题与母题举一反三，重点突破压轴易错题。`
   };
 }
 

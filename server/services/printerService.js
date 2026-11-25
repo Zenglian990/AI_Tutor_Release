@@ -47,7 +47,7 @@ function formatExamForPrinter({
 
   // Title and header
   text += `${divider}\n`;
-  text += `        【曾先生智慧私教】${title}\n`;
+  text += `        【AI 智慧私教】${title}\n`;
   text += `${divider}\n`;
   text += `学员姓名: ${studentName.padEnd(10, ' ')} 年级: ${grade}   科目: ${subject}\n`;
   text += `测验日期: ${dateStr.padEnd(14, ' ')} 模式: ${printMode === 'blank_student' ? '空白实战演练' : '详析精讲核对'}\n`;

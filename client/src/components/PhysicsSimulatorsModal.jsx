@@ -10,9 +10,22 @@ import React, { useState, useEffect, useRef } from 'react';
 export default function PhysicsSimulatorsModal({
   isOpen,
   onClose,
-  onApplyToChat
+  onApplyToChat,
+  currentGrade = '8_up'
 }) {
-  const [activeTab, setActiveTab] = useState('optics'); // 'optics' | 'circuits'
+  const isHighSchool = ['10', '11', '12'].some(n => String(currentGrade || '').startsWith(n));
+  const [activeTab, setActiveTab] = useState(isHighSchool ? 'lorentz' : 'optics'); // 'optics' | 'circuits' | 'lorentz'
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(isHighSchool ? 'lorentz' : 'optics');
+    }
+  }, [isOpen, isHighSchool]);
+
+  // High School Lorentz Force State (R = mv / qB)
+  const [velocity, setVelocity] = useState(4); // ×10^5 m/s
+  const [magneticB, setMagneticB] = useState(0.5); // T
+  const [chargeMassRatio, setChargeMassRatio] = useState(2); // q/m scale
 
   // Optics State
   const [focalLength, setFocalLength] = useState(10); // f in cm
@@ -95,38 +108,41 @@ export default function PhysicsSimulatorsModal({
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      position: 'fixed', inset: 0, width: '100%', height: '100%',
       background: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(10px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
-      padding: '16px'
+      padding: '8px', boxSizing: 'border-box'
     }}>
       <div style={{
-        background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '780px',
-        maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
-        display: 'flex', flexDirection: 'column'
+        background: '#ffffff', borderRadius: '20px', width: '100%', maxWidth: 'min(780px, calc(100vw - 16px))',
+        maxHeight: '94vh', overflowY: 'auto', overflowX: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+        display: 'flex', flexDirection: 'column', boxSizing: 'border-box'
       }}>
         {/* Top Header */}
         <div style={{
           background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-          color: '#ffffff', padding: '16px 24px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          color: '#ffffff', padding: '14px 16px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px',
+          boxSizing: 'border-box'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.6rem' }}>🔬</span>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
-                初中物理动态虚拟微实验台
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🔬</span>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, lineHeight: 1.3 }}>
+                {isHighSchool ? '高中·初中物理动态虚拟微实验台' : '物理动态虚拟微实验台（初中·高中）'}
               </h3>
-              <div style={{ fontSize: '0.8rem', color: '#bae6fd', marginTop: '2px' }}>
-                动态光路折射 · 电路实时欧姆定律 · 探究式直观建构物理图景
+              <div style={{ fontSize: '0.78rem', color: '#bae6fd', marginTop: '2px', lineHeight: 1.35 }}>
+                {isHighSchool ? '洛伦兹力磁场圆周运动 · 动态光路折射 · 电路实时欧姆定律' : '动态光路折射 · 电路实时欧姆定律 · 高中电磁磁场轨迹'}
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="关闭物理实验台"
             style={{
-              background: 'transparent', border: 'none', color: '#ffffff',
-              fontSize: '1.4rem', cursor: 'pointer', padding: '4px'
+              background: 'rgba(255,255,255,0.16)', border: 'none', color: '#ffffff',
+              fontSize: '1.25rem', cursor: 'pointer', padding: '4px 10px', borderRadius: '8px',
+              flexShrink: 0
             }}
           >
             ✕
@@ -135,35 +151,117 @@ export default function PhysicsSimulatorsModal({
 
         {/* Tab Switcher */}
         <div style={{
-          display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 24px 0'
+          display: 'flex', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 10px 0', gap: '4px', boxSizing: 'border-box'
         }}>
+          <button
+            onClick={() => setActiveTab('lorentz')}
+            style={{
+              padding: '8px 10px', border: 'none', background: 'transparent',
+              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+              color: activeTab === 'lorentz' ? '#7c3aed' : '#64748b',
+              borderBottom: activeTab === 'lorentz' ? '3px solid #7c3aed' : '3px solid transparent'
+            }}
+          >
+            🧲 高中电磁：洛伦兹力圆周运动
+          </button>
           <button
             onClick={() => setActiveTab('optics')}
             style={{
-              padding: '10px 18px', border: 'none', background: 'transparent',
-              fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer',
+              padding: '8px 10px', border: 'none', background: 'transparent',
+              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
               color: activeTab === 'optics' ? '#0284c7' : '#64748b',
               borderBottom: activeTab === 'optics' ? '3px solid #0284c7' : '3px solid transparent'
             }}
           >
-            🔍 凸透镜成像规律 (光路折射)
+            🔍 凸透镜成像规律
           </button>
           <button
             onClick={() => setActiveTab('circuits')}
             style={{
-              padding: '10px 18px', border: 'none', background: 'transparent',
-              fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer',
+              padding: '8px 10px', border: 'none', background: 'transparent',
+              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
               color: activeTab === 'circuits' ? '#0284c7' : '#64748b',
               borderBottom: activeTab === 'circuits' ? '3px solid #0284c7' : '3px solid transparent'
             }}
           >
-            ⚡ 欧姆定律与滑动变阻器 (电路仿真)
+            ⚡ 欧姆定律电路仿真
           </button>
         </div>
 
         {/* Body Container */}
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {activeTab === 'optics' ? (
+        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box', minWidth: 0 }}>
+          {activeTab === 'lorentz' ? (() => {
+            const radiusCm = velocity / Math.max(0.1, magneticB * chargeMassRatio);
+            const svgRadius = Math.max(22, Math.min(92, radiusCm * 14));
+            const periodVal = (2 * Math.PI) / Math.max(0.1, magneticB * chargeMassRatio);
+            return (
+              <div>
+                <div style={{
+                  background: '#0f172a', borderRadius: '16px', padding: '16px', overflow: 'hidden',
+                  boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)'
+                }}>
+                  <svg viewBox="0 0 700 240" style={{ width: '100%', height: 'auto', display: 'block' }}>
+                    {[80, 160, 240, 320, 400, 480, 560, 620].map(x =>
+                      [40, 100, 160, 210].map(y => (
+                        <text key={`${x}-${y}`} x={x} y={y} fill="#334155" fontSize="14" textAnchor="middle">×</text>
+                      ))
+                    )}
+                    <text x="20" y="24" fill="#a78bfa" fontSize="12" fontWeight="bold">匀强磁场 B（垂直纸面向里） · R = mv / (qB)</text>
+                    <circle cx="350" cy={210 - svgRadius} r={svgRadius} fill="rgba(139, 92, 246, 0.12)" stroke="#a78bfa" strokeWidth="2.5" strokeDasharray="6 4" />
+                    <circle cx="350" cy={210 - svgRadius} r="3.5" fill="#fbbf24" />
+                    <line x1="350" y1={210 - svgRadius} x2={350 + svgRadius} y2={210 - svgRadius} stroke="#fbbf24" strokeWidth="1.5" />
+                    <text x={355 + svgRadius / 2} y={204 - svgRadius} fill="#fbbf24" fontSize="12" fontWeight="bold">R={radiusCm.toFixed(2)}cm</text>
+                    <circle cx="350" cy="210" r="6" fill="#38bdf8" />
+                    <line x1="310" y1="210" x2="385" y2="210" stroke="#38bdf8" strokeWidth="2.5" />
+                    <polygon points="392,210 382,205 382,215" fill="#38bdf8" />
+                    <text x="398" y="214" fill="#38bdf8" fontSize="12" fontWeight="bold">v₀ (+q)</text>
+                  </svg>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '14px' }}>
+                  <div style={{ background: '#f5f3ff', padding: '12px', borderRadius: '12px', border: '1px solid #ddd6fe' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#5b21b6', marginBottom: '6px' }}>
+                      初速度 v = {velocity.toFixed(1)} ×10⁵ m/s
+                    </label>
+                    <input type="range" min="1" max="8" step="0.5" value={velocity} onChange={e => setVelocity(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ background: '#f0f9ff', padding: '12px', borderRadius: '12px', border: '1px solid #bae6fd' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#0369a1', marginBottom: '6px' }}>
+                      磁感应强度 B = {magneticB.toFixed(2)} T
+                    </label>
+                    <input type="range" min="0.2" max="1.5" step="0.05" value={magneticB} onChange={e => setMagneticB(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#047857', marginBottom: '6px' }}>
+                      比荷系数 q/m = {chargeMassRatio.toFixed(1)}
+                    </label>
+                    <input type="range" min="1" max="4" step="0.5" value={chargeMassRatio} onChange={e => setChargeMassRatio(Number(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '14px', padding: '12px 16px', background: '#faf5ff', borderRadius: '12px', border: '1px solid #e9d5ff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#4c1d95' }}>
+                    <div>📐 轨道半径 <b>R = mv/(qB) ≈ {radiusCm.toFixed(2)} cm</b> ｜ 周期 <b>T = 2πm/(qB) ≈ {periodVal.toFixed(2)} μs</b>（与速度 v 无关！）</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onApplyToChat && onApplyToChat(
+                        `老师，我在高中物理电磁微实验台上模拟了【带电粒子在匀强磁场中的圆周运动】：v = ${velocity.toFixed(1)}×10⁵ m/s，B = ${magneticB.toFixed(2)} T，测得轨道半径 R = ${radiusCm.toFixed(2)} cm，周期 T = ${periodVal.toFixed(2)} μs。请结合新高考压轴题，教我“找圆心、定半径、算偏转角与运动时间”的通用破题步骤！`
+                      );
+                      onClose();
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#fff',
+                      border: 'none', padding: '8px 14px', borderRadius: '10px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer'
+                    }}
+                  >
+                    💬 带入高考电磁课堂请教
+                  </button>
+                </div>
+              </div>
+            );
+          })() : activeTab === 'optics' ? (
             /* Optics Simulator */
             <div>
               {/* Optics SVG Simulation Canvas */}
@@ -309,7 +407,7 @@ export default function PhysicsSimulatorsModal({
               {/* Interactive Controls */}
               <div style={{
                 background: '#f8fafc', padding: '16px', borderRadius: '14px', marginTop: '12px',
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px'
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '16px'
               }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
@@ -470,7 +568,7 @@ export default function PhysicsSimulatorsModal({
               {/* Slider Controls */}
               <div style={{
                 background: '#f8fafc', padding: '16px', borderRadius: '14px', marginTop: '12px',
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px'
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '16px'
               }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>

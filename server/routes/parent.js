@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const { fetch: undiciFetch } = require('undici');
 const { getSqliteDb } = require('../db/init');
 const { getStudentCognitiveMemory } = require('../services/studentMemory');
 const { formatGradeName } = require('../prompts/guidelines');
-const { isSafeExternalUrl, validateSafeUrlAsync } = require('../utils/urlValidator');
-const { API_TOKEN, PARENT_VIEW_SECRET } = require('../config');
+const { isSafeExternalUrl, validateSafeUrlAsync, createPinnedDispatcher } = require('../utils/urlValidator');
+const { API_TOKEN, PARENT_VIEW_SECRET, NODE_ENV } = require('../config');
 const { decryptField } = require('../utils/crypto');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
+const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 const logger = require('../services/logger');
 
 // Cryptographic signing secret dedicated to parent view tokens (domain-separated from general API_TOKEN)
@@ -46,13 +49,19 @@ function verifyParentToken(token) {
 
 // GET /api/parent/remote-token
 // Generates a secure shareable token for WeChat / mobile browser viewing
-router.get('/parent/remote-token', (req, res) => {
+router.get('/parent/remote-token', async (req, res) => {
   try {
-    const { profile_id = 'default' } = req.query;
-    const token = generateParentToken(profile_id);
+    const requestedPid = req.query.profile_id || 'default';
+    const isAdmin = await isVerifiedAdminRequest(req);
+    const authCheck = resolveAuthorizedProfileId(req, requestedPid);
+    if (!isAdmin && !authCheck.ok) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error || '无权为该学生生成家长远程令牌' });
+    }
+    const targetPid = isAdmin ? String(requestedPid).trim() || 'default' : authCheck.profileId;
+    const token = generateParentToken(targetPid);
     res.json({
       success: true,
-      profile_id,
+      profile_id: targetPid,
       token,
       expires_in_days: 30
     });
@@ -89,39 +98,44 @@ router.get('/parent/remote-view', async (req, res) => {
     }
 
     // 1. Fetch cognitive memory and student name
-    const memory = await getStudentCognitiveMemory(activeProfileId, '7_up', '数学', '曾练');
-    const studentName = memory.studentName || '曾练';
+    const memory = await getStudentCognitiveMemory(activeProfileId, '7_up', '数学', '同学');
+    const studentName = memory.studentName || '同学';
 
-    // 2. Fetch Gamification & Rank
+    // 2. Fetch Gamification & Rank (merge student_streaks as primary truth + user_gamification fallback)
     let gameRow = null;
+    let streakRow = null;
     try {
       gameRow = await db.get('SELECT * FROM user_gamification WHERE profile_id = ?', [activeProfileId]);
+      streakRow = await db.get('SELECT * FROM student_streaks WHERE profile_id = ?', [activeProfileId]);
     } catch (e) {
-      logger.warn('[ParentRemote] Could not read user_gamification:', e.message);
+      logger.warn('[ParentRemote] Could not read gamification/streak tables:', e.message);
     }
-    const rankTier = gameRow?.rank_tier || '青铜求知者';
-    const rankPoints = gameRow?.rank_points || 120;
-    const streakDays = gameRow?.streak_days || 1;
+    const computedPoints = streakRow
+      ? ((streakRow.peer_intimacy_xp || 0) + (streakRow.total_sessions || 0) * 10)
+      : (gameRow?.rank_points || 0);
+    const rankPoints = Math.max(computedPoints, gameRow?.rank_points || 0);
+    const streakDays = streakRow?.current_streak ?? gameRow?.streak_days ?? 0;
+    const rankTier = gameRow?.rank_tier || (rankPoints >= 1500 ? '王者·通识宗师' : rankPoints >= 800 ? '钻石·敏思学者' : rankPoints >= 400 ? '黄金·明辨辨士' : rankPoints >= 150 ? '白银·躬行敏求' : '青铜·求知学童');
 
-    // 3. Daily activity stats
+    // 3. Daily activity stats (strictly count real user turns, excluding system error rows)
     let todayChatCount = 0;
     let todayMistakesSolved = 0;
     try {
       const chatRow = await db.get(
-        `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND date(timestamp) = date('now')`,
+        `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND date(timestamp) = date('now')`,
         [activeProfileId]
       );
       todayChatCount = chatRow ? chatRow.count : 0;
 
       const mistakeRow = await db.get(
-        `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(timestamp) = date('now')`,
+        `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(COALESCE(last_reviewed_at, timestamp)) = date('now')`,
         [activeProfileId]
       );
       todayMistakesSolved = mistakeRow ? mistakeRow.count : 0;
     } catch (e) {
       logger.warn('[ParentRemote] Daily activity query error:', e.message);
     }
-    const activeMinutes = todayChatCount > 0 ? Math.max(Math.round(todayChatCount * 2.5), 5) : 0;
+    const activeMinutes = todayChatCount > 0 ? Math.max(Math.round(todayChatCount * 3), 3) : 0;
 
     // 4. Mistakes overview
     let totalMistakes = 0;
@@ -194,37 +208,42 @@ router.get('/parent/remote-view', async (req, res) => {
       logger.warn('[ParentRemote] Recent mistakes query error:', e.message);
     }
 
-    // 7. Sibling / family profiles list
-    let availableProfiles = [];
-    try {
-      const distinctProfiles = await db.all(
-        `SELECT DISTINCT profile_id FROM mistakes UNION SELECT DISTINCT profile_id FROM chat_history`
-      );
-      availableProfiles = distinctProfiles.map(p => p.profile_id).filter(Boolean);
-    } catch (e) {
-      availableProfiles = [activeProfileId];
-    }
+    // 7. Strict profile isolation: NEVER expose other users' profile_ids from database
+    const availableProfiles = [activeProfileId];
 
-    // 8. 5-Dimensional Cognitive Radar
-    const radarData = {
-      conceptClarity: Math.min(98, 82 + Math.min(masteredMistakes * 2, 16)),
-      computationPrecision: Math.min(96, 78 + Math.min(streakDays * 3, 18)),
-      logicDeduction: Math.min(95, 80 + Math.min(todayChatCount * 2, 15)),
-      activeFocus: todayChatCount > 0 ? 94 : 82,
-      habitConsistency: Math.min(99, 85 + Math.min(streakDays * 2, 14))
-    };
+    // 8. 5-Dimensional Cognitive Radar (honestly computed from real activity; 0 when no learning yet)
+    const hasActivity = todayChatCount > 0 || totalMistakes > 0 || streakDays > 0;
+    const radarData = hasActivity
+      ? {
+          conceptClarity: Math.min(100, Math.round(masteryRate * 0.8 + Math.min(masteredMistakes * 4, 20))),
+          computationPrecision: Math.min(100, Math.round(masteryRate * 0.7 + Math.min(todayMistakesSolved * 6, 30))),
+          logicDeduction: Math.min(100, Math.min(todayChatCount * 12, 95)),
+          activeFocus: Math.min(100, Math.min(activeMinutes * 3, 98)),
+          habitConsistency: Math.min(100, Math.min(streakDays * 14, 100))
+        }
+      : {
+          conceptClarity: 0,
+          computationPrecision: 0,
+          logicDeduction: 0,
+          activeFocus: 0,
+          habitConsistency: 0
+        };
 
-    // 9. Personalized reassuring summary memo
+    const comfortScore = todayChatCount > 0 || todayMistakesSolved > 0
+      ? `${Math.min(99, 70 + Math.min(todayChatCount * 4 + todayMistakesSolved * 5, 29))} (今日已真实伴学)`
+      : '待开启今日学习';
+
+    // 9. Personalized honest summary memo
     const memoContent = [
       todayChatCount > 0
-        ? `🌟 今日专注学习约 ${activeMinutes} 分钟，与名师深度互动设问 ${todayChatCount} 轮。`
-        : `🌟 今日暂未开启新题目推导演练，保持良好的自主节奏。`,
+        ? `🌟 今日专注学习约 ${activeMinutes} 分钟，与 AI 私教真实互动设问 ${todayChatCount} 轮。`
+        : `🌟 今日暂未产生有效互动学习记录，开启首道练习后将自动生成真实学情诊断。`,
       weakTags.length > 0
         ? `🎯 核心攻坚考点：【${weakTags.slice(0, 3).map(w => w.tag).join('、')}】。`
-        : `🎯 基础概念扎实，推导过程逻辑清晰。`,
+        : (todayChatCount > 0 ? `🎯 暂无明显高频薄弱标签，请继续保持稳健推导。` : `🎯 暂无薄弱考点数据，录入或批改错题后将自动构建薄弱点画像。`),
       todayMistakesSolved > 0
-        ? `💡 艾宾浩斯抗遗忘复盘：今天成功再刷清空了 ${todayMistakesSolved} 道易错题，进步显著！`
-        : `💡 建议晚间保持 15 分钟趣味启发对话或草稿纸复盘，切勿盲目题海战术。`
+        ? `💡 抗遗忘复盘：今天成功复盘了 ${todayMistakesSolved} 道易错题，巩固扎实！`
+        : `💡 建议晚间保持 10–15 分钟启发式问答或错题闪卡复盘，养成稳定学习节奏。`
     ];
 
     res.json({
@@ -240,7 +259,7 @@ router.get('/parent/remote-view', async (req, res) => {
       overallStats: {
         totalMistakes,
         masteredMistakes,
-        masteryRate,
+        masteryRate: totalMistakes > 0 ? masteryRate : 0,
         streakDays,
         rankTier,
         rankPoints
@@ -249,23 +268,28 @@ router.get('/parent/remote-view', async (req, res) => {
       recentMistakes,
       radarData,
       memoContent,
-      comfortScore: '98 (放心特优)',
+      comfortScore,
       availableProfiles
     });
   } catch (err) {
     logger.error('[ParentRemote] Failed serving remote view:', err);
-    res.status(500).json({ error: '获取家长远程学情数据失败', details: err.message });
+    res.status(500).json({ error: '获取家长远程学情数据失败', ...(NODE_ENV === 'development' ? { details: err.message } : {}) });
   }
 });
 
 // GET /api/parent/daily-memo
 router.get('/parent/daily-memo', async (req, res) => {
   try {
-    const { profile_id = 'default', grade = '7_up', subject = '数学', student_name = '曾练' } = req.query;
+    const { profile_id = 'default', grade = '7_up', subject = '数学', student_name = '同学' } = req.query;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    }
+    const targetPid = authCheck.profileId;
     const db = getSqliteDb();
 
-    const memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
-    const resolvedName = memory.studentName || '曾练';
+    const memory = await getStudentCognitiveMemory(targetPid, grade, subject, student_name);
+    const resolvedName = (student_name && student_name !== '同学') ? student_name : (memory.studentName || '同学');
     const gradeLabel = formatGradeName(grade);
 
     let todayChatCount = 0;
@@ -274,14 +298,14 @@ router.get('/parent/daily-memo', async (req, res) => {
     if (db) {
       try {
         const chatRow = await db.get(
-          `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND date(timestamp) = date('now')`,
-          [profile_id]
+          `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND date(timestamp) = date('now')`,
+          [targetPid]
         );
         todayChatCount = chatRow ? chatRow.count : 0;
 
         const mistakeRow = await db.get(
-          `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(timestamp) = date('now')`,
-          [profile_id]
+          `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(COALESCE(last_reviewed_at, timestamp)) = date('now')`,
+          [targetPid]
         );
         todayMistakesSolved = mistakeRow ? mistakeRow.count : 0;
       } catch (e) {
@@ -289,17 +313,23 @@ router.get('/parent/daily-memo', async (req, res) => {
       }
     }
 
-    // Minutes spent estimate (e.g. 2.5 mins per interaction, 0 if no interaction)
-    const activeMinutes = todayChatCount > 0 ? Math.max(Math.round(todayChatCount * 2.5), 5) : 0;
+    const activeMinutes = todayChatCount > 0 ? Math.max(Math.round(todayChatCount * 3), 3) : 0;
+    const comfortScore = (todayChatCount > 0 || todayMistakesSolved > 0)
+      ? `${Math.min(99, 70 + Math.min(todayChatCount * 4 + todayMistakesSolved * 5, 29))} (真实活跃)`
+      : '暂无学习记录';
 
-    const memoTitle = `曾先生您好，这是【${resolvedName}】今日专属名师家访便签 💌`;
-    const memoContent = [
-      todayChatCount > 0
-        ? `🌟 **今日伴学概况**：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】专注研学约 ${activeMinutes} 分钟，互动探讨 ${todayChatCount} 轮。`
-        : `🌟 **今日伴学概况**：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】暂未开启互动探讨。`,
-      `🎯 **核心能力提升**：严格遵循苏格拉底四阶引导，动笔演练草稿，拒绝直接抄写答案。${memory.topWeakTags?.length ? `重点攻坚了【${memory.topWeakTags.join('、')}】薄弱考点。` : '在基础概念推导上表现沉稳。'}`,
-      `💡 **名师督学建议**：${todayMistakesSolved > 0 ? `今天顺利复盘了 ${todayMistakesSolved} 道艾宾浩斯到期错题，记忆加深明显！` : (todayChatCount > 0 ? '目前学习状态积极，晚上建议安排适度眼部放松与体育活动，无需过度刷题。' : '建议晚间安排 10 分钟趣味答疑或闯关挑战，保持每日思维敏锐度。')}`
-    ];
+    const memoTitle = `家长您好，这是【${resolvedName}】今日专属学情家访便签 💌`;
+    const memoContent = todayChatCount > 0 || todayMistakesSolved > 0
+      ? [
+          `🌟 今日伴学概况：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】真实互动探讨 ${todayChatCount} 轮，专注学习约 ${activeMinutes} 分钟。`,
+          `🎯 能力与考点追踪：${memory.topWeakTags?.length ? `今日重点聚焦【${memory.topWeakTags.join('、')}】薄弱考点。` : '今日推导过程平稳，暂无新增高频薄弱标签。'}`,
+          `💡 督学跟进建议：${todayMistakesSolved > 0 ? `今天顺利复盘了 ${todayMistakesSolved} 道错题，抗遗忘巩固效果良好！` : '目前学习状态积极，建议晚间安排适度眼部放松与体育活动，避免过度刷题。'}`
+        ]
+      : [
+          `🌟 今日伴学概况：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】尚无有效对话或错题复盘记录。`,
+          `🎯 能力与考点追踪：待孩子开始答疑、拍题批改或闪卡复习后，系统将基于真实作答生成薄弱点分析。`,
+          `💡 督学跟进建议：建议晚间陪孩子一起打开 10 分钟趣味答疑、口算天天练或知识点闯关，轻松开启今日节奏。`
+        ];
 
     res.json({
       success: true,
@@ -310,11 +340,12 @@ router.get('/parent/daily-memo', async (req, res) => {
       todayChatCount,
       todayMistakesSolved,
       memoContent,
-      comfortScore: '98 (放心特优)'
+      comfortScore,
+      hasRealActivity: todayChatCount > 0 || todayMistakesSolved > 0
     });
   } catch (err) {
     logger.error('[ParentMemo] Failed to generate parent memo:', err);
-    res.status(500).json({ error: '生成家长家访便签失败', details: err.message });
+    res.status(500).json({ error: '生成家长家访便签失败', ...(NODE_ENV === 'development' ? { details: err.message } : {}) });
   }
 });
 
@@ -322,18 +353,22 @@ router.get('/parent/daily-memo', async (req, res) => {
 // Pushes daily memo directly to parent's WeChat / Enterprise WeChat / DingTalk Webhook
 router.post('/parent/push-webhook', async (req, res) => {
   try {
-    const { webhook_url, memo_title, memo_content = [], student_name = '曾练', date_str, comfort_score = '98 (放心特优)' } = req.body;
+    const isAdmin = await isVerifiedAdminRequest(req);
+    if (!isAdmin && NODE_ENV === 'production') {
+      return res.status(403).json({ error: '推送家长 Webhook 需要先完成家长 PIN 或管理员身份验证' });
+    }
+
+    const { webhook_url, memo_title, memo_content = [], student_name = '同学', date_str, comfort_score = '待开启学习' } = req.body;
 
     const urlCheck = await validateSafeUrlAsync(webhook_url);
     if (!urlCheck.safe) {
       return res.status(400).json({ error: `非法或不安全的 Webhook 链接: ${urlCheck.error}` });
     }
 
-    const markdownText = `### ${memo_title || `名师晚间家访便签 💌`}\n**学员**：${student_name} | **日期**：${date_str || new Date().toLocaleDateString('zh-CN')}\n\n${memo_content.join('\n\n')}\n\n> 🛡️ **家长放心指数**：${comfort_score}\n> 💡 *由曾练专属 AI 私教案头自动归纳生成*`;
+    const markdownText = `### ${memo_title || `名师晚间家访便签 💌`}\n**学员**：${student_name} | **日期**：${date_str || new Date().toLocaleDateString('zh-CN')}\n\n${memo_content.join('\n\n')}\n\n> 🛡️ **今日伴学指数**：${comfort_score}\n> 💡 *由 AI 专属私教自动归纳生成*`;
 
     let payload = {};
     if (webhook_url.includes('dingtalk.com')) {
-      // DingTalk bot format
       payload = {
         msgtype: 'markdown',
         markdown: {
@@ -342,7 +377,6 @@ router.post('/parent/push-webhook', async (req, res) => {
         }
       };
     } else if (webhook_url.includes('feishu.cn') || webhook_url.includes('larksuite.com')) {
-      // Feishu bot format
       payload = {
         msg_type: 'interactive',
         card: {
@@ -351,7 +385,6 @@ router.post('/parent/push-webhook', async (req, res) => {
         }
       };
     } else {
-      // Standard WeChat Work / Server酱 / Custom Webhook format
       payload = {
         msgtype: 'markdown',
         markdown: {
@@ -361,11 +394,22 @@ router.post('/parent/push-webhook', async (req, res) => {
       };
     }
 
-    const fetchResponse = await fetch(webhook_url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const dispatcher = (urlCheck.hostname && Array.isArray(urlCheck.addresses) && urlCheck.addresses.length > 0)
+      ? createPinnedDispatcher(urlCheck.hostname, urlCheck.addresses)
+      : undefined;
+    let fetchResponse;
+    try {
+      fetchResponse = await undiciFetch(webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        redirect: 'error',
+        ...(dispatcher ? { dispatcher } : {}),
+        signal: AbortSignal.timeout(10000)
+      });
+    } finally {
+      try { await dispatcher?.close?.(); } catch {}
+    }
 
     const respText = await fetchResponse.text();
     logger.info('[ParentMemo] Pushed memo to webhook:', webhook_url.slice(0, 35) + '...', respText.slice(0, 50));

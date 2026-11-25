@@ -65,8 +65,17 @@ function verifyStudentSessionToken(token) {
   };
 }
 
-function buildCookieHeaderValue(name, value, maxAgeSeconds, cookiePath = '/api') {
+function isRequestHttps(req) {
+  if (!req) return (process.env.NODE_ENV || config.NODE_ENV) === 'production';
+  if (req.secure) return true;
+  const proto = String(req.headers?.['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase();
+  if (proto === 'https') return true;
+  return false;
+}
+
+function buildCookieHeaderValue(name, value, maxAgeSeconds, cookiePath = '/api', req = null) {
   const isProd = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
+  const useSecure = req ? isRequestHttps(req) : isProd;
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     `Path=${cookiePath}`,
@@ -74,14 +83,15 @@ function buildCookieHeaderValue(name, value, maxAgeSeconds, cookiePath = '/api')
     'SameSite=Lax',
     `Max-Age=${maxAgeSeconds}`
   ];
-  if (isProd) {
+  if (useSecure) {
     parts.push('Secure');
   }
   return parts.join('; ');
 }
 
-function buildClearCookieHeaderValue(name, cookiePath = '/api') {
+function buildClearCookieHeaderValue(name, cookiePath = '/api', req = null) {
   const isProd = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
+  const useSecure = req ? isRequestHttps(req) : isProd;
   const parts = [
     `${name}=`,
     `Path=${cookiePath}`,
@@ -89,7 +99,7 @@ function buildClearCookieHeaderValue(name, cookiePath = '/api') {
     'SameSite=Lax',
     'Max-Age=0'
   ];
-  if (isProd) {
+  if (useSecure) {
     parts.push('Secure');
   }
   return parts.join('; ');
@@ -127,7 +137,6 @@ function extractStudentTokenFromRequest(req) {
 }
 
 const ADMIN_ROUTES = [
-  '/system/network-info',
   '/config/update-keys',
   '/config/test-llm',
   '/config/keys',
@@ -252,7 +261,13 @@ async function attachSessionMiddleware(req, res, next) {
   const skipStrictAuthInDev = process.env.REQUIRE_AUTH === 'false' ||
     ((currentEnv === 'development' || currentEnv === 'test') && !process.env.REQUIRE_AUTH);
 
-  const isTargetAdmin = isAdminRoute(req.path);
+  const isPublicModeAnonNetworkInfo =
+    req.path === '/system/network-info' &&
+    process.env.CLOUD_PUBLIC_MODE === 'true' &&
+    !hasAuthHeader;
+  const isTargetAdmin = isPublicModeAnonNetworkInfo
+    ? false
+    : (isAdminRoute(req.path) || req.path === '/system/network-info');
 
   // 高危管理路由防线：在生产环境或 REQUIRE_AUTH=true（以及对 update-keys / membership/admin / shutdown 等敏感接口）下严格拦截
   if (isTargetAdmin && !skipStrictAuthInDev) {
@@ -293,7 +308,10 @@ async function attachSessionMiddleware(req, res, next) {
 
   if (studentPayload) {
     authFailures.delete(clientIp);
-    const mergedPids = Array.from(new Set([...studentPayload.pids, fallbackPid, 'default']));
+    // 安全加固：严格以已验签会话中的 pids 为准，严禁把客户端任意请求的 fallbackPid 动态并入权限白名单
+    const verifiedPids = Array.isArray(studentPayload.pids) && studentPayload.pids.length > 0
+      ? studentPayload.pids
+      : [studentPayload.pid || 'default'];
     req.authenticated = true;
     req.auth = {
       authenticated: true,
@@ -301,7 +319,7 @@ async function attachSessionMiddleware(req, res, next) {
       isAdmin: false,
       sessionId: studentPayload.sid,
       activeProfileId: studentPayload.pid,
-      allowedProfileIds: mergedPids,
+      allowedProfileIds: verifiedPids,
       exp: studentPayload.exp,
       invalidCredentialPresented: false
     };
@@ -309,20 +327,22 @@ async function attachSessionMiddleware(req, res, next) {
   }
 
   // 非管理路由（学生正常教学流程）：
-  // 自动签发/挂载平滑兼容的学生教学会话，即使客户端未带 Token 或带有旧版残留的默认静态 Token 也不报 401
+  // 生产环境无有效会话 Cookie 时，严禁把客户端任意请求的 fallbackPid 签发为授权档案（防止清 Cookie IDOR 绕过）
   const autoSid = `sid_${crypto.randomBytes(8).toString('hex')}`;
-  const autoProfiles = Array.from(new Set([fallbackPid, 'default']));
+  const safeInitialPid = !skipStrictAuthInDev ? 'default' : fallbackPid;
+  const autoProfiles = Array.from(new Set([safeInitialPid, 'default']));
   if (!cookies[STUDENT_SESSION_COOKIE] && !skipStrictAuthInDev) {
     try {
       const autoToken = generateStudentSessionToken({
         sessionId: autoSid,
-        activeProfileId: fallbackPid,
+        activeProfileId: safeInitialPid,
         profiles: autoProfiles
       }, STUDENT_SESSION_TTL_SECONDS);
       appendSetCookie(
         res,
-        buildCookieHeaderValue(STUDENT_SESSION_COOKIE, autoToken, STUDENT_SESSION_TTL_SECONDS, '/api')
+        buildCookieHeaderValue(STUDENT_SESSION_COOKIE, autoToken, STUDENT_SESSION_TTL_SECONDS, '/api', req)
       );
+      res.setHeader('X-Student-Session-Token', autoToken);
     } catch {}
   }
 
@@ -332,7 +352,7 @@ async function attachSessionMiddleware(req, res, next) {
     role: 'student',
     isAdmin: false,
     sessionId: autoSid,
-    activeProfileId: fallbackPid,
+    activeProfileId: safeInitialPid,
     allowedProfileIds: autoProfiles,
     exp: now + STUDENT_SESSION_TTL_SECONDS * 1000,
     invalidCredentialPresented: false,

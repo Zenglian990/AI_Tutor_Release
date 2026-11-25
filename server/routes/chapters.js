@@ -3,6 +3,7 @@ const router = express.Router();
 const { getChapters } = require('../utils/dataLoader');
 const { getSqliteDb } = require('../db/init');
 const { NODE_ENV } = require('../config');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
 const logger = require('../services/logger');
 
 // GET /api/chapters
@@ -10,7 +11,9 @@ router.get('/chapters', async (req, res) => {
   try {
     const grade = req.query.grade;
     const subject = req.query.subject || '数学';
-    const profile_id = req.query.profile_id || 'default';
+    const authCheck = resolveAuthorizedProfileId(req, req.query.profile_id || 'default');
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const profile_id = authCheck.profileId;
     const edition = req.query.edition;
 
     // Do not apply a default grade — return empty list if grade is unspecified
@@ -59,13 +62,16 @@ router.post('/chapters/update-progress', async (req, res) => {
     if (!profile_id || !grade || !subject || !chapter_id || !status) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
 
     await sqliteDb.run(`
       INSERT INTO profile_progress (profile_id, grade, subject, chapter_id, status, progress_pct)
       VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(profile_id, grade, subject, chapter_id)
       DO UPDATE SET status=excluded.status, progress_pct=excluded.progress_pct, updated_at=CURRENT_TIMESTAMP
-    `, [profile_id, grade, subject, chapter_id, status, progress_pct || 0]);
+    `, [targetPid, grade, subject, chapter_id, status, progress_pct || 0]);
 
     res.json({ success: true });
   } catch (e) {

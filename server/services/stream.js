@@ -216,14 +216,14 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
     }
 
     try {
-      logApiUsage(config.CHAT_MODEL, 'chat', query || '', fullAnswer || '', 'success');
+      logApiUsage(config.CHAT_MODEL, 'chat', query || '', fullAnswer || '', 'success', profile_id || 'default');
     } catch (usageErr) {
       logger.error('Failed to log streaming API usage:', usageErr);
     }
   } catch (e) {
     cleanupTimersAndStream();
     try {
-      logApiUsage(config.CHAT_MODEL, 'chat', query || '', 0, 'error');
+      logApiUsage(config.CHAT_MODEL, 'chat', query || '', 0, 'error', profile_id || 'default');
     } catch (usageErr) {
       logger.error('Failed to log streaming API usage on error:', usageErr);
     }

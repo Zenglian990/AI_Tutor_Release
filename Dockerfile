@@ -1,5 +1,5 @@
 # ============================================================
-# ZengLian AI Tutor v1.5.5 Production Container Image
+# AI 智慧私教 (1-12年级) v1.7.5 Production Container Image
 # Official Node.js 22 LTS (Debian Bookworm - with native C++ build tools)
 # ============================================================
 # Use Google Cloud internal mirror for ultra-fast pulls inside Cloud Shell (avoids docker.io TCP stalls)
@@ -30,13 +30,14 @@ COPY server/ ./server/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 
-# Ensure runtime directories exist
-RUN mkdir -p data/lancedb logs
+# Ensure runtime directories exist with non-root ownership
+RUN mkdir -p data/lancedb logs /mnt/ai-tutor-state && chown -R node:node /app /mnt/ai-tutor-state
 
+USER node
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD node scripts/health-check.js || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
+  CMD PORT=${PORT:-8080} node scripts/health-check.js || exit 1
 
 # Launch the modular backend server directly
 CMD ["node", "server/index.js"]

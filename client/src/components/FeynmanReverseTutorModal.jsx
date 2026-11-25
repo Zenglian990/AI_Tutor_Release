@@ -10,7 +10,7 @@ import { authFetch } from '../store/useStore';
 export default function FeynmanReverseTutorModal({
   isOpen,
   question = '解方程 2x + 4 = 10，并求出未知数 x 的值。',
-  studentName = '曾练',
+  studentName = '同学',
   subject = '数学',
   grade = '7_up',
   onClose,
@@ -99,6 +99,7 @@ export default function FeynmanReverseTutorModal({
     try {
       const res = await authFetch('/api/feynman/evaluate', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question,
           student_explanation: explanation,
@@ -109,8 +110,10 @@ export default function FeynmanReverseTutorModal({
       });
 
       const json = await res.json();
-      if (json.success && json.data) {
+      if (res.ok && json.success && json.data) {
         setEvaluationResult(json.data);
+      } else {
+        alert(json.error || '评估服务暂时不可用，请稍后重试');
       }
     } catch (err) {
       console.error('[Feynman Eval Error]:', err);
@@ -319,6 +322,7 @@ export default function FeynmanReverseTutorModal({
                                 try {
                                   const res = await authFetch('/api/feynman/evaluate', {
                                     method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
                                       question: `【针对追问】：${evaluationResult.follow_up_question}`,
                                       student_explanation: followUpAnswer,
@@ -328,16 +332,18 @@ export default function FeynmanReverseTutorModal({
                                     })
                                   });
                                   const json = await res.json();
-                                  if (json.success && json.data) {
+                                  if (res.ok && json.success && json.data) {
                                     setEvaluationResult(prev => ({
                                       ...json.data,
-                                      mastery_score: 100,
-                                      stars: 5,
-                                      peer_reply: `👦 小明听了恍然大悟：“哇！原来是这样！${json.data.peer_reply}”`,
-                                      follow_up_question: null,
-                                      praise: `特级名师点评：太棒了！你用耐心解答了同桌的深层卡点，知识留存率达成 100% 满分通关！`
+                                      mastery_score: json.data.mastery_score ?? prev?.mastery_score ?? 75,
+                                      stars: json.data.stars ?? prev?.stars ?? 3,
+                                      peer_reply: `👦 小明听了说：“${json.data.peer_reply}”`,
+                                      follow_up_question: json.data.mastery_score >= 85 ? null : (json.data.follow_up_question || null),
+                                      praise: json.data.praise || '继续保持清晰的表述与举例说明！'
                                     }));
                                     setFollowUpAnswer('');
+                                  } else {
+                                    alert(json.error || '追问评估失败，请稍后重试');
                                   }
                                 } catch (err) {
                                   console.warn('[Feynman Follow-up Error]:', err);

@@ -4,8 +4,37 @@ const crypto = require('crypto');
 const { getSqliteDb } = require('../db/init');
 const { API_TOKEN } = require('../config');
 const { isVerifiedAdminRequest } = require('../utils/adminAuth');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
 const dbQueue = require('../services/dbQueue');
 const logger = require('../services/logger');
+
+// 核销卡密防爆破限流表（按 IP 隔离：15 分钟最多 10 次失败）
+const redeemFailMap = new Map();
+const REDEEM_WINDOW_MS = 15 * 60 * 1000;
+const REDEEM_MAX_FAILS = 10;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of redeemFailMap.entries()) {
+    if (now > entry.resetAt) redeemFailMap.delete(ip);
+  }
+}, 10 * 60 * 1000).unref();
+
+function checkRedeemRateLimit(req, res, next) {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  if (redeemFailMap.size > 5000) redeemFailMap.clear();
+  let entry = redeemFailMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + REDEEM_WINDOW_MS };
+    redeemFailMap.set(ip, entry);
+  }
+  if (entry.count >= REDEEM_MAX_FAILS) {
+    return res.status(429).json({ error: '激活码验证失败次数过多，请 15 分钟后再试', code: 'ERR_RATE_LIMITED' });
+  }
+  req._redeemRateEntry = entry;
+  next();
+}
 
 let tablesInitialized = false;
 
@@ -47,10 +76,14 @@ function generateKeyCode(prefix = 'VIP') {
  */
 router.get('/membership/status', async (req, res) => {
   try {
+    const authCheck = resolveAuthorizedProfileId(req, req.query.profile_id || 'default');
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const profileId = authCheck.profileId;
+
     const sqliteDb = await getSqliteDb();
     if (!sqliteDb) {
       return res.json({
-        profile_id: req.query.profile_id || 'default',
+        profile_id: profileId,
         tier: 'free',
         is_vip: false,
         expire_at: null,
@@ -59,7 +92,6 @@ router.get('/membership/status', async (req, res) => {
     }
     await ensureMembershipTables(sqliteDb);
 
-    const profileId = req.query.profile_id || 'default';
     const row = await sqliteDb.get('SELECT * FROM memberships WHERE profile_id = ?', [profileId]);
 
     const now = new Date();
@@ -104,7 +136,7 @@ router.get('/membership/status', async (req, res) => {
 /**
  * POST /api/membership/redeem — Redeem a license key to activate Pro membership
  */
-router.post('/membership/redeem', async (req, res) => {
+router.post('/membership/redeem', checkRedeemRateLimit, async (req, res) => {
   try {
     const sqliteDb = await getSqliteDb();
     if (!sqliteDb) {
@@ -116,6 +148,9 @@ router.post('/membership/redeem', async (req, res) => {
     if (!profile_id || !key_code) {
       return res.status(400).json({ error: '缺少 profile_id 或激活码 key_code' });
     }
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
 
     const cleanKey = String(key_code).trim().toUpperCase();
 
@@ -139,14 +174,14 @@ router.post('/membership/redeem', async (req, res) => {
         // Atomic conditional update to prevent concurrent double-spend
         const updateRes = await sqliteDb.run(
           'UPDATE license_keys SET is_used = 1, used_by_profile = ?, used_at = ? WHERE key_code = ? AND is_used = 0',
-          [profile_id, nowIso, cleanKey]
+          [targetPid, nowIso, cleanKey]
         );
         if (!updateRes || updateRes.changes !== 1) {
           await sqliteDb.run('ROLLBACK');
           return { status: 409, body: { error: '该激活码已被使用，无法重复激活' } };
         }
 
-        const existing = await sqliteDb.get('SELECT * FROM memberships WHERE profile_id = ?', [profile_id]);
+        const existing = await sqliteDb.get('SELECT * FROM memberships WHERE profile_id = ?', [targetPid]);
         let baseTime = now;
         if (existing && existing.expire_at) {
           const existingExpire = new Date(existing.expire_at);
@@ -166,10 +201,10 @@ router.post('/membership/redeem', async (req, res) => {
             expire_at = excluded.expire_at,
             activated_at = excluded.activated_at,
             key_code = excluded.key_code
-        `, [profile_id, newExpireIso, nowIso, cleanKey]);
+        `, [targetPid, newExpireIso, nowIso, cleanKey]);
 
         await sqliteDb.run('COMMIT');
-        logger.info(`[Membership] Key ${cleanKey} redeemed by ${profile_id}, valid until ${newExpireIso}`);
+        logger.info(`[Membership] Key ${cleanKey} redeemed by ${targetPid}, valid until ${newExpireIso}`);
 
         return {
           status: 200,
@@ -187,6 +222,12 @@ router.post('/membership/redeem', async (req, res) => {
         throw txErr;
       }
     });
+
+    if (redeemOutcome.status === 200) {
+      if (req._redeemRateEntry) req._redeemRateEntry.count = 0;
+    } else if (req._redeemRateEntry) {
+      req._redeemRateEntry.count += 1;
+    }
 
     return res.status(redeemOutcome.status).json(redeemOutcome.body);
   } catch (err) {

@@ -16,7 +16,7 @@ describe('ChemistryLabModal Component', () => {
       />
     );
 
-    expect(screen.getByText(/初中化学动态虚拟微实验台/)).toBeDefined();
+    expect(screen.getByText(/化学动态虚拟微实验台/)).toBeDefined();
     expect(screen.getByText(/高锰酸钾加热制氧/)).toBeDefined();
 
     // Switch to CO2 scheme
@@ -24,6 +24,12 @@ describe('ChemistryLabModal Component', () => {
     fireEvent.click(co2Btn);
 
     expect(screen.getByText(/燃着木条放瓶口熄灭/)).toBeDefined();
+  });
+
+  it('defaults to high-school galvanic cell simulator for grades 10-12', () => {
+    render(<ChemistryLabModal isOpen={true} currentGrade="11_up" onClose={() => {}} onApplyToChat={() => {}} />);
+    expect(screen.getByText(/Zn 负极/)).toBeDefined();
+    expect(screen.getByText(/Cu 正极/)).toBeDefined();
   });
 
   it('switches to molecular simulation tab and navigates reaction steps', () => {
@@ -38,7 +44,7 @@ describe('ChemistryLabModal Component', () => {
     );
 
     // Switch tab
-    const molecularTab = screen.getByText(/微观分子重组与质量守恒/);
+    const molecularTab = screen.getByText(/微观分子重组 \(2H₂O 拆解\)/);
     fireEvent.click(molecularTab);
 
     expect(screen.getByText(/质量守恒定律微观本质剖析：/)).toBeDefined();

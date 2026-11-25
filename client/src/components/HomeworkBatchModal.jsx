@@ -148,7 +148,7 @@ export default function HomeworkBatchModal({
   currentProfileId,
   grade = '7_up',
   subject = '数学',
-  studentName = '曾练',
+  studentName = '同学',
   onReviewMistakes,
   onStartSocraticTutoring
 }) {
@@ -327,41 +327,46 @@ export default function HomeworkBatchModal({
   return (
     <div style={{
       position: 'fixed',
-      top: 0, left: 0, width: '100vw', height: '100vh',
+      inset: 0, width: '100%', height: '100%',
       background: 'rgba(15, 23, 42, 0.82)',
       backdropFilter: 'blur(10px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center',
-      zIndex: 1000
+      zIndex: 1000,
+      padding: '8px',
+      boxSizing: 'border-box'
     }}>
       <div style={{
-        background: 'var(--bg-secondary, #1e293b)',
-        color: 'var(--text-primary, #f8fafc)',
-        width: '92%',
-        maxWidth: '880px',
+        background: '#1e293b',
+        color: '#f8fafc',
+        width: '100%',
+        maxWidth: 'min(880px, calc(100vw - 16px))',
         maxHeight: '92vh',
-        borderRadius: '20px',
+        borderRadius: '18px',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        boxSizing: 'border-box',
         border: '1px solid rgba(255, 255, 255, 0.12)'
       }}>
         {/* Header */}
         <div style={{
-          padding: '16px 24px',
+          padding: '14px 16px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(30, 41, 59, 0.95)'
+          gap: '10px',
+          background: 'rgba(30, 41, 59, 0.95)',
+          boxSizing: 'border-box'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '1.8rem' }}>📑</span>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📑</span>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#38bdf8', lineHeight: 1.3 }}>
                 整页作业/试卷多题秒级批改
               </h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.35, wordBreak: 'break-word' }}>
                 学生：<strong>{studentName}</strong> · 学科：<strong>{subject}</strong> · AI 名师逐题审阅 · 公式级 LaTeX 渲染
               </p>
             </div>
@@ -370,13 +375,14 @@ export default function HomeworkBatchModal({
             onClick={onClose}
             aria-label="关闭窗口"
             style={{
-              background: 'transparent',
+              background: 'rgba(255,255,255,0.08)',
               border: 'none',
-              color: '#94a3b8',
-              fontSize: '1.5rem',
+              color: '#e2e8f0',
+              fontSize: '1.25rem',
               cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: '6px',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              flexShrink: 0,
               transition: 'background 0.2s'
             }}
           >
@@ -385,7 +391,7 @@ export default function HomeworkBatchModal({
         </div>
 
         {/* Content Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px', boxSizing: 'border-box' }}>
           {errorMsg && (
             <div style={{
               background: 'rgba(239, 68, 68, 0.15)',
@@ -888,19 +894,14 @@ export default function HomeworkBatchModal({
                         }}
                       />
 
-                      {/* Overlay Bounding Boxes */}
-                      {(batchResult.results || []).map((q, idx) => {
-                        const total = (batchResult.results || []).length || 1;
+                      {/* Overlay Bounding Boxes (仅在模型返回真实有效 box_2d 坐标时绘制，严禁伪造均分横条错位红叉) */}
+                      {(batchResult.results || []).map((q) => {
                         const box = q.box_2d;
-                        // 智能网格兜底，确保若模型未返回box_2d时原图上依然百分之百打上红叉绿勾
-                        const [ymin, xmin, ymax, xmax] = (box && Array.isArray(box) && box.length === 4)
-                          ? box
-                          : [
-                              Math.floor((idx / total) * 880) + 40,
-                              30,
-                              Math.floor(((idx + 1) / total) * 880) + 20,
-                              970
-                            ];
+                        const hasValidBox = Array.isArray(box) && box.length === 4 &&
+                          box.every(v => typeof v === 'number' && Number.isFinite(v)) &&
+                          box[2] > box[0] && box[3] > box[1];
+                        if (!hasValidBox) return null;
+                        const [ymin, xmin, ymax, xmax] = box;
 
                         const top = `${ymin / 10}%`;
                         const left = `${xmin / 10}%`;
@@ -1025,9 +1026,21 @@ export default function HomeworkBatchModal({
                               <div style={{ color: '#86efac' }}>
                                 <strong>🎯 标准答案：</strong>{activeInspectQ.standardAnswer}
                               </div>
-                              {(activeInspectQ.reasoning || activeInspectQ.errorAnalysis) && (
-                                <div style={{ color: '#93c5fd' }}>
-                                  <strong>💡 名师批注：</strong>{activeInspectQ.reasoning || activeInspectQ.errorAnalysis}
+                              {(activeInspectQ.mistakeReason || activeInspectQ.keyInsight || activeInspectQ.stepByStepDeduction || activeInspectQ.reasoning || activeInspectQ.errorAnalysis) && (
+                                <div style={{ color: '#93c5fd', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <div>
+                                    <strong>💡 名师批注：</strong>{activeInspectQ.mistakeReason || activeInspectQ.reasoning || activeInspectQ.errorAnalysis}
+                                  </div>
+                                  {activeInspectQ.keyInsight && (
+                                    <div style={{ color: '#fde68a' }}>
+                                      <strong>🔑 题眼破局：</strong>{activeInspectQ.keyInsight}
+                                    </div>
+                                  )}
+                                  {activeInspectQ.stepByStepDeduction && (
+                                    <div style={{ color: '#cbd5e1' }}>
+                                      <strong>📐 分步推导：</strong>{activeInspectQ.stepByStepDeduction}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

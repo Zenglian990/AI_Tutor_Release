@@ -11,13 +11,14 @@ const isTestEnv = process.env.NODE_ENV === 'test' ||
   process.argv.some(arg => arg.includes('test'));
 const NODE_ENV = process.env.NODE_ENV || (isTestEnv ? 'test' : 'production');
 const EMBED_MODEL = process.env.EMBED_MODEL || 'gemini-embedding-001';
-const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-2.5-flash';
+const CHAT_MODEL = process.env.CHAT_MODEL || 'gemini-3-flash-preview';
 const DEEPSEEK_API_KEY = (process.env.DEEPSEEK_API_KEY || '').trim();
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 const DEEPSEEK_CHAT_MODEL = process.env.DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
 const DEFAULT_PROVIDER = (process.env.DEFAULT_PROVIDER || (DEEPSEEK_API_KEY ? 'deepseek' : 'gemini')).trim().toLowerCase();
 const DB_PATH = path.join(__dirname, '..', '..', 'data/lancedb');
 const SQLITE_DB_PATH = process.env.SQLITE_DB_PATH || path.join(__dirname, '..', '..', 'data/mistakes.db');
+const PERSIST_STATE_DIR = (process.env.PERSIST_STATE_DIR || '').trim();
 
 // 已废除的公开静态万能令牌黑名单
 const DEPRECATED_STATIC_TOKENS = new Set([
@@ -234,6 +235,7 @@ module.exports = {
   DEFAULT_PROVIDER,
   DB_PATH,
   SQLITE_DB_PATH,
+  PERSIST_STATE_DIR,
   API_KEYS,
   proxyUrl,
   API_TOKEN,

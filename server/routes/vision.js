@@ -89,7 +89,9 @@ function detectImageFormat(buffer) {
   return null;
 }
 
-router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, async (req, res) => {
+const { requireQuotaOrVip } = require('../middleware/quota');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
+router.post('/chat-vision', requireQuotaOrVip('vision'), upload.single('image'), verifyMultipartIntegrity, async (req, res) => {
   try {
     const query = req.body.query || '请帮我解答这张图片里的题目，并给出详细步骤。';
 
@@ -111,7 +113,9 @@ router.post('/chat-vision', upload.single('image'), verifyMultipartIntegrity, as
     const grade = req.body.grade;
     const subject = req.body.subject;
     const student_name = req.body.student_name;
-    const profile_id = req.body.profile_id || 'default';
+    const authCheck = resolveAuthorizedProfileId(req, req.body.profile_id || 'default');
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const profile_id = authCheck.profileId;
     let socratic = req.body.socratic;
     if (socratic === 'true') socratic = true;
     if (socratic === 'false') socratic = false;
@@ -308,7 +312,7 @@ ${contextSection}学生随附提问/诉求：${query}
     const dsKey = (clientHeaders['x-dashscope-api-key'] || process.env.DASHSCOPE_API_KEY || '').trim();
     const zpKey = (clientHeaders['x-zhipu-api-key'] || process.env.ZHIPU_API_KEY || '').trim();
 
-    let defaultVisionModel = config.CHAT_MODEL || 'gemini-2.5-flash';
+    let defaultVisionModel = config.CHAT_MODEL || 'gemini-3-flash-preview';
     if (sfKey) {
       defaultVisionModel = 'deepseek-ai/deepseek-vl2';
     } else if (dsKey) {
@@ -342,13 +346,17 @@ ${contextSection}学生随附提问/诉求：${query}
 
 // POST /api/vision/detect-questions & /api/detect-questions
 // 对标小猿搜题：整页拍图自动分题与多题目外接框快速检测
-router.post(['/detect-questions', '/vision/detect-questions'], upload.single('image'), async (req, res) => {
+router.post(['/detect-questions', '/vision/detect-questions'], requireQuotaOrVip('vision_detect'), upload.single('image'), async (req, res) => {
   try {
     const imageBuffer = req.file?.buffer;
-    const mimeType = req.file?.mimetype || 'image/jpeg';
     if (!imageBuffer) {
       return res.status(400).json({ error: '请上传需要分题检测的整页照片' });
     }
+    const detectedMime = detectImageFormat(imageBuffer);
+    if (!detectedMime) {
+      return res.status(400).json({ error: '不支持或伪造的图片内容，请上传真实 JPEG/PNG/WebP 照片' });
+    }
+    const mimeType = detectedMime;
 
     const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
     const { extractAndParseJson } = require('../utils/jsonParser');
@@ -393,12 +401,13 @@ router.post(['/detect-questions', '/vision/detect-questions'], upload.single('im
     const { extractClientAiHeaders } = require('../utils/aiHeaders');
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: req.auth?.activeProfileId || 'default',
       headers: {
         'Content-Type': 'application/json',
         ...extractClientAiHeaders(req)
       },
       body: JSON.stringify(contentsPayload)
-    }, 2, 30000, 'gemini-2.5-flash', false);
+    }, 2, 30000, config.CHAT_MODEL || 'gemini-3-flash-preview', false);
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;

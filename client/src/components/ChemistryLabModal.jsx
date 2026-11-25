@@ -10,9 +10,12 @@ import React, { useState } from 'react';
 export default function ChemistryLabModal({
   isOpen,
   onClose,
-  onApplyToChat
+  onApplyToChat,
+  currentGrade = '9_up'
 }) {
-  const [activeTab, setActiveTab] = useState('gas_prep'); // 'gas_prep' | 'molecular'
+  const isHighSchool = ['10', '11', '12'].some(n => String(currentGrade || '').startsWith(n));
+  const [activeTab, setActiveTab] = useState(isHighSchool ? 'galvanic' : 'gas_prep'); // 'gas_prep' | 'molecular' | 'galvanic'
+  const [cellSwitchOn, setCellSwitchOn] = useState(true);
   
   // Gas Prep State
   const [gasType, setGasType] = useState('O2_heating'); // 'O2_heating' | 'O2_liquid' | 'CO2'
@@ -104,10 +107,10 @@ export default function ChemistryLabModal({
             <span style={{ fontSize: '1.6rem' }}>⚗️</span>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
-                初中化学动态虚拟微实验台
+                {isHighSchool ? '高中·初中化学动态虚拟微实验台' : '化学动态虚拟微实验台（初中·高中）'}
               </h3>
               <div style={{ fontSize: '0.8rem', color: '#a7f3d0', marginTop: '2px' }}>
-                中考气体制备大题装置拼装 · 微观分子反应与质量守恒动态探究
+                高中原电池与盐桥电化学 · 气体制备装置 · 微观分子重组探究
               </div>
             </div>
           </div>
@@ -124,34 +127,109 @@ export default function ChemistryLabModal({
 
         {/* Tab Switcher */}
         <div style={{
-          display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 24px 0'
+          display: 'flex', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 12px 0', gap: '4px'
         }}>
+          <button
+            onClick={() => setActiveTab('galvanic')}
+            style={{
+              padding: '10px 14px', border: 'none', background: 'transparent', whiteSpace: 'nowrap',
+              fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
+              color: activeTab === 'galvanic' ? '#0d9488' : '#64748b',
+              borderBottom: activeTab === 'galvanic' ? '3px solid #0d9488' : '3px solid transparent'
+            }}
+          >
+            🔋 高中电化学：铜锌双液原电池
+          </button>
           <button
             onClick={() => setActiveTab('gas_prep')}
             style={{
-              padding: '10px 18px', border: 'none', background: 'transparent',
-              fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer',
+              padding: '10px 14px', border: 'none', background: 'transparent', whiteSpace: 'nowrap',
+              fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
               color: activeTab === 'gas_prep' ? '#0d9488' : '#64748b',
               borderBottom: activeTab === 'gas_prep' ? '3px solid #0d9488' : '3px solid transparent'
             }}
           >
-            ⚗️ 中考必考气体制备与净化 (O₂ / CO₂)
+            ⚗️ 气体制备与净化 (O₂ / CO₂)
           </button>
           <button
             onClick={() => setActiveTab('molecular')}
             style={{
-              padding: '10px 18px', border: 'none', background: 'transparent',
-              fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer',
+              padding: '10px 14px', border: 'none', background: 'transparent', whiteSpace: 'nowrap',
+              fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
               color: activeTab === 'molecular' ? '#0d9488' : '#64748b',
               borderBottom: activeTab === 'molecular' ? '3px solid #0d9488' : '3px solid transparent'
             }}
           >
-            ⚛️ 微观分子重组与质量守恒 (2H₂O 拆解)
+            ⚛️ 微观分子重组 (2H₂O 拆解)
           </button>
         </div>
 
-        {/* Tab 1: Gas Prep */}
-        {activeTab === 'gas_prep' ? (
+        {activeTab === 'galvanic' ? (
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: '#0f172a', borderRadius: '16px', padding: '16px' }}>
+              <svg viewBox="0 0 680 220" style={{ width: '100%', height: 'auto', display: 'block' }}>
+                {/* Left Beaker ZnSO4 */}
+                <rect x="80" y="95" width="160" height="105" rx="8" fill="rgba(56, 189, 248, 0.18)" stroke="#38bdf8" strokeWidth="2" />
+                <rect x="125" y="60" width="22" height="120" fill="#94a3b8" stroke="#e2e8f0" strokeWidth="1.5" />
+                <text x="136" y="50" fill="#e2e8f0" fontSize="13" fontWeight="bold" textAnchor="middle">Zn 负极(-)</text>
+                <text x="160" y="190" fill="#bae6fd" fontSize="12" textAnchor="middle">ZnSO₄ 溶液</text>
+
+                {/* Right Beaker CuSO4 */}
+                <rect x="440" y="95" width="160" height="105" rx="8" fill="rgba(37, 99, 235, 0.35)" stroke="#60a5fa" strokeWidth="2" />
+                <rect x="530" y="60" width="22" height="120" fill="#d97706" stroke="#fde68a" strokeWidth="1.5" />
+                <text x="541" y="50" fill="#fde68a" fontSize="13" fontWeight="bold" textAnchor="middle">Cu 正极(+)</text>
+                <text x="520" y="190" fill="#bfdbfe" fontSize="12" textAnchor="middle">CuSO₄ 溶液</text>
+
+                {/* Salt Bridge */}
+                <path d="M 210 130 L 210 75 L 470 75 L 470 130" fill="none" stroke="#a7f3d0" strokeWidth="16" strokeLinejoin="round" opacity="0.85" />
+                <text x="340" y="62" fill="#6ee7b7" fontSize="12" fontWeight="bold" textAnchor="middle">KCl 盐桥（{cellSwitchOn ? 'Cl⁻ ➔ 左(负极) ｜ K⁺ ➔ 右(正极)' : '开关断开，无定向迁移'}）</text>
+
+                {/* External Wire & Ammeter */}
+                <path d="M 136 60 L 136 22 L 541 22 L 541 60" fill="none" stroke={cellSwitchOn ? '#fbbf24' : '#475569'} strokeWidth="3" />
+                <circle cx="340" cy="22" r="16" fill="#1e293b" stroke={cellSwitchOn ? '#fbbf24' : '#64748b'} strokeWidth="2" />
+                <text x="340" y="27" fill={cellSwitchOn ? '#fbbf24' : '#94a3b8'} fontSize="13" fontWeight="bold" textAnchor="middle">{cellSwitchOn ? '1.1V' : '0V'}</text>
+                {cellSwitchOn && <text x="235" y="15" fill="#fbbf24" fontSize="11" fontWeight="bold">e⁻ 电子流向 ➔</text>}
+              </svg>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.84rem', color: '#1e293b' }}>
+                <div><b>负极（Zn 氧化反应）</b>：Zn - 2e⁻ = Zn²⁺</div>
+                <div style={{ marginTop: '6px' }}><b>正极（Cu²⁺ 还原反应）</b>：Cu²⁺ + 2e⁻ = Cu</div>
+                <div style={{ marginTop: '6px', color: '#047857' }}><b>总反应</b>：Zn + Cu²⁺ = Zn²⁺ + Cu</div>
+              </div>
+              <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '12px', border: '1px solid #a7f3d0', fontSize: '0.84rem', color: '#065f46' }}>
+                <b>高考高频口诀</b>：“负氧正还、电子不下水、离子不上岸；盐桥中阴离子向负极迁移，阳离子向正极迁移。”
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setCellSwitchOn(v => !v)}
+                style={{
+                  background: cellSwitchOn ? '#ef4444' : '#10b981', color: '#fff',
+                  border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                {cellSwitchOn ? '🔌 断开外电路开关' : '⚡ 闭合开关形成原电池'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onApplyToChat && onApplyToChat('老师，我在高中化学微实验台上模拟了【铜锌双液盐桥原电池】（Zn - 2e⁻ = Zn²⁺，Cu²⁺ + 2e⁻ = Cu）。请结合新高考电化学大题，帮我梳理带离子交换膜的原电池与电解池判极与电极方程式书写技巧！');
+                  onClose();
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #0d9488, #059669)', color: '#fff',
+                  border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                💬 带入高中电化学课堂请教
+              </button>
+            </div>
+          </div>
+        ) : activeTab === 'gas_prep' ? (
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Scheme Select Buttons */}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

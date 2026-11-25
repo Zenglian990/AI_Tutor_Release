@@ -22,6 +22,7 @@ const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
 const { extractAndParseJson } = require('../utils/jsonParser');
 const { sendToNetworkPrinter, formatExamForPrinter } = require('../services/printerService');
 const { isVerifiedAdminRequest } = require('../utils/adminAuth');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
 const { parseGradeNumber } = require('../utils/gradeParser');
 
 
@@ -302,6 +303,9 @@ function getGradePrompt(question, studentAnswer, standardAnswer, score, explanat
     '7_up': '七年级上册', '7_down': '七年级下册',
     '8_up': '八年级上册', '8_down': '八年级下册',
     '9_up': '九年级上册', '9_down': '九年级下册',
+    '10_up': '高一上册', '10_down': '高一下册',
+    '11_up': '高二上册', '11_down': '高二下册',
+    '12_up': '高三上册', '12_down': '高三下册',
   };
   const friendlyGrade = gradeNames[grade] || (rawGrade ? `${rawGrade}年级` : '中小学');
   const isLowerGrade = ['1', '2', '3'].includes(rawGrade); // 1-3年级为低年级
@@ -370,8 +374,8 @@ ${gradingPhilosophy}
 /**
  * 拼装整卷学情报告 Prompt
  */
-function getOverallReportPrompt(studentName, score, questionsReport) {
-  return `你是一位亲切的 AI 私教。学生【${studentName}】刚刚完成了一套测试卷，总分为 ${score} 分（满分 150 分）。
+function getOverallReportPrompt(studentName, score, questionsReport, maxTotalScore = 150) {
+  return `你是一位亲切的 AI 私教。学生【${studentName}】刚刚完成了一套测试卷，总分为 ${score} 分（满分 ${maxTotalScore} 分）。
 以下是各题的批改情况：
 ${questionsReport}
 
@@ -435,7 +439,7 @@ function parseOrRepairPaperJson(text) {
 }
 
 /**
- * 从权威真题题库与教学大纲中装配可靠、标准的全真模拟大卷 (150分制兜底保护)
+ * 从权威真题题库与分学段/分学科母题池装配可靠、无重复、总分严格校准的模拟试卷
  */
 async function assembleReliableExamPaper(grade, subject = '数学', type = 'real_exam', region = '全国百强重点名校') {
   const gradeNames = {
@@ -448,28 +452,144 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
     '7_up': '七年级上册', '7_down': '七年级下册',
     '8_up': '八年级上册', '8_down': '八年级下册',
     '9_up': '九年级上册', '9_down': '九年级下册',
+    '10_up': '高一上册', '10_down': '高一下册',
+    '11_up': '高二上册', '11_down': '高二下册',
+    '12_up': '高三上册', '12_down': '高三下册',
   };
   const friendlyGrade = gradeNames[grade] || grade || '七年级上册';
   const rawGrade = grade ? String(grade).split('_')[0] : '';
   const isHighSchool = ['10', '11', '12'].includes(rawGrade);
-  const totalScoreDesc = ['语文', '数学', '英语'].includes(subject) ? '150分' : (isHighSchool ? '100分' : '100分');
+  const isPrimarySchool = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+  const targetMaxScore = isPrimarySchool ? 100 : (['语文', '数学', '英语'].includes(subject) ? 150 : 100);
+  const totalScoreDesc = `${targetMaxScore}分`;
   const paperTitle = type === 'gaokao_hit'
     ? `${region || '新高考全国卷'}·${friendlyGrade}${subject}高考高频母题与押题密卷 (满分${totalScoreDesc})`
-    : `${region || (isHighSchool ? '新高考重点名校示范' : '全国百强重点名校')}·${friendlyGrade}${subject}${isHighSchool ? '全真模拟示范卷' : '全真模拟大考标准卷'} (满分${totalScoreDesc})`;
+    : `${region || (isHighSchool ? '新高考重点名校示范' : '全国百强重点名校')}·${friendlyGrade}${subject}${isHighSchool ? '全真模拟示范卷' : '全真模拟标准卷'} (满分${totalScoreDesc})`;
+
+  const sanitizeBrokenLatex = (raw) => String(raw || '')
+    .replace(/\x08(?=[a-zA-Z])/g, '\\b')
+    .replace(/\x0c(?=[a-zA-Z])/g, '\\f')
+    .replace(/\x09(?=(?:text|tan|times|theta|triangle|to|tau|top)\b)/g, '\\t')
+    .replace(/\r(?=(?:right|rho|rightarrow|rangle|rfloor|rceil)\b)/g, '\\r');
 
   const questions = [];
+  const seenStems = new Set();
+  const pushUnique = (q) => {
+    const cleanQuestion = sanitizeBrokenLatex(q.question);
+    const key = cleanQuestion.replace(/\s+/g, '').slice(0, 40);
+    if (!key || seenStems.has(key)) return false;
+    seenStems.add(key);
+    questions.push({
+      ...q,
+      question: cleanQuestion,
+      options: Array.isArray(q.options) ? q.options.map(sanitizeBrokenLatex) : q.options,
+      answer: sanitizeBrokenLatex(q.answer),
+      explanation: sanitizeBrokenLatex(q.explanation),
+      id: questions.length + 1
+    });
+    return true;
+  };
+
+  // 非数学学科的真实学科兜底题库（按学段分流，绝不把数学题塞进语英理化生史地政）
+  const buildNonMathPaper = () => {
+    const subjBank = {
+      '语文': isHighSchool ? [
+        { type: 'choice', score: 10, question: '下列关于《乡土中国》核心概念“差序格局”的表述，正确的一项是（　　）', options: ['A. 西方社会如同捆柴，中国乡土社会如同石子投入水中泛起的同心圆波纹', 'B. 差序格局强调绝对平等的团体边界', 'C. 差序格局与血缘、地缘关系无关', 'D. 现代契约精神完全等同于差序格局'], answer: 'A', explanation: '费孝通指出乡土社会是以“己”为中心、按亲疏远近向外推展的差序格局。' },
+        { type: 'choice', score: 10, question: '下列文言句子中，加点虚词“之”的用法与其他三项不同的是（　　）', options: ['A. 师道之不传也久矣', 'B. 句读之不知，惑之不解', 'C. 蚓无爪牙之利，筋骨之强', 'D. 均之二策，宁许以负秦曲'], answer: 'D', explanation: 'D 项“之”为指示代词“这”，其余为助词。' },
+        { type: 'choice', score: 10, question: '对杜甫《登高》“无边落木萧萧下，不尽长江滚滚来”的赏析，不正确的一项是（　　）', options: ['A. 对仗工整，音韵铿锵', 'B. 以落叶与江水勾勒出宏阔苍凉的秋景', 'C. 暗含韶光易逝、壮志难酬的深沉感慨', 'D. 表达了诗人隐居山水、悠然自得的闲适之情'], answer: 'D', explanation: '本联抒发的是身世漂泊、老病孤愁的沉郁顿挫，非闲适之情。' },
+        { type: 'blank', score: 10, question: '补写出荀子《劝学》中的名句：故不积跬步，______；不积小流，无以成江海。', answer: '无以至千里', explanation: '出自《荀子·劝学》，强调积累的重要性。' },
+        { type: 'blank', score: 10, question: '补写出苏轼《赤壁赋》中的名句：寄蜉蝣于天地，______。', answer: '渺沧海之一粟', explanation: '出自苏轼《赤壁赋》，以比喻写人生短暂渺小。' },
+        { type: 'essay', score: 40, question: '【现代文思辨简答】结合当今人工智能与人类创造力的关系，谈谈你对“工具理性与人文温度并重”的理解（200字以上）。', answer: '围绕技术效率与人类主体价值、批判性思维与共情能力辩证展开即可。', explanation: '新高考思辨题重在“破立结合”，既肯定技术赋能，又强调人文底线。' },
+        { type: 'essay', score: 60, question: '【新高考大作文】阅读材料：“行稳致远，既需仰望星空之志，亦赖脚踏实地之功。”请自拟题目，写一篇不少于 800 字的议论文。', answer: '立意明确、结构严谨、论据充实、思辨深刻。', explanation: '紧扣“理想与实干”的辩证关系展开论证。' }
+      ] : [
+        { type: 'choice', score: 15, question: '下列词语中，书写完全正确的一项是（　　）', options: ['A. 精益求精  名副其实', 'B. 迫不急待  再接再厉', 'C. 走头无路  川流不息', 'D. 谈笑风声  刻舟求剑'], answer: 'A', explanation: 'B 应为“迫不及待”，C 应为“走投无路”，D 应为“谈笑风生”。' },
+        { type: 'choice', score: 15, question: '下列句子没有语病的一项是（　　）', options: ['A. 通过这次活动，使我明白了团结的重要性。', 'B. 我们要养成认真审题、独立思考的好习惯。', 'C. 能否坚持阅读，是提高写作水平的关键。', 'D. 教室里安静得几乎完全听不到一点声音。'], answer: 'B', explanation: 'A 缺主语；C 两面对一面；D 语意重复。' },
+        { type: 'blank', score: 15, question: '默写：海内存知己，______。（王勃《送杜少府之任蜀州》）', answer: '天涯若比邻', explanation: '名句默写注意“涯”“邻”字形。' },
+        { type: 'essay', score: 25, question: '【阅读赏析】请从修辞手法的角度，赏析句子：“春风像母亲温暖的手，轻轻抚过沉睡的大地。”', answer: '运用比喻和拟人修辞，生动写出春风的柔和温暖与生机勃勃。', explanation: '按“手法 + 效果 + 情感”三步答题。' },
+        { type: 'essay', score: isPrimarySchool ? 30 : 80, question: '【写作实践】以《那一次，我真正长大了》为题，写一篇内容具体、情感真挚的记叙文。', answer: '叙事完整，细节生动，凸显成长感悟。', explanation: '注意通过动作、神态、环境描写突出转折瞬间。' }
+      ],
+      '英语': isHighSchool ? [
+        { type: 'choice', score: 15, question: '— Would you mind if I open the window? — ______. It is a bit stuffy in here.', options: ['A. Not at all', 'B. Yes, please', 'C. Never mind', 'D. You are welcome'], answer: 'A', explanation: 'Not at all 表示“完全不介意”，符合语境。' },
+        { type: 'choice', score: 15, question: '______ in the research for over a decade, the scientist finally achieved a major breakthrough.', options: ['A. Engaging', 'B. Engaged', 'C. Having engaged', 'D. To engage'], answer: 'B', explanation: 'be engaged in 表示“致力于”，此处作状语用过去分词 Engaged。' },
+        { type: 'choice', score: 15, question: 'The museum ______ we visited last weekend houses thousands of ancient bronze artifacts.', options: ['A. where', 'B. which', 'C. what', 'D. whose'], answer: 'B', explanation: '定语从句中 visited 缺宾语，故用关系代词 which/that。' },
+        { type: 'choice', score: 15, question: 'Not until the final bell rang ______ that she had forgotten to write her name.', options: ['A. she realized', 'B. did she realize', 'C. realized she', 'D. had she realized'], answer: 'B', explanation: 'Not until 置于句首，主句需部分倒装，故选 did she realize。' },
+        { type: 'blank', score: 15, question: '语法填空：With the rapid development of AI, learning how to think ______ (critical) has become essential.', answer: 'critically', explanation: '修饰动词 think 需用副词 critically。' },
+        { type: 'blank', score: 15, question: '语法填空：It is high time that we ______ (take) effective measures to protect biodiversity.', answer: 'took', explanation: 'It is high time that 从句用一般过去时（或 should + 动词原形）虚拟语气。' },
+        { type: 'essay', score: 30, question: '【应用文写作】假设你是李华，学校将举办“科技与未来”英语演讲比赛，请写一封 80 词左右的邮件邀请外教 Mr. Smith 担任评委。', answer: '格式规范、要点齐全（时间/地点/邀请目的/期待回复）、语法准确。', explanation: '新高考应用文讲究交际得体与高级句式衔接。' },
+        { type: 'essay', score: 30, question: '【读后续写微练】续写一段 100 词左右的英文，描写主人公在暴雨夜帮助迷路老人找到家人后的心理变化。', answer: '紧扣前文情节，情感升华自然，动作心理描写丰富。', explanation: '善用非谓语、with 复合结构与情绪描写词。' }
+      ] : [
+        { type: 'choice', score: 20, question: '— What ______ your sister usually do after school? — She practices the piano.', options: ['A. do', 'B. does', 'C. is', 'D. did'], answer: 'B', explanation: '主语 your sister 为第三人称单数，一般现在时疑问句助动词用 does。' },
+        { type: 'choice', score: 20, question: 'There ______ a library and two playgrounds in our new school.', options: ['A. is', 'B. are', 'C. have', 'D. has'], answer: 'A', explanation: 'There be 句型遵循就近原则，a library 为单数，故用 is。' },
+        { type: 'blank', score: 20, question: '用所给词的适当形式填空：Look! The students ______ (read) English aloud in the classroom.', answer: 'are reading', explanation: 'Look 提示现在进行时，主语复数用 are reading。' },
+        { type: 'essay', score: isPrimarySchool ? 40 : 90, question: '【书面表达】请用英语写一篇短文介绍你最喜欢的学科及原因（My Favorite Subject）。', answer: '要点完整，时态一致，句型正确。', explanation: '注意主谓一致与连词 because / so 的正确使用。' }
+      ],
+      '物理': [
+        { type: 'choice', score: 15, question: isHighSchool ? '一质量为 $m$、电荷量为 $q$ 的带电粒子以速度 $v$ 垂直射入磁感应强度为 $B$ 的匀强磁场中，其做匀速圆周运动的半径 $R$ 为（　　）' : '一个实心铜球质量为 $890\\text{g}$，铜的密度为 $8.9\\text{g/cm}^3$，则其体积为（　　）', options: isHighSchool ? ['A. $\\frac{mv}{qB}$', 'B. $\\frac{qB}{mv}$', 'C. $\\frac{mv^2}{qB}$', 'D. $\\frac{2\\pi m}{qB}$'] : ['A. $10\\text{cm}^3$', 'B. $100\\text{cm}^3$', 'C. $1000\\text{cm}^3$', 'D. $89\\text{cm}^3$'], answer: isHighSchool ? 'A' : 'B', explanation: isHighSchool ? '由 $qvB = m\\frac{v^2}{R}$ 解得 $R = \\frac{mv}{qB}$。' : '由 $V = \\frac{m}{\\rho} = \\frac{890}{8.9} = 100\\text{cm}^3$。' },
+        { type: 'choice', score: 15, question: isHighSchool ? '关于牛顿运动定律，下列说法正确的是（　　）' : '在串联电路中，若电源电压不变，滑动变阻器阻值增大，则电路总电流（　　）', options: isHighSchool ? ['A. 物体的速度越大，惯性越大', 'B. 合外力为零时，物体一定处于静止状态', 'C. 作用力与反作用力总是大小相等、方向相反且作用在不同物体上', 'D. 力是维持物体运动的原因'] : ['A. 变大', 'B. 变小', 'C. 不变', 'D. 先变大后变小'], answer: isHighSchool ? 'C' : 'B', explanation: isHighSchool ? '惯性只与质量有关；合外力为零可静止或匀速直线运动；C 为牛顿第三定律。' : '由欧姆定律 $I = U/R$，总电阻增大则电流变小。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '质量为 $2\\text{kg}$ 的物体在 $10\\text{N}$ 的恒定合外力作用下由静止开始运动，$3\\text{s}$ 末的速度大小为 ______ $\\text{m/s}$。' : '一个电阻为 $10\\Omega$ 的定值电阻两端电压为 $6\\text{V}$，通过它的电流为 ______ $\\text{A}$。', answer: isHighSchool ? '15' : '0.6', explanation: isHighSchool ? '$a = F/m = 5\\text{m/s}^2$，$v = at = 15\\text{m/s}$。' : '$I = U/R = 6/10 = 0.6\\text{A}$。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '一质点做自由落体运动（$g=10\\text{m/s}^2$），第 $2\\text{s}$ 末下落的高度为 ______ $\\text{m}$。' : '标准大气压下，纯水的沸点为 ______ $^{\\circ}\\text{C}$。', answer: isHighSchool ? '20' : '100', explanation: isHighSchool ? '$h = \\frac{1}{2}gt^2 = 0.5 \\times 10 \\times 4 = 20\\text{m}$。' : '标准大气压下水的沸点是 $100^\\circ\\text{C}$。' },
+        { type: 'essay', score: 40, question: isHighSchool ? '【动力学综合计算】质量 $m = 2\\text{kg}$ 的滑块在倾角 $\\theta = 30^\\circ$ 的光滑斜面上由静止释放（$g = 10\\text{m/s}^2$）。求：(1) 滑块的加速度大小；(2) 下滑 $2\\text{s}$ 内的位移大小。' : '【电学综合计算】电源电压恒为 $12\\text{V}$，定值电阻 $R_1 = 4\\Omega$ 与 $R_2 = 8\\Omega$ 串联。求：(1) 电路总电流；(2) $R_2$ 两端的电压及电功率。', answer: isHighSchool ? '(1) $a = 5\\text{m/s}^2$；(2) $x = 10\\text{m}$。' : '(1) $I = 1\\text{A}$；(2) $U_2 = 8\\text{V}$，$P_2 = 8\\text{W}$。', explanation: isHighSchool ? '$a = g\\sin 30^\\circ = 5\\text{m/s}^2$，$x = \\frac{1}{2}at^2 = 10\\text{m}$。' : '$R_{总}=12\\Omega$，$I=1\\text{A}$，$U_2=IR_2=8\\text{V}$，$P_2=U_2I=8\\text{W}$。' }
+      ],
+      '化学': [
+        { type: 'choice', score: 15, question: isHighSchool ? '在铜锌双液盐桥原电池（$\\text{Zn}|\\text{ZnSO}_4\\|\\text{CuSO}_4|\\text{Cu}$）工作时，下列说法正确的是（　　）' : '下列变化中，属于化学变化的是（　　）', options: isHighSchool ? ['A. 锌电极作负极，发生氧化反应', 'B. 电子经盐桥从铜片流向锌片', 'C. 铜电极质量逐渐减小', 'D. 盐桥中阳离子向负极室迁移'] : ['A. 冰雪融化', 'B. 铁钉生锈', 'C. 酒精挥发', 'D. 玻璃破碎'], answer: isHighSchool ? 'A' : 'B', explanation: isHighSchool ? '锌失电子作负极发生氧化反应，外电路电子由负极流向正极，盐桥阳离子移向正极室。' : '铁钉生锈生成氧化铁新物质，属于化学变化。' },
+        { type: 'choice', score: 15, question: isHighSchool ? '在密闭容器中进行反应 $\\text{N}_2 + 3\\text{H}_2 \\rightleftharpoons 2\\text{NH}_3$（$\\Delta H < 0$），升高温度时化学平衡将（　　）' : '实验室制取二氧化碳常选用的药品是（　　）', options: isHighSchool ? ['A. 向正反应方向移动', 'B. 向逆反应方向移动', 'C. 不发生移动', 'D. 无法判断'] : ['A. 大理石与稀盐酸', 'B. 大理石与稀硫酸', 'C. 碳酸钠与浓硫酸', 'D. 木炭在空气中燃烧'], answer: isHighSchool ? 'B' : 'A', explanation: isHighSchool ? '正反应放热，升高温度平衡向吸热方向（逆反应）移动。' : '实验室用大理石/石灰石与稀盐酸常温反应制取 $\\text{CO}_2$。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '标准状况下，$0.5\\text{mol}$ 氧气（$\\text{O}_2$）的体积为 ______ $\\text{L}$。' : '地壳中含量最高的金属元素符号是 ______。', answer: isHighSchool ? '11.2' : 'Al', explanation: isHighSchool ? '$V = n \\cdot V_m = 0.5 \\times 22.4 = 11.2\\text{L}$。' : '地壳中元素含量前四位为 O、Si、Al、Fe，金属元素最高为 Al。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '配平离子方程式：$\\text{Cu} + \\text{NO}_3^- + \\text{H}^+ \\rightarrow \\text{Cu}^{2+} + \\text{NO}\\uparrow + \\text{H}_2\\text{O}$ 中，$\\text{Cu}$ 的化学计量数为 ______。' : '写出高锰酸钾受热分解产生氧气的气体化学式：______。', answer: isHighSchool ? '3' : 'O2', explanation: isHighSchool ? '$3\\text{Cu} + 2\\text{NO}_3^- + 8\\text{H}^+ = 3\\text{Cu}^{2+} + 2\\text{NO}\\uparrow + 4\\text{H}_2\\text{O}$。' : '高锰酸钾加热分解生成锰酸钾、二氧化锰和氧气 $\\text{O}_2$。' },
+        { type: 'essay', score: 40, question: isHighSchool ? '【电化学与工艺流程】写出铜锌原电池的正负极电极反应式与总离子方程式，并说明盐桥中 $\\text{K}^+$ 和 $\\text{Cl}^-$ 的迁移方向。' : '【化学方程式计算】取 $10\\text{g}$ 大理石与足量稀盐酸充分反应，收集到 $2.2\\text{g}$ 二氧化碳，求该大理石中碳酸钙的质量分数。', answer: isHighSchool ? '负极：$\\text{Zn}-2e^-=\\text{Zn}^{2+}$；正极：$\\text{Cu}^{2+}+2e^-=\\text{Cu}$；总反应：$\\text{Zn}+\\text{Cu}^{2+}=\\text{Zn}^{2+}+\\text{Cu}$；$\\text{K}^+$ 向正极，$\\text{Cl}^-$ 向负极。' : '$50\\%$（生成 $2.2\\text{g}$ $\\text{CO}_2$ 需 $5\\text{g}$ $\\text{CaCO}_3$）。', explanation: '按电荷守恒、原子守恒及质量守恒分步书写。' }
+      ]
+    };
+
+    const genericSubjectQuestions = [
+      { type: 'choice', score: 20, question: `【${friendlyGrade}·${subject}】关于本学期【${subject}】核心知识体系的掌握方法，最科学的是（　　）`, options: ['A. 建构因果思维导图并结合典型材料/例题辨析', 'B. 只背结论不看前提条件', 'C. 脱离课本盲目刷偏题怪题', 'D. 错题从不复盘'], answer: 'A', explanation: '学科核心素养强调概念建构、情境迁移与错题复盘。' },
+      { type: 'choice', score: 20, question: `【${friendlyGrade}·${subject}】在解答【${subject}】综合材料分析题时，第一步应当（　　）`, options: ['A. 圈画设问限定词与材料关键时空/变量信息', 'B. 不看设问直接照抄大段教材', 'C. 凭直觉猜测结论', 'D. 略过图表直接作答'], answer: 'A', explanation: '精准审题是拿高分的第一前提。' },
+      { type: 'blank', score: 20, question: `【${friendlyGrade}·${subject}】请写出本学期【${subject}】中你认为最核心的一个基本概念或规律名称：______。`, answer: '核心概念', explanation: '结合教材单元目录提炼主干概念。' },
+      { type: 'essay', score: 40, question: `【${friendlyGrade}·${subject}综合论述】请结合本学期【${subject}】教材的重点章节，选择一个核心原理，阐述其形成条件、核心内容及在现实生活中的应用价值。`, answer: '概念准确、逻辑清晰、能结合现实案例展开论述即可得分。', explanation: '按“原理阐释 + 条件分析 + 现实迁移”三段式作答。' }
+    ];
+
+    const list = (subjBank[subject] || genericSubjectQuestions).map((item, i) => ({ ...item, id: i + 1 }));
+    const actualSum = list.reduce((acc, q) => acc + (q.score || 0), 0);
+    return {
+      title: paperTitle.replace(/\(满分\d+分\)/, `(满分${actualSum}分)`),
+      duration: getExamDuration(grade),
+      grade,
+      totalScore: actualSum,
+      isFallback: true,
+      questions: list
+    };
+  };
+
+  if (subject !== '数学') {
+    return buildNonMathPaper();
+  }
+
+  // ===== 数学学科：严格学段隔离 + 无重复真题库 + 精确总分校准 =====
+  const choiceScore = isHighSchool ? 5 : (isPrimarySchool ? 3 : 4);
+  const blankScore = isHighSchool ? 5 : (isPrimarySchool ? 3 : 4);
+  const targetChoices = isHighSchool ? 8 : (isPrimarySchool ? 10 : 8);
+  const targetBlanks = isHighSchool ? 4 : (isPrimarySchool ? 6 : 4);
+
   try {
     const db = getSqliteDb();
     if (db) {
-      const gradeParam = grade || 'all';
-      const gradeLikeParam = rawGrade ? `${rawGrade}%` : '%';
+      let gradeSql = "grade = ? OR grade LIKE ?";
+      let gradeParams = [grade || 'all', rawGrade ? `${rawGrade}_%` : '%'];
+      if (isHighSchool) {
+        gradeSql = "(grade LIKE '10%' OR grade LIKE '11%' OR grade LIKE '12%' OR grade LIKE '%高%' OR grade LIKE '%高考%')";
+        gradeParams = [];
+      } else if (isPrimarySchool) {
+        gradeSql = "(grade = ? OR grade LIKE ?)";
+        gradeParams = [rawGrade, `${rawGrade}_%`];
+      } else if (rawGrade) {
+        gradeSql = "(grade = ? OR grade LIKE ?)";
+        gradeParams = [rawGrade, `${rawGrade}_%`];
+      }
 
-      // 1. 查询选择题 (带 options，严格按年级隔离)
       const choiceRows = await db.all(
-        "SELECT * FROM canonical_questions WHERE subject = ? AND (grade = ? OR grade = 'all' OR grade LIKE ?) AND options IS NOT NULL AND length(trim(options)) > 3 LIMIT 10",
-        [subject, gradeParam, gradeLikeParam]
+        `SELECT * FROM canonical_questions WHERE subject = ? AND ${gradeSql} AND options IS NOT NULL AND length(trim(options)) > 3 ORDER BY id ASC LIMIT ?`,
+        [subject, ...gradeParams, targetChoices * 2]
       );
-      choiceRows.forEach((r, idx) => {
+      for (const r of choiceRows) {
+        if (questions.filter(q => q.type === 'choice').length >= targetChoices) break;
         let opts = [];
         try {
           if (r.options.startsWith('[')) {
@@ -481,241 +601,185 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
         } catch {
           opts = ['A. 选项A', 'B. 选项B', 'C. 选项C', 'D. 选项D'];
         }
-        questions.push({
-          id: idx + 1,
+        pushUnique({
           type: 'choice',
           question: r.question,
           options: opts,
-          score: 4,
+          score: choiceScore,
           answer: r.standard_answer || 'A',
           explanation: r.analysis || r.key_insight || '详见教材权威解析与解题思路。'
         });
-      });
+      }
 
-      // 2. 查询填空题 (严格按年级隔离)
       const blankRows = await db.all(
-        "SELECT * FROM canonical_questions WHERE subject = ? AND (grade = ? OR grade = 'all' OR grade LIKE ?) AND (options IS NULL OR length(trim(options)) <= 3) LIMIT 6",
-        [subject, gradeParam, gradeLikeParam]
+        `SELECT * FROM canonical_questions WHERE subject = ? AND ${gradeSql} AND (options IS NULL OR length(trim(options)) <= 3) ORDER BY id ASC LIMIT ?`,
+        [subject, ...gradeParams, targetBlanks * 2]
       );
-      blankRows.forEach((r, idx) => {
-        questions.push({
-          id: questions.length + 1,
+      for (const r of blankRows) {
+        if (questions.filter(q => q.type === 'blank').length >= targetBlanks) break;
+        pushUnique({
           type: 'blank',
           question: r.question.includes('____') ? r.question : `${r.question} ______。`,
-          score: 4,
+          score: blankScore,
           answer: r.standard_answer || '见解析',
           explanation: r.analysis || r.key_insight || '详见公式代入与变形步骤。'
         });
-      });
+      }
     }
   } catch (err) {
     logger.warn('[TestPaperFallback] Canonical query error:', err.message);
   }
 
-  const isPrimarySchool = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
+  // 1. 补齐选择题（无重复独立题库）
+  const highSchoolChoices = [
+    { question: '已知集合 $A = \\{x \\mid x^2 - 3x + 2 \\le 0\\}$，$B = \\{x \\in \\mathbb{Z} \\mid 0 < x < 4\\}$，则 $A \\cap B =$（　　）', options: ['A. $\\{1\\}$', 'B. $\\{1, 2\\}$', 'C. $\\{2, 3\\}$', 'D. $\\{1, 2, 3\\}$'], answer: 'B', explanation: '解不等式得 $A = [1, 2]$，$B = \\{1, 2, 3\\}$，故 $A \\cap B = \\{1, 2\\}$。选B。' },
+    { question: '已知复数 $z = \\frac{2i}{1+i}$，则 $|z| =$（　　）', options: ['A. $1$', 'B. $\\sqrt{2}$', 'C. $2$', 'D. $2\\sqrt{2}$'], answer: 'B', explanation: '$z = \\frac{2i(1-i)}{(1+i)(1-i)} = 1 + i$，故 $|z| = \\sqrt{2}$。选B。' },
+    { question: '函数 $f(x) = x^3 - 3x + 1$ 的单调递减区间为（　　）', options: ['A. $(-\\infty, -1)$', 'B. $(-1, 1)$', 'C. $(1, +\\infty)$', 'D. $(-\\infty, 0)$'], answer: 'B', explanation: "求导得 $f'(x) = 3x^2 - 3 < 0 \\Rightarrow -1 < x < 1$。选B。" },
+    { question: '已知向量 $\\vec{a} = (2, -1)$，$\\vec{b} = (1, m)$，若 $\\vec{a} \\perp \\vec{b}$，则实数 $m =$（　　）', options: ['A. $-2$', 'B. $2$', 'C. $-\\frac{1}{2}$', 'D. $\\frac{1}{2}$'], answer: 'B', explanation: '$\\vec{a} \\cdot \\vec{b} = 2 - m = 0 \\Rightarrow m = 2$。选B。' },
+    { question: '椭圆 $\\frac{x^2}{25} + \\frac{y^2}{16} = 1$ 的离心率 $e$ 为（　　）', options: ['A. $\\frac{3}{5}$', 'B. $\\frac{4}{5}$', 'C. $\\frac{3}{4}$', 'D. $\\frac{5}{4}$'], answer: 'A', explanation: '$a=5, b=4, c=\\sqrt{25-16}=3$，故 $e = c/a = 3/5$。选A。' },
+    { question: '等差数列 $\\{a_n\\}$ 中，$a_2 = 5$，$a_5 = 14$，则公差 $d =$（　　）', options: ['A. $2$', 'B. $3$', 'C. $4$', 'D. $5$'], answer: 'B', explanation: '$3d = a_5 - a_2 = 9 \\Rightarrow d = 3$。选B。' },
+    { question: '若 $\\sin\\alpha = \\frac{3}{5}$ 且 $\\alpha \\in (\\frac{\\pi}{2}, \\pi)$，则 $\\cos\\alpha =$（　　）', options: ['A. $\\frac{4}{5}$', 'B. $-\\frac{4}{5}$', 'C. $\\frac{3}{4}$', 'D. $-\\frac{3}{4}$'], answer: 'B', explanation: '第二象限余弦为负，$\\cos\\alpha = -\\sqrt{1 - (3/5)^2} = -4/5$。选B。' },
+    { question: '函数 $y = \\log_2(x - 1)$ 的定义域是（　　）', options: ['A. $(0, +\\infty)$', 'B. $(1, +\\infty)$', 'C. $[1, +\\infty)$', 'D. $(-\\infty, 1)$'], answer: 'B', explanation: '真数 $x - 1 > 0 \\Rightarrow x > 1$。选B。' }
+  ];
+  const middleSchoolChoices = [
+    { question: '下列计算完全正确的是（　　）', options: ['A. $(-2)^3 = -8$', 'B. $-2^2 = 4$', 'C. $(-1)^{2026} = -1$', 'D. $-(-3) = -3$'], answer: 'A', explanation: '$(-2)^3 = -8$ 正确。' },
+    { question: '一元二次方程 $x^2 - 4x + 3 = 0$ 的两根之和为（　　）', options: ['A. $-4$', 'B. $4$', 'C. $3$', 'D. $-3$'], answer: 'B', explanation: '由韦达定理 $x_1 + x_2 = -b/a = 4$。' },
+    { question: '直角三角形两直角边长分别为 $6$ 和 $8$，则斜边长为（　　）', options: ['A. $7$', 'B. $10$', 'C. $12$', 'D. $14$'], answer: 'B', explanation: '由勾股定理 $\\sqrt{6^2+8^2}=10$。' },
+    { question: '一次函数 $y = -2x + 4$ 的图像不经过的象限是（　　）', options: ['A. 第一象限', 'B. 第二象限', 'C. 第三象限', 'D. 第四象限'], answer: 'C', explanation: '$k<0, b>0$，图像经过一、二、四象限，不经第三象限。' },
+    { question: '将多项式 $x^2 - 9$ 因式分解，结果是（　　）', options: ['A. $(x-3)^2$', 'B. $(x+3)^2$', 'C. $(x+3)(x-3)$', 'D. $x(x-9)$'], answer: 'C', explanation: '利用平方差公式分解。' },
+    { question: '若 $\\triangle ABC \\sim \\triangle DEF$ 且相似比为 $1:3$，则它们的面积比为（　　）', options: ['A. $1:3$', 'B. $1:6$', 'C. $1:9$', 'D. $3:1$'], answer: 'C', explanation: '相似三角形面积比等于相似比的平方。' },
+    { question: '不等式 $2x - 6 > 0$ 的解集在数轴上表示为（　　）', options: ['A. $x > 3$', 'B. $x < 3$', 'C. $x \\ge 3$', 'D. $x > -3$'], answer: 'A', explanation: '移项除以正数 2 得 $x > 3$。' },
+    { question: '抛物线 $y = (x - 2)^2 + 3$ 的顶点坐标是（　　）', options: ['A. $(-2, 3)$', 'B. $(2, 3)$', 'C. $(2, -3)$', 'D. $(-2, -3)$'], answer: 'B', explanation: '顶点式 $y = a(x-h)^2 + k$ 顶点为 $(h, k) = (2, 3)$。' }
+  ];
+  const primaryChoices = [
+    { question: '下列计算完全正确的是（　　）', options: ['A. $25 + 18 = 43$', 'B. $36 - 19 = 15$', 'C. $6 \\times 7 = 48$', 'D. $54 \\div 6 = 8$'], answer: 'A', explanation: '25 + 18 = 43 正确。' },
+    { question: '一个长方形长 $8$ 厘米，宽 $5$ 厘米，它的周长是（　　）', options: ['A. $13$ 厘米', 'B. $26$ 厘米', 'C. $40$ 厘米', 'D. $20$ 厘米'], answer: 'B', explanation: '$(8+5)\\times 2 = 26$ 厘米。' },
+    { question: '把 $1$ 米平均分成 $10$ 份，其中的 $3$ 份用小数表示是（　　）', options: ['A. $0.03$ 米', 'B. $0.3$ 米', 'C. $3.0$ 米', 'D. $0.33$ 米'], answer: 'B', explanation: '十分之三米即 $0.3$ 米。' },
+    { question: '与 $25 \\times 16$ 结果相等的算式是（　　）', options: ['A. $25 \\times 4 \\times 4$', 'B. $25 \\times 4 + 4$', 'C. $25 \\times 10 + 6$', 'D. $25 \\times 8 \\times 8$'], answer: 'A', explanation: '把 $16$ 拆成 $4 \\times 4$ 利用乘法结合律。' },
+    { question: '直角三角形中两个锐角的和一定是（　　）', options: ['A. $60^\\circ$', 'B. $90^\\circ$', 'C. $120^\\circ$', 'D. $180^\\circ$'], answer: 'B', explanation: '三角形内角和 $180^\\circ$ 减去直角 $90^\\circ$ 得 $90^\\circ$。' },
+    { question: '下列各数中，既是 $2$ 的倍数又是 $5$ 的倍数的是（　　）', options: ['A. $15$', 'B. $24$', 'C. $30$', 'D. $45$'], answer: 'C', explanation: '个位是 $0$ 的数同时是 $2$ 和 $5$ 的倍数。' },
+    { question: '分针从数字 $12$ 走到数字 $4$，经过的时间是（　　）', options: ['A. $4$ 分钟', 'B. $20$ 分钟', 'C. $40$ 分钟', 'D. $15$ 分钟'], answer: 'B', explanation: '钟面每大格为 $5$ 分钟，$4 \\times 5 = 20$ 分钟。' },
+    { question: '三位数除以一位数，商的位数可能是（　　）', options: ['A. 一定是三位数', 'B. 一定是两位数', 'C. 两位数或三位数', 'D. 一位数'], answer: 'C', explanation: '当被除数百位大于等于除数时商是三位数，否则是两位数。' },
+    { question: '一袋食盐重 $500$ 克，两袋这样的食盐重（　　）', options: ['A. $1000$ 千克', 'B. $1$ 千克', 'C. $100$ 克', 'D. $2$ 千克'], answer: 'B', explanation: '$500 + 500 = 1000$ 克 $= 1$ 千克。' },
+    { question: '下列图形中，对称轴条数最多的是（　　）', options: ['A. 长方形', 'B. 正方形', 'C. 等边三角形', 'D. 圆'], answer: 'D', explanation: '圆有无数条对称轴。' }
+  ];
 
-  // 补齐选择题若不足 10 题
-  while (questions.filter(q => q.type === 'choice').length < 10) {
-    const idx = questions.length + 1;
-    if (isPrimarySchool) {
-      questions.push({
-        id: idx,
-        type: 'choice',
-        question: `下列计算完全正确的是（　　）`,
-        options: ['A. 25 + 18 = 43', 'B. 36 - 19 = 15', 'C. 6 × 7 = 48', 'D. 54 ÷ 6 = 8'],
-        score: 4,
-        answer: 'A',
-        explanation: '25 + 18 = 43 正确；36 - 19 = 17；6 × 7 = 42；54 ÷ 6 = 9。选A。'
-      });
-    } else {
-      questions.push({
-        id: idx,
-        type: 'choice',
-        question: `下列计算与概念判断中，完全正确的是（　　）`,
-        options: ['A. $(-2)^3 = -8$', 'B. $-2^2 = 4$', 'C. $(-1)^{2026} = -1$', 'D. $-( -3) = -3$'],
-        score: 4,
-        answer: 'A',
-        explanation: '$(-2)^3 = -8$ 正确；$-2^2 = -4$；$(-1)^{2026} = 1$；$-(-3) = 3$。选A。'
-      });
-    }
+  const choicePool = isHighSchool ? highSchoolChoices : (isPrimarySchool ? primaryChoices : middleSchoolChoices);
+  for (const tpl of choicePool) {
+    if (questions.filter(q => q.type === 'choice').length >= targetChoices) break;
+    pushUnique({ type: 'choice', score: choiceScore, ...tpl });
   }
 
-  // 补齐填空题若不足 6 题
-  while (questions.filter(q => q.type === 'blank').length < 6) {
-    const idx = questions.length + 1;
-    if (isPrimarySchool) {
-      questions.push({
-        id: idx,
-        type: 'blank',
-        question: `计算：48 ÷ 6 + 15 = ______。`,
-        score: 4,
-        answer: '23',
-        explanation: '先算除法 48 ÷ 6 = 8，再算加法 8 + 15 = 23。'
-      });
-    } else {
-      questions.push({
-        id: idx,
-        type: 'blank',
-        question: `若 $|x - 3| + (y + 1)^2 = 0$，则代数式 $x + y$ 的值为 ______。`,
-        score: 4,
-        answer: '2',
-        explanation: '非负数之和为0，则 $x = 3, y = -1$，$x + y = 2$。'
-      });
-    }
+  // 2. 补齐填空题（完全去重，绝不重复 6 道同一题）
+  const highSchoolBlanks = [
+    { question: '曲线 $y = e^x + 2x$ 在点 $(0, 1)$ 处的切线斜率为 ______。', answer: '3', explanation: "求导 $y' = e^x + 2$，代入 $x = 0$ 得 $k = 3$。" },
+    { question: '二项式 $(x + 1)^5$ 展开式中含 $x^2$ 项的系数为 ______。', answer: '10', explanation: '由二项式定理 $C_5^2 = 10$。' },
+    { question: '抛物线 $y^2 = 8x$ 的焦点坐标为 ______。', answer: '(2,0)', explanation: '$2p = 8 \\Rightarrow p/2 = 2$，焦点在 $x$ 轴正半轴 $(2, 0)$。' },
+    { question: '已知正实数 $x, y$ 满足 $x + y = 6$，则 $xy$ 的最大值为 ______。', answer: '9', explanation: '由基本不等式 $xy \\le (\\frac{x+y}{2})^2 = 9$，当 $x=y=3$ 取等。' }
+  ];
+  const middleSchoolBlanks = [
+    { question: '若 $|x - 3| + (y + 1)^2 = 0$，则代数式 $x + y$ 的值为 ______。', answer: '2', explanation: '非负数和为 0，故 $x=3, y=-1$，$x+y=2$。' },
+    { question: '反比例函数 $y = \\frac{k}{x}$ 的图像经过点 $(2, -3)$，则 $k =$ ______。', answer: '-6', explanation: '$k = xy = 2 \\times (-3) = -6$。' },
+    { question: '正六边形的每一个内角等于 ______ 度。', answer: '120', explanation: '$(6-2)\\times 180^\\circ / 6 = 120^\\circ$。' },
+    { question: '一组数据 $3, 5, 7, 5, 10$ 的众数是 ______。', answer: '5', explanation: '数字 $5$ 出现两次最多。' }
+  ];
+  const primaryBlanks = [
+    { question: '计算：$48 \\div 6 + 15 =$ ______。', answer: '23', explanation: '先乘除后加减：$8 + 15 = 23$。' },
+    { question: '一个正方形边长是 $9$ 厘米，它的面积是 ______ 平方厘米。', answer: '81', explanation: '$9 \\times 9 = 81$ 平方厘米。' },
+    { question: '$3$ 小时 $20$ 分 $=$ ______ 分钟。', answer: '200', explanation: '$3 \\times 60 + 20 = 200$ 分钟。' },
+    { question: '一块蛋糕平均切成 $8$ 块，小明吃了 $3$ 块，还剩下这块蛋糕的 ______（填分数）。', answer: '5/8', explanation: '$1 - 3/8 = 5/8$。' },
+    { question: '一个数除以 $7$，商是 $12$，余数是 $4$，这个数是 ______。', answer: '88', explanation: '被除数 $=$ 商 $\\times$ 除数 $+$ 余数 $= 12 \\times 7 + 4 = 88$。' },
+    { question: '$5$ 千米 $- 1200$ 米 $=$ ______ 米。', answer: '3800', explanation: '$5000 - 1200 = 3800$ 米。' }
+  ];
+
+  const blankPool = isHighSchool ? highSchoolBlanks : (isPrimarySchool ? primaryBlanks : middleSchoolBlanks);
+  for (const tpl of blankPool) {
+    if (questions.filter(q => q.type === 'blank').length >= targetBlanks) break;
+    pushUnique({ type: 'blank', score: blankScore, ...tpl });
   }
 
-  // 3. 解答与综合大题补全（确保凑齐 25 题和 150 分，严格按照学段隔离）
+  // 3. 补齐解答题（严格学段隔离：高中独立新高考解答题，绝不塞七年级研学题！且精确凑齐目标满分）
+  const highSchoolEssayTemplates = [
+    {
+      type: 'essay',
+      score: 15,
+      question: '【解三角形综合】在 $\\triangle ABC$ 中，内角 $A, B, C$ 所对的边分别为 $a, b, c$，已知 $a\\cos C + c\\cos A = 2b\\cos B$。\n(1) 求角 $B$ 的大小；\n(2) 若 $b = \\sqrt{7}$，$a + c = 4$，求 $\\triangle ABC$ 的面积。',
+      answer: '(1) $B = \\frac{\\pi}{3}$；(2) $S = \\frac{3\\sqrt{3}}{4}$。',
+      explanation: '(1) 由正弦定理得 $\\sin(A+C) = 2\\sin B\\cos B \\Rightarrow \\cos B = \\frac{1}{2} \\Rightarrow B = \\frac{\\pi}{3}$；(2) 由余弦定理 $7 = (a+c)^2 - 3ac = 16 - 3ac \\Rightarrow ac = 3$，面积 $S = \\frac{1}{2}ac\\sin B = \\frac{3\\sqrt{3}}{4}$。'
+    },
+    {
+      type: 'essay',
+      score: 17,
+      question: '【数列与求和】已知公差不为零的等差数列 $\\{a_n\\}$ 满足 $a_1 = 2$，且 $a_1, a_2, a_5$ 成等比数列。\n(1) 求数列 $\\{a_n\\}$ 的通项公式；\n(2) 设 $b_n = \\frac{1}{a_n a_{n+1}}$，求数列 $\\{b_n\\}$ 的前 $n$ 项和 $T_n$。',
+      answer: '(1) $a_n = 4n - 2$；(2) $T_n = \\frac{n}{4(2n+1)}$。',
+      explanation: '(1) $(2+d)^2 = 2(2+4d) \\Rightarrow d = 4$，故 $a_n = 4n - 2$；(2) 裂项相消：$b_n = \\frac{1}{4}(\\frac{1}{4n-2} - \\frac{1}{4n+2})$，累加得 $T_n = \\frac{1}{4}(\\frac{1}{2} - \\frac{1}{4n+2}) = \\frac{n}{4(2n+1)}$。'
+    },
+    {
+      type: 'essay',
+      score: 18,
+      question: '【立体几何与空间向量】在直三棱柱 $ABC-A_1B_1C_1$ 中，$AC \\perp BC$，$AC = BC = 2$，$AA_1 = 2$，点 $D$ 为 $AB$ 中点。\n(1) 求证：$CD \\perp$ 平面 $ABB_1A_1$；\n(2) 求直线 $A_1C$ 与平面 $ABB_1A_1$ 所成角的正弦值。',
+      answer: '(1) 见解析；(2) $\\frac{1}{2}$。',
+      explanation: '(1) 等腰直角三角形中 $CD \\perp AB$，且直棱柱中 $AA_1 \\perp CD$，故 $CD \\perp$ 平面 $ABB_1A_1$；(2) 线面角即 $\\angle CA_1D$，$CD=\\sqrt{2}$，$A_1C=2\\sqrt{2}$，故 $\\sin\\theta = \\frac{CD}{A_1C} = \\frac{1}{2}$。'
+    },
+    {
+      type: 'essay',
+      score: 20,
+      question: '【圆锥曲线压轴】已知椭圆 $C: \\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1 (a > b > 0)$ 的右焦点为 $F(1, 0)$，离心率为 $\\frac{1}{2}$。\n(1) 求椭圆 $C$ 的标准方程；\n(2) 过点 $F$ 作斜率为 $1$ 的直线 $l$ 交椭圆于 $A, B$ 两点，求弦长 $|AB|$。',
+      answer: '(1) $\\frac{x^2}{4} + \\frac{y^2}{3} = 1$；(2) $|AB| = \\frac{24}{7}$。',
+      explanation: '(1) $c=1, e=1/2 \\Rightarrow a=2, b^2=3$；(2) 联立 $y=x-1$ 与 $3x^2+4y^2=12$ 得 $7x^2-8x-8=0$，由弦长公式 $|AB| = \\sqrt{1+1^2} \\cdot \\frac{\\sqrt{64+224}}{7} = \\frac{24}{7}$。'
+    },
+    {
+      type: 'essay',
+      score: 20,
+      question: '【函数与导数压轴】已知函数 $f(x) = a\\ln x - x + 1$（$a \\in \\mathbb{R}$）。\n(1) 当 $a = 1$ 时，求曲线 $y = f(x)$ 在 $x = 1$ 处的切线方程，并证明 $f(x) \\le 0$ 恒成立；\n(2) 讨论函数 $f(x)$ 在定义域 $(0, +\\infty)$ 上的单调性。',
+      answer: '(1) 切线 $y = 0$，极大值 $f(1) = 0$；(2) $a \\le 0$ 时单调递减；$a > 0$ 时在 $(0, a)$ 递增，在 $(a, +\\infty)$ 递减。',
+      explanation: "定义域 $(0, +\\infty)$，$f'(x) = \\frac{a - x}{x}$。分类讨论 $a \\le 0$ 与 $a > 0$ 的导数符号即可完整得解。"
+    }
+  ];
+
   const primaryEssayTemplates = [
-    {
-      type: 'essay',
-      question: '【脱式计算与简便运算】\n(1) 计算：$125 \\times 32 \\times 25$；\n(2) 计算：$480 \\div [ (15 + 25) \\times 2 ]$。',
-      score: 10,
-      answer: '(1) 100000；(2) 6。',
-      explanation: '【解析】(1) $125 \\times 32 \\times 25 = (125 \\times 8) \\times (4 \\times 25) = 1000 \\times 100 = 100000$。\n(2) 原式 $= 480 \\div [ 40 \\times 2 ] = 480 \\div 80 = 6$。'
-    },
-    {
-      type: 'essay',
-      question: '【周长与面积几何应用】一块长方形菜地，长是 24 米，宽是 16 米。\n(1) 求这块长方形菜地的周长和面积；\n(2) 如果在菜地的四周围上篱笆，一面靠墙（墙长 24 米），篱笆至少需要多少米？',
-      score: 10,
-      answer: '(1) 周长 80 米，面积 384 平方米；(2) 至少需要 56 米。',
-      explanation: '【解析】(1) 周长：$(24 + 16) \\times 2 = 80$（米）；面积：$24 \\times 16 = 384$（平方米）。\n(2) 要使篱笆最少，长边靠墙，篱笆长度为：$24 + 16 \\times 2 = 56$（米）。'
-    },
-    {
-      type: 'essay',
-      question: '【行程与速度应用题】甲、乙两辆汽车同时从相距 480 千米的两地相对开出，经过 3 小时两车相遇。已知甲车每小时行驶 75 千米，求乙车每小时行驶多少千米？',
-      score: 10,
-      answer: '乙车每小时行驶 85 千米。',
-      explanation: '【解析】速度和为：$480 \\div 3 = 160$（千米/小时）；乙车速度：$160 - 75 = 85$（千米/小时）。'
-    },
-    {
-      type: 'essay',
-      question: '【归一与总价应用题】学校食堂买来 6 箱苹果，每箱 15 千克，一共花费 360 元。平均每千克苹果多少元？如果学校计划再买 4 箱同样的苹果，还需要多少元？',
-      score: 10,
-      answer: '平均每千克 4 元；还需要 240 元。',
-      explanation: '【解析】总重量：$6 \\times 15 = 90$（千克），单价：$360 \\div 90 = 4$（元/千克）；再买 4 箱需要花费：$4 \\times (360 \\div 6) = 240$（元）。'
-    },
-    {
-      type: 'essay',
-      question: '【和倍与差倍思维大题】小明和小红共收集邮票 120 张，小明收集的邮票张数是小红的 3 倍。小明和小红各收集了多少张邮票？',
-      score: 12,
-      answer: '小红收集 30 张，小明收集 90 张。',
-      explanation: '【解析】份数和：$1 + 3 = 4$（份）；小红：$120 \\div 4 = 30$（张）；小明：$30 \\times 3 = 90$（张）。'
-    },
-    {
-      type: 'essay',
-      question: '【鸡兔同笼经典应用】笼子里有若干只鸡和兔。从上面数，有 35 个头；从下面数，有 94 只脚。笼子里鸡和兔各有多少只？',
-      score: 14,
-      answer: '鸡有 23 只，兔有 12 只。',
-      explanation: '【解析】假设全为鸡，脚数应为：$35 \\times 2 = 70$（只）；脚数差：$94 - 70 = 24$（只）；兔：$24 \\div (4 - 2) = 12$（只）；鸡：$35 - 12 = 23$（只）。'
-    },
-    {
-      type: 'essay',
-      question: '【工程合作与逻辑应用题】修一条长 1200 米的公路，甲队单独修需要 20 天完成，乙队单独修需要 30 天完成。两队合修这条公路，需要多少天可以修完？',
-      score: 14,
-      answer: '需要 12 天修完。',
-      explanation: '【解析】甲队每天修 $1200 \\div 20 = 60$（米），乙队每天修 $1200 \\div 30 = 40$（米）。合修天数：$1200 \\div (60 + 40) = 12$（天）。'
-    },
-    {
-      type: 'essay',
-      question: '【购物方案优化与促销问题】商场举行促销活动：A 方案为买五送一（即买 5 件赠送 1 件同价商品）；B 方案为全场每满 100 元立减 20 元。某班级计划购买单价为 30 元的足球 12 个。\n(1) 选择 A 方案需要花费多少元？\n(2) 选择 B 方案需要花费多少元？哪种方案更划算？',
-      score: 6,
-      answer: '(1) A 方案 300 元；(2) B 方案 300 元，两方案费用相同。',
-      explanation: '【解析】(1) 买五送一，买 10 个赠送 2 个刚好得 12 个，花费 $10 \\times 30 = 300$（元）；(2) 总价 $12 \\times 30 = 360$（元），满 300 减 60，花费 $360 - 60 = 300$（元）。两方案费用相同。'
-    },
-    {
-      type: 'essay',
-      question: '【周期规律与数形结合探究】有一列按规律排列的图形：△□□○△□□○△□□○……\n(1) 第 50 个图形是什么？\n(2) 前 50 个图形中，一共有多少个□？',
-      score: 4,
-      answer: '(1) 第 50 个图形是□；(2) 一共有 25 个□。',
-      explanation: '【解析】周期为 4（△□□○）。\n(1) $50 \\div 4 = 12$ 组……2 个，第 2 个是□；\n(2) 每组有 2 个□，前 12 组有 $12 \\times 2 = 24$ 个，余下 2 个中有 1 个□，总共 $24 + 1 = 25$ 个□。'
-    }
+    { type: 'essay', score: 6, question: '【脱式计算与简便运算】\n(1) 计算：$125 \\times 32 \\times 25$；\n(2) 计算：$480 \\div [(15 + 25) \\times 2]$。', answer: '(1) 100000；(2) 6。', explanation: '(1) $(125\\times 8)\\times(4\\times 25)=100000$；(2) $480\\div 80=6$。' },
+    { type: 'essay', score: 6, question: '【周长与面积应用】一块长方形菜地长 $24$ 米、宽 $16$ 米。\n(1) 求周长和面积；\n(2) 若一面靠墙（墙长 $24$ 米）围篱笆，至少需要多少米？', answer: '(1) 周长 80 米，面积 384 平方米；(2) 56 米。', explanation: '长边靠墙最省：$24 + 16\\times 2 = 56$ 米。' },
+    { type: 'essay', score: 6, question: '【行程问题】甲、乙两车同时从相距 $480$ 千米的两地相对开出，$3$ 小时相遇。甲车速度 $75$ 千米/时，求乙车速度。', answer: '85 千米/时。', explanation: '速度和 $480\\div 3=160$，乙速 $160-75=85$。' },
+    { type: 'essay', score: 6, question: '【鸡兔同笼】笼子里共有 $35$ 个头、$94$ 只脚，求鸡和兔各有多少只？', answer: '鸡 23 只，兔 12 只。', explanation: '兔：$(94-35\\times 2)\\div 2 = 12$ 只，鸡 $23$ 只。' },
+    { type: 'essay', score: 6, question: '【购物预算】每本故事书 $18$ 元，每支钢笔 $12$ 元。班级买了 $15$ 本故事书和 $20$ 支钢笔，一共花了多少钱？', answer: '510 元。', explanation: '$18 \\times 15 + 12 \\times 20 = 270 + 240 = 510$ 元。' },
+    { type: 'essay', score: 5, question: '【归一问题】一辆货车 $4$ 小时行驶 $260$ 千米，照这样的速度，$7$ 小时可以行驶多少千米？', answer: '455 千米。', explanation: '速度 $260 \\div 4 = 65$ 千米/时，$65 \\times 7 = 455$ 千米。' },
+    { type: 'essay', score: 5, question: '【倍数应用】果园里有苹果树 $120$ 棵，梨树的棵数是苹果树的 $3$ 倍少 $25$ 棵，两种果树一共有多少棵？', answer: '455 棵。', explanation: '梨树 $120 \\times 3 - 25 = 335$ 棵，共 $120 + 335 = 455$ 棵。' },
+    { type: 'essay', score: 6, question: '【植树问题】在一条长 $120$ 米的小路一侧每隔 $6$ 米栽一棵树（两端都栽），一共需要栽多少棵树？', answer: '21 棵。', explanation: '间隔数 $120 \\div 6 = 20$，两端都栽为 $20 + 1 = 21$ 棵。' },
+    { type: 'essay', score: 6, question: '【平均数问题】小明前三次数学测验成绩分别是 $92$ 分、$88$ 分、$96$ 分，他第四次至少考多少分才能使四次平均分达到 $93$ 分？', answer: '96 分。', explanation: '四次总分需 $93 \\times 4 = 372$ 分，$372 - (92+88+96) = 96$ 分。' }
   ];
 
   const secondaryEssayTemplates = [
-    {
-      type: 'essay',
-      question: '【代数运算与化简求值】\n(1) 计算：$-20 + (-14) - (-18) - 13$；\n(2) 先化简再求值：$2(x^2y + xy^2) - 3(x^2y - 1) - 2xy^2 - 2$，其中 $x = -2, y = \\frac{1}{2}$。',
-      score: 10,
-      answer: '(1) $-29$；(2) 化简得 $-x^2y + 1$，代入值为 $-1$。',
-      explanation: '【解析】(1) 原式 $=-20-14+18-13=-29$。\n(2) 化简得 $-x^2y+1$。代入 $x=-2, y=1/2$ 得 $-(-2)^2(1/2)+1=-2+1=-1$。'
-    },
-    {
-      type: 'essay',
-      question: '【一元一次方程应用】解方程：\n(1) $5x - 2 = 3x + 6$；\n(2) $\\frac{2x - 1}{3} - \\frac{x + 2}{4} = 1$。',
-      score: 10,
-      answer: '(1) $x = 4$；(2) $x = \\frac{22}{5}$。',
-      explanation: '【解析】(1) 移项合并得 $2x = 8 \\Rightarrow x = 4$。\n(2) 同乘 12 去分母得 $4(2x-1) - 3(x+2) = 12 \\Rightarrow 8x - 4 - 3x - 6 = 12 \\Rightarrow 5x = 22 \\Rightarrow x = 22/5$。'
-    },
-    {
-      type: 'essay',
-      question: '【几何线段中点推理】如图，已知线段 $AB = 16\\text{cm}$，点 $C$ 是线段 $AB$ 上一点且 $AC = 6\\text{cm}$，点 $D$ 是线段 $BC$ 的中点。求线段 $AD$ 的长。\n\n```mermaid\ngraph LR\nA((A))---C((C))---D((D))---B((B))\n```',
-      score: 10,
-      answer: '$AD = 11\\text{cm}$',
-      explanation: '【解析】$BC = AB - AC = 16 - 6 = 10\\text{cm}$。∵ $D$ 是 $BC$ 中点，∴ $CD = 5\\text{cm}$。∴ $AD = AC + CD = 6 + 5 = 11\\text{cm}$。'
-    },
-    {
-      type: 'essay',
-      question: '【角平分线与几何推导】如图，已知 $\\angle AOB = 90^\\circ$，$OC$ 是其内部一条射线，$OD$ 平分 $\\angle AOC$，$OE$ 平分 $\\angle BOC$。求 $\\angle DOE$ 的度数。\n\n```mermaid\ngraph TD\nO((O))---A((A))\nO---B((B))\nO---C((C))\nO---D((D))\nO---E((E))\n```',
-      score: 10,
-      answer: '$\\angle DOE = 45^\\circ$',
-      explanation: '【推理】$\\angle DOE = \\angle DOC + \\angle COE = \\frac{1}{2}\\angle AOC + \\frac{1}{2}\\angle BOC = \\frac{1}{2}(\\angle AOC + \\angle BOC) = \\frac{1}{2} \\times 90^\\circ = 45^\\circ$。'
-    },
-    {
-      type: 'essay',
-      question: '【实际应用建模大题】某校组织七年级学生参加研学实践，若单独租用 45 座客车若干辆，刚好坐满；若单独租用 60 座客车，可少租 1 辆且空出 15 个座位。求七年级参加研学的学生总人数。',
-      score: 12,
-      answer: '学生人数为 225 人。',
-      explanation: '【方程】设租用 45 座客车 $x$ 辆，学生人数为 $45x$。列方程 $45x = 60(x - 1) - 15 \\Rightarrow 45x = 60x - 75 \\Rightarrow 15x = 75 \\Rightarrow x = 5$。总人数为 $45 \\times 5 = 225$ 人。'
-    },
-    {
-      type: 'essay',
-      question: '【几何探究与旋转不变性】如图，点 $O$ 在直线 $AB$ 上，$\\angle AOC = 60^\\circ$，$OD$ 平分 $\\angle AOC$，$OE$ 平分 $\\angle BOC$。\n(1) 求 $\\angle DOE$ 的度数；\n(2) 若射线 $OC$ 在上半平面绕点 $O$ 旋转（不与 $OA, OB$ 重合），$\\angle DOE$ 的大小是否改变？请说明理由。',
-      score: 14,
-      answer: '(1) $\\angle DOE = 90^\\circ$；(2) 不改变，恒等于 $90^\\circ$。',
-      explanation: '【解析】(1) $\\angle BOC = 180^\\circ - 60^\\circ = 120^\\circ$。$\\angle DOC = 30^\\circ, \\angle COE = 60^\\circ \\Rightarrow \\angle DOE = 90^\\circ$。\n(2) $\\angle DOE = \\frac{1}{2}(\\angle AOC + \\angle BOC) = \\frac{1}{2} \\times 180^\\circ = 90^\\circ$，为定值。'
-    },
-    {
-      type: 'essay',
-      question: '【数轴动点综合压轴大题】如图，数轴上点 $A$ 表示 $-10$，点 $B$ 表示 $6$。点 $P$ 从 $A$ 出发以 3 单位/秒向右匀速运动，点 $Q$ 从 $B$ 出发以 2 单位/秒向左匀速运动。运动时间为 $t$ 秒。\n(1) 求点 $P$ 与点 $Q$ 相遇时的 $t$ 值；\n(2) 当 $t$ 为何值时，$P$、$Q$ 两点之间的距离为 2？\n\n```mermaid\ngraph LR\nA((A: -10))---P((P))---O((0))---Q((Q))---B((B: 6))\n```',
-      score: 14,
-      answer: '(1) $t = \\frac{16}{5}$ 秒；(2) $t = \\frac{14}{5}$ 秒或 $t = \\frac{18}{5}$ 秒。',
-      explanation: '【解析】(1) 相遇时两点坐标相同：$-10 + 3t = 6 - 2t \\Rightarrow 5t = 16 \\Rightarrow t = 16/5$。\n(2) $PQ = |(-10 + 3t) - (6 - 2t)| = |5t - 16| = 2 \\Rightarrow 5t - 16 = 2$ 或 $5t - 16 = -2 \\Rightarrow t = 18/5$ 或 $t = 14/5$。'
-    },
-    {
-      type: 'essay',
-      question: '【方案决策与优化】某文具店推出两种优惠促销：方案一为全场打八折；方案二为满 200 元减 50 元。某学校计划购买单价为 25 元的钢笔 $x$ 支。\n(1) 分别写出两种方案所需花费的代数式（用含 $x$ 的式子表示）；\n(2) 当学校需要购买 10 支钢笔时，选择哪种方案更合算？请说明理由。',
-      score: 6,
-      answer: '(1) 方案一：$20x$，方案二：$25x - 50$ (当 $x \\ge 8$ 时)；(2) 购买 10 支选择方案一与方案二费用相同（均为 200 元）。',
-      explanation: '【解析】(1) 方案一：$25x \\times 0.8 = 20x$。方案二：$25x - 50$。\n(2) 当 $x = 10$ 时，方案一花费 $20 \\times 10 = 200$ 元；方案二花费 $25 \\times 10 - 50 = 200$ 元。两方案费用相同。'
-    },
-    {
-      type: 'essay',
-      question: '【分类讨论与反思】已知关于 $x$ 的方程 $2x + a = 1$ 与 $3x - 1 = 2(x + 1)$ 的解互为相反数，求 $a$ 的值。',
-      score: 4,
-      answer: '$a = 7$',
-      explanation: '【解析】解第二个方程：$3x - 1 = 2x + 2 \\Rightarrow x = 3$。因为两方程解互为相反数，所以第一个方程的解为 $x = -3$。代入第一个方程得 $2(-3) + a = 1 \\Rightarrow -6 + a = 1 \\Rightarrow a = 7$。'
-    }
+    { type: 'essay', score: 16, question: '【代数化简与方程】\n(1) 解方程 $\\frac{2x - 1}{3} - \\frac{x + 2}{4} = 1$；\n(2) 化简求值：$2(x^2y + xy^2) - 3(x^2y - 1) - 2xy^2 - 2$，其中 $x = -2, y = \\frac{1}{2}$。', answer: '(1) $x = \\frac{22}{5}$；(2) $-1$。', explanation: '(1) 去分母同乘 12 得 $5x=22$；(2) 化简得 $-x^2y+1=-1$。' },
+    { type: 'essay', score: 18, question: '【几何推理与角平分线】已知点 $O$ 在直线 $AB$ 上，$\\angle AOC = 60^\\circ$，$OD$ 平分 $\\angle AOC$，$OE$ 平分 $\\angle BOC$。\n(1) 求 $\\angle DOE$ 的度数；\n(2) 若射线 $OC$ 绕点 $O$ 在上半平面旋转，$\\angle DOE$ 是否改变？说明理由。', answer: '(1) $90^\\circ$；(2) 不改变，恒为 $90^\\circ$。', explanation: '$\\angle DOE = \\frac{1}{2}(\\angle AOC + \\angle BOC) = 90^\\circ$。' },
+    { type: 'essay', score: 20, question: '【实际应用建模】某校组织初中学生研学，若单独租用 $45$ 座客车刚好坐满；若单独租用 $60$ 座客车，可少租 $1$ 辆且空出 $15$ 个座位。求参加研学的学生总人数。', answer: '225 人。', explanation: '设 $45$ 座车 $x$ 辆，$45x = 60(x-1)-15 \\Rightarrow x=5$，共 $225$ 人。' },
+    { type: 'essay', score: 22, question: '【数轴动点综合】数轴上点 $A$ 表示 $-10$，点 $B$ 表示 $6$。点 $P$ 从 $A$ 以 $3$ 单位/秒向右运动，点 $Q$ 从 $B$ 以 $2$ 单位/秒向左运动，时间为 $t$ 秒。\n(1) 求相遇时的 $t$ 值；\n(2) 当 $t$ 为何值时 $P, Q$ 相距 $2$？', answer: '(1) $t = \\frac{16}{5}$ 秒；(2) $t = \\frac{14}{5}$ 秒或 $\\frac{18}{5}$ 秒。', explanation: '(1) $5t=16$；(2) $|5t-16|=2$。' },
+    { type: 'essay', score: 26, question: '【函数与方案优化】文具店优惠：方案一全场打八折；方案二满 $200$ 元减 $50$ 元。计划购买单价 $25$ 元的钢笔 $x$ 支（$x \\ge 8$）。\n(1) 写出两种方案花费的代数式；\n(2) 讨论不同购买数量下哪种方案更划算。', answer: '(1) 方案一 $20x$，方案二 $25x - 50$；(2) $x=10$ 相同，$x>10$ 方案一划算，$8\\le x<10$ 方案二划算。', explanation: '比较 $20x$ 与 $25x-50$ 的大小关系即可。' }
   ];
 
-  const essayTemplates = isPrimarySchool ? primaryEssayTemplates : secondaryEssayTemplates;
-
+  const essayTemplates = isHighSchool ? highSchoolEssayTemplates : (isPrimarySchool ? primaryEssayTemplates : secondaryEssayTemplates);
   for (const eq of essayTemplates) {
-    questions.push({
-      ...eq,
-      id: questions.length + 1
-    });
+    pushUnique(eq);
   }
 
-  const finalQuestions = questions.slice(0, 25).map((q, i) => ({
-    ...q,
-    id: i + 1
-  }));
+  // 严格算术校准：确保最后一道题分值微调使总分与 targetMaxScore 100% 一致
+  const currentSum = questions.reduce((acc, q) => acc + (Number(q.score) || 0), 0);
+  if (questions.length > 0 && currentSum !== targetMaxScore) {
+    const diff = targetMaxScore - currentSum;
+    const lastQ = questions[questions.length - 1];
+    if ((lastQ.score || 0) + diff >= 4) {
+      lastQ.score = (lastQ.score || 0) + diff;
+    }
+  }
+  const finalTotalScore = questions.reduce((acc, q) => acc + (Number(q.score) || 0), 0);
 
   return {
-    title: paperTitle,
+    title: paperTitle.replace(/\(满分\d+分\)/, `(满分${finalTotalScore}分)`),
     duration: getExamDuration(grade),
     grade: grade,
-    questions: finalQuestions
+    totalScore: finalTotalScore,
+    isFallback: true,
+    questions: questions.map((q, i) => ({ ...q, id: i + 1 }))
   };
 }
 
@@ -731,7 +795,8 @@ function getExamDuration(grade) {
 /**
  * API 1: 生成试卷
  */
-router.post('/test-paper/generate', async (req, res) => {
+const { requireQuotaOrVip } = require('../middleware/quota');
+router.post('/test-paper/generate', requireQuotaOrVip('test_paper_generate'), async (req, res) => {
   try {
     const { grade, subject, type, chapter_id, edition, knowledge_points, region, exam_year } = req.body;
     if (!grade || !subject || !type) {
@@ -772,6 +837,7 @@ router.post('/test-paper/generate', async (req, res) => {
     try {
       const response = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
+        profileId: req.auth?.activeProfileId || 'default',
         headers: getClientAiHeaders(req),
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
@@ -812,126 +878,191 @@ router.post('/test-paper/generate', async (req, res) => {
 /**
  * API 2: 批改试卷
  */
-router.post('/test-paper/grade', async (req, res) => {
+router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (req, res) => {
   try {
     const { student_name, answers, questions, grade } = req.body;
     if (!answers || !questions || !Array.isArray(questions)) {
       return res.status(400).json({ error: '缺少提交的答案或题目数据' });
     }
 
-    const results = [];
-    let totalScore = 0;
+    const profileId = req.auth?.activeProfileId || 'default';
+    const normalizeChoiceLetters = (str) => {
+      const letters = Array.from(new Set(String(str || '').toUpperCase().match(/[A-D]/g) || []));
+      return letters.sort().join('');
+    };
 
-    for (const q of questions) {
+    const buildStructuredBreakdown = (rawBreakdown, earned, maxScore) => {
+      const m = Number(maxScore) || 10;
+      const cMax = Math.max(1, Math.round(m * 0.3));
+      const dMax = Math.max(1, Math.round(m * 0.4));
+      const fMax = Math.max(1, m - cMax - dMax);
+      const ratio = m > 0 ? Math.max(0, Math.min(1, earned / m)) : 0;
+      const isFull = earned >= m;
+      const defaultObj = {
+        concept: {
+          score: Math.round(cMax * ratio),
+          maxScore: cMax,
+          comment: isFull ? '审题严谨，已知与未知条件把握精准' : (earned > 0 ? '审题基本到位，提取了部分关键条件' : '未作答或核心概念存在偏差')
+        },
+        deduction: {
+          score: Math.round(dMax * ratio),
+          maxScore: dMax,
+          comment: isFull ? '逻辑严密，公式与定理代入规范无误' : (earned > 0 ? '步骤基本正确，中间计算有小瑕疵' : '推导逻辑中断或关键公式未列出')
+        },
+        conclusion: {
+          score: Math.max(0, earned - Math.round(cMax * ratio) - Math.round(dMax * ratio)),
+          maxScore: fMax,
+          comment: isFull ? '结论计算完全正确，量纲与单位标准' : (earned > 0 ? '结论部分吻合，需注意末尾结果核验' : '最终结论错误或未作答')
+        }
+      };
+      if (!rawBreakdown || typeof rawBreakdown !== 'object') return defaultObj;
+      const normalizePart = (part, fallback) => {
+        if (part && typeof part === 'object') {
+          return {
+            score: typeof part.score === 'number' ? part.score : fallback.score,
+            maxScore: typeof part.maxScore === 'number' ? part.maxScore : fallback.maxScore,
+            comment: String(part.comment || fallback.comment)
+          };
+        }
+        if (typeof part === 'string' && part.trim()) {
+          return { ...fallback, comment: part.trim() };
+        }
+        return fallback;
+      };
+      return {
+        concept: normalizePart(rawBreakdown.concept, defaultObj.concept),
+        deduction: normalizePart(rawBreakdown.deduction, defaultObj.deduction),
+        conclusion: normalizePart(rawBreakdown.conclusion, defaultObj.conclusion)
+      };
+    };
+
+    const gradeSingleQuestion = async (q) => {
       const studentAns = String(answers[q.id] || '').trim();
       const standardAns = String(q.answer || '').trim();
+      const maxQScore = Number(q.score) || 8;
 
-      // 本地简单客观题匹配判定（完全一致时省去 AI 资源消耗，提高处理速度）
       let score = 0;
       let comment = '';
       let gradedByAI = false;
       let parsedStep = null;
 
-      if (q.type === 'choice') {
-        const cleanStudent = studentAns.toUpperCase().charAt(0);
-        const cleanStandard = standardAns.toUpperCase().charAt(0);
-        if (cleanStudent === cleanStandard) {
-          score = q.score || 8;
-          comment = '选择题答案正确！';
+      // 空答案直接短路判 0 分，绝不为空白题调 LLM 烧钱或拖慢超时
+      if (!studentAns) {
+        score = 0;
+        comment = '本题未作答。请先尝试独立思考并参考标准解析。';
+      } else if (q.type === 'choice' || q.type === 'multi_choice') {
+        const cleanStudent = normalizeChoiceLetters(studentAns);
+        const cleanStandard = normalizeChoiceLetters(standardAns);
+        if (cleanStudent && cleanStudent === cleanStandard) {
+          score = maxQScore;
+          comment = cleanStandard.length > 1 ? '多选题全部选对，满分！' : '选择题答案正确！';
+        } else if (
+          cleanStandard.length > 1 &&
+          cleanStudent.length > 0 &&
+          cleanStudent.split('').every(ch => cleanStandard.includes(ch))
+        ) {
+          // 新高考多选题：漏选得一半分数，错选 0 分
+          score = Math.floor(maxQScore / 2);
+          comment = `多选题部分选对（漏选得 ${score} 分）。标准答案是：${cleanStandard}。`;
         } else {
           score = 0;
-          comment = `选择题答案错误。标准答案是：${cleanStandard}。`;
+          comment = `选择题答案错误。标准答案是：${cleanStandard || standardAns}。`;
         }
       } else if (q.type === 'blank') {
         const cleanStudent = studentAns.replace(/\s+/g, '').toLowerCase();
         const cleanStandard = standardAns.replace(/\s+/g, '').toLowerCase();
         if (cleanStudent === cleanStandard && cleanStandard !== '') {
-          score = q.score || 8;
+          score = maxQScore;
           comment = '填空题答案正确！';
         } else {
-          gradedByAI = true; // 填空题如果不完全一致，交由 AI 进行模糊或数值大小判定
+          gradedByAI = true;
         }
       } else {
-        gradedByAI = true; // 主观题/简答题必须由 AI 批改
+        gradedByAI = true;
       }
 
       if (gradedByAI) {
         try {
-          const prompt = getGradePrompt(q.question, studentAns, standardAns, q.score, q.explanation, grade);
+          const prompt = getGradePrompt(q.question, studentAns, standardAns, maxQScore, q.explanation, grade);
           const response = await fetchWithKeyRotation(buildChatURL, {
             method: 'POST',
+            profileId,
             headers: getClientAiHeaders(req),
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: { temperature: 0.1 }
             })
-          }, 8, 90000);
+          }, 3, 25000);
 
           const data = await response.json();
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          
-          // parsedStep assigned here
           const jsonMatch = text.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0].trim());
-            score = typeof parsed.score === 'number' ? parsed.score : 0;
+            score = typeof parsed.score === 'number' ? Math.max(0, Math.min(maxQScore, Math.round(parsed.score))) : 0;
             comment = parsed.comment || '';
             parsedStep = parsed.step_breakdown || null;
           } else {
             throw new Error('No JSON found in grade response');
           }
         } catch (err) {
-          logger.warn(`Failed to grade question ${q.id} with AI, falling back to 0:`, err);
+          logger.warn(`Failed to grade question ${q.id} with AI, falling back to 0:`, err.message);
           score = 0;
-          comment = '批改系统繁忙，暂定 0 分。请参考标准解析。';
+          comment = '当前未配置可用 AI 批改密钥或上游繁忙，主观题暂定 0 分，请对照下方标准解析自查订正。';
         }
       }
 
-      const isFullScore = score === (q.score || 10);
-      const stepBreakdown = parsedStep || {
-        concept: isFullScore ? '审题严谨，已知与未知条件把握精准' : (score > 0 ? '审题基本到位，提取了部分关键条件' : '审题不清或核心概念存在偏差'),
-        deduction: isFullScore ? '逻辑严密，公式与定理代入规范无误' : (score > 0 ? '步骤基本正确，中间计算有小瑕疵' : '推导逻辑中断或关键公式未列出'),
-        conclusion: isFullScore ? '结论计算完全正确，量纲与单位标准' : (score > 0 ? '结论部分吻合，需注意末尾结果核验' : '最终结论错误或未作答')
-      };
-
-      totalScore += score;
-      results.push({
+      return {
         id: q.id,
         type: q.type,
         question: q.question,
         score,
-        maxScore: q.score,
+        maxScore: maxQScore,
         studentAnswer: studentAns,
         standardAnswer: standardAns,
         explanation: q.explanation,
         comment,
-        step_breakdown: stepBreakdown
-      });
+        step_breakdown: buildStructuredBreakdown(parsedStep, score, maxQScore)
+      };
+    };
+
+    // 受控并发批卷（并发度 4），大幅压缩多主观题批改耗时防 120s 超时
+    const results = [];
+    const CONCURRENCY = 4;
+    for (let i = 0; i < questions.length; i += CONCURRENCY) {
+      const batch = questions.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(batch.map(gradeSingleQuestion));
+      results.push(...batchResults);
     }
 
-    // 生成整卷评语 (以 150 分满分折算)
-    const studentName = student_name || '曾小侠';
+    const totalScore = results.reduce((sum, r) => sum + (Number(r.score) || 0), 0);
+    const maxTotalScore = results.reduce((sum, r) => sum + (Number(r.maxScore) || 0), 0) || 150;
+
+    // 生成整卷评语
+    const studentName = (student_name && String(student_name).trim()) || '同学';
     const questionsReport = results.map(r => `题号${r.id} (${r.type === 'choice' ? '选择' : r.type === 'blank' ? '填空' : '简答'}): 满分${r.maxScore}分，学生得${r.score}分。评语：${r.comment}`).join('\n');
-    const reportPrompt = getOverallReportPrompt(studentName, totalScore, questionsReport);
+    const reportPrompt = getOverallReportPrompt(studentName, totalScore, questionsReport, maxTotalScore);
     
-    let overallComment = `曾小侠，你本次获得了 ${totalScore} 分。加油，继续努力！`;
+    let overallComment = `${studentName}同学，你本次获得了 ${totalScore} / ${maxTotalScore} 分。请对照错题解析查漏补缺，继续加油！`;
     try {
       const reportResponse = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
+        profileId,
         headers: getClientAiHeaders(req),
         body: JSON.stringify({
           contents: [{ parts: [{ text: reportPrompt }] }],
           generationConfig: { temperature: 0.5 }
         })
-      }, 8, 90000);
+      }, 2, 20000);
       const reportData = await reportResponse.json();
       overallComment = reportData.candidates?.[0]?.content?.parts?.[0]?.text || overallComment;
     } catch (err) {
-      logger.warn('Failed to generate overall report with AI:', err);
+      logger.warn('Failed to generate overall report with AI:', err.message);
     }
 
     res.json({
       score: totalScore,
+      totalMaxScore: maxTotalScore,
       overallComment,
       results
     });
@@ -948,16 +1079,20 @@ router.post('/test-paper/grade', async (req, res) => {
  * POST /api/test-paper/generate-from-mistakes
  * 错题驱动的靶向变式巩固试卷全自动生成引擎
  */
-router.post('/test-paper/generate-from-mistakes', async (req, res) => {
+router.post('/test-paper/generate-from-mistakes', requireQuotaOrVip('test_paper_mistakes'), async (req, res) => {
   try {
     const {
       profile_id = 'default',
       subject = '数学',
       grade = '7_up',
-      student_name = '曾练',
+      student_name = '同学',
       mistake_ids = null,
       limit = 4
     } = req.body;
+
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
 
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) {
@@ -969,12 +1104,12 @@ router.post('/test-paper/generate-from-mistakes', async (req, res) => {
       const placeholders = mistake_ids.map(() => '?').join(',');
       mistakes = await sqliteDb.all(
         `SELECT * FROM mistakes WHERE profile_id = ? AND id IN (${placeholders})`,
-        [profile_id, ...mistake_ids]
+        [targetPid, ...mistake_ids]
       );
     } else {
       mistakes = await sqliteDb.all(
         'SELECT * FROM mistakes WHERE profile_id = ? AND (subject = ? OR ? = "") ORDER BY timestamp DESC LIMIT ?',
-        [profile_id, subject, subject, Math.min(Math.max(1, parseInt(limit, 10) || 4), 10)]
+        [targetPid, subject, subject, Math.min(Math.max(1, parseInt(limit, 10) || 4), 10)]
       );
     }
 
@@ -1124,6 +1259,7 @@ ${canonicalSummary}
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: targetPid,
       headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -1172,7 +1308,7 @@ router.post('/printer/print-ipp', async (req, res) => {
       host = '192.168.1.200',
       port = 9100,
       title = '名师专属微测试卷',
-      studentName = '曾练',
+      studentName = '同学',
       grade = '7_up',
       subject = '数学',
       questions = [],
@@ -1208,7 +1344,7 @@ router.post('/printer/print-ipp', async (req, res) => {
     });
   } catch (err) {
     logger.error('[PrinterRoute] Direct print error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: NODE_ENV === 'development' ? err.message : '网络打印调度失败，请检查打印机状态' });
   }
 });
 

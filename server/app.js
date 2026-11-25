@@ -28,6 +28,7 @@ const gamificationRoutes = require('./routes/gamification');
 const membershipRoutes = require('./routes/membership');
 const { router: feynmanRoutes } = require('./routes/feynman');
 const { router: essayRoutes } = require('./routes/essay');
+const { router: englishRoleplayRoutes } = require('./routes/englishRoleplay');
 const learningMapRoutes = require('./routes/learningMap');
 
 function createApp() {
@@ -84,34 +85,35 @@ function createApp() {
     // Explicitly reject 'null' origin to prevent sandboxed iframe exploits
     if (origin === 'null') return false;
 
-    // Allow if wildcard or explicitly configured in ALLOWED_ORIGINS
-    if (process.env.ALLOWED_ORIGINS === '*' || explicitAllowed.has(origin)) {
+    // Allow if explicitly configured in ALLOWED_ORIGINS (never reflect wildcard with credentials)
+    if (explicitAllowed.has(origin)) {
       return true;
     }
 
-    // Same-origin check: if origin matches current host header
+    // Same-origin check: verify protocol + host accurately
     if (host) {
       try {
         const url = new URL(origin);
-        if (url.host === host || url.hostname === host.split(':')[0]) {
+        const expectedProto = NODE_ENV === 'production' ? 'https:' : url.protocol;
+        if (url.host === host && (NODE_ENV !== 'production' || url.protocol === expectedProto)) {
           return true;
         }
       } catch (e) {}
     }
 
-    // Allow localhost with any port (local web and dev)
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    // Allow Capacitor / Ionic local app origins
+    if (/^(capacitor|ionic):\/\/localhost(:\d+)?$/.test(origin)) {
       return true;
     }
 
-    // Allow Capacitor / Ionic local file schemas for mobile app
-    if (/^(capacitor|ionic|file):\/\//.test(origin)) {
-      return true;
-    }
-
-    // Allow LAN private IPs (e.g. mobile phone connecting to PC over same Wi-Fi)
-    if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
-      return true;
+    // Only allow localhost/LAN private IPs in non-production environments
+    if (NODE_ENV !== 'production') {
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return true;
+      }
+      if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+        return true;
+      }
     }
 
     return false;
@@ -120,6 +122,7 @@ function createApp() {
   app.use(cors((req, callback) => {
     const origin = req.header('Origin');
     const host = req.get('host');
+    const isWildcard = process.env.ALLOWED_ORIGINS === '*';
     const allowed = isAllowedOrigin(origin, host);
 
     if (allowed) {
@@ -127,7 +130,19 @@ function createApp() {
         origin: true,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-        exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After'],
+        exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After', 'X-Student-Session-Token'],
+        optionsSuccessStatus: 200,
+        maxAge: 86400
+      });
+    }
+
+    if (isWildcard && origin && origin !== 'null') {
+      // Wildcard mode must NEVER enable credentials: true
+      return callback(null, {
+        origin: '*',
+        credentials: false,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        exposedHeaders: ['Content-Disposition', 'x-timestamp', 'Retry-After', 'X-Student-Session-Token'],
         optionsSuccessStatus: 200,
         maxAge: 86400
       });
@@ -200,6 +215,7 @@ function createApp() {
   app.use('/api', membershipRoutes);
   app.use('/api', feynmanRoutes);
   app.use('/api', essayRoutes);
+  app.use('/api', englishRoleplayRoutes);
   app.use('/api', learningMapRoutes);
 
   // Terminate unmatched /api/* routes with JSON 404 before reaching staticLimiter
@@ -226,7 +242,7 @@ function createApp() {
 
     if (targetPath) {
       res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-      return res.sendFile(targetPath);
+      return res.sendFile(path.basename(targetPath), { root: path.dirname(targetPath) });
     }
 
     return res.status(404).json({ error: 'APK release file not found on server' });
@@ -254,7 +270,17 @@ function createApp() {
         }
       }
     }));
+    // 避免浏览器默认请求 /favicon.ico 落入 SPA fallback 或报 NotFoundError
+    app.get('/favicon.ico', (req, res) => {
+      const svgIcon = path.join(CLIENT_DIST, 'favicon.svg');
+      if (fs.existsSync(svgIcon)) {
+        res.setHeader('Content-Type', 'image/svg+xml');
+        return res.sendFile('favicon.svg', { root: CLIENT_DIST });
+      }
+      return res.status(204).end();
+    });
     // SPA fallback: return index.html for all non-API, non-static routes
+    // 使用 { root: CLIENT_DIST } 避免部署路径含点目录（如 .gemini）时被 send 误判为 dotfile 返 404
     app.use((req, res, next) => {
       if (req.path.startsWith('/api/')) return next();
       if (req.path.endsWith('.apk')) {
@@ -263,7 +289,7 @@ function createApp() {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+      res.sendFile('index.html', { root: CLIENT_DIST });
     });
     logger.info('[Static] Serving frontend from client/dist (with no-cache for HTML/SW)');
   }

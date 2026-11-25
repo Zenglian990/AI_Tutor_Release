@@ -6,7 +6,7 @@ import { authFetch, getApiUrl } from '../store/useStore';
  * ParentMemoModal
  * 家长端每日名师家访便签 + 手机微信扫码直连看板
  */
-export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '曾练' }) {
+export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '同学' }) {
   const [memo, setMemo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -28,10 +28,11 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
         .catch(e => console.warn('Parent memo fetch error:', e))
         .finally(() => setLoading(false));
 
-      // Fetch remote token and network info for WeChat QR scan
+      // Fetch remote token; only query /api/system/network-info on localhost to avoid unnecessary 401 on public cloud
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       Promise.all([
         authFetch(`${getApiUrl()}/api/parent/remote-token?profile_id=${encodeURIComponent(currentProfileId)}`).then(r => r.json()),
-        authFetch(`${getApiUrl()}/api/system/network-info`).then(r => r.json()).catch(() => ({}))
+        isLocalHost ? authFetch(`${getApiUrl()}/api/system/network-info`).then(r => r.ok ? r.json() : ({})).catch(() => ({})) : Promise.resolve({})
       ]).then(([tokenData, netData]) => {
         if (tokenData.success && tokenData.token) {
           setRemoteToken(tokenData.token);

@@ -30,16 +30,30 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
     return maps[grade] || '通用课本';
   };
 
+  const cacheKey = `ai_tutor_chapters_cache_${currentProfileName || 'default'}_${currentGrade}_${currentSubject}_${currentEdition || '人教版'}`;
+  const [offlineMode, setOfflineMode] = useState(false);
+
   const fetchChapters = () => {
     const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
+    let cachedChapters = null;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) cachedChapters = parsed;
+      }
+    } catch {}
     if (!chapters || chapters.length === 0) {
-      if (local && local.length > 0) {
+      if (cachedChapters) {
+        setChapters(cachedChapters);
+      } else if (local && local.length > 0) {
         setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
       } else {
         setLoading(true);
       }
     }
     setError(null);
+    setOfflineMode(false);
     authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load chapters');
@@ -48,6 +62,9 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
       .then(data => {
         if (data.chapters && data.chapters.length > 0) {
           setChapters(data.chapters);
+          try { localStorage.setItem(cacheKey, JSON.stringify(data.chapters)); } catch {}
+        } else if (cachedChapters) {
+          setChapters(cachedChapters);
         } else if (local && local.length > 0) {
           // Graceful fallback to client curriculum data if server returns empty or is updating
           setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
@@ -58,7 +75,10 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
       })
       .catch(err => {
         console.warn("Could not sync chapters from cloud, using local curriculum:", err);
-        if (local && local.length > 0) {
+        setOfflineMode(true);
+        if (cachedChapters) {
+          setChapters(cachedChapters);
+        } else if (local && local.length > 0) {
           setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
         } else {
           setError(err.message);
@@ -99,10 +119,25 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
           <div className="header-info">
             <span className="map-badge">闯关式地图</span>
             <h2>{getGradeName(currentGrade)} · {currentSubject}</h2>
-            <p className="subtitle">{currentProfileName || '曾小侠/小主'}，点击对应章节小岛开始今日探索吧！🛡️✨</p>
+            <p className="subtitle">{currentProfileName || '同学'}，点击对应章节小岛开始今日探索吧！🛡️✨</p>
           </div>
           <div className="header-actions">
-            <button className={`unlock-all-btn ${unlockAll ? 'active' : ''}`} onClick={() => setUnlockAll(!unlockAll)} title="自由探索模式">
+            <button
+              className={`unlock-all-btn ${unlockAll ? 'active' : ''}`}
+              onClick={() => setUnlockAll(!unlockAll)}
+              title="自由探索模式"
+              style={{
+                background: unlockAll ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(59, 130, 246, 0.18)',
+                color: unlockAll ? '#ffffff' : '#93c5fd',
+                border: unlockAll ? '1px solid #34d399' : '1px solid rgba(59, 130, 246, 0.45)',
+                borderRadius: '10px',
+                padding: '6px 12px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer'
+              }}
+            >
               {unlockAll ? '🔓 自由探索已开' : '🔒 开启自由探索'}
             </button>
             <button className="close-map-btn" onClick={onClose} title="关闭地图">✕</button>

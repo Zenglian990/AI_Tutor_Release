@@ -406,7 +406,7 @@ function pcmToWav(pcmBuffer, sampleRate = 24000, numChannels = 1, bitsPerSample 
  * @param {string} voice  - Edge-style voice name (mapped internally to Gemini voice)
  * @returns {Promise<Buffer>}
  */
-async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientGeminiKey = null) {
+async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientGeminiKey = null, profileId = 'default') {
   const text = cleanTextForTTS(rawText);
   if (!text) {
     logger.info('[TTS] Text is empty after cleaning, returning empty buffer');
@@ -472,6 +472,7 @@ async function synthesizeSpeech(rawText, voice = 'zh-CN-XiaoxiaoNeural', clientG
     try {
       const response = await fetchWithKeyRotation(buildTtsURL, {
         method: 'POST',
+        profileId,
         headers: requestHeaders,
         body: JSON.stringify({
           contents: [{ parts: [{ text: 'Please read the following text aloud verbatim: ' + text }] }],

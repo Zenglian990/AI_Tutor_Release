@@ -1,41 +1,46 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { AppProvider, useAppStore, getApiUrl, authFetch, formatGrade } from './store/useStore';
 import Header from './components/Header';
 import ChatMessage from './components/ChatMessage';
 import InputBar from './components/InputBar';
-import LearningMap from './components/LearningMap';
-import ParentalGate from './components/ParentalGate';
-import StatsDashboard from './components/StatsDashboard';
-import MistakeNotebook from './components/MistakeNotebook';
-import AddProfileModal from './components/AddProfileModal';
-import SettingsModal from './components/SettingsModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import ChapterStepper from './components/ChapterStepper';
-import WeeklyReportModal from './components/WeeklyReportModal';
-import KnowledgeTest from './components/KnowledgeTest';
-import ScratchpadModal from './components/ScratchpadModal';
-import VoiceDialogueOverlay from './components/VoiceDialogueOverlay';
-import A4PrintModal from './components/A4PrintModal';
-import CampaignRoadmapModal from './components/CampaignRoadmapModal';
-import ParentMemoModal from './components/ParentMemoModal';
-import HomeworkBatchModal from './components/HomeworkBatchModal';
-import GamificationBadgeModal from './components/GamificationBadgeModal';
-import ParentRemoteDashboard from './components/ParentRemoteDashboard';
-import PrimaryVisualManipulatives from './components/PrimaryVisualManipulatives';
-import DynamicGeometrySandbox from './components/DynamicGeometrySandbox';
-import AdminConsoleModal from './components/AdminConsoleModal';
-import ParentSharePosterModal from './components/ParentSharePosterModal';
-import SmartPhotoCropperModal from './components/SmartPhotoCropperModal';
-import FormulaHandbookModal from './components/FormulaHandbookModal';
-import DailyMentalMathModal from './components/DailyMentalMathModal';
-import StepByStepMathScratchpad from './components/StepByStepMathScratchpad';
-import PhysicsSimulatorsModal from './components/PhysicsSimulatorsModal';
-import EssayUpgraderModal from './components/EssayUpgraderModal';
-import ChemistryLabModal from './components/ChemistryLabModal';
-import EnglishRolePlayModal from './components/EnglishRolePlayModal';
-import DailyAchievementCardModal from './components/DailyAchievementCardModal';
-import EyeCareTimerModal from './components/EyeCareTimerModal';
-import PrerequisiteTraceModal from './components/PrerequisiteTraceModal';
+import WelcomeDashboard from './components/WelcomeDashboard';
+import PrivacyConsentModal, { CURRENT_PRIVACY_VERSION } from './components/PrivacyConsentModal';
+import OnboardingGuide from './components/OnboardingGuide';
+
+// 按需懒加载 25+ 重型功能模态框，大幅压降首屏 JS 主包体积并消除 45ms 流式渲染冗余重绘
+const LearningMap = lazy(() => import('./components/LearningMap'));
+const ParentalGate = lazy(() => import('./components/ParentalGate'));
+const StatsDashboard = lazy(() => import('./components/StatsDashboard'));
+const MistakeNotebook = lazy(() => import('./components/MistakeNotebook'));
+const AddProfileModal = lazy(() => import('./components/AddProfileModal'));
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const WeeklyReportModal = lazy(() => import('./components/WeeklyReportModal'));
+const KnowledgeTest = lazy(() => import('./components/KnowledgeTest'));
+const ScratchpadModal = lazy(() => import('./components/ScratchpadModal'));
+const VoiceDialogueOverlay = lazy(() => import('./components/VoiceDialogueOverlay'));
+const A4PrintModal = lazy(() => import('./components/A4PrintModal'));
+const CampaignRoadmapModal = lazy(() => import('./components/CampaignRoadmapModal'));
+const ParentMemoModal = lazy(() => import('./components/ParentMemoModal'));
+const HomeworkBatchModal = lazy(() => import('./components/HomeworkBatchModal'));
+const GamificationBadgeModal = lazy(() => import('./components/GamificationBadgeModal'));
+const ParentRemoteDashboard = lazy(() => import('./components/ParentRemoteDashboard'));
+const PrimaryVisualManipulatives = lazy(() => import('./components/PrimaryVisualManipulatives'));
+const DynamicGeometrySandbox = lazy(() => import('./components/DynamicGeometrySandbox'));
+const AdminConsoleModal = lazy(() => import('./components/AdminConsoleModal'));
+const SmartPhotoCropperModal = lazy(() => import('./components/SmartPhotoCropperModal'));
+const FormulaHandbookModal = lazy(() => import('./components/FormulaHandbookModal'));
+const DailyMentalMathModal = lazy(() => import('./components/DailyMentalMathModal'));
+const StepByStepMathScratchpad = lazy(() => import('./components/StepByStepMathScratchpad'));
+const PhysicsSimulatorsModal = lazy(() => import('./components/PhysicsSimulatorsModal'));
+const EssayUpgraderModal = lazy(() => import('./components/EssayUpgraderModal'));
+const ChemistryLabModal = lazy(() => import('./components/ChemistryLabModal'));
+const EnglishRolePlayModal = lazy(() => import('./components/EnglishRolePlayModal'));
+const DailyAchievementCardModal = lazy(() => import('./components/DailyAchievementCardModal'));
+const EyeCareTimerModal = lazy(() => import('./components/EyeCareTimerModal'));
+const PrerequisiteTraceModal = lazy(() => import('./components/PrerequisiteTraceModal'));
+const StreakModal = lazy(() => import('./components/StreakModal'));
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -45,9 +50,6 @@ import { compressAudio } from './utils/audio';
 import { playTTS, stopTTS, interruptSpeech, subscribeSpeakingState, extractQuestionFocus } from './utils/tts';
 import { useOfflineStatus, OFFLINE_FALLBACK_RESPONSE, OFFLINE_FALLBACK_RESPONSE_EN } from './utils/offline';
 import { generateOfflineSocraticResponse } from './utils/offlineSocraticEngine';
-import OnboardingGuide from './components/OnboardingGuide';
-import WelcomeDashboard from './components/WelcomeDashboard';
-import PrivacyConsentModal from './components/PrivacyConsentModal';
 import { triggerHaptic } from './utils/sensoryFeedback';
 
 const genMsgId = () => `${Date.now()}_${Math.random().toString(36).substring(2, 9).padEnd(7, '0')}`;
@@ -85,6 +87,8 @@ function AppInner() {
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [viewDashboard, setViewDashboard] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showKnowledgeTest, setShowKnowledgeTest] = useState(false);
   const [showScratchpad, setShowScratchpad] = useState(false);
@@ -108,6 +112,7 @@ function AppInner() {
   const [showParentMemo, setShowParentMemo] = useState(false);
   const [showBatchGrade, setShowBatchGrade] = useState(false);
   const [showGamification, setShowGamification] = useState(false);
+  const [showStreakModal, setShowStreakModal] = useState(false);
   const [showManipulatives, setShowManipulatives] = useState(false);
   const [showGeometrySandbox, setShowGeometrySandbox] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
@@ -127,12 +132,19 @@ function AppInner() {
   const [showPrerequisiteTrace, setShowPrerequisiteTrace] = useState(false);
   const [traceTargetTopic, setTraceTargetTopic] = useState(null);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
-    return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== '1.5.4';
+    return localStorage.getItem('ai_tutor_minor_privacy_consent_version') !== CURRENT_PRIVACY_VERSION;
   });
 
   // Modern Non-Blocking Toast Notification & Quick Reason Tagging
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'info', id }
   const [mistakeTagPrompt, setMistakeTagPrompt] = useState(null); // { id, query }
+  const [swUpdateReady, setSwUpdateReady] = useState(false);
+
+  useEffect(() => {
+    const onSwUpdate = () => setSwUpdateReady(true);
+    window.addEventListener('ai-tutor-sw-update-available', onSwUpdate);
+    return () => window.removeEventListener('ai-tutor-sw-update-available', onSwUpdate);
+  }, []);
 
   const handleOpenPrerequisiteTrace = useCallback((targetTopicOrMistake) => {
     if (targetTopicOrMistake) {
@@ -171,7 +183,7 @@ function AppInner() {
       const res = await authFetch(`/api/mistakes/${encodeURIComponent(mistakeId)}/reason`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reasonTag, tags: reasonTag })
+        body: JSON.stringify({ reason: reasonTag, tags: reasonTag, profile_id: currentProfileId })
       });
       if (res.ok) {
         showToast(`🎯 已标记错因：${reasonTag}`, 'success');
@@ -284,7 +296,7 @@ function AppInner() {
         CapApp.exitApp();
       } else {
         lastBackPressRef.current = now;
-        showToast('再按一次退出曾练专属私教', 'info', 2000);
+        showToast('再按一次退出 AI 智慧私教', 'info', 2000);
       }
     }).then(handle => {
       backListenerHandle = handle;
@@ -331,12 +343,22 @@ function AppInner() {
     }
   }, [currentProfile?.grade, selectedSubject, setSelectedSubject]);
 
-  // Cleanup
+  // Cleanup（卸载时彻底释放麦克风、计时器、VAD AudioContext 与 TTS 语音）
   useEffect(() => {
     return () => {
+      if (recordingTimerRef.current) {
+        clearTimeout(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      if (vadAudioContextRef.current) {
+        try { vadAudioContextRef.current.close(); } catch {}
+        vadAudioContextRef.current = null;
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch {}
         mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
       }
+      try { interruptSpeech(); } catch {}
     };
   }, []);
 
@@ -814,7 +836,9 @@ function AppInner() {
     if (e && e.preventDefault) e.preventDefault();
     const activeFile = directFile || imageFile;
     const textToSubmit = (customText !== undefined && customText !== null) ? customText : input;
-    if ((!textToSubmit && !activeFile) || isLoading) return;
+    if ((!textToSubmit && !activeFile) || isLoading || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setViewDashboard(false);
 
     const userQuery = textToSubmit || '请帮我解答这张图片里的题目。';
     const hasImage = !!activeFile;
@@ -1008,7 +1032,18 @@ function AppInner() {
         try { reader.releaseLock(); } catch {}
       }
       flushUpdate(); // Ensure complete stream content is committed to state
-      syncMessages(messagesRef.current, gradeRef.current, subjectRef.current);
+      // 修复持久化竞态覆盖 Bug：使用最终完整回答构造 finalMessages，严禁同步滞后的 messagesRef.current
+      const finalAiText = answerText || '抱歉，未能收到有效回复，请重试。';
+      const isStreamErr = /未检测到可用大模型\s*API\s*Key|请点击右上角设置.*配置有效密钥/i.test(finalAiText);
+      const finalMessages = [
+        ...newMsgs,
+        { id: genMsgId(), role: 'ai', text: finalAiText, sources, originalQuestion: userQuery, isError: isStreamErr, isTransient: isStreamErr }
+      ];
+      setMessages(finalMessages);
+      messagesRef.current = finalMessages;
+      if (!isStreamErr) {
+        syncMessages(finalMessages, gradeRef.current, subjectRef.current);
+      }
 
       // Proactive Spoken Question & Handover Trigger
       if (answerText && autoRead) {
@@ -1052,12 +1087,15 @@ function AppInner() {
         if (typeof errorMsg !== 'string') errorMsg = JSON.stringify(errorMsg);
         setMessages(prev => {
           const lastMsg = prev[prev.length - 1];
-          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg), isTransient: true }];
-          return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg), isTransient: true }];
+          if (lastMsg && lastMsg.role === 'ai') return [...prev.slice(0, -1), { ...lastMsg, text: String(errorMsg), isTransient: true, isError: true }];
+          return [...prev, { id: genMsgId(), role: 'ai', text: String(errorMsg), isTransient: true, isError: true }];
         });
       }
-    } finally { setIsLoading(false); }
-  }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject]);
+    } finally {
+      isSubmittingRef.current = false;
+      setIsLoading(false);
+    }
+  }, [imageFile, isLoading, previewImage, currentProfileId, currentProfile, socraticLevel, syncMessages, isOffline, language, autoRead, startVoiceRecording, chatModel, tutorPersona, selectedSubject, isFeynmanMode]);
 
   handleSubmitRef.current = handleSubmit;
 
@@ -1149,6 +1187,32 @@ function AppInner() {
           ⚠️ {language === 'zh-CN' ? '离线模式：仅允许阅读本地缓存的错题本和进度。' : 'Offline Mode: Read-only access to local mistake history.'}
         </div>
       )}
+      {swUpdateReady && (
+        <div className="no-print" style={{ background: 'linear-gradient(90deg, #1d4ed8, #4f46e5)', color: '#ffffff', padding: '7px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '0.84rem', zIndex: 12 }}>
+          <span>✨ 发现 AI 智慧私教新版本（为避免打断作答未自动刷新）</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window.__AI_TUTOR_UPDATE_SW__ === 'function') {
+                window.__AI_TUTOR_UPDATE_SW__();
+              } else {
+                window.location.reload();
+              }
+            }}
+            style={{ background: '#ffffff', color: '#1d4ed8', border: 'none', borderRadius: '6px', padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}
+          >
+            立即更新
+          </button>
+          <button
+            type="button"
+            onClick={() => setSwUpdateReady(false)}
+            aria-label="稍后更新"
+            style={{ background: 'transparent', color: '#cbd5e1', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <Header
         profiles={profiles}
         currentProfileId={currentProfileId}
@@ -1183,7 +1247,13 @@ function AppInner() {
           }
         }}
         isLightMode={isLightMode}
-        onThemeToggle={() => setIsLightMode(!isLightMode)}
+        onThemeToggle={() => {
+          if (isEinkMode) {
+            toggleEinkMode();
+            return;
+          }
+          setIsLightMode(!isLightMode);
+        }}
         onSettingsOpen={() => setShowSettings(true)}
         onOpenAdminConsole={handleOpenAdminConsole}
         onOpenGamification={() => setShowGamification(true)}
@@ -1194,7 +1264,7 @@ function AppInner() {
         onOpenVoiceCompanion={handleOpenVoiceCompanion}
       />
 
-      {/* 仅在对话进行中时显示轻量级返回首页条 */}
+      {/* 仅在对话进行中时显示轻量级返回首页条（彻底解耦返回看板与清空历史） */}
       {messages.length > 0 && (
         <div className="chat-nav-bar no-print" style={{
           display: 'flex',
@@ -1203,10 +1273,12 @@ function AppInner() {
           padding: '8px 16px',
           background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          gap: '8px'
         }}>
           <button
-            onClick={() => setShowClearConfirm(true)}
+            type="button"
+            onClick={() => setViewDashboard(prev => !prev)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1220,14 +1292,32 @@ function AppInner() {
               cursor: 'pointer',
               fontWeight: 600
             }}
-            title="结束当前对话，返回今日导学看板"
+            title={viewDashboard ? '回到刚才的辅导对话（保留记录）' : '返回今日导学看板（不会清空对话记录）'}
           >
-            <span>🏠</span>
-            <span>返回今日看板</span>
+            <span>{viewDashboard ? '💬' : '🏠'}</span>
+            <span>{viewDashboard ? '回到当前对话' : '返回今日看板'}</span>
           </button>
-          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-            💬 正在名师辅导中
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              {viewDashboard ? '📋 正在浏览今日看板' : '💬 正在名师辅导中'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '12px',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                background: 'rgba(239, 68, 68, 0.08)',
+                color: '#fca5a5',
+                fontSize: '0.78rem',
+                cursor: 'pointer'
+              }}
+              title="清空当前科目的历史对话记录"
+            >
+              🧹 清空历史
+            </button>
+          </div>
         </div>
       )}
 
@@ -1244,7 +1334,7 @@ function AppInner() {
 
       {/* Chat messages */}
       <div className="chat-container">
-        {messages.length === 0 ? (
+        {(messages.length === 0 || viewDashboard) ? (
           <WelcomeDashboard
             currentProfile={currentProfile}
             selectedGrade={currentProfile?.grade || '7_up'}
@@ -1282,31 +1372,39 @@ function AppInner() {
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
         ) : (
-          messages.map((msg, idx) => (
-            <ChatMessage
-              key={msg.id || idx}
-              msg={msg}
-              autoRead={autoRead}
-              isLatest={idx === messages.length - 1}
-              isStreaming={idx === messages.length - 1 && isLoading}
-              playTTS={handlePlayTTS}
-              stopTTS={handleStopTTS}
-              onMarkMistake={msg.role === 'ai' ? handleMarkMistake : undefined}
-              onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
-              onRewardExp={(exp) => {
-                try {
-                  const currentExp = parseInt(localStorage.getItem('ai_tutor_user_exp') || '0', 10);
-                  localStorage.setItem('ai_tutor_user_exp', String(currentExp + (exp || 5)));
-                } catch (e) {}
-              }}
-            />
-          ))
+          messages.map((msg, idx) => {
+            const prevUserMsg = msg.role === 'ai'
+              ? [...messages.slice(0, idx)].reverse().find(m => m.role === 'user')?.text
+              : undefined;
+            return (
+              <ChatMessage
+                key={msg.id || idx}
+                msg={prevUserMsg && !msg.originalQuestion ? { ...msg, originalQuestion: prevUserMsg } : msg}
+                autoRead={autoRead}
+                isLatest={idx === messages.length - 1}
+                isStreaming={idx === messages.length - 1 && isLoading}
+                playTTS={handlePlayTTS}
+                stopTTS={handleStopTTS}
+                onMarkMistake={msg.role === 'ai' ? handleMarkMistake : undefined}
+                onOpenSettings={() => setShowSettings(true)}
+                onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
+                onRewardExp={(exp) => {
+                  try {
+                    const expKey = `ai_tutor_user_exp_${currentProfileId || 'default'}`;
+                    const currentExp = parseInt(localStorage.getItem(expKey) || '0', 10);
+                    localStorage.setItem(expKey, String(currentExp + (exp || 5)));
+                  } catch (e) {}
+                }}
+              />
+            );
+          })
         )}
         {isLoading && <div className="typing-indicator"><div className="dot" /><div className="dot" /><div className="dot" /></div>}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Modals */}
+      {/* Modals — 全部按需条件渲染 + React.lazy 懒加载，根治流式重绘卡顿与首屏体积膨胀 */}
+      <Suspense fallback={null}>
       {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile?.grade || '7_up'} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
       {showStats && <StatsDashboard profiles={profiles} onClose={() => setShowStats(false)} currentProfileId={currentProfileId} />}
       {showMap && (
@@ -1314,7 +1412,7 @@ function AppInner() {
           currentGrade={currentProfile?.grade || '7_up'}
           currentSubject={selectedSubject || '数学'}
           currentEdition={currentProfile?.edition || '人教版'}
-          currentProfileName={currentProfile?.name || '曾练'}
+          currentProfileName={currentProfile?.name || '同学'}
           onClose={() => setShowMap(false)}
           authFetch={authFetch}
           onSelectChapter={(chapter) => {
@@ -1378,6 +1476,10 @@ function AppInner() {
         onSaveBackendUrl={setBackendUrl}
         apiToken={apiToken}
         onSaveApiToken={setApiToken}
+        onOpenAddProfile={() => {
+          setShowSettings(false);
+          setShowAddProfile(true);
+        }}
       />
       <AdminConsoleModal
         isOpen={showAdminConsole}
@@ -1419,7 +1521,7 @@ function AppInner() {
       <VoiceDialogueOverlay
         isOpen={voiceDialogueOpen}
         mode={voiceDialogueMode}
-        studentName={currentProfile?.name || '曾练'}
+        studentName={currentProfile?.name || '同学'}
         currentQuestionText={currentFocusQuestion}
         liveSpokenText={liveSpokenText}
         countdownSeconds={8}
@@ -1429,171 +1531,221 @@ function AppInner() {
             setVoiceDialogueMode('listening');
             startVoiceRecording(true);
           } else if (voiceDialogueMode === 'listening') {
-            stopVoiceRecording();
+            stopVoiceRecording(true);
           }
         }}
         onCancel={() => {
           interruptSpeech();
-          stopVoiceRecording();
+          stopVoiceRecording(false);
           setVoiceDialogueOpen(false);
         }}
       />
 
-      {/* 宏观高阶进阶模态框：A4 真题密卷、长周期战报与提分测算、家长每日 Insights 简报 */}
-      <A4PrintModal
-        isOpen={showPrintModal}
-        onClose={() => setShowPrintModal(false)}
-        studentName={currentProfile?.name || '曾练'}
-        grade={currentProfile?.grade || '八年级'}
-        subject={selectedSubject || '数学'}
-      />
+      {/* 宏观高阶进阶模态框：全部采用条件按需挂载 + 懒加载 */}
+      {showPrintModal && (
+        <A4PrintModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          studentName={currentProfile?.name || '同学'}
+          grade={currentProfile?.grade || '8_up'}
+          subject={selectedSubject || '数学'}
+        />
+      )}
 
-      <CampaignRoadmapModal
-        isOpen={showRoadmap}
-        onClose={() => setShowRoadmap(false)}
-        currentProfileId={currentProfileId}
-        grade={currentProfile?.grade || '7_up'}
-        subject={selectedSubject || '数学'}
-        studentName={currentProfile?.name || '曾练'}
-      />
+      {showRoadmap && (
+        <CampaignRoadmapModal
+          isOpen={showRoadmap}
+          onClose={() => setShowRoadmap(false)}
+          currentProfileId={currentProfileId}
+          grade={currentProfile?.grade || '7_up'}
+          subject={selectedSubject || '数学'}
+          studentName={currentProfile?.name || '同学'}
+        />
+      )}
 
-      <ParentMemoModal
-        isOpen={showParentMemo}
-        onClose={() => setShowParentMemo(false)}
-        currentProfileId={currentProfileId}
-        grade={currentProfile?.grade || '7_up'}
-        subject={selectedSubject || '数学'}
-        studentName={currentProfile?.name || '曾练'}
-      />
+      {showParentMemo && (
+        <ParentMemoModal
+          isOpen={showParentMemo}
+          onClose={() => setShowParentMemo(false)}
+          currentProfileId={currentProfileId}
+          grade={currentProfile?.grade || '7_up'}
+          subject={selectedSubject || '数学'}
+          studentName={currentProfile?.name || '同学'}
+        />
+      )}
 
-      <HomeworkBatchModal
-        isOpen={showBatchGrade}
-        onClose={() => setShowBatchGrade(false)}
-        currentProfileId={currentProfileId}
-        grade={currentProfile?.grade || '7_up'}
-        subject={selectedSubject || '数学'}
-        studentName={currentProfile?.name || '曾练'}
-        onReviewMistakes={() => setShowMistakes(true)}
-        onStartSocraticTutoring={handleStartSocraticTutoring}
-      />
+      {showBatchGrade && (
+        <HomeworkBatchModal
+          isOpen={showBatchGrade}
+          onClose={() => setShowBatchGrade(false)}
+          currentProfileId={currentProfileId}
+          grade={currentProfile?.grade || '7_up'}
+          subject={selectedSubject || '数学'}
+          studentName={currentProfile?.name || '同学'}
+          onReviewMistakes={() => setShowMistakes(true)}
+          onStartSocraticTutoring={handleStartSocraticTutoring}
+        />
+      )}
 
-      <GamificationBadgeModal
-        isOpen={showGamification}
-        onClose={() => setShowGamification(false)}
-        currentProfileId={currentProfileId}
-        studentName={currentProfile?.name || '曾练'}
-      />
+      {showGamification && (
+        <GamificationBadgeModal
+          isOpen={showGamification}
+          onClose={() => setShowGamification(false)}
+          currentProfileId={currentProfileId}
+          studentName={currentProfile?.name || '同学'}
+          onOpenStreakCalendar={() => setShowStreakModal(true)}
+        />
+      )}
 
-      <PrimaryVisualManipulatives
-        isOpen={showManipulatives}
-        onClose={() => setShowManipulatives(false)}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showStreakModal && (
+        <StreakModal
+          isOpen={showStreakModal}
+          onClose={() => setShowStreakModal(false)}
+        />
+      )}
 
-      <DynamicGeometrySandbox
-        isOpen={showGeometrySandbox}
-        onClose={() => setShowGeometrySandbox(false)}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showManipulatives && (
+        <PrimaryVisualManipulatives
+          isOpen={showManipulatives}
+          onClose={() => setShowManipulatives(false)}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
 
-      {/* 智能拍照搜题取景框与去阴影裁剪器 (对标作业帮/小猿) */}
-      <SmartPhotoCropperModal
-        isOpen={showCropper}
-        imageFile={photoToCrop}
-        onConfirm={handleCropperConfirm}
-        onClose={() => {
-          setShowCropper(false);
-          setPhotoToCrop(null);
-        }}
-      />
+      {showGeometrySandbox && (
+        <DynamicGeometrySandbox
+          isOpen={showGeometrySandbox}
+          onClose={() => setShowGeometrySandbox(false)}
+          currentGrade={currentProfile?.grade || '7_up'}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
+
+      {showCropper && (
+        <SmartPhotoCropperModal
+          isOpen={showCropper}
+          imageFile={photoToCrop}
+          onConfirm={handleCropperConfirm}
+          onClose={() => {
+            setShowCropper(false);
+            setPhotoToCrop(null);
+          }}
+        />
+      )}
 
       <PrivacyConsentModal
         isOpen={showPrivacyConsent}
         onAccept={() => setShowPrivacyConsent(false)}
       />
 
-      {/* 📖 中考数理化必备公式速查宝典 */}
-      <FormulaHandbookModal
-        isOpen={showFormulaModal}
-        onClose={() => setShowFormulaModal(false)}
-        onInsertFormula={handleInsertFormula}
-      />
+      {showFormulaModal && (
+        <FormulaHandbookModal
+          isOpen={showFormulaModal}
+          onClose={() => setShowFormulaModal(false)}
+          defaultSubject={selectedSubject || '数学'}
+          currentGrade={currentProfile?.grade || '7_up'}
+          onInsertFormula={handleInsertFormula}
+        />
+      )}
 
-      {/* ⚡ 60秒趣味口算天天练 */}
-      <DailyMentalMathModal
-        isOpen={showMentalMathModal}
-        onClose={() => setShowMentalMathModal(false)}
-        currentGrade={parseInt(String(currentProfile?.grade || '3').split('_')[0], 10) || 3}
-        onAwardExp={handleAwardExp}
-      />
+      {showMentalMathModal && (
+        <DailyMentalMathModal
+          isOpen={showMentalMathModal}
+          onClose={() => setShowMentalMathModal(false)}
+          currentGrade={parseInt(String(currentProfile?.grade || '3').split('_')[0], 10) || 3}
+          onAwardExp={handleAwardExp}
+        />
+      )}
 
-      {/* 📐 步骤级实时代数演算纸与 CAS 校验卫士 */}
-      <StepByStepMathScratchpad
-        isOpen={showStepScratchpad}
-        initialEquation={stepScratchpadEq}
-        onClose={() => setShowStepScratchpad(false)}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showStepScratchpad && (
+        <StepByStepMathScratchpad
+          isOpen={showStepScratchpad}
+          initialEquation={stepScratchpadEq}
+          onClose={() => setShowStepScratchpad(false)}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
 
-      {/* 🔬 初中物理动态虚拟微实验台 (凸透镜光路·滑动变阻器欧姆定律) */}
-      <PhysicsSimulatorsModal
-        isOpen={showPhysicsSimulator}
-        onClose={() => setShowPhysicsSimulator(false)}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showPhysicsSimulator && (
+        <PhysicsSimulatorsModal
+          isOpen={showPhysicsSimulator}
+          onClose={() => setShowPhysicsSimulator(false)}
+          currentGrade={currentProfile?.grade || '8_up'}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
 
-      {/* 🖋️ 中高考作文五维精批与逐句升格台 */}
-      <EssayUpgraderModal
-        isOpen={showEssayModal}
-        onClose={() => setShowEssayModal(false)}
-        currentGrade={currentProfile?.grade || '7_up'}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showEssayModal && (
+        <EssayUpgraderModal
+          isOpen={showEssayModal}
+          onClose={() => setShowEssayModal(false)}
+          currentGrade={currentProfile?.grade || '7_up'}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
 
-      {/* ⚗️ 初中化学动态虚拟微实验台 (O2/CO2制备与分子重组) */}
-      <ChemistryLabModal
-        isOpen={showChemistryModal}
-        onClose={() => setShowChemistryModal(false)}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showChemistryModal && (
+        <ChemistryLabModal
+          isOpen={showChemistryModal}
+          onClose={() => setShowChemistryModal(false)}
+          currentGrade={currentProfile?.grade || '9_up'}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
 
-      {/* 🗣️ 中考英语听说情景对练与音标雷达 */}
-      <EnglishRolePlayModal
-        isOpen={showEnglishRolePlay}
-        onClose={() => setShowEnglishRolePlay(false)}
-        onApplyToChat={(text) => setInput(text)}
-      />
+      {showEnglishRolePlay && (
+        <EnglishRolePlayModal
+          isOpen={showEnglishRolePlay}
+          onClose={() => setShowEnglishRolePlay(false)}
+          currentGrade={currentProfile?.grade || '7_up'}
+          onApplyToChat={(text) => setInput(text)}
+        />
+      )}
 
-      {/* 🌟 微信级晚间学情成果日报卡 */}
-      <DailyAchievementCardModal
-        isOpen={showDailyCard}
-        onClose={() => setShowDailyCard(false)}
-        studentName={currentProfile?.name || '曾练'}
-        currentGrade={currentProfile?.grade || '7_up'}
-        studyMinutes={45}
-        masteredCount={4}
-        feynmanStars={5}
-      />
+      {showDailyCard && (() => {
+        const validAiTurns = messages.filter(m => m.role === 'ai' && !m.isError && !m.isTransient && m.text && m.text !== '思考中...').length;
+        const realMinutes = validAiTurns > 0 ? Math.max(validAiTurns * 3, 3) : 0;
+        const recentTopics = messages
+          .filter(m => m.role === 'user' && m.text && m.text.trim().length > 2)
+          .slice(-3)
+          .map(m => m.text.trim().slice(0, 42));
+        return (
+          <DailyAchievementCardModal
+            isOpen={showDailyCard}
+            onClose={() => setShowDailyCard(false)}
+            studentName={currentProfile?.name || '同学'}
+            currentGrade={currentProfile?.grade || '7_up'}
+            subject={selectedSubject || '数学'}
+            studyMinutes={realMinutes}
+            masteredCount={validAiTurns}
+            feynmanStars={0}
+            recentTopics={recentTopics}
+          />
+        );
+      })()}
 
-      {/* 🌿 国际眼科 20-20-20 视力守护番茄钟 */}
-      <EyeCareTimerModal
-        isOpen={showEyeCare}
-        onClose={() => setShowEyeCare(false)}
-        onToggleEink={toggleEinkMode}
-      />
+      {showEyeCare && (
+        <EyeCareTimerModal
+          isOpen={showEyeCare}
+          onClose={() => setShowEyeCare(false)}
+          onToggleEink={toggleEinkMode}
+        />
+      )}
 
-      {/* 🌌 跨年级考点星图与先修断层溯源模态框 */}
-      <PrerequisiteTraceModal
-        isOpen={showPrerequisiteTrace}
-        onClose={() => setShowPrerequisiteTrace(false)}
-        initialTopic={traceTargetTopic}
-        initialSubject={selectedSubject || '数学'}
-        initialGrade={currentProfile?.grade || '7_up'}
-        onAskTutor={(prompt) => {
-          setInput(prompt);
-          showToast('📖 已将先修基石攻坚设问填入案头，点击发送即可开始', 'info');
-        }}
-      />
+      {showPrerequisiteTrace && (
+        <PrerequisiteTraceModal
+          isOpen={showPrerequisiteTrace}
+          onClose={() => setShowPrerequisiteTrace(false)}
+          initialTopic={traceTargetTopic}
+          initialSubject={selectedSubject || '数学'}
+          initialGrade={currentProfile?.grade || '7_up'}
+          onAskTutor={(prompt) => {
+            setInput(prompt);
+            showToast('📖 已将先修基石攻坚设问填入案头，点击发送即可开始', 'info');
+          }}
+        />
+      )}
+      </Suspense>
 
       <InputBar
         input={input} setInput={setInput}
@@ -1756,7 +1908,9 @@ export default function App() {
   if (isParentRemoteView) {
     return (
       <ErrorBoundary>
-        <ParentRemoteDashboard token={urlParams.get('token')} />
+        <Suspense fallback={null}>
+          <ParentRemoteDashboard token={urlParams.get('token')} />
+        </Suspense>
       </ErrorBoundary>
     );
   }

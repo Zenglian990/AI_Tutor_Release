@@ -27,6 +27,10 @@ function getAdminAuthHeaders(customToken) {
   if (tokenToUse && String(tokenToUse).trim()) {
     headers['Authorization'] = `Bearer ${String(tokenToUse).trim()}`;
   }
+  const parentSessionToken = sessionStorage.getItem('parent_session_token');
+  if (parentSessionToken) {
+    headers['x-parent-session-token'] = parentSessionToken;
+  }
   const pinHash = getAdminPinHash();
   if (pinHash && pinHash !== MASTER_PIN_HASH) {
     headers['x-parent-pin-hash'] = pinHash;
@@ -82,7 +86,7 @@ export default function AdminConsoleModal({
   const [posterQrType, setPosterQrType] = useState(() => localStorage.getItem('parent_poster_qr_type') || 'url');
   const [customQrImage, setCustomQrImage] = useState(() => localStorage.getItem('parent_poster_custom_qr_img') || null);
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
-  const [posterContactName, setPosterContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '曾练专属私教 · 纯净学习档案');
+  const [posterContactName, setPosterContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || 'AI 智慧私教 · 纯净学习档案');
   const [posterSaving, setPosterSaving] = useState(false);
 
   const drawPoster = useCallback(async () => {
@@ -113,7 +117,7 @@ export default function AdminConsoleModal({
     ctx.fillStyle = posterTemplate === 'primary' ? '#78350f' : '#38bdf8';
     ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('曾先生智慧私教 · 1-9年级AI深度辅导', width / 2, 55);
+    ctx.fillText('AI 智慧私教 · 1-12年级全学段深度辅导', width / 2, 55);
 
     ctx.fillStyle = posterTemplate === 'primary' ? '#92400e' : '#94a3b8';
     ctx.font = '14px sans-serif';
@@ -144,7 +148,7 @@ export default function AdminConsoleModal({
       ctx.font = '15px sans-serif';
       ctx.textAlign = 'left';
       const lines = [
-        `🎒 宝贝【${currentProfile?.name || '曾练'}】今日自主探究打卡`,
+        `🎒 宝贝【${currentProfile?.name || '同学'}】今日自主探究打卡`,
         '✨ 动态实物积木 + 苹果糖果均分具象化',
         '⚖️ 物理天平模型，秒懂等式守恒原理',
         '🦁 聪聪小狮子导师，兴趣式趣味闯关激励',
@@ -182,7 +186,7 @@ export default function AdminConsoleModal({
       ctx.font = '15px sans-serif';
       ctx.textAlign = 'left';
       const lines = [
-        `📐 学员【${currentProfile?.name || '曾练'}】今日压轴沙盘攻坚`,
+        `📐 学员【${currentProfile?.name || '同学'}】今日压轴沙盘攻坚`,
         '💡 动点拖拽可视化轨迹，参数突变一目了然',
         '🦉 苏格拉底反问链：绝不直接给答案，逼出思路',
         '🎯 39,114 道全国百强名校密卷分类母题精析',
@@ -569,7 +573,7 @@ export default function AdminConsoleModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '1.5rem' }}>🛡️</span>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.02em' }}>
-                曾先生 · 专属管理控制台 (Admin Console)
+                AI 智慧私教 · 管理员控制台 (Admin Console)
               </h2>
             </div>
             <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>
@@ -1205,8 +1209,8 @@ export default function AdminConsoleModal({
           borderTop: '1px solid #e2e8f0', background: '#fafafa', padding: '12px 24px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: '#94a3b8'
         }}>
-          <span>曾先生智慧私教专属管理系统 · 搞钱与系统配置集成中心</span>
-          <span>当前授权: 管理员 (曾先生本人)</span>
+          <span>AI 智慧私教管理系统 · 教学配置与密钥中心</span>
+          <span>当前授权: 系统管理员</span>
         </div>
       </div>
 

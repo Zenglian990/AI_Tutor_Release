@@ -153,6 +153,13 @@ test('High School Efficacy: Step-based Grading with Detailed Breakdown (按步�
   const data = await res.json();
   assert.equal(data.score, 15);
   assert.ok(data.results[0].step_breakdown, 'Should preserve AI detailed step breakdown');
-  assert.ok(data.results[0].step_breakdown.concept.includes('极值点偏移'), 'Should capture concept step breakdown');
-  assert.ok(data.results[0].step_breakdown.deduction.includes('推导'), 'Should capture deduction step breakdown');
+  const conceptComment = typeof data.results[0].step_breakdown.concept === 'string'
+    ? data.results[0].step_breakdown.concept
+    : data.results[0].step_breakdown.concept?.comment || '';
+  const deductionComment = typeof data.results[0].step_breakdown.deduction === 'string'
+    ? data.results[0].step_breakdown.deduction
+    : data.results[0].step_breakdown.deduction?.comment || '';
+  assert.ok(conceptComment.includes('极值点偏移'), 'Should capture concept step breakdown');
+  assert.ok(deductionComment.includes('推导'), 'Should capture deduction step breakdown');
+  assert.equal(typeof data.results[0].step_breakdown.concept.score, 'number', 'Should normalize structured score field');
 });

@@ -7,6 +7,10 @@ import json
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
+try:
+    import fitz
+except ImportError:
+    fitz = None
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')

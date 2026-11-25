@@ -131,11 +131,24 @@ export default function StreakModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* 7-Day Visual Mini Calendar */}
+        {/* 7-Day Visual Mini Calendar (基于真实连胜天数/活跃日期渲染，绝不伪造历史打卡) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', marginBottom: '22px' }}>
           {daysOfWeek.map((day, idx) => {
             const isToday = idx === todayIdx;
-            const isCompleted = isToday ? isTodayDone : (idx < todayIdx);
+            const activeWeekDates = Array.isArray(streakData?.activeDatesWeek) ? streakData.activeDatesWeek : null;
+            let isCompleted = false;
+            if (activeWeekDates) {
+              const targetDate = new Date();
+              targetDate.setDate(targetDate.getDate() - (todayIdx - idx));
+              const iso = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+              isCompleted = activeWeekDates.includes(iso);
+            } else if (isToday) {
+              isCompleted = isTodayDone;
+            } else if (idx < todayIdx && currentStreak > 0) {
+              const daysAgo = todayIdx - idx;
+              const streakTailOffset = isTodayDone ? currentStreak - 1 : currentStreak;
+              isCompleted = daysAgo <= streakTailOffset;
+            }
             return (
               <div 
                 key={day}

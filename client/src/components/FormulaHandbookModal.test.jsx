@@ -23,7 +23,7 @@ describe('FormulaHandbookModal Component', () => {
         onInsertFormula={() => {}}
       />
     );
-    expect(getByText(/中考数理化必备公式与定理速查/i)).toBeDefined();
+    expect(getByText(/中高考数理化必备公式与定理速查/i)).toBeDefined();
     expect(getAllByText(/平方差公式/i).length).toBeGreaterThan(0);
     expect(getAllByText(/勾股定理/i).length).toBeGreaterThan(0);
   });
@@ -38,11 +38,11 @@ describe('FormulaHandbookModal Component', () => {
     );
 
     // Switch to Physics
-    fireEvent.click(getByText(/初中物理/i));
+    fireEvent.click(getByText(/物理公式/i));
     expect(getAllByText(/欧姆定律/i).length).toBeGreaterThan(0);
 
     // Switch to Chemistry
-    fireEvent.click(getByText(/初中化学/i));
+    fireEvent.click(getByText(/化学公式/i));
     expect(getAllByText(/金属活动性顺序/i).length).toBeGreaterThan(0);
   });
 

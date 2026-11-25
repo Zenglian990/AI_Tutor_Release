@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3');
 const { EMBED_MODEL, SQLITE_DB_PATH, DB_PATH } = require('../config');
 const logger = require('../services/logger');
 const { initCanonicalQuestionsTable } = require('../services/canonicalQuestions');
+const { restoreSqliteFromPersistDir } = require('../services/stateSync');
 
 const fs = require('fs');
 const path = require('path');
@@ -326,6 +327,13 @@ async function runMigrations(db) {
       await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (18)');
     }
 
+    if (v < 19) {
+      await ensureColumn(db, 'api_usage', 'profile_id', "ALTER TABLE api_usage ADD COLUMN profile_id TEXT DEFAULT 'default'");
+      await ensureColumn(db, 'mistakes', 'last_reviewed_at', "ALTER TABLE mistakes ADD COLUMN last_reviewed_at DATETIME");
+      await db.exec('CREATE INDEX IF NOT EXISTS idx_api_usage_profile_ts ON api_usage(profile_id, timestamp);');
+      await db.exec('INSERT OR IGNORE INTO schema_version (version) VALUES (19)');
+    }
+
     await db.exec('COMMIT');
   } catch (err) {
     try {
@@ -491,6 +499,8 @@ async function initSqlite() {
       if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
       }
+      // 若配置了云端持久化卷目录，在打开 SQLite 前恢复最新快照
+      restoreSqliteFromPersistDir();
       const db = await open({
         filename: SQLITE_DB_PATH,
         driver: sqlite3.Database

@@ -21,7 +21,7 @@ export default function VariantPracticeModal({
   originalAnswer = '',
   grade = '7_up',
   subject = '数学',
-  studentName = '曾练',
+  studentName = '同学',
   initialStep = 0,
   onRewardExp
 }) {

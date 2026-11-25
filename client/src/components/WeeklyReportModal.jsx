@@ -53,7 +53,7 @@ export default function WeeklyReportModal({ isOpen, onClose, reportLoading, repo
               {/* Printable Parent Handout Note Slip */}
               <div className="only-print" style={{ display: 'none', background: '#fff', color: '#000', padding: '20px', border: '2px solid #000', marginBottom: '20px' }}>
                 <div style={{ textAlign: 'center', borderBottom: '1.5px solid #000', paddingBottom: '8px', marginBottom: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>【曾先生智慧私教 / 晚托中心】学员专属家访学情便签</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>【AI 智慧私教 / 伴学中心】学员专属家访学情便签</h3>
                   <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>每周学情同步 · 家校协同反馈卡</div>
                 </div>
                 <div style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>

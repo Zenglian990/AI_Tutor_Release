@@ -33,30 +33,42 @@ export default function StepByStepMathScratchpad({
     }
   }, [isOpen, initialEquation]);
 
-  const handleStepChange = (idx, newText) => {
-    const prevText = idx === 0 ? baseEquation : steps[idx - 1].text;
-    const check = verifyStepTransition(prevText, newText);
+  const recomputeAllSteps = (eq, list) => {
+    return list.map((step, i) => {
+      const prevText = i === 0 ? eq : list[i - 1].text;
+      if (!String(step.text || '').trim()) {
+        return { text: step.text || '', valid: false, status: 'empty', message: '等待输入推导...', tip: '' };
+      }
+      return { text: step.text, ...verifyStepTransition(prevText, step.text) };
+    });
+  };
 
+  const handleBaseEquationChange = (newEq) => {
+    setBaseEquation(newEq);
+    setSteps(prev => recomputeAllSteps(newEq, prev));
+  };
+
+  const handleStepChange = (idx, newText) => {
     setSteps(prev => {
-      const copy = [...prev];
-      copy[idx] = { text: newText, ...check };
-      return copy;
+      const copy = prev.map((s, i) => (i === idx ? { ...s, text: newText } : s));
+      return recomputeAllSteps(baseEquation, copy);
     });
   };
 
   const handleAddStep = () => {
-    const lastStep = steps[steps.length - 1];
-    const prevText = lastStep ? lastStep.text : baseEquation;
     setSteps(prev => [
       ...prev,
-      { text: '', status: 'empty', message: '等待输入推导...', tip: '' }
+      { text: '', valid: false, status: 'empty', message: '等待输入推导...', tip: '' }
     ]);
     setActiveStepIdx(steps.length);
   };
 
   const handleDeleteStep = (idx) => {
     if (steps.length <= 1) return;
-    setSteps(prev => prev.filter((_, i) => i !== idx));
+    setSteps(prev => {
+      const filtered = prev.filter((_, i) => i !== idx);
+      return recomputeAllSteps(baseEquation, filtered);
+    });
     setActiveStepIdx(Math.max(0, idx - 1));
   };
 
@@ -86,45 +98,46 @@ export default function StepByStepMathScratchpad({
       position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
       background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
-      padding: '16px'
+      padding: '10px', boxSizing: 'border-box'
     }}>
       <div style={{
-        background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '740px',
-        maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
-        display: 'flex', flexDirection: 'column'
+        background: '#ffffff', borderRadius: '20px', width: '100%', maxWidth: 'min(740px, calc(100vw - 20px))',
+        maxHeight: '92vh', overflowY: 'auto', overflowX: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column', boxSizing: 'border-box'
       }}>
         {/* Header */}
         <div style={{
           background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
-          color: '#fff', padding: '18px 24px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          color: '#fff', padding: '14px 18px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.8rem' }}>📝</span>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <span style={{ fontSize: '1.6rem', flexShrink: 0 }}>📝</span>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 'clamp(1rem, 3.5vw, 1.25rem)', fontWeight: '800' }}>
                 分步实时代数演算纸 (CAS 实时验算卫士)
               </h3>
-              <div style={{ fontSize: '0.82rem', color: '#a7f3d0', marginTop: '2px' }}>
+              <div style={{ fontSize: '0.8rem', color: '#a7f3d0', marginTop: '2px' }}>
                 写一步验一步 · 变号漏项实时标黄提醒 · 步步踏实不再做错！
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.4rem', cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} aria-label="关闭演算纸" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.4rem', cursor: 'pointer', flexShrink: 0 }}>✕</button>
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: 'clamp(12px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
           {/* Base Equation Row */}
-          <div style={{ background: '#f8fafc', padding: '12px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#64748b' }}>原方程/目标式：</span>
+          <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <span style={{ fontSize: '0.84rem', fontWeight: '800', color: '#475569', whiteSpace: 'nowrap' }}>原方程/目标式：</span>
             <input
               type="text"
               value={baseEquation}
-              onChange={e => setBaseEquation(e.target.value)}
+              onChange={e => handleBaseEquationChange(e.target.value)}
               style={{
-                flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1',
-                fontSize: '1.05rem', fontWeight: '700', color: '#1e293b'
+                flex: '1 1 180px', minWidth: 0, width: '100%', boxSizing: 'border-box',
+                padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                fontSize: '1rem', fontWeight: '700', color: '#1e293b', background: '#ffffff'
               }}
             />
           </div>
@@ -162,8 +175,8 @@ export default function StepByStepMathScratchpad({
                   transition: 'all 0.2s ease'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '0.88rem', fontWeight: '800', color: '#059669', minWidth: '60px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0 }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#059669', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     Step {idx + 1}:
                   </span>
                   <input
@@ -173,13 +186,14 @@ export default function StepByStepMathScratchpad({
                     onFocus={() => setActiveStepIdx(idx)}
                     placeholder="在此输入当前化简或推导步骤..."
                     style={{
-                      flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1',
-                      fontSize: '1rem', fontWeight: '600', color: '#1e293b', outline: 'none'
+                      flex: '1 1 160px', minWidth: 0, width: '100%', boxSizing: 'border-box',
+                      padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                      fontSize: '0.95rem', fontWeight: '600', color: '#1e293b', background: '#ffffff', outline: 'none'
                     }}
                   />
                   <div style={{
-                    fontSize: '0.82rem', fontWeight: '700', minWidth: '120px', textAlign: 'right',
-                    color: step.valid ? '#059669' : (step.status === 'invalid' ? '#d97706' : '#94a3b8')
+                    fontSize: '0.8rem', fontWeight: '700', flex: '0 1 auto', maxWidth: '100%',
+                    color: step.valid ? '#059669' : (step.status === 'invalid' ? '#d97706' : '#64748b')
                   }}>
                     {step.message}
                   </div>
@@ -187,7 +201,7 @@ export default function StepByStepMathScratchpad({
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); handleDeleteStep(idx); }}
-                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer' }}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer', flexShrink: 0 }}
                       title="删除此步骤"
                     >
                       🗑️
@@ -200,7 +214,7 @@ export default function StepByStepMathScratchpad({
                   <div style={{
                     fontSize: '0.8rem', color: step.valid ? '#047857' : '#b45309',
                     background: step.valid ? '#ecfdf5' : '#fffbeb',
-                    padding: '6px 10px', borderRadius: '8px', marginLeft: '72px'
+                    padding: '6px 10px', borderRadius: '8px'
                   }}>
                     💡 {step.tip}
                   </div>

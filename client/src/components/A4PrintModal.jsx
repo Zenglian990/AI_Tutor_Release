@@ -173,7 +173,7 @@ function QuestionImageWithEraser({ imageUrl, eraseHandwriting }) {
 function A4PrintModalInner({
   isOpen,
   onClose,
-  studentName = '曾练',
+  studentName = '同学',
   grade = '7_up',
   subject = '数学',
   questions = [],
@@ -189,7 +189,7 @@ function A4PrintModalInner({
   const [copySuccessMsg, setCopySuccessMsg] = useState('');
   const [previewModalImg, setPreviewModalImg] = useState(null);
   const [showGate, setShowGate] = useState(false);
-  const [orgName, setOrgName] = useState('曾先生智慧私教中心');
+  const [orgName, setOrgName] = useState('AI 智慧私教中心');
   const [showOrgInput, setShowOrgInput] = useState(false);
   const [showNetworkPrinterModal, setShowNetworkPrinterModal] = useState(false);
   const [printerIp, setPrinterIp] = useState(() => {
@@ -254,10 +254,14 @@ function A4PrintModalInner({
     }
   ];
 
-  const rawList = Array.isArray(questions) && questions.length > 0 ? questions : defaultQuestions;
+  const hasRealQuestions = Array.isArray(questions) && questions.length > 0;
+  const rawList = useMemo(
+    () => (hasRealQuestions ? questions : []),
+    [questions, hasRealQuestions]
+  );
 
-  // Normalized question objects
-  const processedQuestions = rawList.map((q, idx) => ({
+  // Normalized question objects (memoized to prevent infinite variant-fetch loop)
+  const processedQuestions = useMemo(() => rawList.map((q, idx) => ({
     id: q?.id || idx + 1,
     questionNumber: q?.questionNumber || (idx + 1),
     title: q?.title || `第 ${q?.questionNumber || (idx + 1)} 题 (${q?.type || '试题'})`,
@@ -271,9 +275,12 @@ function A4PrintModalInner({
     imageUrl: q?.imageUrl || q?.image_url || null,
     variant: q?.variant || (Array.isArray(q?.variants) && q?.variants[0]) || null,
     variantQuestion: q?.variantQuestion || null
-  }));
+  })), [rawList]);
 
-  const wrongCount = processedQuestions.filter(q => q.status === 'wrong' || q.status === 'partial').length;
+  const wrongCount = useMemo(
+    () => processedQuestions.filter(q => q.status === 'wrong' || q.status === 'partial').length,
+    [processedQuestions]
+  );
 
   const displayQuestions = useMemo(() => {
     if (filterType === 'wrong_only' && wrongCount > 0) {
@@ -281,6 +288,8 @@ function A4PrintModalInner({
     }
     return processedQuestions;
   }, [processedQuestions, filterType, wrongCount]);
+
+  const attemptedVariantIdsRef = useRef(new Set());
 
   const totalScore = displayQuestions.reduce((acc, q) => acc + (q.score || 10), 0);
   const suggestedTime = Math.max(15, Math.min(60, displayQuestions.length * 8));
@@ -291,14 +300,15 @@ function A4PrintModalInner({
 
     let isCancelled = false;
     async function loadMissingVariants() {
-      const missingQuestions = displayQuestions.filter(q => 
-        !q.variant && !q.variantQuestion && !fetchedVariants[q.id]
+      const missingQuestions = displayQuestions.filter(q =>
+        !q.variant && !q.variantQuestion && !fetchedVariants[q.id] && !attemptedVariantIdsRef.current.has(q.id)
       );
       if (missingQuestions.length === 0) return;
 
       setFetchingVariants(true);
       const updates = {};
-      for (const q of missingQuestions.slice(0, 10)) {
+      for (const q of missingQuestions.slice(0, 6)) {
+        attemptedVariantIdsRef.current.add(q.id);
         try {
           const res = await authFetch('/api/mistakes/generate-variants', {
             method: 'POST',
@@ -317,7 +327,7 @@ function A4PrintModalInner({
             }
           }
         } catch (e) {
-          // Graceful fallback
+          // Graceful fallback without retry storm
         }
       }
       if (!isCancelled && Object.keys(updates).length > 0) {
@@ -487,6 +497,17 @@ function A4PrintModalInner({
     }}>
       {/* Dynamic Print Stylesheet for true A4 physical output */}
       <style>{`
+        @media (max-width: 640px) {
+          .a4-print-toolbar {
+            padding: 8px 12px !important;
+            max-height: 28vh !important;
+            overflow-y: auto !important;
+            gap: 6px !important;
+          }
+          .a4-print-toolbar p {
+            display: none !important;
+          }
+        }
         @media print {
           @page {
             size: A4 portrait;
@@ -559,7 +580,7 @@ function A4PrintModalInner({
         overflow: 'hidden'
       }}>
         {/* Top Control Bar (Hidden during printing) */}
-        <div className="a4-no-print" style={{
+        <div className="a4-no-print a4-print-toolbar" style={{
           padding: '12px 24px',
           background: '#f8fafc',
           borderBottom: '1px solid #e2e8f0',
@@ -567,7 +588,8 @@ function A4PrintModalInner({
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '12px'
+          gap: '12px',
+          flexShrink: 0
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -991,29 +1013,52 @@ function A4PrintModalInner({
             </div>
 
             {/* Scoreboard Block (Traditional Chinese Exam Format) */}
-            <div style={{
-              display: 'flex',
-              border: '1px solid #374151',
-              marginBottom: '20px',
-              fontSize: '0.85rem'
-            }}>
-              <div style={{ width: '80px', borderRight: '1px solid #374151', textAlign: 'center' }}>
-                <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f3f4f6', fontWeight: 600 }}>题号</div>
-                <div style={{ padding: '6px', fontWeight: 600 }}>得分</div>
+            {displayQuestions.length > 0 && (
+              <div style={{
+                display: 'flex',
+                border: '1px solid #374151',
+                marginBottom: '20px',
+                fontSize: '0.85rem'
+              }}>
+                <div style={{ width: '80px', borderRight: '1px solid #374151', textAlign: 'center' }}>
+                  <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f3f4f6', fontWeight: 600 }}>题号</div>
+                  <div style={{ padding: '6px', fontWeight: 600 }}>得分</div>
+                </div>
+                <div style={{ flex: 1, display: 'flex' }}>
+                  {displayQuestions.map((_, i) => (
+                    <div key={`score-cell-${i}`} style={{ flex: 1, borderRight: i < displayQuestions.length - 1 ? '1px solid #374151' : 'none', textAlign: 'center' }}>
+                      <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f9fafb' }}>{i + 1}</div>
+                      <div style={{ padding: '6px', color: '#9ca3af' }}>&nbsp;</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ width: '90px', borderLeft: '1px solid #374151', textAlign: 'center' }}>
+                  <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f3f4f6', fontWeight: 600 }}>总评 / 评卷人</div>
+                  <div style={{ padding: '6px', color: '#9ca3af' }}>&nbsp;</div>
+                </div>
               </div>
-              <div style={{ flex: 1, display: 'flex' }}>
-                {displayQuestions.map((_, i) => (
-                  <div key={`score-cell-${i}`} style={{ flex: 1, borderRight: i < displayQuestions.length - 1 ? '1px solid #374151' : 'none', textAlign: 'center' }}>
-                    <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f9fafb' }}>{i + 1}</div>
-                    <div style={{ padding: '6px', color: '#9ca3af' }}>&nbsp;</div>
-                  </div>
-                ))}
+            )}
+
+            {/* Empty State when current profile has no mistakes */}
+            {displayQuestions.length === 0 && (
+              <div style={{
+                margin: '48px auto',
+                padding: '36px 28px',
+                border: '2px dashed #cbd5e1',
+                borderRadius: '14px',
+                background: '#f8fafc',
+                textAlign: 'center',
+                color: '#334155'
+              }}>
+                <div style={{ fontSize: '2.4rem', marginBottom: '10px' }}>📭</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.15rem', color: '#0f172a', fontWeight: 700 }}>
+                  当前学生档案（{gradeDisplay} · {subject}）暂无待打印错题
+                </h3>
+                <p style={{ margin: '0 auto', maxWidth: '460px', fontSize: '0.92rem', lineHeight: 1.7, color: '#475569' }}>
+                  系统已严格隔离不同学段与孩子的数据，不会混入其他年级的示例题。请先在对话答疑、拍照批改或「智能模拟考场」中收藏错题，再一键导出 A4 靶向突破卷。
+                </p>
               </div>
-              <div style={{ width: '90px', borderLeft: '1px solid #374151', textAlign: 'center' }}>
-                <div style={{ borderBottom: '1px solid #374151', padding: '4px', background: '#f3f4f6', fontWeight: 600 }}>总评 / 评卷人</div>
-                <div style={{ padding: '6px', color: '#9ca3af' }}>&nbsp;</div>
-              </div>
-            </div>
+            )}
 
             {/* Exam Guidelines Notice */}
             <div style={{

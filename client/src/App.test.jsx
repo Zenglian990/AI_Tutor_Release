@@ -85,8 +85,8 @@ describe('Root App Smoke & Regression Tests', () => {
       fireEvent.click(eyeCareBtn);
     });
 
-    // Modal should be visible
-    expect(screen.getByText(/国际眼科视力守护番茄钟/)).not.toBeNull();
+    // Modal should be visible (lazy-loaded via Suspense)
+    expect(await screen.findByText(/国际眼科视力守护番茄钟/)).not.toBeNull();
     expect(document.body.classList.contains('eink-mode')).toBe(false);
 
     // Click toggle e-ink button
@@ -102,12 +102,23 @@ describe('Root App Smoke & Regression Tests', () => {
     });
     expect(document.body.classList.contains('eink-mode')).toBe(false);
 
-    // Close modal
+    // Close modal while e-ink is re-enabled and verify header theme toggle exits e-ink mode cleanly
+    await act(async () => {
+      fireEvent.click(toggleEinkBtn);
+    });
+    expect(document.body.classList.contains('eink-mode')).toBe(true);
+
     const closeBtn = screen.getByText('收起计时器');
     await act(async () => {
       fireEvent.click(closeBtn);
     });
     expect(screen.queryByText(/国际眼科视力守护番茄钟/)).toBeNull();
+
+    const themeToggleBtn = screen.getByLabelText('主题切换');
+    await act(async () => {
+      fireEvent.click(themeToggleBtn);
+    });
+    expect(document.body.classList.contains('eink-mode')).toBe(false);
   });
 
   it('recovers gracefully and mounts App when localStorage has empty or corrupted profiles', async () => {

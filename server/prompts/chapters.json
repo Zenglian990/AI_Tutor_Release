@@ -90,28 +90,34 @@
     ],
     "英语": [
       {
-        "id": "1_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en1u_1",
+        "name": "Unit 1 School",
+        "description": "文具词汇（book, ruler, pencil, eraser）与日常问候"
       },
       {
-        "id": "1_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en1u_2",
+        "name": "Unit 2 Face",
+        "description": "五官身体部位词汇（eye, ear, nose, mouth）与指令句"
       },
       {
-        "id": "1_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en1u_3",
+        "name": "Unit 3 Animals",
+        "description": "常见动物（cat, dog, bird, tiger）与 This is... 句型"
       },
       {
-        "id": "1_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en1u_4",
+        "name": "Unit 4 Numbers",
+        "description": "数字 1-10 听说认读与数量问答"
+      },
+      {
+        "id": "en1u_5",
+        "name": "Unit 5 Colours",
+        "description": "基础颜色词汇（red, yellow, blue, green）与描述"
+      },
+      {
+        "id": "en1u_6",
+        "name": "Unit 6 Fruit",
+        "description": "常见水果（apple, pear, banana, orange）与喜好表达"
       }
     ]
   },
@@ -188,28 +194,34 @@
     ],
     "英语": [
       {
-        "id": "1_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en1d_1",
+        "name": "Unit 1 Classroom",
+        "description": "教室物品与方位词（in, on, under）初识"
       },
       {
-        "id": "1_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en1d_2",
+        "name": "Unit 2 Room",
+        "description": "家居房间物品与 Where is...? 提问"
       },
       {
-        "id": "1_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en1d_3",
+        "name": "Unit 3 Toys",
+        "description": "玩具词汇与 Can I have...? 礼貌请求"
       },
       {
-        "id": "1_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en1d_4",
+        "name": "Unit 4 Food",
+        "description": "日常食物与 I am hungry / I want... 表达"
+      },
+      {
+        "id": "en1d_5",
+        "name": "Unit 5 Drink",
+        "description": "常见饮品与 Do you want...? 问答"
+      },
+      {
+        "id": "en1d_6",
+        "name": "Unit 6 Clothes",
+        "description": "基础服饰词汇与穿着描述"
       }
     ]
   },
@@ -280,28 +292,34 @@
     ],
     "英语": [
       {
-        "id": "2_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en2u_1",
+        "name": "Unit 1 My Family",
+        "description": "家庭成员称谓与介绍句型 Who is he/she?"
       },
       {
-        "id": "2_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en2u_2",
+        "name": "Unit 2 Boys and Girls",
+        "description": "同学外貌性格形容词与 he/she 人称代词"
       },
       {
-        "id": "2_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en2u_3",
+        "name": "Unit 3 My Friends",
+        "description": "好朋友描述与 He/She is tall/short/pretty"
       },
       {
-        "id": "2_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en2u_4",
+        "name": "Unit 4 In the Community",
+        "description": "社区场所（park, zoo, hospital, supermarket）"
+      },
+      {
+        "id": "en2u_5",
+        "name": "Unit 5 In the Park",
+        "description": "公园自然景物（tree, flower, boat, hill）与 There is"
+      },
+      {
+        "id": "en2u_6",
+        "name": "Unit 6 Happy Holidays",
+        "description": "节日祝福语与新年礼物交流"
       }
     ]
   },
@@ -384,28 +402,34 @@
     ],
     "英语": [
       {
-        "id": "2_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en2d_1",
+        "name": "Unit 1 Playtime",
+        "description": "课余活动（play football, fly a kite, ride a bike）与 Can you...?"
       },
       {
-        "id": "2_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en2d_2",
+        "name": "Unit 2 Weather",
+        "description": "常见天气词汇（sunny, rainy, windy, snowy）与天气问答"
       },
       {
-        "id": "2_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en2d_3",
+        "name": "Unit 3 Seasons",
+        "description": "四季名称、气候特征与最喜欢的季节"
       },
       {
-        "id": "2_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en2d_4",
+        "name": "Unit 4 Time",
+        "description": "整点与半点时间表达 What time is it?"
+      },
+      {
+        "id": "en2d_5",
+        "name": "Unit 5 My Day",
+        "description": "一日作息动词短语（get up, go to school, go to bed）"
+      },
+      {
+        "id": "en2d_6",
+        "name": "Unit 6 My Week",
+        "description": "星期一至星期日表达与每日安排"
       }
     ]
   },
@@ -500,28 +524,34 @@
     ],
     "英语": [
       {
-        "id": "3_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en3u_1",
+        "name": "Unit 1 Making friends",
+        "description": "人教PEP三年级上册：问候交友、身体动作与自然拼读 A-D"
       },
       {
-        "id": "3_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en3u_2",
+        "name": "Unit 2 Different families",
+        "description": "家庭成员介绍 This is my... 与自然拼读 E-H"
       },
       {
-        "id": "3_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en3u_3",
+        "name": "Unit 3 Amazing animals",
+        "description": "宠物与野生动物问答 Do you have a pet?"
       },
       {
-        "id": "3_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en3u_4",
+        "name": "Unit 4 Plants around us",
+        "description": "植物水果与环保行动 Plants need air, water and sun"
+      },
+      {
+        "id": "en3u_5",
+        "name": "Unit 5 The colourful world",
+        "description": "色彩混合规律与日常颜色问答"
+      },
+      {
+        "id": "en3u_6",
+        "name": "Unit 6 Useful numbers",
+        "description": "年龄、购物与数字 1-10 综合交际"
       }
     ]
   },
@@ -604,28 +634,34 @@
     ],
     "英语": [
       {
-        "id": "3_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en3d_1",
+        "name": "Unit 1 Welcome back to school!",
+        "description": "国家地区名称与 Where are you from? 自我介绍"
       },
       {
-        "id": "3_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en3d_2",
+        "name": "Unit 2 My family",
+        "description": "家庭关系问答 Is he/she your...?"
       },
       {
-        "id": "3_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en3d_3",
+        "name": "Unit 3 At the zoo",
+        "description": "动物特征形容词（tall, short, fat, thin, long）"
       },
       {
-        "id": "3_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en3d_4",
+        "name": "Unit 4 Where is my car?",
+        "description": "方位介词 in/on/under 与寻物对话"
+      },
+      {
+        "id": "en3d_5",
+        "name": "Unit 5 Do you like pears?",
+        "description": "水果喜好询问与肯定否定回答"
+      },
+      {
+        "id": "en3d_6",
+        "name": "Unit 6 How many?",
+        "description": "数字 11-20 认读与 How many... do you see?"
       }
     ]
   },
@@ -708,28 +744,34 @@
     ],
     "英语": [
       {
-        "id": "4_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en4u_1",
+        "name": "Unit 1 My classroom",
+        "description": "教室设施与 Let us / Let me 祈使句"
       },
       {
-        "id": "4_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en4u_2",
+        "name": "Unit 2 My schoolbag",
+        "description": "学科课本词汇与 What is in your schoolbag?"
       },
       {
-        "id": "4_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en4u_3",
+        "name": "Unit 3 My friends",
+        "description": "外貌性格描述 He has glasses / She is friendly"
       },
       {
-        "id": "4_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en4u_4",
+        "name": "Unit 4 My home",
+        "description": "居家房间与家具位置一般疑问句"
+      },
+      {
+        "id": "en4u_5",
+        "name": "Unit 5 Dinner is ready",
+        "description": "餐具食物与点餐用语 What would you like?"
+      },
+      {
+        "id": "en4u_6",
+        "name": "Unit 6 Meet my family!",
+        "description": "家庭人数与职业表达（doctor, cook, driver, farmer）"
       }
     ]
   },
@@ -818,28 +860,34 @@
     ],
     "英语": [
       {
-        "id": "4_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en4d_1",
+        "name": "Unit 1 My school",
+        "description": "校园功能室、楼层序数词（first/second floor）与指路"
       },
       {
-        "id": "4_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en4d_2",
+        "name": "Unit 2 What time is it?",
+        "description": "精确时间表达与 It is time for/to... 句型"
       },
       {
-        "id": "4_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en4d_3",
+        "name": "Unit 3 Weather",
+        "description": "世界各地天气播报与温度形容词（warm, cool, hot, cold）"
       },
       {
-        "id": "4_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en4d_4",
+        "name": "Unit 4 At the farm",
+        "description": "农场蔬菜与家畜复数名词 These/Those are..."
+      },
+      {
+        "id": "en4d_5",
+        "name": "Unit 5 My clothes",
+        "description": "衣物归属问答 Whose... is this / are these?"
+      },
+      {
+        "id": "en4d_6",
+        "name": "Unit 6 Shopping",
+        "description": "购物试穿与价格询问 How much is it?"
       }
     ]
   },
@@ -916,28 +964,34 @@
     ],
     "英语": [
       {
-        "id": "5_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en5u_1",
+        "name": "Unit 1 What is he like?",
+        "description": "人物性格与外貌提问、be 动词与人称搭配"
       },
       {
-        "id": "5_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en5u_2",
+        "name": "Unit 2 My week",
+        "description": "学校课程表与周末活动安排"
       },
       {
-        "id": "5_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en5u_3",
+        "name": "Unit 3 What would you like?",
+        "description": "饮食喜好、食物味道形容词（fresh, healthy, delicious）"
       },
       {
-        "id": "5_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en5u_4",
+        "name": "Unit 4 What can you do?",
+        "description": "才艺能力情态动词 can 问答与俱乐部招募"
+      },
+      {
+        "id": "en5u_5",
+        "name": "Unit 5 There is a big bed",
+        "description": "There be 句型单复数与方位介词（beside, behind, in front of）"
+      },
+      {
+        "id": "en5u_6",
+        "name": "Unit 6 In a nature park",
+        "description": "自然公园景物与 Is/Are there...? 疑问句"
       }
     ]
   },
@@ -1014,28 +1068,34 @@
     ],
     "英语": [
       {
-        "id": "5_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en5d_1",
+        "name": "Unit 1 My day",
+        "description": "频度副词（always, often, sometimes）与日常时间表"
       },
       {
-        "id": "5_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en5d_2",
+        "name": "Unit 2 My favourite season",
+        "description": "季节偏好与 Why? Because... 因果表达"
       },
       {
-        "id": "5_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en5d_3",
+        "name": "Unit 3 My school calendar",
+        "description": "12个月份缩写、校历节日与时间介词 in/on/at"
       },
       {
-        "id": "5_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en5d_4",
+        "name": "Unit 4 When is the art show?",
+        "description": "序数词与具体日期表达"
+      },
+      {
+        "id": "en5d_5",
+        "name": "Unit 5 Whose dog is it?",
+        "description": "名词性物主代词（mine, yours, his, hers）与现在进行时"
+      },
+      {
+        "id": "en5d_6",
+        "name": "Unit 6 Work quietly!",
+        "description": "公共场所行为规范祈使句与正在进行动作描述"
       }
     ]
   },
@@ -1118,28 +1178,34 @@
     ],
     "英语": [
       {
-        "id": "6_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en6u_1",
+        "name": "Unit 1 How can I get there?",
+        "description": "城市地标问路与指路（turn left/right, go straight）"
       },
       {
-        "id": "6_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en6u_2",
+        "name": "Unit 2 Ways to go to school",
+        "description": "交通方式 by/on 与交通信号灯规则"
       },
       {
-        "id": "6_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en6u_3",
+        "name": "Unit 3 My weekend plan",
+        "description": "一般将来时 be going to 与周末/节日计划"
       },
       {
-        "id": "6_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en6u_4",
+        "name": "Unit 4 I have a pen pal",
+        "description": "兴趣爱好动名词 V-ing 与一般现在时三单变化"
+      },
+      {
+        "id": "en6u_5",
+        "name": "Unit 5 What does he do?",
+        "description": "职业名称、工作地点与未来职业理想"
+      },
+      {
+        "id": "en6u_6",
+        "name": "Unit 6 How do you feel?",
+        "description": "情绪表达（afraid, angry, worried）与 should 建议句"
       }
     ]
   },
@@ -1204,28 +1270,24 @@
     ],
     "英语": [
       {
-        "id": "6_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en6d_1",
+        "name": "Unit 1 How tall are you?",
+        "description": "形容词比较级规则变化与身高体重对比"
       },
       {
-        "id": "6_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en6d_2",
+        "name": "Unit 2 Last weekend",
+        "description": "一般过去时规则动词变化与上周末经历回顾"
       },
       {
-        "id": "6_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en6d_3",
+        "name": "Unit 3 Where did you go?",
+        "description": "一般过去时不规则动词与假期旅行日记"
       },
       {
-        "id": "6_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en6d_4",
+        "name": "Unit 4 Then and now",
+        "description": "今昔变化对比（There was/were vs There is/are）与小学总复习"
       }
     ]
   },
@@ -1298,106 +1360,85 @@
     ],
     "道德与法治": [
       {
-        "id": "7_up_道德与法治_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "mf7u_1",
+        "name": "第一单元：成长的节拍",
+        "description": "中学序曲、少年有梦、学会学习与正确认识自己"
       },
       {
-        "id": "7_up_道德与法治_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "mf7u_2",
+        "name": "第二单元：友谊的天空",
+        "description": "友谊与成长同行、交友的智慧与慎重结交网友"
       },
       {
-        "id": "7_up_道德与法治_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "mf7u_3",
+        "name": "第三单元：师长情谊",
+        "description": "走近老师、教学相长、家的意味与让家更美好"
       },
       {
-        "id": "7_up_道德与法治_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "mf7u_4",
+        "name": "第四单元：生命的思考",
+        "description": "探问生命、敬畏生命、增强生命韧性与活出生命精彩"
       }
     ],
     "历史": [
       {
-        "id": "7_up_历史_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "hi7u_1",
+        "name": "第一单元：史前时期（中国境内早期人类与文明起源）",
+        "description": "北京人、河姆渡与半坡农耕、炎黄传说与禅让制"
       },
       {
-        "id": "7_up_历史_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "hi7u_2",
+        "name": "第二单元：夏商周时期（早期国家与社会变革）",
+        "description": "分封制、青铜器与甲骨文、春秋争霸、商鞅变法与百家争鸣"
       },
       {
-        "id": "7_up_历史_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "hi7u_3",
+        "name": "第三单元：秦汉时期（统一多民族国家的建立和巩固）",
+        "description": "秦统一中国、汉武帝大一统、丝绸之路与两汉科技文化"
       },
       {
-        "id": "7_up_历史_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "hi7u_4",
+        "name": "第四单元：三国两晋南北朝时期（政权分立与民族交融）",
+        "description": "赤壁之战、江南地区开发、北魏孝文帝改革与魏晋科技艺术"
       }
     ],
     "地理": [
       {
-        "id": "7_up_地理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ge7u_1",
+        "name": "第一章：地球和地图",
+        "description": "经纬网定位、地球自转公转与四季五带、等高线地形图判读"
       },
       {
-        "id": "7_up_地理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ge7u_2",
+        "name": "第二章：陆地和海洋",
+        "description": "七大洲四大洋分布、海陆变迁与板块构造学说"
       },
       {
-        "id": "7_up_地理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ge7u_3",
+        "name": "第三章：天气与气候",
+        "description": "气温降水分布规律、世界主要气候类型及影响因素"
       },
       {
-        "id": "7_up_地理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ge7u_4",
+        "name": "第四章：居民与聚落及发展合作",
+        "description": "人口增长分布、世界人种语言宗教与乡村城市聚落"
       }
     ],
     "生物": [
       {
-        "id": "7_up_生物_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "bi7u_1",
+        "name": "第一单元：生物和生物圈",
+        "description": "生物基本特征、生态系统组成、食物链与食物网"
       },
       {
-        "id": "7_up_生物_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "bi7u_2",
+        "name": "第二单元：生物体的结构层次",
+        "description": "显微镜操作、动植物细胞结构、细胞分裂分化与组织器官"
       },
       {
-        "id": "7_up_生物_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "7_up_生物_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "bi7u_3",
+        "name": "第三单元：生物圈中的绿色植物",
+        "description": "种子萌发、蒸腾作用、光合作用与呼吸作用实验探究"
       }
     ]
   },
@@ -1456,132 +1497,112 @@
     ],
     "英语": [
       {
-        "id": "7_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en7d_1",
+        "name": "Unit 1 Can you play the guitar?",
+        "description": "情态动词 can 表达能力与社团招聘对话"
       },
       {
-        "id": "7_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en7d_2",
+        "name": "Unit 2 What time do you go to school?",
+        "description": "时间逆读法（past/to）与日常作息频度副词"
       },
       {
-        "id": "7_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en7d_3",
+        "name": "Unit 3 How do you get to school?",
+        "description": "how / how long / how far 交通耗时与距离提问"
       },
       {
-        "id": "7_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en7d_4",
+        "name": "Unit 4 Don't eat in class.",
+        "description": "祈使句与 must / have to 校规家规表达"
+      },
+      {
+        "id": "en7d_5",
+        "name": "Unit 5-8 动物、进行时与问路天气",
+        "description": "现在进行时、There be 方位问路与天气交际"
+      },
+      {
+        "id": "en7d_6",
+        "name": "Unit 9-12 外貌、点餐与一般过去时",
+        "description": "人物外貌描述、would like 点餐及一般过去时专项"
       }
     ],
     "道德与法治": [
       {
-        "id": "7_down_道德与法治_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "mf7d_1",
+        "name": "第一单元：青春时光",
+        "description": "悄悄变化的我、青春飞扬、行己有耻与止于至善"
       },
       {
-        "id": "7_down_道德与法治_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "mf7d_2",
+        "name": "第二单元：做情绪情感的主人",
+        "description": "青春的情绪管理、合理调节情绪与传递情感正能量"
       },
       {
-        "id": "7_down_道德与法治_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "mf7d_3",
+        "name": "第三单元：在集体中成长",
+        "description": "集体力量、个人意愿与集体规则、共奏和谐乐章"
       },
       {
-        "id": "7_down_道德与法治_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "mf7d_4",
+        "name": "第四单元：走进法治天地",
+        "description": "法律的特征与作用、未成年人特殊保护与依法办事"
       }
     ],
     "历史": [
       {
-        "id": "7_down_历史_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "hi7d_1",
+        "name": "第一单元：隋唐时期（繁荣与开放的时代）",
+        "description": "大运河与科举制、贞观之治与开元盛世、中外交流与安史之乱"
       },
       {
-        "id": "7_down_历史_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "hi7d_2",
+        "name": "第二单元：辽宋夏金元时期（民族关系发展和社会变化）",
+        "description": "重文轻武、经济重心南移、元朝行省制度与四大发明"
       },
       {
-        "id": "7_down_历史_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "7_down_历史_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "hi7d_3",
+        "name": "第三单元：明清时期（统一多民族国家的巩固与发展）",
+        "description": "郑和下西洋、戚继光抗倭、军机处与闭关锁国、明清科技小说"
       }
     ],
     "地理": [
       {
-        "id": "7_down_地理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ge7d_1",
+        "name": "第六章：我们生活的大洲——亚洲",
+        "description": "亚洲位置范围、地形地势河流特征与季风气候显著"
       },
       {
-        "id": "7_down_地理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ge7d_2",
+        "name": "第七章：我们邻近的地区和国家",
+        "description": "日本工业分布、东南亚十字路口、印度农业与俄罗斯资源交通"
       },
       {
-        "id": "7_down_地理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ge7d_3",
+        "name": "第八章：东半球其他的地区和国家",
+        "description": "中东石油水资源、欧洲西部畜牧业、撒哈拉以南非洲与澳大利亚"
       },
       {
-        "id": "7_down_地理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ge7d_4",
+        "name": "第九至十章：西半球的国家与极地地区",
+        "description": "美国农业专业化与硅谷、巴西热带雨林保护与南极北极科考"
       }
     ],
     "生物": [
       {
-        "id": "7_down_生物_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "bi7d_1",
+        "name": "第一章至第二章：人的由来与人体营养",
+        "description": "消化系统组成、淀粉蛋白质脂肪消化吸收与合理营养"
       },
       {
-        "id": "7_down_生物_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "bi7d_2",
+        "name": "第三章至第四章：人体呼吸与物质运输",
+        "description": "肺与外界气体交换、血液成分、心脏结构与体肺循环路径"
       },
       {
-        "id": "7_down_生物_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "7_down_生物_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "bi7d_3",
+        "name": "第五章至第七章：排泄、神经与激素调节",
+        "description": "肾单位滤过重吸收、反射弧、视觉听觉与人类活动对生物圈影响"
       }
     ]
   },
@@ -1646,158 +1667,129 @@
     ],
     "英语": [
       {
-        "id": "8_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en8u_1",
+        "name": "Unit 1-2 假期经历与健康习惯",
+        "description": "复合不定代词（anything/nothing）、频度副词与一般过去时"
       },
       {
-        "id": "8_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en8u_2",
+        "name": "Unit 3-4 人物对比与城市之最",
+        "description": "形容词/副词比较级与最高级专项训练"
       },
       {
-        "id": "8_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en8u_3",
+        "name": "Unit 5-7 媒体计划与未来预测",
+        "description": "动词不定式作宾语、be going to 与 will 一般将来时"
       },
       {
-        "id": "8_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en8u_4",
+        "name": "Unit 8-10 美食制作、邀请与条件句",
+        "description": "可数不可数名词、礼貌邀请与 if 引导条件状语从句（主将从现）"
       }
     ],
     "道德与法治": [
       {
-        "id": "8_up_道德与法治_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "mf8u_1",
+        "name": "第一单元：走进社会生活",
+        "description": "亲社会行为、网络生活新空间与理性参与网络"
       },
       {
-        "id": "8_up_道德与法治_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "mf8u_2",
+        "name": "第二单元：遵守社会规则",
+        "description": "社会秩序与规则、尊重他人、诚信与预防犯罪"
       },
       {
-        "id": "8_up_道德与法治_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "mf8u_3",
+        "name": "第三单元：勇担社会责任",
+        "description": "责任与角色同在、做负责任的人与关爱他人服务社会"
       },
       {
-        "id": "8_up_道德与法治_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "mf8u_4",
+        "name": "第四单元：维护国家利益",
+        "description": "国家利益至上、总体国家安全观与劳动实干兴邦"
       }
     ],
     "历史": [
       {
-        "id": "8_up_历史_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "hi8u_1",
+        "name": "第一至二单元：鸦片战争与近代化早期探索",
+        "description": "鸦片战争、太平天国、洋务运动、甲午中日战争与戊戌变法"
       },
       {
-        "id": "8_up_历史_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "hi8u_2",
+        "name": "第三至四单元：辛亥革命与新民主主义革命开始",
+        "description": "同盟会与武昌起义、新文化运动、五四运动与中国共产党诞生"
       },
       {
-        "id": "8_up_历史_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "hi8u_3",
+        "name": "第五至六单元：国共合作、长征与抗日战争",
+        "description": "北伐战争、井冈山道路与长征、九一八/七七事变与全民族抗战胜利"
       },
       {
-        "id": "8_up_历史_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "hi8u_4",
+        "name": "第七至八单元：人民解放战争与近代经济生活",
+        "description": "重庆谈判、三大战役与渡江战役、近代民族工业与社会变迁"
       }
     ],
     "地理": [
       {
-        "id": "8_up_地理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ge8u_1",
+        "name": "第一章：从世界看中国",
+        "description": "中国疆域与 34 个省级行政区、人口分布胡焕庸线与民族分布"
       },
       {
-        "id": "8_up_地理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ge8u_2",
+        "name": "第二章：中国的自然环境",
+        "description": "三级阶梯地形、季风气候特征、长江与黄河水文治理及自然灾害"
       },
       {
-        "id": "8_up_地理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ge8u_3",
+        "name": "第三章：中国的自然资源",
+        "description": "土地资源类型、水资源时空分布不均与南水北调工程"
       },
       {
-        "id": "8_up_地理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ge8u_4",
+        "name": "第四章：中国的经济发展",
+        "description": "主要铁路干线枢纽、因地制宜发展农业与高新技术产业分布"
       }
     ],
     "生物": [
       {
-        "id": "8_up_生物_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "bi8u_1",
+        "name": "第五单元第1-3章：动物的主要类群与运动行为",
+        "description": "无脊椎与脊椎动物特征、骨关节肌肉协作、先天性与学习行为"
       },
       {
-        "id": "8_up_生物_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "bi8u_2",
+        "name": "第五单元第4-5章：细菌、真菌与病毒",
+        "description": "微生物形态繁殖、发酵技术应用、病毒结构与寄生生活"
       },
       {
-        "id": "8_up_生物_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "8_up_生物_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "bi8u_3",
+        "name": "第六单元：生物的多样性及其保护",
+        "description": "界门纲目科属种分类、基因/物种/生态系统多样性与自然保护区"
       }
     ],
     "物理": [
       {
-        "id": "8_up_物理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ph8u_1",
+        "name": "第一章至第二章：机械运动与声现象",
+        "description": "刻度尺测量、参照物与平均速度计算、声音产生传播与噪声控制"
       },
       {
-        "id": "8_up_物理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ph8u_2",
+        "name": "第三章：物态变化",
+        "description": "温度计、熔化凝固、汽化液化、升华凝华及其吸放热判别"
       },
       {
-        "id": "8_up_物理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ph8u_3",
+        "name": "第四章至第五章：光现象与透镜及其应用",
+        "description": "平面镜成像、光的折射、凸透镜成像规律动态分析与近视远视矫正"
       },
       {
-        "id": "8_up_物理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ph8u_4",
+        "name": "第六章：质量与密度",
+        "description": "托盘天平使用、密度公式 ρ=m/V、量筒测固液体密度及空心实心计算"
       }
     ]
   },
@@ -1856,158 +1848,119 @@
     ],
     "英语": [
       {
-        "id": "8_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en8d_1",
+        "name": "Unit 1-3 健康急救、志愿服务与家务请求",
+        "description": "should 提建议、动词不定式与 Could you please...? 委婉请求"
       },
       {
-        "id": "8_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en8d_2",
+        "name": "Unit 4-5 沟通解压与过去进行时",
+        "description": "until / so that / although 状语从句与 when/while 过去进行时"
       },
       {
-        "id": "8_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en8d_3",
+        "name": "Unit 6-7 传统神话与世界自然之最",
+        "description": "as soon as / unless 从句及大数字与最高级表达"
       },
       {
-        "id": "8_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en8d_4",
+        "name": "Unit 8-10 文学音乐、名胜与现在完成时",
+        "description": "现在完成时 have/has done、already/yet 与 for/since 延续性动词辨析"
       }
     ],
     "道德与法治": [
       {
-        "id": "8_down_道德与法治_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "mf8d_1",
+        "name": "第一单元：坚持宪法至上",
+        "description": "党的领导、国家权力属于人民、规范权力运行与宪法核心地位"
       },
       {
-        "id": "8_down_道德与法治_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "mf8d_2",
+        "name": "第二单元：理解权利义务",
+        "description": "公民基本权利与义务、依法行使权利与法定义务须履行"
       },
       {
-        "id": "8_down_道德与法治_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "mf8d_3",
+        "name": "第三单元：人民当家作主",
+        "description": "基本政治经济制度、人大/政协/基层自治与国家机构职权"
       },
       {
-        "id": "8_down_道德与法治_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "mf8d_4",
+        "name": "第四单元：崇尚法治精神",
+        "description": "自由平等的真谛与维护社会公平正义"
       }
     ],
     "历史": [
       {
-        "id": "8_down_历史_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "hi8d_1",
+        "name": "第一至二单元：新中国成立与社会主义制度建立",
+        "description": "开国大典、抗美援朝、土地改革、一五计划与三大改造"
       },
       {
-        "id": "8_down_历史_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "hi8d_2",
+        "name": "第三单元：中国特色社会主义道路",
+        "description": "十一届三中全会、家庭联产承包责任制、经济特区与对外开放格局"
       },
       {
-        "id": "8_down_历史_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "8_down_历史_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "hi8d_3",
+        "name": "第四至六单元：民族团结、祖国统一与国防外交科技",
+        "description": "民族区域自治、一国两制港澳回归、和平共处五项原则与两弹一星航天成就"
       }
     ],
     "地理": [
       {
-        "id": "8_down_地理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ge8d_1",
+        "name": "第五至六章：中国地理差异与北方地区",
+        "description": "秦岭—淮河一线意义、四大地理区域、东北三省、黄土高原水土流失与北京"
       },
       {
-        "id": "8_down_地理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ge8d_2",
+        "name": "第七章：南方地区",
+        "description": "湿热红土地、长江三角洲水乡经济、香港澳门与台湾省自然经济特征"
       },
       {
-        "id": "8_down_地理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "8_down_地理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ge8d_3",
+        "name": "第八至九章：西北地区与青藏地区",
+        "description": "干旱绿洲农业、塔里木盆地西气东输、高寒牧区与三江源生态保护"
       }
     ],
     "生物": [
       {
-        "id": "8_down_生物_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "bi8d_1",
+        "name": "第七单元第1章：生物的生殖和发育",
+        "description": "有性/无性生殖、昆虫完全/不完全变态发育、两栖类与鸟卵结构"
       },
       {
-        "id": "8_down_生物_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "bi8d_2",
+        "name": "第七单元第2-3章：遗传变异与生命起源进化",
+        "description": "染色体/DNA/基因关系、显隐性性状遗传图解、性别决定与自然选择学说"
       },
       {
-        "id": "8_down_生物_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "8_down_生物_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "bi8d_3",
+        "name": "第八单元：健康地生活",
+        "description": "传染病三环节与预防、三道免疫防线、安全用药与急救常识"
       }
     ],
     "物理": [
       {
-        "id": "8_down_物理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ph8d_1",
+        "name": "第七章至第八章：力与运动和力",
+        "description": "重力 G=mg、弹力、牛顿第一定律与惯性、二力平衡与滑动摩擦力"
       },
       {
-        "id": "8_down_物理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ph8d_2",
+        "name": "第九章：压强",
+        "description": "固体压强 p=F/S、液体压强 p=ρgh、大气压强与流体压强流速关系"
       },
       {
-        "id": "8_down_物理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ph8d_3",
+        "name": "第十章：浮力",
+        "description": "阿基米德原理 F浮=ρ液gV排、物体沉浮条件与密度计/潜水艇应用"
       },
       {
-        "id": "8_down_物理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ph8d_4",
+        "name": "第十一至十二章：功和机械能及简单机械",
+        "description": "功 W=Fs、功率 P=W/t、动能势能转化、杠杆平衡条件与滑轮组机械效率"
       }
     ]
   },
@@ -2072,132 +2025,102 @@
     ],
     "英语": [
       {
-        "id": "9_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en9u_1",
+        "name": "Unit 1-3 学习策略、传统节日与礼貌问路",
+        "description": "by doing 方式状语、感叹句与宾语从句（陈述语序与时态呼应）"
       },
       {
-        "id": "9_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en9u_2",
+        "name": "Unit 4-6 成长变化与制造发明",
+        "description": "used to 过去常常、一般现在时与一般过去时被动语态"
       },
       {
-        "id": "9_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en9u_3",
+        "name": "Unit 7-9 规则、推测与定语从句",
+        "description": "含情态动词的被动语态、must/might/can't 推测及 that/who/which 定语从句"
       },
       {
-        "id": "9_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en9u_4",
+        "name": "Unit 10-14 礼仪、情绪与过去完成时",
+        "description": "be supposed to、make sb. do 及初中英语核心时态语态综合"
       }
     ],
     "道德与法治": [
       {
-        "id": "9_up_道德与法治_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "mf9u_1",
+        "name": "第一单元：富强与创新",
+        "description": "改革开放强国之路、共享发展成果与创新驱动发展战略"
       },
       {
-        "id": "9_up_道德与法治_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "mf9u_2",
+        "name": "第二单元：民主与法治",
+        "description": "全过程人民民主、公民参与民主生活与全面依法治国"
       },
       {
-        "id": "9_up_道德与法治_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "mf9u_3",
+        "name": "第三单元：文明与家园",
+        "description": "中华文化与民族精神、社会主义核心价值观与绿水青山生态文明"
       },
       {
-        "id": "9_up_道德与法治_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "mf9u_4",
+        "name": "第四单元：和谐与梦想",
+        "description": "民族团结与一国两制、中国梦与自信中国人"
       }
     ],
     "历史": [
       {
-        "id": "9_up_历史_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "hi9u_1",
+        "name": "第一至四单元：古代亚非欧文明与封建时代",
+        "description": "四大文明古国、希腊民主与罗马法、西欧庄园大学、阿拉伯帝国与大化改新"
       },
       {
-        "id": "9_up_历史_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "hi9u_2",
+        "name": "第五单元：走向近代",
+        "description": "文艺复兴人文主义、新航路开辟与早期殖民掠夺三角贸易"
       },
       {
-        "id": "9_up_历史_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "9_up_历史_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "hi9u_3",
+        "name": "第六至七单元：资本主义制度初步确立与工业革命",
+        "description": "英美法资产阶级革命与文献、第一次工业革命与马克思主义诞生"
       }
     ],
     "物理": [
       {
-        "id": "9_up_物理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ph9u_1",
+        "name": "第十三至十四章：内能及其利用",
+        "description": "分子热运动、比热容吸放热 Q=cmΔt、热机四冲程与热值效率"
       },
       {
-        "id": "9_up_物理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ph9u_2",
+        "name": "第十五至十六章：电流、电路与电压电阻",
+        "description": "串并联电路识别与画图、电流表电压表测量规律与滑动变阻器"
       },
       {
-        "id": "9_up_物理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ph9u_3",
+        "name": "第十七章：欧姆定律",
+        "description": "I=U/R 动态电路极值分析、伏安法测电阻与电路故障判断"
       },
       {
-        "id": "9_up_物理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ph9u_4",
+        "name": "第十八章：电功率与焦耳定律",
+        "description": "电功 W=UIt、电功率 P=UI=I²R=U²/R、多挡位电热器计算与家庭安全用电"
       }
     ],
     "化学": [
       {
-        "id": "9_up_化学_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ch9u_1",
+        "name": "第一至二单元：走进化学世界与空气氧气",
+        "description": "物理化学变化、空气成分测定、实验室制取氧气原理与装置"
       },
       {
-        "id": "9_up_化学_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ch9u_2",
+        "name": "第三至四单元：物质构成奥秘与自然界的水",
+        "description": "分子原子离子、元素周期表前20号、化合价与化学式计算"
       },
       {
-        "id": "9_up_化学_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "9_up_化学_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ch9u_3",
+        "name": "第五至七单元：质量守恒定律、碳和燃料",
+        "description": "化学方程式配平计算、二氧化碳实验室制取与燃烧灭火条件"
       }
     ]
   },
@@ -2256,132 +2179,102 @@
     ],
     "英语": [
       {
-        "id": "9_down_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en9d_1",
+        "name": "专题一：中考核心词法与时态语态总复习",
+        "description": "八大时态、被动语态、情态动词与非谓语动词高频辨析"
       },
       {
-        "id": "9_down_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en9d_2",
+        "name": "专题二：三大从句与句型转换突破",
+        "description": "宾语从句、状语从句、定语从句与感叹句/反意疑问句"
       },
       {
-        "id": "9_down_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en9d_3",
+        "name": "专题三：完形填空与阅读理解微技能",
+        "description": "上下文复现、推理判断、主旨大意与任务型阅读解题法"
       },
       {
-        "id": "9_down_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en9d_4",
+        "name": "专题四：中考书面表达高分模板与润色",
+        "description": "应用文、议论文、记叙文高分衔接词与地道句型实战"
       }
     ],
     "道德与法治": [
       {
-        "id": "9_down_道德与法治_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "mf9d_1",
+        "name": "第一单元：我们共同的世界",
+        "description": "经济全球化与世界多极化、和平与发展时代主题、人类命运共同体"
       },
       {
-        "id": "9_down_道德与法治_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "mf9d_2",
+        "name": "第二单元：世界舞台上的中国",
+        "description": "中国担当与智慧、构建新发展格局与机遇挑战"
       },
       {
-        "id": "9_down_道德与法治_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "9_down_道德与法治_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "mf9d_3",
+        "name": "第三单元：走向未来的少年",
+        "description": "少年当自强、职业生涯规划与中考思政热点综合复习"
       }
     ],
     "历史": [
       {
-        "id": "9_down_历史_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "hi9d_1",
+        "name": "第一至二单元：资本主义制度扩展与第二次工业革命",
+        "description": "俄国农奴制改革、美国内战、日本明治维新与电气时代垄断组织"
       },
       {
-        "id": "9_down_历史_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "hi9d_2",
+        "name": "第三至四单元：一战、十月革命与经济大危机二战",
+        "description": "凡尔赛—华盛顿体系、罗斯福新政、世界反法西斯战争胜利"
       },
       {
-        "id": "9_down_历史_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
-      },
-      {
-        "id": "9_down_历史_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "hi9d_3",
+        "name": "第五至六单元：二战后冷战格局与当代世界发展",
+        "description": "冷战两极格局、欧洲联合与亚非拉独立、多极化趋势与中考通史串讲"
       }
     ],
     "物理": [
       {
-        "id": "9_down_物理_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ph9d_1",
+        "name": "第二十章：电与磁",
+        "description": "奥斯特实验、安培定则、电磁铁、电动机与法拉第电磁感应发电机"
       },
       {
-        "id": "9_down_物理_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ph9d_2",
+        "name": "第二十一至二十二章：信息的传递与能源可持续发展",
+        "description": "电磁波谱、核裂变聚变与可再生能源利用"
       },
       {
-        "id": "9_down_物理_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ph9d_3",
+        "name": "中考物理力学压轴专题冲刺",
+        "description": "压强浮力液面变化、杠杆滑轮组综合计算与实验探究"
       },
       {
-        "id": "9_down_物理_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ph9d_4",
+        "name": "中考物理电学压轴专题冲刺",
+        "description": "动态电路范围极值、电热综合挡位分析与特殊法测电阻电功率"
       }
     ],
     "化学": [
       {
-        "id": "9_down_化学_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "ch9d_1",
+        "name": "第八单元：金属和金属材料",
+        "description": "金属活动性顺序、铁的冶炼与防锈、金属与酸/盐溶液置换反应图像"
       },
       {
-        "id": "9_down_化学_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "ch9d_2",
+        "name": "第九单元：溶液与溶解度曲线",
+        "description": "饱和溶液、溶质质量分数配制与溶解度曲线综合判读"
       },
       {
-        "id": "9_down_化学_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "ch9d_3",
+        "name": "第十至十一单元：酸碱盐与复分解反应",
+        "description": "pH 与中和反应、粗盐提纯、常见离子共存除杂与推断框图题"
       },
       {
-        "id": "9_down_化学_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "ch9d_4",
+        "name": "第十二单元及中考化学实验推断冲刺",
+        "description": "化学与生活营养素、气密性检验、探究性实验与综合计算"
       }
     ]
   },
@@ -2602,28 +2495,34 @@
     ],
     "英语": [
       {
-        "id": "3_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en3u_1",
+        "name": "Unit 1 Making friends",
+        "description": "人教PEP三年级上册：问候交友、身体动作与自然拼读 A-D"
       },
       {
-        "id": "3_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en3u_2",
+        "name": "Unit 2 Different families",
+        "description": "家庭成员介绍 This is my... 与自然拼读 E-H"
       },
       {
-        "id": "3_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en3u_3",
+        "name": "Unit 3 Amazing animals",
+        "description": "宠物与野生动物问答 Do you have a pet?"
       },
       {
-        "id": "3_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en3u_4",
+        "name": "Unit 4 Plants around us",
+        "description": "植物水果与环保行动 Plants need air, water and sun"
+      },
+      {
+        "id": "en3u_5",
+        "name": "Unit 5 The colourful world",
+        "description": "色彩混合规律与日常颜色问答"
+      },
+      {
+        "id": "en3u_6",
+        "name": "Unit 6 Useful numbers",
+        "description": "年龄、购物与数字 1-10 综合交际"
       }
     ]
   },
@@ -2718,28 +2617,34 @@
     ],
     "英语": [
       {
-        "id": "3_up_英语_1",
-        "name": "第一单元：核心基础突破",
-        "description": "夯实基础，稳扎稳打，掌握本阶段核心概念！🌱",
-        "difficulty": "★★"
+        "id": "en3u_1",
+        "name": "Unit 1 Making friends",
+        "description": "人教PEP三年级上册：问候交友、身体动作与自然拼读 A-D"
       },
       {
-        "id": "3_up_英语_2",
-        "name": "第二单元：进阶能力提升",
-        "description": "融会贯通，挑战自我，开启深度思考之旅！🚀",
-        "difficulty": "★★★"
+        "id": "en3u_2",
+        "name": "Unit 2 Different families",
+        "description": "家庭成员介绍 This is my... 与自然拼读 E-H"
       },
       {
-        "id": "3_up_英语_3",
-        "name": "第三单元：综合应用实战",
-        "description": "举一反三，学以致用，将知识转化为解决问题的能力！🎯",
-        "difficulty": "★★★★"
+        "id": "en3u_3",
+        "name": "Unit 3 Amazing animals",
+        "description": "宠物与野生动物问答 Do you have a pet?"
       },
       {
-        "id": "3_up_英语_4",
-        "name": "第四单元：期末冲刺总复习",
-        "description": "查漏补缺，系统梳理，决胜期末考场！🏆",
-        "difficulty": "★★★★★"
+        "id": "en3u_4",
+        "name": "Unit 4 Plants around us",
+        "description": "植物水果与环保行动 Plants need air, water and sun"
+      },
+      {
+        "id": "en3u_5",
+        "name": "Unit 5 The colourful world",
+        "description": "色彩混合规律与日常颜色问答"
+      },
+      {
+        "id": "en3u_6",
+        "name": "Unit 6 Useful numbers",
+        "description": "年龄、购物与数字 1-10 综合交际"
       }
     ]
   },

@@ -7,7 +7,29 @@ const { encryptField, decryptField } = require('../utils/crypto');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { extractClientAiHeaders } = require('../utils/aiHeaders');
 const { clampInt } = require('../utils/paramValidator');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
+const { requireQuotaOrVip } = require('../middleware/quota');
 const dbQueue = require('../services/dbQueue');
+
+const SYSTEM_ERROR_MISTAKE_PATTERNS = [
+  /未检测到可用大模型\s*API\s*Key/i,
+  /请点击右上角设置.*配置有效密钥/i,
+  /系统报错|连接失败|ERR_UNAUTHORIZED|ERR_FORBIDDEN|ERR_DAILY_QUOTA_EXCEEDED/i
+];
+
+function isSafeMistakeImageUrl(url) {
+  if (!url || typeof url !== 'string') return true;
+  const trimmed = url.trim();
+  if (!trimmed) return true;
+  if (/^data:image\/(png|jpeg|jpg|webp|gif|bmp);base64,[A-Za-z0-9+/=\s]+$/i.test(trimmed)) return true;
+  if (/^https:\/\/[^\s"'<>]+$/i.test(trimmed)) return true;
+  return false;
+}
+
+function isSystemErrorContent(text) {
+  if (!text || typeof text !== 'string') return false;
+  return SYSTEM_ERROR_MISTAKE_PATTERNS.some(re => re.test(text));
+}
 
 function getClientAiHeaders(req) {
   return {
@@ -21,7 +43,9 @@ router.get('/mistakes', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const profile_id = req.query.profile_id || 'default';
+    const authCheck = resolveAuthorizedProfileId(req, req.query.profile_id || 'default');
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const profile_id = authCheck.profileId;
     // Pagination: default 200, clamped strictly to [1, 500]
     const limit = clampInt(req.query.limit, 200, 1, 500);
     const offset = clampInt(req.query.offset, 0, 0, 100000);
@@ -50,6 +74,20 @@ router.post('/mistakes/mark', async (req, res) => {
     const { query, answer, grade, subject, profile_id, source_info, tags, reason, image_url, crop_data } = req.body;
     if (!query || !answer) return res.status(400).json({ error: "Missing query or answer" });
 
+    // 防止系统报错提示被误收进错题本污染学情
+    if (isSystemErrorContent(answer)) {
+      return res.status(400).json({ error: "系统错误提示不可收录为错题，请先恢复 AI 服务并完成解题后再标记" });
+    }
+
+    // 防止存储型 XSS：严禁 javascript: / data:text/html / data:image/svg+xml
+    if (image_url && !isSafeMistakeImageUrl(image_url)) {
+      return res.status(400).json({ error: "非法的错题图片链接或不支持的图片格式" });
+    }
+
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
+
     let sourceInfoStr = '[]';
     if (source_info) {
       if (typeof source_info === 'string') {
@@ -70,9 +108,9 @@ router.post('/mistakes/mark', async (req, res) => {
         subject || 'unknown',
         sourceInfoStr,
         encryptField(mistakeReason),
-        profile_id || 'default',
+        targetPid,
         encryptField(tags || ''),
-        image_url || '',
+        image_url ? String(image_url).trim() : '',
         cropDataStr
       ]
     );
@@ -88,12 +126,15 @@ router.patch('/mistakes/:id/reason', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const { reason, tags } = req.body;
+    const { reason, tags, profile_id } = req.body;
     const { id } = req.params;
-    await sqliteDb.run(
-      'UPDATE mistakes SET reason = ?, tags = ? WHERE id = ?',
-      [encryptField(reason || '用户自主标记'), encryptField(tags || ''), id]
+    const authCheck = resolveAuthorizedProfileId(req, profile_id || req.query.profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const result = await sqliteDb.run(
+      'UPDATE mistakes SET reason = ?, tags = ? WHERE id = ? AND profile_id = ?',
+      [encryptField(reason || '用户自主标记'), encryptField(tags || ''), id, authCheck.profileId]
     );
+    if (result.changes === 0) return res.status(404).json({ error: "错题未找到或无权修改" });
     res.json({ success: true });
   } catch (e) {
     logger.error("Update mistake reason error:", e);
@@ -108,9 +149,11 @@ router.delete('/mistakes/:id', async (req, res) => {
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id } = req.query;
     if (!profile_id) return res.status(400).json({ error: "Missing profile_id" });
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
     const result = await sqliteDb.run(
       'DELETE FROM mistakes WHERE id = ? AND profile_id = ?',
-      [req.params.id, profile_id]
+      [req.params.id, authCheck.profileId]
     );
     if (result.changes === 0) return res.status(404).json({ error: "错题未找到或无权删除" });
     res.json({ success: true });
@@ -120,18 +163,21 @@ router.delete('/mistakes/:id', async (req, res) => {
 });
 
 // GET /api/mistakes/review-challenge — spaced repetition review
-router.get('/mistakes/review-challenge', async (req, res) => {
+router.get('/mistakes/review-challenge', requireQuotaOrVip('mistake_review'), async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id = 'default', grade = 'unknown' } = req.query;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
 
     let reviewSQL = `
       SELECT * FROM mistakes
       WHERE profile_id = ?
       AND datetime(COALESCE(next_review_date, '1970-01-01')) <= datetime('now')
     `;
-    const reviewParams = [profile_id];
+    const reviewParams = [targetPid];
     if (grade && grade !== 'unknown') {
       reviewSQL += ` AND grade = ?`;
       reviewParams.push(grade);
@@ -155,6 +201,7 @@ router.get('/mistakes/review-challenge', async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: targetPid,
       headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -189,11 +236,17 @@ router.post('/mistakes/review-feedback', async (req, res) => {
       return res.status(400).json({ error: "rating must be an integer 1-4" });
     }
 
+    const authCheck = resolveAuthorizedProfileId(req, req.body.profile_id || req.query.profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+
     const mistake = await sqliteDb.get(
-      `SELECT review_count, easiness_factor, last_interval, stability, difficulty, fsrs_state FROM mistakes WHERE id = ?`, 
-      [mistake_id]
+      `SELECT review_count, easiness_factor, last_interval, stability, difficulty, fsrs_state, last_reviewed_at, timestamp FROM mistakes WHERE id = ? AND profile_id = ?`, 
+      [mistake_id, authCheck.profileId]
     );
     if (!mistake) return res.status(404).json({ error: "Mistake not found" });
+
+    const refTime = mistake.last_reviewed_at || mistake.timestamp;
+    const elapsedDays = refTime ? Math.max(0, (Date.now() - new Date(refTime).getTime()) / (24 * 60 * 60 * 1000)) : 0;
 
     const { calculateFSRS } = require('../utils/fsrs');
     const fsrsResult = calculateFSRS(
@@ -203,7 +256,8 @@ router.post('/mistakes/review-feedback', async (req, res) => {
         stability: mistake.stability,
         difficulty: mistake.difficulty,
         last_interval: mistake.last_interval || 0,
-        easiness_factor: mistake.easiness_factor || 2.5
+        easiness_factor: mistake.easiness_factor || 2.5,
+        days_elapsed: Number.isFinite(elapsedDays) ? elapsedDays : 0
       }
     );
 
@@ -214,8 +268,9 @@ router.post('/mistakes/review-feedback', async (req, res) => {
          difficulty = ?, 
          fsrs_state = ?, 
          next_review_date = datetime('now', '+' || ? || ' days'), 
-         last_interval = ? 
-       WHERE id = ?`,
+         last_interval = ?,
+         last_reviewed_at = datetime('now')
+       WHERE id = ? AND profile_id = ?`,
       [
         fsrsResult.review_count, 
         fsrsResult.stability, 
@@ -223,7 +278,8 @@ router.post('/mistakes/review-feedback', async (req, res) => {
         fsrsResult.state, 
         fsrsResult.interval, 
         fsrsResult.interval, 
-        mistake_id
+        mistake_id,
+        authCheck.profileId
       ]
     );
 
@@ -249,6 +305,8 @@ router.put('/mistakes/:id/tags', async (req, res) => {
     const { tags } = req.body;
     const { profile_id } = req.query;
     if (!profile_id) return res.status(400).json({ error: "Missing profile_id" });
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
 
     let tagsStr = '';
     if (Array.isArray(tags)) {
@@ -263,7 +321,7 @@ router.put('/mistakes/:id/tags', async (req, res) => {
 
     await sqliteDb.run(
       'UPDATE mistakes SET tags = ? WHERE id = ? AND profile_id = ?',
-      [encryptField(tagsStr), req.params.id, profile_id]
+      [encryptField(tagsStr), req.params.id, authCheck.profileId]
     );
     res.json({ success: true, tags: tagsStr });
   } catch (e) {
@@ -274,7 +332,7 @@ router.put('/mistakes/:id/tags', async (req, res) => {
 
 // POST /api/mistakes/generate-variants
 // 对标作业帮/小猿：针对一道题目的考点生成举一反三的“同类母题巩固”与“变式拔高”
-router.post('/mistakes/generate-variants', async (req, res) => {
+router.post('/mistakes/generate-variants', requireQuotaOrVip('mistake_variants'), async (req, res) => {
   try {
     const { question, answer, grade = '7_up', subject = '数学' } = req.body;
     if (!question) {
@@ -410,6 +468,7 @@ ${rootCauseDiagnosis && rootCauseDiagnosis.hasCrossGradeGap ? `【知识图谱�
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: req.auth?.activeProfileId || 'default',
       headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -452,7 +511,7 @@ ${rootCauseDiagnosis && rootCauseDiagnosis.hasCrossGradeGap ? `【知识图谱�
 
 // POST /api/mistakes/check-variant-answer
 // 评判学生的变式题答案，提供即时名师反馈与得分奖励
-router.post('/mistakes/check-variant-answer', async (req, res) => {
+router.post('/mistakes/check-variant-answer', requireQuotaOrVip('check_variant'), async (req, res) => {
   try {
     const { question, standard_answer, student_answer, grade = '7_up', is_foundation = false } = req.body;
     if (!question || !student_answer) {
@@ -473,7 +532,7 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
           cas_verified: true,
           is_foundation_cleared: !!is_foundation,
           comment: is_foundation
-            ? '🎉 太棒了曾练！经神经符号 CAS 精确验算，底层基石漏洞已打通！现在回到主考点，势如破竹！'
+            ? '🎉 太棒了！经神经符号 CAS 精确验算，底层基石漏洞已打通！现在回到主考点，势如破竹！'
             : '🎉 太棒了！经神经符号 CAS 引擎精确验算，你的推导与标准答案完全代数等价！',
           detailed_step: `你的表达式【${student_answer}】与参考答案【${standard_answer}】在代数恒等性上完全一致。`
         }
@@ -498,6 +557,7 @@ router.post('/mistakes/check-variant-answer', async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: req.auth?.activeProfileId || 'default',
       headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],

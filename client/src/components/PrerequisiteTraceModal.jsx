@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getApiUrl, authFetch } from '../store/useStore';
 
-const SUBJECT_LIST = ['全部学科', '数学', '物理', '化学', '英语', '语文', '科学', '道德与法治'];
+const SUBJECT_LIST = ['全部学科', '数学', '物理', '化学', '生物', '英语', '语文', '历史', '地理', '政治', '科学', '道德与法治'];
 
 const QUICK_TOPIC_PRESETS = [
+  { name: '圆锥曲线与方程', grade: '11_up', subject: '数学', label: '🚀 圆锥曲线 (高二 数学)' },
+  { name: '导数的概念与函数单调性、极值', grade: '11_down', subject: '数学', label: '📈 导数极值 (高二 数学)' },
+  { name: '洛伦兹力与带电粒子在匀强磁场中的运动', grade: '11_up', subject: '物理', label: '🧲 洛伦兹力 (高二 物理)' },
   { name: '二次函数的概念', grade: '9', subject: '数学', label: '🎯 二次函数 (G9 数学)' },
   { name: '勾股定理及其逆定理', grade: '8', subject: '数学', label: '📐 勾股定理 (G8 数学)' },
   { name: '浮力与阿基米德原理', grade: '8', subject: '物理', label: '🔬 浮力原理 (G8 物理)' },
   { name: '欧姆定律与动态电路分析', grade: '9', subject: '物理', label: '⚡ 欧姆定律 (G9 物理)' },
-  { name: '分数的加法和减法', grade: '5', subject: '数学', label: '🧮 分数加减 (G5 数学)' },
-  { name: '正比例', grade: '6', subject: '数学', label: '📊 正比例 (G6 数学)' },
-  { name: '英语字母表', grade: '3', subject: '英语', label: '🔤 英语字母 (G3 英语)' },
-  { name: '识字：天地人', grade: '1', subject: '语文', label: '📖 识字天地人 (G1 语文)' }
+  { name: '分数的加法和减法', grade: '5', subject: '数学', label: '🧮 分数加减 (G5 数学)' }
 ];
 
 export default function PrerequisiteTraceModal({
@@ -128,11 +128,12 @@ export default function PrerequisiteTraceModal({
     }
   }, []);
 
-  // Initialize on open or initialTopic change
+  // Initialize ONLY on open or initial props change (绝不依赖 subject，防止切换学科冲掉当前搜索词)
   useEffect(() => {
     if (!isOpen) return;
 
-    let initKw = '二次函数的概念';
+    const rawGradeNum = parseInt(String(initialGrade || '').split('_')[0], 10);
+    let initKw = rawGradeNum >= 10 ? '导数的概念与函数单调性、极值' : '二次函数的概念';
     let initId = null;
 
     if (initialTopic) {
@@ -140,18 +141,20 @@ export default function PrerequisiteTraceModal({
         initKw = initialTopic;
       } else if (typeof initialTopic === 'object') {
         initId = initialTopic.id || null;
-        initKw = initialTopic.name || initialTopic.knowledge_point || initialTopic.query || '二次函数的概念';
+        initKw = initialTopic.name || initialTopic.knowledge_point || initialTopic.query || initKw;
       }
     }
 
+    const nextSubj = initialSubject || '全部学科';
+    setSubject(nextSubj);
     setKeyword(initKw);
-    fetchTrace(initKw, initId, initialSubject || subject, initialGrade);
-  }, [isOpen, initialTopic, initialSubject, initialGrade, fetchTrace, subject]);
+    fetchTrace(initKw, initId, nextSubj, initialGrade);
+  }, [isOpen, initialTopic, initialSubject, initialGrade, fetchTrace]);
 
   const handleSearchSubmit = (e) => {
     e?.preventDefault();
     if (keyword.trim()) {
-      fetchTrace(keyword.trim(), null, subject, null);
+      fetchTrace(keyword.trim(), null, subject, initialGrade || null);
     }
   };
 
@@ -317,7 +320,7 @@ export default function PrerequisiteTraceModal({
                   onClick={() => {
                     setSubject(subj);
                     if (keyword.trim()) {
-                      fetchTrace(keyword.trim(), null, subj, null);
+                      fetchTrace(keyword.trim(), null, subj, initialGrade || null);
                     }
                   }}
                   style={{

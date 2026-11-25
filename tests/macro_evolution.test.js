@@ -53,10 +53,10 @@ test('Parent Memo API: GET /api/parent/daily-memo returns active time & reassuri
   assert.strictEqual(data.studentName, '曾练');
   assert.ok(typeof data.activeMinutes === 'number');
   assert.ok(typeof data.todayChatCount === 'number');
-  assert.ok(data.comfortScore.includes('放心') || data.comfortScore.includes('98'));
+  assert.strictEqual(data.comfortScore, '暂无学习记录');
   assert.ok(Array.isArray(data.memoContent));
-  assert.ok(data.memoContent[0].includes('曾练') || data.memoContent[0].includes('研学'));
-  assert.ok(data.memoTitle.includes('曾先生'));
+  assert.ok(!data.memoContent.join(' ').includes('**'));
+  assert.ok(data.memoTitle.includes('曾练'));
 });
 
 test('Parent Memo API: POST /api/parent/push-webhook validates URL and formats payload', async () => {
@@ -123,11 +123,12 @@ test('Parent Remote Dashboard API: GET /api/parent/remote-token generates crypto
   assert.ok(viewData.overallStats);
   assert.ok(typeof viewData.overallStats.masteryRate === 'number');
   assert.ok(viewData.radarData);
-  assert.ok(viewData.radarData.conceptClarity >= 80);
+  assert.strictEqual(viewData.radarData.conceptClarity, 0);
   assert.ok(Array.isArray(viewData.weakTags));
   assert.ok(Array.isArray(viewData.recentMistakes));
   assert.ok(Array.isArray(viewData.memoContent));
-  assert.strictEqual(viewData.comfortScore, '98 (放心特优)');
+  assert.strictEqual(viewData.comfortScore, '待开启今日学习');
+  assert.deepStrictEqual(viewData.availableProfiles, ['test_child_1']);
 
   // Test invalid token rejects with 401
   const invalidTokenRes = await fetch(`${baseUrl}/api/parent/remote-view?token=invalid_forged_token`);

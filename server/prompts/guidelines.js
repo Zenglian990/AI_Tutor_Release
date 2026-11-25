@@ -242,36 +242,38 @@ function buildLanceDBWhereClause(grade, subject, edition) {
       } else if (gradeNum === 9) {
         gradeConditions.push(`source LIKE '%初三%'`, `source LIKE '%初中三年级%'`);
       } else if (gradeNum === 10) {
-        gradeConditions.push(`source LIKE '%高一%'`, `source LIKE '%高中一年级%'`, `source LIKE '%必修一%'`, `source LIKE '%必修 第一册%'`, `source LIKE '%必修第一册%'`);
+        if (volume === 'down') {
+          gradeConditions.push(`source LIKE '%高一下%'`, `source LIKE '%高一%'`, `source LIKE '%高中一年级%'`, `source LIKE '%必修二%'`, `source LIKE '%必修 第二册%'`, `source LIKE '%必修第二册%'`, `source LIKE '%必修下%'`, `source LIKE '%全一册%'`);
+        } else {
+          gradeConditions.push(`source LIKE '%高一上%'`, `source LIKE '%高一%'`, `source LIKE '%高中一年级%'`, `source LIKE '%必修一%'`, `source LIKE '%必修 第一册%'`, `source LIKE '%必修第一册%'`, `source LIKE '%必修上%'`, `source LIKE '%全一册%'`);
+        }
       } else if (gradeNum === 11) {
-        gradeConditions.push(`source LIKE '%高二%'`, `source LIKE '%高中二年级%'`, `source LIKE '%选择性必修 第一册%'`, `source LIKE '%选择性必修第一册%'`, `source LIKE '%选择性必修 第二册%'`, `source LIKE '%选择性必修第二册%'`);
+        if (volume === 'down') {
+          gradeConditions.push(`source LIKE '%高二下%'`, `source LIKE '%高二%'`, `source LIKE '%高中二年级%'`, `source LIKE '%选择性必修 第二册%'`, `source LIKE '%选择性必修第二册%'`, `source LIKE '%选择性必修二%'`, `source LIKE '%选修%'`);
+        } else {
+          gradeConditions.push(`source LIKE '%高二上%'`, `source LIKE '%高二%'`, `source LIKE '%高中二年级%'`, `source LIKE '%选择性必修 第一册%'`, `source LIKE '%选择性必修第一册%'`, `source LIKE '%选择性必修一%'`, `source LIKE '%选修%'`);
+        }
       } else if (gradeNum === 12) {
-        gradeConditions.push(`source LIKE '%高三%'`, `source LIKE '%高中三年级%'`, `source LIKE '%选择性必修 第三册%'`, `source LIKE '%选择性必修第三册%'`, `source LIKE '%总复习%'`, `source LIKE '%高考%'`);
+        gradeConditions.push(`source LIKE '%高三%'`, `source LIKE '%高中三年级%'`, `source LIKE '%选择性必修 第三册%'`, `source LIKE '%选择性必修第三册%'`, `source LIKE '%选择性必修三%'`, `source LIKE '%总复习%'`, `source LIKE '%高考%'`, `source LIKE '%高中%'`);
       }
 
       let gradeClause = `(${gradeConditions.join(' OR ')})`;
 
-      // Precise volume matching (with support for full-year volumes)
+      // Precise volume matching (high school uses book-series clauses directly without empty AND intersections)
       const volChar = volume === 'up' ? '上' : (volume === 'down' ? '下' : '');
-      if (volChar) {
-        if (gradeNum >= 10) {
-          if (volume === 'up') {
-            conditions.push(`(${gradeClause} AND (source LIKE '%上%' OR source LIKE '%第一册%' OR source LIKE '%必修一%' OR source LIKE '%全一册%'))`);
-          } else {
-            conditions.push(`(${gradeClause} AND (source LIKE '%下%' OR source LIKE '%第二册%' OR source LIKE '%第三册%' OR source LIKE '%必修二%' OR source LIKE '%全一册%'))`);
-          }
-        } else {
-          conditions.push(`(${gradeClause} AND (source LIKE '%${volChar}册%' OR source LIKE '%全一册%'))`);
-        }
+      if (volChar && gradeNum < 10) {
+        conditions.push(`(${gradeClause} AND (source LIKE '%${volChar}册%' OR source LIKE '%全一册%'))`);
       } else {
         conditions.push(gradeClause);
       }
     }
   }
 
-  // Edition filter — isolate different textbook publishers
+  // Edition filter — isolate different textbook publishers (unified dictionary across client/server)
   if (edition) {
-    if (edition === '西南大学版') {
+    const cleanEdition = String(edition).trim();
+    const KNOWN_REGIONAL_EDITIONS = ['北师大版', '苏教版', '沪教版', '浙教版', '鲁教版', '冀教版', '外研版', '译林版', '湘教版', '教科版', '华师大版', '粤教版'];
+    if (cleanEdition === '西南大学版') {
       const validGrade = grade ? validateGradeIdentifier(grade) : null;
       if (validGrade !== '3_up') {
         conditions.push(`source LIKE '%西南大学版%'`);
@@ -281,12 +283,14 @@ function buildLanceDBWhereClause(grade, subject, edition) {
       } else if (validGrade !== '3_up') {
         conditions.push(`source NOT LIKE '%2024新版%'`);
       }
-    } else if (edition === '西师大版' || edition === '西南师大版') {
+    } else if (cleanEdition === '西师大版' || cleanEdition === '西南师大版') {
       const validGrade = grade ? validateGradeIdentifier(grade) : null;
       if (validGrade !== '3_up') {
         conditions.push(`source LIKE '%西南师大版%'`);
       }
-    } else if (edition === '人教版' || edition === 'PEP') {
+    } else if (KNOWN_REGIONAL_EDITIONS.includes(cleanEdition)) {
+      conditions.push(`source LIKE '%${escapeSql(cleanEdition)}%'`);
+    } else if (cleanEdition === '人教版' || cleanEdition === 'PEP' || cleanEdition === '统编版' || cleanEdition === '部编版') {
       conditions.push(`(source NOT LIKE '%西南%' AND source NOT LIKE '%西师%')`);
     }
   }

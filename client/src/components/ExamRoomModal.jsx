@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 export default function ExamRoomModal({
   isOpen,
@@ -14,10 +17,13 @@ export default function ExamRoomModal({
   const [answers, setAnswers] = useState(initialAnswersProp || {});
   const [markedQuestions, setMarkedQuestions] = useState({}); // { [qId]: true }
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(0); // in seconds
+  const [timeLeft, setTimeLeft] = useState(() => (Number(paper?.duration || propDurationMinutes) || 90) * 60);
   const [isTimeWarning, setIsTimeWarning] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const timerRef = useRef(null);
+  const hasTimerStartedRef = useRef(false);
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
 
   const questions = paper?.questions || [];
 
@@ -57,18 +63,20 @@ export default function ExamRoomModal({
     ? Number(paper.duration)
     : (Number(propDurationMinutes) > 0 ? Number(propDurationMinutes) : getGradeDefaultDuration(paper?.grade));
 
-  // Initialize timer and answers
+  // Initialize timer and answers ONLY when opening a paper (绝不依赖 initialAnswersProp 导致每答题就重置第1题和倒计时)
   useEffect(() => {
     if (isOpen && paper) {
-      const initialSeconds = durationMinutes * 60;
+      const initialSeconds = Math.max(60, durationMinutes * 60);
+      hasTimerStartedRef.current = false;
       setTimeLeft(initialSeconds);
-      setAnswers(initialAnswersProp && Object.keys(initialAnswersProp).length > 0 ? initialAnswersProp : {});
+      setAnswers(initialAnswersProp && Object.keys(initialAnswersProp).length > 0 ? { ...initialAnswersProp } : {});
       setMarkedQuestions({});
       setCurrentIdx(0);
       setIsTimeWarning(false);
       setShowSubmitConfirm(false);
 
       if (timerRef.current) clearInterval(timerRef.current);
+      hasTimerStartedRef.current = true;
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -82,20 +90,32 @@ export default function ExamRoomModal({
         });
       }, 1000);
     } else {
+      hasTimerStartedRef.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isOpen, paper, durationMinutes, initialAnswersProp]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, paper, durationMinutes]);
 
-  // Handle timeout auto-submission
+  const handleFinalSubmit = useCallback(() => {
+    setShowSubmitConfirm(false);
+    hasTimerStartedRef.current = false;
+    if (timerRef.current) clearInterval(timerRef.current);
+    const submitCallback = onSubmitExam || onSubmit;
+    if (submitCallback) {
+      submitCallback({ ...answersRef.current });
+    }
+  }, [onSubmitExam, onSubmit]);
+
+  // 仅当倒计时真实运行至 0 时触发自动交卷（根治首帧 timeLeft===0 秒交白卷）
   useEffect(() => {
-    if (isOpen && timeLeft === 0 && paper) {
+    if (isOpen && paper && hasTimerStartedRef.current && timeLeft === 0) {
       handleFinalSubmit();
     }
-  }, [timeLeft, isOpen, paper]);
+  }, [timeLeft, isOpen, paper, handleFinalSubmit]);
 
   const formatTime = (secs) => {
     const h = Math.floor(secs / 3600);
@@ -119,16 +139,13 @@ export default function ExamRoomModal({
   const answeredCount = Object.keys(answers).filter(k => String(answers[k]).trim() !== '').length;
   const unansweredCount = questions.length - answeredCount;
 
-  const handleFinalSubmit = useCallback(() => {
-    setShowSubmitConfirm(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-    const submitCallback = onSubmitExam || onSubmit;
-    if (submitCallback) {
-      submitCallback(answers);
-    }
-  }, [answers, onSubmitExam, onSubmit]);
-
   if (!isOpen || !paper) return null;
+
+  const sanitizeBrokenLatex = (raw) => String(raw || '')
+    .replace(/\x08(?=[a-zA-Z])/g, '\\b')
+    .replace(/\x0c(?=[a-zA-Z])/g, '\\f')
+    .replace(/\x09(?=(?:text|tan|times|theta|triangle|to|tau|top)\b)/g, '\\t')
+    .replace(/\r(?=(?:right|rho|rightarrow|rangle|rfloor|rceil)\b)/g, '\\r');
 
   const currentQ = questions[currentIdx] || questions[0];
 
@@ -136,13 +153,31 @@ export default function ExamRoomModal({
     <div className="exam-room-overlay" style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: '#0f172a', zIndex: 1300, display: 'flex', flexDirection: 'column',
-      color: '#f8fafc', overflow: 'hidden'
+      color: '#f8fafc', overflow: 'hidden', maxWidth: '100vw', boxSizing: 'border-box'
     }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .exam-room-topbar { padding: 10px 12px !important; gap: 8px !important; }
+          .exam-room-body { flex-direction: column !important; }
+          .exam-room-question-pane { padding: 14px 12px !important; }
+          .exam-room-question-card { padding: 16px 14px !important; }
+          .exam-room-sheet {
+            width: 100% !important;
+            max-height: 185px !important;
+            border-left: none !important;
+            border-top: 1px solid #334155 !important;
+            padding: 10px 12px !important;
+          }
+          .exam-room-sheet-grid {
+            grid-template-columns: repeat(6, 1fr) !important;
+          }
+        }
+      `}</style>
       {/* Top Exam Navigation Bar */}
-      <div style={{
+      <div className="exam-room-topbar" style={{
         background: '#1e293b', borderBottom: '1px solid #334155',
         padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: '12px'
+        flexWrap: 'wrap', gap: '12px', boxSizing: 'border-box'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <span style={{
@@ -225,13 +260,14 @@ export default function ExamRoomModal({
       </div>
 
       {/* Main Examination Area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="exam-room-body" style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
         {/* Question Panel */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '30px 40px', background: '#0b1120' }}>
+        <div className="exam-room-question-pane" style={{ flex: 1, overflowY: 'auto', padding: '30px 40px', background: '#0b1120', minWidth: 0 }}>
           {currentQ ? (
-            <div style={{
+            <div className="exam-room-question-card" style={{
               maxWidth: '840px', margin: '0 auto', background: '#1e293b', borderRadius: '16px',
-              padding: '28px 32px', border: '1px solid #334155', boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+              padding: '28px 32px', border: '1px solid #334155', boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+              boxSizing: 'border-box'
             }}>
               {/* Question Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -259,21 +295,35 @@ export default function ExamRoomModal({
                 </button>
               </div>
 
-              {/* Question Body */}
-              <div style={{ fontSize: '1.05rem', lineHeight: '1.8', color: '#f1f5f9', marginBottom: '24px' }}>
-                {currentQ.question}
+              {/* Question Body (支持 LaTeX 数学公式渲染) */}
+              <div style={{ fontSize: '1.05rem', lineHeight: '1.8', color: '#f1f5f9', marginBottom: '24px', overflowX: 'auto' }}>
+                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}>
+                  {sanitizeBrokenLatex(currentQ.question)}
+                </ReactMarkdown>
               </div>
 
               {/* Options or Answer Input */}
-              {currentQ.type === 'choice' && currentQ.options && (
+              {(currentQ.type === 'choice' || currentQ.type === 'multi_choice') && currentQ.options && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                   {currentQ.options.map((opt, oIdx) => {
-                    const optLetter = opt.trim().charAt(0);
-                    const isSelected = String(answers[currentQ.id] || '').toUpperCase() === optLetter.toUpperCase();
+                    const optLetter = opt.trim().charAt(0).toUpperCase();
+                    const isMulti = currentQ.type === 'multi_choice' || (currentQ.answer && /^[A-D]{2,}$/i.test(String(currentQ.answer).trim()));
+                    const curStr = String(answers[currentQ.id] || '').toUpperCase();
+                    const isSelected = isMulti ? curStr.includes(optLetter) : curStr === optLetter;
+                    const pickOption = () => {
+                      if (!isMulti) {
+                        handleAnswerChange(currentQ.id, optLetter);
+                      } else {
+                        const set = new Set(curStr.match(/[A-D]/g) || []);
+                        if (set.has(optLetter)) set.delete(optLetter);
+                        else set.add(optLetter);
+                        handleAnswerChange(currentQ.id, Array.from(set).sort().join(''));
+                      }
+                    };
                     return (
                       <div
                         key={oIdx}
-                        onClick={() => handleAnswerChange(currentQ.id, optLetter)}
+                        onClick={pickOption}
                         style={{
                           padding: '12px 18px', borderRadius: '10px',
                           border: isSelected ? '2px solid #3b82f6' : '1px solid #475569',
@@ -284,14 +334,22 @@ export default function ExamRoomModal({
                         }}
                       >
                         <span style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
+                          width: '28px', height: '28px', borderRadius: isMulti ? '6px' : '50%',
                           background: isSelected ? '#3b82f6' : '#334155',
                           color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 'bold', fontSize: '0.85rem'
+                          fontWeight: 'bold', fontSize: '0.85rem', flexShrink: 0
                         }}>
                           {optLetter}
                         </span>
-                        <span>{opt}</span>
+                        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
+                            components={{ p: ({ children }) => <span style={{ margin: 0 }}>{children}</span> }}
+                          >
+                            {sanitizeBrokenLatex(opt)}
+                          </ReactMarkdown>
+                        </div>
                       </div>
                     );
                   })}
@@ -382,9 +440,9 @@ export default function ExamRoomModal({
         </div>
 
         {/* Right Floating Answer Sheet Navigation (答题卡) */}
-        <div style={{
+        <div className="exam-room-sheet" style={{
           width: '260px', background: '#1e293b', borderLeft: '1px solid #334155',
-          display: 'flex', flexDirection: 'column', padding: '16px'
+          display: 'flex', flexDirection: 'column', padding: '16px', flexShrink: 0, boxSizing: 'border-box'
         }}>
           <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '12px', color: '#f8fafc' }}>
             📋 模考全真答题卡
@@ -403,7 +461,7 @@ export default function ExamRoomModal({
           </div>
 
           {/* Grid of question buttons */}
-          <div style={{
+          <div className="exam-room-sheet-grid" style={{
             flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
             gap: '8px', alignContent: 'start'
           }}>

@@ -43,6 +43,7 @@ export default function EssayUpgraderModal({
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState(null);
+  const [fallbackNotice, setFallbackNotice] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   const rawGrade = parseGradeNumber(currentGrade);
@@ -94,6 +95,7 @@ export default function EssayUpgraderModal({
       const data = await res.json();
       if (res.ok && data.success) {
         setReport(data.data);
+        setFallbackNotice(data.isFallback ? (data.fallbackNotice || '当前为本地基础维度参考评估，配置有效 AI 密钥后可开启名师深度精批。') : '');
       } else {
         setErrorMsg(data.error || '作文批阅失败，请稍后重试');
       }
@@ -182,7 +184,7 @@ export default function EssayUpgraderModal({
                     padding: '4px 12px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer'
                   }}
                 >
-                  ⚡ 载入中考满分作文范例
+                  ⚡ {isPrimaryLower ? '载入小学写话范例' : (isPrimaryUpper ? '载入小学记叙文范例' : (isHighSchool ? '载入新高考思辨作文范例' : '载入中考满分作文范例'))}
                 </button>
               </div>
 
@@ -252,6 +254,15 @@ export default function EssayUpgraderModal({
           ) : (
             /* Report View */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {fallbackNotice && (
+                <div style={{
+                  background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '12px',
+                  padding: '10px 14px', fontSize: '0.8rem', color: '#92400e', lineHeight: 1.5
+                }}>
+                  ⚠️ <b>离线规则降级提示：</b>{fallbackNotice}
+                </div>
+              )}
+
               {/* Score Banner */}
               <div style={{
                 background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
@@ -259,7 +270,7 @@ export default function EssayUpgraderModal({
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px'
               }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '1.4rem' }}>🏆</span>
                     <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#78350f' }}>
                       {report.total_score} / {report.max_score} 分
@@ -272,7 +283,7 @@ export default function EssayUpgraderModal({
                     </span>
                   </div>
                   <div style={{ fontSize: '0.82rem', color: '#92400e', marginTop: '4px' }}>
-                    字数：{report.char_count} 字 · 段落：{report.para_count} 段 · 严格契合中考阅卷标准
+                    字数：{report.char_count} 字 · 段落：{report.para_count} 段 · {isPrimaryLower ? '小学低段写话标准' : (isPrimaryUpper ? '小学中高段习作标准' : (isHighSchool ? '严格契合新高考阅卷标准' : '严格契合中考阅卷标准'))}
                   </div>
                 </div>
 
@@ -310,6 +321,28 @@ export default function EssayUpgraderModal({
                   ))}
                 </div>
               </div>
+
+              {/* Highlights & Suggestions (完整渲染后端返回的亮点与提分建议) */}
+              {((report.highlights && report.highlights.length > 0) || (report.suggestions && report.suggestions.length > 0)) && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                  {report.highlights && report.highlights.length > 0 && (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#166534', marginBottom: '6px' }}>🌟 习作亮点肯定：</div>
+                      {report.highlights.map((h, i) => (
+                        <div key={i} style={{ fontSize: '0.8rem', color: '#14532d', lineHeight: 1.5, marginTop: '4px' }}>{h}</div>
+                      ))}
+                    </div>
+                  )}
+                  {report.suggestions && report.suggestions.length > 0 && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e40af', marginBottom: '6px' }}>🎯 针对性提分建议：</div>
+                      {report.suggestions.map((s, i) => (
+                        <div key={i} style={{ fontSize: '0.8rem', color: '#1e3a8a', lineHeight: 1.5, marginTop: '4px' }}>{s}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Sentence-by-Sentence Upgrades (The Core Product Differentiation) */}
               {report.sentence_upgrades && report.sentence_upgrades.length > 0 && (

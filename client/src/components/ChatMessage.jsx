@@ -2,20 +2,20 @@ import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { preprocessLatex } from '../utils/math'
 import DOMPurify from 'dompurify';
-import { initMermaid, sanitizeMermaid, mermaid } from '../utils/mermaid_helper';
+import { loadMermaid, sanitizeMermaid } from '../utils/mermaid_helper';
 import { splitThinkingContent } from '../utils/thinking';
 import { useAppStore } from '../store/useStore';
 import { isLowerGrade, injectPinyinToChildren } from '../utils/pinyinHelper';
-import VariantPracticeModal from './VariantPracticeModal';
-import FeynmanReverseTutorModal from './FeynmanReverseTutorModal';
-import StepByStepMathScratchpad from './StepByStepMathScratchpad';
-import InteractiveMathCanvas from './InteractiveMathCanvas';
 import { playSuccessChime } from '../utils/sensoryFeedback';
+import { isFeatureVisible } from '../utils/gradeFeatureGate';
 
-initMermaid();
+const VariantPracticeModal = lazy(() => import('./VariantPracticeModal'));
+const FeynmanReverseTutorModal = lazy(() => import('./FeynmanReverseTutorModal'));
+const StepByStepMathScratchpad = lazy(() => import('./StepByStepMathScratchpad'));
+const InteractiveMathCanvas = lazy(() => import('./InteractiveMathCanvas'));
 
 function MermaidChart({ chart }) {
   const svgRef = useRef(null);
@@ -38,7 +38,7 @@ function MermaidChart({ chart }) {
       try {
         const sanitizedChart = sanitizeMermaid(chart);
         const id = `mermaid-${Date.now().toString(36)}${Math.random().toString(36).substring(2)}`;
-        mermaid.render(id, sanitizedChart).then((result) => {
+        loadMermaid().then((m) => m.render(id, sanitizedChart)).then((result) => {
           if (svgRef.current) {
             // Fixed S2: Use DOMPurify to sanitize SVG and allow foreignObject for HTML labels
             const cleanSvg = DOMPurify.sanitize(result.svg, {
@@ -168,11 +168,11 @@ function MermaidChart({ chart }) {
               </button>
               <a 
                 href={generatedPngUrl} 
-                download={`思维导图_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.png`}
+                download={`思维导图_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.svg`}
                 className="mistake-btn"
                 style={{ padding: '8px 20px', borderRadius: '8px', background: '#3b82f6', color: 'white', textDecoration: 'none', fontWeight: 'bold', cursor: 'pointer', border: 'none', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
-                💾 下载图片
+                💾 下载矢量思维导图 (.svg)
               </a>
             </div>
           </div>
@@ -242,6 +242,7 @@ const ChatMessage = React.memo(function ChatMessage({
   isLatest,
   isStreaming,
   onMarkMistake,
+  onOpenSettings,
   playTTS,
   stopTTS,
   onQuickPrompt,
@@ -320,6 +321,11 @@ const ChatMessage = React.memo(function ChatMessage({
 
   const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
   const { thinking, body: cleanAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
+  const isSystemErrorMsg = msg.role === 'ai' && (
+    Boolean(msg.isError) ||
+    /未检测到可用大模型\s*API\s*Key|请点击右上角设置.*配置有效密钥|今日免费体验额度.*已用完|连接超时|请求失败|对不起，系统忙碌中/i.test(displayMessageText)
+  );
+  const canUseStepScratchpad = isFeatureVisible('stepScratchpad', activeGrade, selectedSubject || '数学');
 
   return (
     <div className={`message-wrapper ${msg.role} ${animClass}`}>
@@ -493,11 +499,13 @@ const ChatMessage = React.memo(function ChatMessage({
                           parsedConfig = { type: 'parabola', title: '动态数学探究画板' };
                         }
                         return (
-                          <InteractiveMathCanvas 
-                            initialType={parsedConfig.type || 'parabola'}
-                            initialParams={parsedConfig.params || parsedConfig}
-                            title={parsedConfig.title}
-                          />
+                          <Suspense fallback={null}>
+                            <InteractiveMathCanvas 
+                              initialType={parsedConfig.type || 'parabola'}
+                              initialParams={parsedConfig.params || parsedConfig}
+                              title={parsedConfig.title}
+                            />
+                          </Suspense>
                         );
                       }
                       if (!inline && match && match[1] === 'mermaid') {
@@ -692,7 +700,25 @@ const ChatMessage = React.memo(function ChatMessage({
               return renderMarkdownBlock(cleanAiBody);
             })()}
             <div style={{ marginTop: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {msg.role === 'ai' && onMarkMistake && (
+              {isSystemErrorMsg ? (
+                onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    className="tts-btn"
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.16)',
+                      color: '#60a5fa',
+                      borderColor: '#3b82f6',
+                      fontWeight: 600
+                    }}
+                  >
+                    ⚙️ 打开设置配置大模型引擎
+                  </button>
+                )
+              ) : (
+                <>
+              {msg.role === 'ai' && onMarkMistake && !isStreaming && (
                 <button
                   onClick={() => {
                     setIsMistakeMarked(true);
@@ -770,7 +796,7 @@ const ChatMessage = React.memo(function ChatMessage({
                   🎓 讲给小明听 (费曼以教代学)
                 </button>
               )}
-              {msg.role === 'ai' && !isStreaming && (
+              {msg.role === 'ai' && !isStreaming && canUseStepScratchpad && (
                 <button
                   type="button"
                   onClick={() => setShowStepScratchpad(true)}
@@ -824,6 +850,8 @@ const ChatMessage = React.memo(function ChatMessage({
                   🤔 没太懂，换个例子
                 </button>
               )}
+                </>
+              )}
             </div>
             </div>
         ) : (
@@ -850,15 +878,16 @@ const ChatMessage = React.memo(function ChatMessage({
         </div>
       )}
       
+      <Suspense fallback={null}>
       {showVariantModal && (
         <VariantPracticeModal
           isOpen={showVariantModal}
           onClose={() => setShowVariantModal(false)}
-          originalQuestion={displayMessageText}
+          originalQuestion={msg.originalQuestion || displayMessageText}
           originalAnswer={cleanAiBody}
           grade={activeGrade}
           subject={selectedSubject || '数学'}
-          studentName={currentProfile?.name || '曾练'}
+          studentName={currentProfile?.name || '同学'}
         />
       )}
 
@@ -866,8 +895,8 @@ const ChatMessage = React.memo(function ChatMessage({
         <FeynmanReverseTutorModal
           isOpen={showFeynmanModal}
           onClose={() => setShowFeynmanModal(false)}
-          question={displayMessageText}
-          studentName={currentProfile?.name || '曾练'}
+          question={msg.originalQuestion || displayMessageText}
+          studentName={currentProfile?.name || '同学'}
           subject={selectedSubject || '数学'}
           grade={activeGrade}
           onApplyFollowUpToChat={(prompt) => {
@@ -889,6 +918,7 @@ const ChatMessage = React.memo(function ChatMessage({
           }}
         />
       )}
+      </Suspense>
 
     </div>
   );

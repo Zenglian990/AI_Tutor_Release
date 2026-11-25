@@ -2,8 +2,8 @@
 
 # 🎓 曾练专属私教 (ZengLian AI Tutor)
 
-**国内首个专为 1-9 年级（小学至初中全学段）量身定制的开源 RAG AI 智能私教系统**
-*覆盖人教版 1-9 年级全学科教材知识库 · 分龄自适应心智教学 · 闭环提分体系*
+**国内首个专为 1-12 年级（小学·初中·高中全学段）量身定制的开源 RAG AI 智能私教系统**
+*覆盖人教版 1-12 年级全学科教材知识库 · 分龄自适应心智教学 · 中高考闭环提分体系*
 
 <br/>
 
@@ -14,7 +14,7 @@
 
 <br/>
 
-[![React](https://img.shields.io/badge/Frontend-React_18-blue?style=flat-square&logo=react)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/Frontend-React_19-blue?style=flat-square&logo=react)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Mobile Dual](https://img.shields.io/badge/Mobile-Capacitor_Android_%26_iOS-3DDC84?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)

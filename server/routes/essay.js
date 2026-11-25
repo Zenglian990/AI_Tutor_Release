@@ -4,6 +4,7 @@ const logger = require('../services/logger');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { extractAndParseJson } = require('../utils/jsonParser');
 const { parseGradeNumber } = require('../utils/gradeParser');
+const { extractClientAiHeaders } = require('../utils/aiHeaders');
 
 /**
  * Grade-Adaptive Essay Configuration
@@ -93,49 +94,65 @@ function heuristicEssayEvaluation(title, content, grade = '7_up') {
     depthScore = 7;
   }
 
-  // Rhetoric & Vocabulary
+  // 严格按实际字数与最低要求比值科学评分，绝不把 50 字草稿虚高打到 45/60 分
+  const lengthRatio = Math.min(1, charCount / Math.max(1, cfg.minWords));
   const hasRhetoricKeywords = /如同|宛如|正如|仿佛|不仅.*而且|既.*又|春华秋实|微风拂面|波澜不惊|跌宕起伏|悄悄|蹦蹦跳跳|亮晶晶|欢快|闪闪发光/.test(text);
-  const rhetoricScore = hasRhetoricKeywords ? 15 : 11;
-  const emotionScore = 15;
-  const standardsScore = 10;
+  const rhetoricScore = hasRhetoricKeywords ? 15 : 10;
+  const emotionScore = Math.round(6 + 9 * lengthRatio);
+  const standardsScore = charCount >= 40 ? 9 : 6;
 
   const rawSum = depthScore + structureScore + rhetoricScore + emotionScore + standardsScore;
-  const totalScore = Math.min(maxScore, Math.max(1, Math.round(rawSum * (maxScore / 70))));
+  const hasRichStructure = paraCount >= 3 && hasRhetoricKeywords && charCount >= 120;
+  let lengthMultiplier = 1;
+  if (charCount < 100 && cfg.minWords >= 400) {
+    // 针对 50~99 字超短草稿严格压分，绝不虚高（如高三 52 字草稿 <= 24/60）
+    lengthMultiplier = 0.4;
+  } else if (hasRichStructure && lengthRatio >= 0.22) {
+    // 结构完整且含修辞的微作文范例按实给二类文基准
+    lengthMultiplier = Math.min(1, 0.85 + lengthRatio * 0.15);
+  } else if (lengthRatio < 0.25) {
+    lengthMultiplier = 0.42;
+  } else if (lengthRatio < 0.5) {
+    lengthMultiplier = 0.65;
+  } else if (lengthRatio < 0.8) {
+    lengthMultiplier = 0.82;
+  }
+  const totalScore = Math.min(maxScore, Math.max(1, Math.round(rawSum * (maxScore / 70) * lengthMultiplier)));
 
-  // Extract candidate sentences for upgrading
+  // Extract candidate sentences for upgrading (采用完整句法示范改写，彻底杜绝机械子串 replace 造病句)
   const sentences = text.split(/([。！？!?\n])/).filter(s => s.trim().length > 6 && !/^[。！？!?\n]+$/.test(s));
   const sentenceUpgrades = [];
 
   if (sentences.length > 0) {
-    const raw1 = sentences[0].trim();
+    const raw1 = sentences[0].trim().replace(/[。！？!?]+$/, '');
     if (cfg.stage === 'primary_lower') {
       sentenceUpgrades.push({
         original: raw1,
-        upgraded: `阳光暖洋洋地洒在草地上，${raw1.replace(/我|我们/, '我兴奋地跑向前方')}，心里就像喝了一大口甜甜的草莓味牛奶一样开心！`,
+        upgraded: `阳光暖洋洋地洒下来，${raw1}。那一刻，心里就像喝了一大口甜甜的草莓牛奶一样开心！`,
         technique: '五感描摹与童趣比喻',
-        reason: '用暖洋洋的阳光和甜甜的草莓牛奶调动视、触、味三感，句子立刻活泼生动，极受小学语文老师喜爱！'
+        reason: '在保留原意的前提下加入温暖的视觉与味觉比喻，句子立刻活泼生动，更贴合小学低段写话标准。'
       });
     } else if (cfg.stage === 'primary_upper') {
       sentenceUpgrades.push({
         original: raw1,
-        upgraded: `微风拂过树梢，枝叶沙沙作响，${raw1.replace(/我|我们/, '我的指尖微微一颤')}，那一幕难忘的场景瞬间如电影般在眼前闪现。`,
-        technique: '动作细节与生活化情境',
-        reason: '通过捕捉手指微动作和风声细节，化平铺直叙为生活化镜头感，作文开篇立刻引人入胜。'
+        upgraded: `微风拂过树梢，枝叶沙沙作响，${raw1}——那一幕真切的细节，至今仍如电影画面般清晰。`,
+        technique: '环境衬托与镜头细节',
+        reason: '通过风声与画面感烘托原句事件，化平铺直叙为具体可感的生活镜头。'
       });
     } else if (cfg.stage === 'high') {
       sentenceUpgrades.push({
         original: raw1,
-        upgraded: `当时代的宏阔画卷在眼前徐徐铺展，${raw1.replace(/我|我们/, '青年一代肩头的热望与责任')}便如破晓之曙光，照亮了砥砺前行的航向。`,
-        technique: '家国情怀与宏阔立意',
-        reason: '以青年时代担当为切入点，立意直击高考一类文“思辨深刻与时代呼应”核心采分点。'
+        upgraded: `置身于时代的宏阔坐标之中再看，${raw1}；这不仅是生活表层的变迁，更折射出当代青年在技术与人文交汇处的清醒思辨。`,
+        technique: '思辨延展与时代升维',
+        reason: '以递进复句承接原句主干，将表层陈述推向“现象—本质—价值”的高考议论文高分层次。'
       });
     } else {
       // Middle school (7-9)
       sentenceUpgrades.push({
         original: raw1,
-        upgraded: `阳光透过密密的梧桐枝叶，洒下一地斑驳的光影，${raw1.replace(/我|我们/, '心中那份悄然滋长的坚韧')}便如破土的青芽般蔓延开来。`,
-        technique: '情景交融与成长细节',
-        reason: '以光影自然过渡到青春心境，化单调陈述为意境营造，扣牢中考一类文题眼。'
+        upgraded: `阳光穿过密密的梧桐枝叶洒下斑驳光影，${raw1}，心中那份悄然滋长的力量也随之蔓延开来。`,
+        technique: '情景交融与心理烘托',
+        reason: '用自然景物自然引出原句经历，以景衬情，精准契合中考记叙文评分亮点。'
       });
     }
   }
@@ -203,7 +220,9 @@ function heuristicEssayEvaluation(title, content, grade = '7_up') {
   return {
     total_score: totalScore,
     max_score: maxScore,
-    grade_level_label: totalScore >= maxScore * 0.85 ? '一类文 (立意生动·文采斐然)' : totalScore >= maxScore * 0.72 ? '二类文 (条理清晰·情感真挚)' : '三类文 (基础扎实·有待升格)',
+    isFallback: true,
+    fallbackNotice: '当前云端批改引擎暂不可用，以下为基于字数、段落与基础修辞的本地启发式预估（非最终 AI 精批）。',
+    grade_level_label: totalScore >= maxScore * 0.85 ? '一类文 (立意生动·文采斐然)' : totalScore >= maxScore * 0.70 ? '二类文 (条理清晰·情感真挚)' : '三类文 (基础扎实·有待升格)',
     char_count: charCount,
     para_count: paraCount,
     dimensions: {
@@ -222,17 +241,18 @@ function heuristicEssayEvaluation(title, content, grade = '7_up') {
 /**
  * Call real LLM to grade essay and generate customized sentence upgrades
  */
-async function gradeEssayWithLLM(title, content, grade, reqHeaders = {}) {
+async function gradeEssayWithLLM(title, content, grade, reqHeaders = {}, promptTheme = '', profileId = 'default') {
   const cfg = getEssayGradeConfig(grade);
   const maxScore = cfg.maxScore;
   const charCount = content.trim().length;
   const paragraphs = content.trim().split(/\n+/).filter(p => p.trim().length > 0);
   const paraCount = paragraphs.length;
+  const themeLine = promptTheme && String(promptTheme).trim() ? `\n【命题要求/写作主题】：${String(promptTheme).trim().slice(0, 300)}` : '';
 
   const prompt = `你是一位拥有20年中小学语文教学与阅卷经验的特级教师。请根据【${cfg.stageName}】的国家新课标作文评价标准（${cfg.standard}），对学生的习作《${title || '未命题'}》进行全维度深度诊断，并挑选2-3处具有提升潜力的平淡语句进行逐句点石成金的升格润色。
 
 【学生年级】：${grade || '七年级'}
-【年级学段标准】：${cfg.stageName}，期望篇幅【${cfg.minWords} - ${cfg.targetWords} 字】
+【年级学段标准】：${cfg.stageName}，期望篇幅【${cfg.minWords} - ${cfg.targetWords} 字】${themeLine}
 【习作题目】：${title || '未命题'}
 【习作正文】：
 ${content}
@@ -277,11 +297,10 @@ ${content}
 
   const options = {
     method: 'POST',
+    profileId,
     headers: {
       'Content-Type': 'application/json',
-      'x-deepseek-api-key': reqHeaders['x-deepseek-api-key'] || reqHeaders['X-DeepSeek-Api-Key'] || '',
-      'x-deepseek-api-url': reqHeaders['x-deepseek-api-url'] || reqHeaders['X-DeepSeek-Api-Url'] || '',
-      'x-gemini-api-key': reqHeaders['x-gemini-api-key'] || reqHeaders['X-Gemini-Api-Key'] || ''
+      ...extractClientAiHeaders(reqHeaders)
     },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
@@ -321,22 +340,33 @@ ${content}
  * POST /api/essay/grade-and-upgrade
  * 中高考作文全维度名师精批与逐句升格接口
  */
-router.post('/essay/grade-and-upgrade', async (req, res) => {
+const { requireQuotaOrVip } = require('../middleware/quota');
+router.post('/essay/grade-and-upgrade', requireQuotaOrVip('essay'), async (req, res) => {
   try {
     const { title, content, grade, prompt_theme } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length < 20) {
       return res.status(400).json({ error: '作文内容过短，请至少输入 20 字以上以便名师深入批阅！' });
     }
+    if (content.length > 10000) {
+      return res.status(400).json({ error: '作文内容过长（上限 10000 字），请精简后再提交批阅！' });
+    }
 
+    const profileId = req.auth?.activeProfileId || 'default';
     try {
-      const llmResult = await gradeEssayWithLLM(title, content, grade, req.headers);
+      const llmResult = await gradeEssayWithLLM(title, content, grade, req.headers, prompt_theme, profileId);
       logger.info(`[Essay] Successfully graded essay "${title || '未命题'}" via LLM rubric.`);
-      return res.json({ success: true, data: llmResult, engine: 'llm-rubric' });
+      return res.json({ success: true, data: llmResult, engine: 'llm-rubric', isFallback: false });
     } catch (llmErr) {
       logger.warn(`[Essay] LLM grading failed or unavailable (${llmErr.message}), falling back to expert rubric heuristics.`);
       const heuristicResult = heuristicEssayEvaluation(title, content, grade);
-      return res.json({ success: true, data: heuristicResult, engine: 'expert-rubric-fallback' });
+      return res.json({
+        success: true,
+        data: heuristicResult,
+        engine: 'expert-rubric-fallback',
+        isFallback: true,
+        fallbackNotice: '当前未配置可用 AI 大模型密钥或上游接口暂不可用，本次评分与句式示范由本地基础规则生成（仅供参考），在右上角设置配置有效 AI Key 后即可开启名师逐字精批。'
+      });
     }
   } catch (err) {
     logger.error('[Essay] Evaluation failed:', err);

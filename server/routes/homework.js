@@ -8,35 +8,42 @@ const { encryptField } = require('../utils/crypto');
 const logger = require('../services/logger');
 const { extractAndParseJson } = require('../utils/jsonParser');
 const { sanitizeAndArbitrateHomeworkResults } = require('../services/homeworkValidator');
+const { createSafeUpload, withUploadGuard, detectImageFormat } = require('../utils/uploadMiddleware');
+const { requireQuotaOrVip } = require('../middleware/quota');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
 
-// Allowed image MIME types
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 1 }
-});
+const upload = createSafeUpload({ kind: 'image', maxSizeBytes: 10 * 1024 * 1024 });
 
 /**
  * POST /api/homework/batch-grade
  * 整页作业/试卷多题秒级识别与智能批改流水线
  */
-router.post('/homework/batch-grade', upload.single('image'), async (req, res) => {
+router.post('/homework/batch-grade', requireQuotaOrVip('homework'), withUploadGuard(upload.single('image')), async (req, res) => {
   try {
     const {
       profile_id = 'default',
       grade = '7_up',
       subject = '数学',
-      student_name = '曾练',
+      student_name = '同学',
       model
     } = req.body;
 
-    const imageBuffer = req.file?.buffer;
-    const mimeType = req.file?.mimetype || 'image/jpeg';
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    }
+    const targetPid = authCheck.profileId;
 
+    const imageBuffer = req.file?.buffer;
     if (!imageBuffer) {
       return res.status(400).json({ error: '请上传整页作业或试卷照片' });
     }
+
+    const detectedMime = detectImageFormat(imageBuffer);
+    if (!detectedMime) {
+      return res.status(400).json({ error: '上传文件不是有效的图片内容（二进制魔数校验失败），请重新拍摄或选择 JPEG/PNG/WebP 照片' });
+    }
+    const mimeType = detectedMime;
 
     const base64Image = imageBuffer.toString('base64');
 
@@ -147,7 +154,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
     const dsKey = (clientHeaders['x-dashscope-api-key'] || process.env.DASHSCOPE_API_KEY || '').trim();
     const zpKey = (clientHeaders['x-zhipu-api-key'] || process.env.ZHIPU_API_KEY || '').trim();
 
-    let defaultVisionModel = config.CHAT_MODEL || 'gemini-2.5-flash';
+    let defaultVisionModel = config.CHAT_MODEL || 'gemini-3-flash-preview';
     if (sfKey) {
       defaultVisionModel = 'deepseek-ai/deepseek-vl2';
     } else if (dsKey) {
@@ -160,6 +167,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
 
     const options = {
       method: 'POST',
+      profileId: targetPid,
       headers: {
         'Content-Type': 'application/json',
         ...(clientHeaders['x-gemini-api-key'] ? { 'x-gemini-api-key': clientHeaders['x-gemini-api-key'] } : {}),
@@ -174,13 +182,13 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
       body: JSON.stringify(contentsPayload)
     };
 
-    logger.info(`[HomeworkBatch] Calling vision model '${visionModel}' for student ${student_name}, profile ${profile_id}...`);
+    logger.info(`[HomeworkBatch] Calling vision model '${visionModel}' for student ${student_name}, profile ${targetPid}...`);
     const aiRes = await fetchWithKeyRotation(buildChatURL, options, 4, 60000, visionModel, false);
     
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       logger.error('[HomeworkBatch] Model returned error:', errText);
-      return res.status(502).json({ error: '批改模型响应失败，请稍后重试', details: errText });
+      return res.status(502).json({ error: '批改模型响应失败，请稍后重试', details: process.env.NODE_ENV === 'development' ? errText : undefined });
     }
 
     const aiData = await aiRes.json();
@@ -249,7 +257,11 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
             const answerText = `【学生作答】：${item.studentAnswer || ''}\n【名师解析】：${item.standardAnswer || ''}\n【题眼破局】：${item.keyInsight || ''}`;
             const reasonText = item.mistakeReason || '整页作业批改识别错误';
             const tagsText = `${subject},整页批改,${grade}`;
-            const itemImageUrl = item.imageUrl || item.image_url || (base64Image ? `data:${mimeType};base64,${base64Image}` : '');
+            // 防止数 MB 整页原图 Base64 被重复写入多条错题撑爆 SQLite 与容器内存：仅保存 <= 400KB 的图片引用
+            const rawItemImg = item.imageUrl || item.image_url || '';
+            const safeItemImg = (typeof rawItemImg === 'string' && rawItemImg.length <= 400 * 1024 && /^data:image\/(png|jpeg|jpg|webp|gif);base64,/.test(rawItemImg))
+              ? rawItemImg
+              : (base64Image && base64Image.length <= 400 * 1024 ? `data:${mimeType};base64,${base64Image}` : '');
             const itemCropData = item.box_2d ? (typeof item.box_2d === 'object' ? JSON.stringify(item.box_2d) : String(item.box_2d)) : (item.cropData ? JSON.stringify(item.cropData) : '');
 
             await db.run(
@@ -261,9 +273,9 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
                 subject,
                 JSON.stringify({ source: '整页作业秒批改', questionNumber: item.questionNumber }),
                 encryptField(reasonText),
-                profile_id,
+                targetPid,
                 encryptField(tagsText),
-                itemImageUrl,
+                safeItemImg,
                 itemCropData
               ]
             );
@@ -292,7 +304,7 @@ router.post('/homework/batch-grade', upload.single('image'), async (req, res) =>
     });
   } catch (err) {
     logger.error('[HomeworkBatch] Unexpected error:', err);
-    res.status(500).json({ error: '批改处理异常', details: err.message });
+    res.status(500).json({ error: '批改处理异常', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
   }
 });
 

@@ -9,7 +9,8 @@ export default function GamificationBadgeModal({
   isOpen,
   onClose,
   currentProfileId,
-  studentName = '曾练'
+  studentName = '同学',
+  onOpenStreakCalendar
 }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -56,10 +57,10 @@ export default function GamificationBadgeModal({
       zIndex: 1000
     }}>
       <div style={{
-        background: 'var(--bg-secondary, #1e293b)',
-        color: 'var(--text-primary, #f8fafc)',
-        width: '90%',
-        maxWidth: '680px',
+        background: '#1e293b',
+        color: '#f8fafc',
+        width: '92%',
+        maxWidth: 'min(680px, calc(100vw - 16px))',
         maxHeight: '90vh',
         borderRadius: '24px',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
@@ -143,7 +144,7 @@ export default function GamificationBadgeModal({
                       {data.rankTier?.name || '青铜·求知学童'}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: '#38bdf8', marginTop: '2px' }}>
-                      🔥 连续自律学习：<strong>{data.streakDays || 1}</strong> 天
+                      🔥 连续自律学习：<strong>{data.streakDays ?? 0}</strong> 天
                     </div>
                   </div>
                 </div>
@@ -151,10 +152,10 @@ export default function GamificationBadgeModal({
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>总探索积分</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f8fafc' }}>
-                    {data.rankPoints || 120} <span style={{ fontSize: '1rem', color: '#fbbf24' }}>EXP</span>
+                    {data.rankPoints ?? 0} <span style={{ fontSize: '1rem', color: '#fbbf24' }}>EXP</span>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                    距离下一段位还需：{Math.max((data.rankTier?.nextGoal || 300) - (data.rankPoints || 0), 0)} EXP
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                    距离下一段位还需：{Math.max((data.rankTier?.nextGoal || 300) - (data.rankPoints ?? 0), 0)} EXP
                   </div>
                 </div>
               </div>
@@ -175,7 +176,7 @@ export default function GamificationBadgeModal({
                   <span style={{ fontSize: '32px', filter: 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6))' }}>🔥</span>
                   <div>
                     <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fed7aa' }}>
-                      连续学习连胜：{data.streak?.currentStreak || data.streakDays || 1} 天
+                      连续学习连胜：{data.streak?.currentStreak ?? data.streakDays ?? 0} 天
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#fdba74' }}>
                       {data.streak?.isTodayCompleted ? '✨ 今日已完成打卡，连胜守护中' : '⚡ 今天还没向名师提问，快来守护连胜！'}
@@ -183,10 +184,31 @@ export default function GamificationBadgeModal({
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <div style={{ fontSize: '0.82rem', color: '#93c5fd', background: 'rgba(59, 130, 246, 0.15)', padding: '6px 10px', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                     🛡️ 冰冻卡: <strong>{data.streak?.streakFreezeCount ?? 2}</strong> 张
                   </div>
+                  {onOpenStreakCalendar && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenStreakCalendar();
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '10px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📅 连胜周历与补充冰冻卡
+                    </button>
+                  )}
                 </div>
               </div>
 

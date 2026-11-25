@@ -4,34 +4,28 @@ import './index.css'
 import App from './App.jsx'
 import { registerSW } from 'virtual:pwa-register'
 
-// Register PWA service worker with auto-update capability
+// Register PWA service worker without forced mid-exam reloads (防切屏强刷丢答卷)
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    console.log('[PWA] New version detected, updating service worker...');
-    updateSW(true);
+    console.log('[PWA] New version ready; deferring activation until user confirms or next reload.');
+    if (typeof window !== 'undefined') {
+      window.__AI_TUTOR_UPDATE_SW__ = () => updateSW(true);
+      window.dispatchEvent(new CustomEvent('ai-tutor-sw-update-available'));
+    }
   },
   onOfflineReady() {
     console.log('[PWA] App is ready for offline usage');
   },
   onRegisteredSW(_swUrl, registration) {
     if (registration) {
-      // Check for updates periodically (every 15 minutes)
+      // Check for updates periodically (every 30 minutes) without forcing reload
       setInterval(() => {
         registration.update().catch(() => {});
-      }, 15 * 60 * 1000);
+      }, 30 * 60 * 1000);
     }
   }
 });
-
-// Check for updates when user switches back to the tab/app
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(reg => reg.update()).catch(() => {});
-    }
-  });
-}
 
 createRoot(document.getElementById('root')).render(
   <App />

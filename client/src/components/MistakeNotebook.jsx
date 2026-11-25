@@ -12,7 +12,12 @@ import PrerequisiteTraceModal from './PrerequisiteTraceModal';
 
 export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject, onOpenPrerequisiteTrace }) {
   const { currentProfile } = useAppStore();
-  const studentName = currentProfile?.name || '曾练';
+  const studentName = currentProfile?.name || '同学';
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
+  const isSafeMistakeImage = (url) =>
+    typeof url === 'string' &&
+    (/^data:image\/(png|jpeg|jpg|webp|gif|bmp);base64,[A-Za-z0-9+/=\s]+$/i.test(url.trim()) ||
+     /^https:\/\/[^\s"'<>]+$/i.test(url.trim()));
   const [mistakes, setMistakes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,19 +111,37 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
     await handleSaveTags(mistake.id, updatedTags.join(','));
   };
 
+  const [offlineSnapshot, setOfflineSnapshot] = useState(false);
+
   useEffect(() => {
+    const cacheKey = `ai_tutor_mistakes_cache_${currentProfileId || 'default'}`;
     setLoading(true);
     setError(null);
+    setOfflineSnapshot(false);
     authFetch(`/api/mistakes?profile_id=${currentProfileId}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load mistakes');
         return res.json();
       })
       .then(data => {
-        setMistakes(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setMistakes(list);
+        try { localStorage.setItem(cacheKey, JSON.stringify(list)); } catch {}
         setLoading(false);
       })
       .catch(err => {
+        try {
+          const cachedRaw = localStorage.getItem(cacheKey);
+          if (cachedRaw) {
+            const cachedList = JSON.parse(cachedRaw);
+            if (Array.isArray(cachedList)) {
+              setMistakes(cachedList);
+              setOfflineSnapshot(true);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch {}
         setError(err.message);
         setLoading(false);
       });
@@ -231,10 +254,13 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
     <div className="mistake-overlay">
       <div className={`mistake-modal ${testMode ? 'print-mode' : ''}`}>
         <div className="mistake-header no-print">
-          <h2>📚 专属错题本</h2>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="mistake-header-top">
+            <h2>📚 专属错题本</h2>
+            <button onClick={onClose} className="close-btn mistake-close-btn" title="关闭" aria-label="关闭错题本">×</button>
+          </div>
+          <div className="mistake-header-actions">
             <button className="mistake-btn" onClick={() => setShowReviewOnly(!showReviewOnly)} style={{ borderColor: showReviewOnly ? '#a78bfa' : 'var(--accent-color)', color: showReviewOnly ? '#a78bfa' : 'var(--accent-color)' }}>
-              {showReviewOnly ? '📅 全部错题' : '⏰ 艾宾浩斯复习推送'}
+              {showReviewOnly ? '📅 全部错题' : '⏰ 艾宾浩斯复习'}
             </button>
             <button
               className="mistake-btn"
@@ -248,7 +274,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
               }}
               title="3分钟 FSRS 记忆闪卡冲刺，科学快速消灭到期错题"
             >
-              ⚡ 3分钟闪卡冲刺
+              ⚡ 3分钟闪卡
             </button>
             <button className="mistake-btn" onClick={() => setTestMode(!testMode)}>
               {testMode ? '👁️ 显示答案' : '📝 生成复习卷'}
@@ -265,13 +291,12 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                 boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)'
               }}
             >
-              {generatingTargetedPaper ? '⏳ 正在溯源组卷...' : '🎯 靶向变式巩固卷'}
+              {generatingTargetedPaper ? '⏳ 正在组卷...' : '🎯 靶向变式卷'}
             </button>
             <button className="mistake-btn" onClick={() => { setVariantPaperQuestions([]); setShowA4Modal(true); }} style={{ borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>
-              📄 A4 错题排版
+              📄 A4 排版
             </button>
-            <button className="mistake-btn" onClick={handlePrint}>🖨️ 快速打印</button>
-            <button onClick={onClose} className="close-btn" title="关闭" aria-label="关闭错题本">×</button>
+            <button className="mistake-btn" onClick={handlePrint}>🖨️ 打印</button>
           </div>
         </div>
 
@@ -279,14 +304,24 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <select className="grade-selector" value={filterGrade} onChange={e => setFilterGrade(e.target.value)} aria-label="筛选年级">
               <option value="">全部年级</option>
-              {['1_up','1_down','2_up','2_down','3_up','3_down','4_up','4_down','5_up','5_down','6_up','6_down','7_up','7_down','8_up','8_down','9_up','9_down'].map(g =>
+              {['1_up','1_down','2_up','2_down','3_up','3_down','4_up','4_down','5_up','5_down','6_up','6_down','7_up','7_down','8_up','8_down','9_up','9_down','10_up','10_down','11_up','11_down','12_up','12_down'].map(g =>
                 <option key={g} value={g}>{formatGrade(g)}</option>
               )}
             </select>
             <select className="grade-selector" value={filterSubject} onChange={e => setFilterSubject(e.target.value)} aria-label="筛选学科">
               <option value="">全部学科</option>
-              {['语文','数学','英语','物理','化学','生物','历史','地理','道德与法治'].map(s =>
-                <option key={s} value={s}>{s === '道德与法治' ? '道法' : s}</option>
+              {[
+                { value: '语文', label: '语文' },
+                { value: '数学', label: '数学' },
+                { value: '英语', label: '英语' },
+                { value: '物理', label: '物理' },
+                { value: '化学', label: '化学' },
+                { value: '生物', label: '生物/生物学' },
+                { value: '历史', label: '历史' },
+                { value: '地理', label: '地理' },
+                { value: '道德与法治', label: '道法/思想政治' }
+              ].map(s =>
+                <option key={s.value} value={s.value}>{s.label}</option>
               )}
             </select>
             <select className="grade-selector" value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="筛选标签">
@@ -331,6 +366,15 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
         </div>
 
         <div className="mistakes-list">
+          {offlineSnapshot && (
+            <div style={{
+              margin: '0 0 12px 0', padding: '8px 12px', borderRadius: '10px',
+              background: 'rgba(245, 158, 11, 0.14)', border: '1px solid rgba(245, 158, 11, 0.35)',
+              color: '#d97706', fontSize: '0.82rem', fontWeight: 600
+            }}>
+              📡 当前处于离线只读快照模式，展示本地已缓存的错题记录；恢复联网后自动同步最新数据。
+            </div>
+          )}
           {error ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px' }}>
               <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚠️</div>
@@ -477,7 +521,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                 </div>
 
                 <div className="mistake-query"><strong>问题：</strong>{m.query}</div>
-                {m.image_url && (
+                {m.image_url && isSafeMistakeImage(m.image_url) && (
                   <div style={{ margin: '8px 0' }} className="mistake-photo-box no-print">
                     <img
                       src={m.image_url}
@@ -490,8 +534,8 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                         objectFit: 'contain',
                         cursor: 'pointer'
                       }}
-                      onClick={() => window.open(m.image_url, '_blank')}
-                      title="点击在新窗口查看作业原图"
+                      onClick={() => setPreviewImageUrl(m.image_url)}
+                      title="点击放大查看作业原图"
                     />
                   </div>
                 )}
@@ -669,6 +713,38 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           initialSubject={selectedTraceMistake.subject || filterSubject || defaultSubject || '数学'}
           initialGrade={selectedTraceMistake.grade || filterGrade || defaultGrade || '7_up'}
         />
+      )}
+
+      {previewImageUrl && isSafeMistakeImage(previewImageUrl) && (
+        <div
+          onClick={() => setPreviewImageUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            zIndex: 2000, padding: '16px'
+          }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '94vw', maxHeight: '90vh' }}>
+            <button
+              type="button"
+              onClick={() => setPreviewImageUrl(null)}
+              style={{
+                position: 'absolute', top: '-12px', right: '-12px',
+                width: '34px', height: '34px', borderRadius: '50%',
+                border: 'none', background: '#ef4444', color: '#fff',
+                fontSize: '18px', fontWeight: 'bold', cursor: 'pointer'
+              }}
+              aria-label="关闭大图预览"
+            >
+              ×
+            </button>
+            <img
+              src={previewImageUrl}
+              alt="错题原图放大预览"
+              style={{ maxWidth: '92vw', maxHeight: '86vh', borderRadius: '10px', objectFit: 'contain', background: '#0f172a' }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

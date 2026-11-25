@@ -3,7 +3,7 @@ import { authFetch, useAppStore } from '../store/useStore';
 
 export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
   const { currentProfile } = useAppStore();
-  const studentName = currentProfile?.name || '曾练';
+  const studentName = currentProfile?.name || '同学';
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState('pen'); // 'pen', 'line', 'triangle', 'circle', 'parabola', 'eraser'
@@ -178,76 +178,36 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     };
   }, [isOpen, resetSilenceTimer]);
 
-  // Save current canvas state to history stack
+  // Save current canvas state to history stack (上限 20 步防止内存 OOM，并同步记录笔迹快照防撤销回放诈尸)
+  const MAX_HISTORY_STEPS = 20;
+  const strokesHistoryRef = useRef([[]]);
+
   const saveState = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL();
-    const newHistory = history.slice(0, historyStep + 1);
+    let newHistory = history.slice(0, historyStep + 1);
     newHistory.push(dataUrl);
+    let newStrokesHist = strokesHistoryRef.current.slice(0, historyStep + 1);
+    newStrokesHist.push(strokesRef.current.map(s => ({ ...s, points: [...(s.points || [])] })));
+
+    if (newHistory.length > MAX_HISTORY_STEPS) {
+      newHistory = newHistory.slice(newHistory.length - MAX_HISTORY_STEPS);
+      newStrokesHist = newStrokesHist.slice(newStrokesHist.length - MAX_HISTORY_STEPS);
+    }
+    strokesHistoryRef.current = newStrokesHist;
     setHistory(newHistory);
     setHistoryStep(newHistory.length - 1);
     resetSilenceTimer();
   }, [history, historyStep, resetSilenceTimer]);
 
-  // Init canvas size and background
-  useEffect(() => {
-    if (!isOpen) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width || 800;
-    canvas.height = rect.height || 500;
-
-    const ctx = canvas.getContext('2d');
-    drawBackground(ctx, canvas.width, canvas.height);
-
-    // Initial save
-    const initialUrl = canvas.toDataURL();
-    setHistory([initialUrl]);
-    setHistoryStep(0);
-  }, [isOpen, gridMode, drawBackground]);
-
-  // Undo / Redo
-  const handleUndo = () => {
-    if (historyStep <= 0) return;
-    const newStep = historyStep - 1;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    img.src = history[newStep];
-    img.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      setHistoryStep(newStep);
-    };
-  };
-
-  const handleRedo = () => {
-    if (historyStep >= history.length - 1) return;
-    const newStep = historyStep + 1;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    img.src = history[newStep];
-    img.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      setHistoryStep(newStep);
-    };
-  };
-
-  // Helper for cubic bezier spline segment with pressure-sensitive width
-  const drawCubicBezierSplineSegment = (ctx, p0, p1, p2, p3, baseWidth, strokeColor) => {
-    // Catmull-Rom to Cubic Bezier control points calculation
-    // Eliminates 120Hz/240Hz sampling corner jaggedness on touch and active stylus
+  // Helper for cubic bezier spline segment with pressure-sensitive width (置于 useEffect 之前防 TDZ ReferenceError)
+  const drawCubicBezierSplineSegment = useCallback((ctx, p0, p1, p2, p3, baseWidth, strokeColor) => {
     const cp1x = p1.x + (p2.x - p0.x) / 6;
     const cp1y = p1.y + (p2.y - p0.y) / 6;
     const cp2x = p2.x - (p3.x - p1.x) / 6;
     const cp2y = p2.y - (p3.y - p1.y) / 6;
 
-    // Segment pressure calculation
     const p1Pressure = typeof p1.pressure === 'number' && p1.pressure > 0 ? p1.pressure : 0.5;
     const p2Pressure = typeof p2.pressure === 'number' && p2.pressure > 0 ? p2.pressure : 0.5;
     const avgPressure = (p1Pressure + p2Pressure) / 2;
@@ -261,7 +221,7 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke();
-  };
+  }, []);
 
   // Redraw all strokes onto context with cubic bezier smoothing & pressure width
   const redrawAllStrokes = useCallback((ctx, strokes) => {
@@ -292,7 +252,6 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
         ctx.lineTo(pts[1].x, pts[1].y);
         ctx.stroke();
       } else {
-        // Cubic bezier spline interpolation through points
         for (let i = 0; i < pts.length - 1; i++) {
           const p0 = i > 0 ? pts[i - 1] : pts[0];
           const p1 = pts[i];
@@ -303,7 +262,72 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       }
       ctx.restore();
     }
-  }, []);
+  }, [drawCubicBezierSplineSegment]);
+
+  // Init canvas size once on open (切换底纹不清空已有笔迹！)
+  const canvasInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      canvasInitializedRef.current = false;
+      return;
+    }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (!canvasInitializedRef.current) {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width || 800;
+      canvas.height = rect.height || 500;
+      canvasInitializedRef.current = true;
+      const ctx = canvas.getContext('2d');
+      drawBackground(ctx, canvas.width, canvas.height);
+      const initialUrl = canvas.toDataURL();
+      strokesRef.current = [];
+      strokesHistoryRef.current = [[]];
+      setHistory([initialUrl]);
+      setHistoryStep(0);
+    } else {
+      // 仅切换底纹：重绘背景并完整保留已写笔迹
+      const ctx = canvas.getContext('2d');
+      drawBackground(ctx, canvas.width, canvas.height);
+      redrawAllStrokes(ctx, strokesRef.current);
+    }
+  }, [isOpen, gridMode, drawBackground, redrawAllStrokes]);
+
+  // Undo / Redo (同步回退/前进 strokesRef，消除过程回放诈尸)
+  const handleUndo = () => {
+    if (historyStep <= 0) return;
+    const newStep = historyStep - 1;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.src = history[newStep];
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      if (strokesHistoryRef.current[newStep]) {
+        strokesRef.current = strokesHistoryRef.current[newStep].map(s => ({ ...s, points: [...(s.points || [])] }));
+      }
+      setHistoryStep(newStep);
+    };
+  };
+
+  const handleRedo = () => {
+    if (historyStep >= history.length - 1) return;
+    const newStep = historyStep + 1;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.src = history[newStep];
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      if (strokesHistoryRef.current[newStep]) {
+        strokesRef.current = strokesHistoryRef.current[newStep].map(s => ({ ...s, points: [...(s.points || [])] }));
+      }
+      setHistoryStep(newStep);
+    };
+  };
 
   // Detect if a stroke is a scratch-out / scribble mistake
   const isScribbleStroke = (stroke) => {
@@ -657,12 +681,28 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       })
     }).catch(err => console.warn('Failed to record scratchpad gamification action:', err));
 
+    const safeClose = () => {
+      try {
+        window.getSelection?.()?.removeAllRanges();
+      } catch {}
+      onClose && onClose();
+    };
+
     canvas.toBlob((blob) => {
       if (!blob) return;
       const dataUrl = canvas.toDataURL('image/png');
-      onSendToTutor(blob, dataUrl);
-      onClose();
+      if (typeof onSendToTutor === 'function') {
+        onSendToTutor(blob, dataUrl);
+      }
+      safeClose();
     }, 'image/png');
+  };
+
+  const handleCloseSafely = () => {
+    try {
+      window.getSelection?.()?.removeAllRanges();
+    } catch {}
+    onClose && onClose();
   };
 
   if (!isOpen) return null;
@@ -672,7 +712,7 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(6px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
-      padding: '16px'
+      padding: '10px', userSelect: 'none', WebkitUserSelect: 'none', boxSizing: 'border-box'
     }}>
       <div style={{
         width: '100%', maxWidth: '960px', height: '90vh', maxHeight: '720px',
@@ -702,7 +742,7 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
               🚀 请名师批改草稿
             </button>
             <button
-              onClick={onClose}
+              onClick={handleCloseSafely}
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer', padding: '0 6px' }}
               title="关闭"
             >
@@ -713,18 +753,19 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
 
         {/* Secondary Tools Palette */}
         <div style={{
-          background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 16px',
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px'
+          background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 14px',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+          color: '#1e293b'
         }}>
           {/* Tools */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
             <button
               onClick={() => setTool('pen')}
               style={{
-                padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1',
+                padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1',
                 background: tool === 'pen' ? '#3b82f6' : '#ffffff',
                 color: tool === 'pen' ? '#ffffff' : '#334155',
-                cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem'
+                cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', whiteSpace: 'nowrap'
               }}
             >
               ✏️ 铅笔
@@ -732,10 +773,10 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
             <button
               onClick={() => setTool('line')}
               style={{
-                padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1',
+                padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1',
                 background: tool === 'line' ? '#3b82f6' : '#ffffff',
                 color: tool === 'line' ? '#ffffff' : '#334155',
-                cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem'
+                cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', whiteSpace: 'nowrap'
               }}
             >
               📏 直尺
@@ -743,10 +784,10 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
             <button
               onClick={() => setTool('eraser')}
               style={{
-                padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1',
+                padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1',
                 background: tool === 'eraser' ? '#3b82f6' : '#ffffff',
                 color: tool === 'eraser' ? '#ffffff' : '#334155',
-                cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem'
+                cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', whiteSpace: 'nowrap'
               }}
             >
               🧹 橡皮
@@ -817,12 +858,12 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
               ))}
             </div>
 
-            {/* Line width */}
+            {/* Line width (显式指定白底黑字，杜绝暗色模式继承白字白底不可读) */}
             <select
               aria-label="画笔粗细"
               value={lineWidth}
               onChange={e => setLineWidth(Number(e.target.value))}
-              style={{ marginLeft: '8px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+              style={{ marginLeft: '4px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', background: '#ffffff', color: '#1e293b' }}
             >
               <option value="2">细线 (2px)</option>
               <option value="3">中线 (3px)</option>
@@ -832,13 +873,13 @@ export default function ScratchpadModal({ isOpen, onClose, onSendToTutor }) {
           </div>
 
           {/* Background grid modes & History */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>底纹:</span>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+            <span style={{ fontSize: '0.84rem', color: '#475569', whiteSpace: 'nowrap' }}>底纹:</span>
             <select
               aria-label="草稿纸底纹模式"
               value={gridMode}
               onChange={e => setGridMode(e.target.value)}
-              style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+              style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', background: '#ffffff', color: '#1e293b' }}
             >
               <option value="blank">⬜ 纯白画板</option>
               <option value="grid">📐 方格演算纸 (数学/竖式)</option>

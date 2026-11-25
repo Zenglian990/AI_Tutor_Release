@@ -41,12 +41,17 @@ function getPeerLevelInfo(xp) {
   return { level: 1, title: '初识小同桌', currentXp, progressPercent: 0 };
 }
 
-function getTodayString() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
+function getDateStringOffset(daysOffset = 0) {
+  const target = new Date();
+  target.setDate(target.getDate() + daysOffset);
+  const y = target.getFullYear();
+  const m = String(target.getMonth() + 1).padStart(2, '0');
+  const d = String(target.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function getTodayString() {
+  return getDateStringOffset(0);
 }
 
 function getDaysDifference(dateStr1, dateStr2) {
@@ -80,21 +85,28 @@ async function getStudentStreak(db, profileId = 'default') {
   let freezeCount = row.streak_freeze_count;
   let freezeAutoConsumed = false;
 
-  if (row.last_active_date) {
-    const daysSince = getDaysDifference(row.last_active_date, today);
+  let lastActiveDate = row.last_active_date;
+  if (lastActiveDate) {
+    const daysSince = getDaysDifference(lastActiveDate, today);
     if (daysSince === 2) {
-      // Missed yesterday! Check for freeze
+      // 昨天断签：幂等自动消耗 1 张冰冻卡并将 last_active_date 推进至昨天，防止刷新 GET 重复扣光冰冻卡
       if (freezeCount > 0) {
+        const yesterday = getDateStringOffset(-1);
         const updateRes = await dbQueue.enqueue(async () => {
           return await db.run(
-            'UPDATE student_streaks SET streak_freeze_count = streak_freeze_count - 1, updated_at = CURRENT_TIMESTAMP WHERE profile_id = ? AND streak_freeze_count > 0',
-            [profileId]
+            `UPDATE student_streaks
+             SET streak_freeze_count = streak_freeze_count - 1,
+                 last_active_date = ?,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE profile_id = ? AND last_active_date = ? AND streak_freeze_count > 0`,
+            [yesterday, profileId, lastActiveDate]
           );
         });
         if (updateRes && updateRes.changes > 0) {
           freezeCount -= 1;
+          lastActiveDate = yesterday;
           freezeAutoConsumed = true;
-          logger.info(`[Streak] Profile ${profileId} missed yesterday, consumed 1 streak freeze shield.`);
+          logger.info(`[Streak] Profile ${profileId} missed yesterday, idempotently consumed 1 streak freeze shield (protected ${yesterday}).`);
         }
       } else {
         currentStreak = 0;
@@ -114,13 +126,13 @@ async function getStudentStreak(db, profileId = 'default') {
   `, [profileId]);
 
   const activeDates = recentHistory.map(h => h.activity_date);
-  const isTodayCompleted = row.last_active_date === today;
+  const isTodayCompleted = lastActiveDate === today;
 
   return {
     profileId,
     currentStreak,
     longestStreak: row.longest_streak,
-    lastActiveDate: row.last_active_date,
+    lastActiveDate,
     isTodayCompleted,
     streakFreezeCount: freezeCount,
     freezeAutoConsumed,

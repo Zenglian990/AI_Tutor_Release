@@ -1,8 +1,8 @@
 export const translations = {
   'zh-CN': {
     // Header & Sidebar
-    'app.title': '曾练专属私教',
-    'app.subtitle': '基于人教版1-9年级教材的智能辅导系统',
+    'app.title': 'AI 智慧私教',
+    'app.subtitle': '覆盖 1-12 年级全学段教材的启发式智能辅导系统',
     'btn.mistake': '🔔 错题复测',
     'btn.parent': '📈 家长监工',
     'btn.report': '📊 学习报表',
@@ -40,8 +40,8 @@ export const translations = {
     // Onboarding
     'onboarding.steps': [
       {
-        title: '🎓 欢迎来到曾练专属私教！',
-        content: '这是一个基于人教版 1-9 年级教材构建的 AI 深度教材伴读系统。让我们用 1 分钟了解如何使用它。'
+        title: '🎓 欢迎来到 AI 智慧私教！',
+        content: '这是一个覆盖 1-12 年级（小学·初中·高中）全学段教材构建的 AI 深度教材伴读系统。让我们用 1 分钟了解如何使用它。'
       },
       {
         title: '🗺️ 探索你的「学习地图」',
@@ -68,8 +68,8 @@ export const translations = {
   },
   'en-US': {
     // Header & Sidebar
-    'app.title': 'Zeng Practice Tutor',
-    'app.subtitle': 'AI tutoring based on China PEP textbooks (Grades 1-9)',
+    'app.title': 'AI Smart Tutor',
+    'app.subtitle': 'AI tutoring based on K-12 textbooks (Grades 1-12)',
     'btn.mistake': '🔔 Review Challenge',
     'btn.parent': '📈 Parental Gate',
     'btn.report': '📊 Stats Report',

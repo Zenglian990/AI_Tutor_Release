@@ -238,39 +238,16 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
   const exprPrev = parseEquationToExpression(cleanPrev);
   const exprCurr = parseEquationToExpression(cleanCurr);
 
-  // 1. 规则诊断 1：移项忘记变号诊断 (Transposition Sign Error)
-  // 例：2x + 4 = 10 错写为 2x = 10 + 4
-  if (cleanPrev.includes('+') && cleanCurr.includes('=') && cleanPrev.includes('=')) {
-    const prevParts = cleanPrev.split('=');
-    const currParts = cleanCurr.split('=');
-    if (currParts[1]?.includes('+') && !prevParts[1]?.includes('+')) {
-      try {
-        const testValPrev = sanitizeForEval(exprPrev, { [varName]: 2 });
-        const testValCurr = sanitizeForEval(exprCurr, { [varName]: 2 });
-        if (Math.abs(testValPrev - testValCurr) > 1e-4) {
-          return {
-            valid: false,
-            status: 'invalid',
-            message: '⚠️ 疑似移项未变号',
-            tip: '把项从等号一边移到另一边时，要由正变负（或由负变正）哦！'
-          };
-        }
-      } catch (e) {
-        // Fall through to general evaluation if expression has custom tokens
-      }
-    }
-  }
-
-  // 2. 规则诊断 2：漏除/漏乘常数项 (Missing Division on Constant Term)
-  // 例：2x + 4 = 10 错写为 x + 4 = 5
-  if (cleanCurr.includes(cleanPrev.slice(0, 3))) {
-    // 简化启发提示
-  }
-
-  // 3. 通用 Schwartz-Zippel 代数等价性判别 (测试 5 个散列点)
+  // 1. 通用 Schwartz-Zippel 代数等价性判别 (优先判定等价性，避免合法多步合并被误报移项错误)
   const testPoints = [2.718, -3.141, 5.25, -7.8, 11.3];
   let consistentRatio = null;
   let matches = 0;
+
+  // 若上一步含分式分母（如 1/x 或 1/(x-1)），提取常见简单分母因子用于去分母等价检测
+  const denomMatch = cleanPrev.match(/\/\s*\(([^()]+)\)|\/\s*([a-zA-Z0-9]+)/);
+  const denomExpr = denomMatch ? (denomMatch[1] || denomMatch[2]) : null;
+  let denomRatio = null;
+  let denomMatches = 0;
 
   for (const pt of testPoints) {
     try {
@@ -278,16 +255,35 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
       const vCurr = sanitizeForEval(exprCurr, { [varName]: pt });
 
       if (Number.isFinite(vPrev) && Number.isFinite(vCurr)) {
-        // 方程两侧同乘除常数 k: vCurr = k * vPrev
+        // 严格排除 0 = 0 退化恒等式（consistentRatio === 0 绝不算等价推导）
         if (Math.abs(vPrev) < 1e-6 && Math.abs(vCurr) < 1e-6) {
           matches++;
-        } else if (Math.abs(vPrev) > 1e-6) {
+        } else if (Math.abs(vPrev) > 1e-6 && Math.abs(vCurr) > 1e-6) {
           const ratio = vCurr / vPrev;
-          if (consistentRatio === null) {
-            consistentRatio = ratio;
-            matches++;
-          } else if (Math.abs(ratio - consistentRatio) < 1e-4) {
-            matches++;
+          if (Math.abs(ratio) > 1e-6) {
+            if (consistentRatio === null) {
+              consistentRatio = ratio;
+              matches++;
+            } else if (Math.abs(ratio - consistentRatio) < 1e-4) {
+              matches++;
+            }
+          }
+          // 分式去分母检查：vCurr ≈ k * vPrev * denom
+          if (denomExpr) {
+            try {
+              const dVal = sanitizeForEval(denomExpr, { [varName]: pt });
+              if (Number.isFinite(dVal) && Math.abs(dVal) > 1e-6) {
+                const r2 = vCurr / (vPrev * dVal);
+                if (Math.abs(r2) > 1e-6) {
+                  if (denomRatio === null) {
+                    denomRatio = r2;
+                    denomMatches++;
+                  } else if (Math.abs(r2 - denomRatio) < 1e-4) {
+                    denomMatches++;
+                  }
+                }
+              }
+            } catch {}
           }
         }
       }
@@ -301,7 +297,7 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
           valid: false,
           status: 'unsupported',
           message: '💡 暂不支持此类符号自动验算，请继续在草稿纸书写演算',
-          tip: '当前步骤级自动验算主要支持一元一次方程、整式及分式化简'
+          tip: '当前步骤级自动验算主要支持一元一次/二次方程、整式及基础分式化简'
         };
       }
       // Parse incomplete during typing
@@ -309,13 +305,27 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
     }
   }
 
-  if (matches >= 4) {
+  if ((matches >= 4 && consistentRatio !== null && Math.abs(consistentRatio) > 1e-6) || (denomMatches >= 4 && denomRatio !== null)) {
     return {
       valid: true,
       status: 'valid',
       message: '✓ 推导完全正确！',
       tip: '逻辑严谨，等式保持等价变换'
     };
+  }
+
+  // 2. 确认为非等价变换后，再执行细粒度错因诊断：移项忘记变号诊断 (Transposition Sign Error)
+  if (cleanPrev.includes('+') && cleanCurr.includes('=') && cleanPrev.includes('=')) {
+    const prevParts = cleanPrev.split('=');
+    const currParts = cleanCurr.split('=');
+    if (currParts[1]?.includes('+') && !prevParts[1]?.includes('+')) {
+      return {
+        valid: false,
+        status: 'invalid',
+        message: '⚠️ 疑似移项未变号',
+        tip: '把项从等号一边移到另一边时，要由正变负（或由负变正）哦！'
+      };
+    }
   }
 
   return {
@@ -327,5 +337,5 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
 }
 
 export const COMMON_MATH_SYMBOLS = [
-  'x', 'y', '+', '-', '×', '÷', '=', '²', '√', '(', ')', '±', 'π', '½'
+  'x', '+', '-', '×', '÷', '=', '²', '(', ')'
 ];

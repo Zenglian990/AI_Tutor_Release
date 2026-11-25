@@ -14,7 +14,7 @@ spec:
         run.googleapis.com/startup-cpu-boost: "true"
         run.googleapis.com/execution-environment: gen2
     spec:
-      containerConcurrency: 80
+      containerConcurrency: 20
       timeoutSeconds: 300
       containers:
         - image: asia-east1-docker.pkg.dev/ai-tutor-79709693345/ai-tutor/server:latest
@@ -23,17 +23,21 @@ spec:
               containerPort: 8080
           resources:
             limits:
-              cpu: "1"
-              memory: 512Mi
+              cpu: "2"
+              memory: 2Gi
           env:
             - name: NODE_ENV
               value: production
             - name: PORT
               value: "8080"
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=384"
+              value: "--max-old-space-size=1024"
             - name: ALLOWED_ORIGINS
-              value: "https://ai-tutor-79709693345.asia-east1.run.app,http://localhost:5173"
+              value: "https://ai-tutor-79709693345.asia-east1.run.app"
+            - name: FREE_DAILY_AI_QUOTA
+              value: "30"
+            - name: ENFORCE_QUOTA
+              value: "true"
             - name: CHAT_MODEL
               value: gemini-2.5-flash
             - name: DEFAULT_PROVIDER

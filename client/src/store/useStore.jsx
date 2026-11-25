@@ -147,7 +147,7 @@ async function authFetch(path, options = {}) {
   const url = getApiUrl(path);
   const token = getApiToken();
 
-  const fetchOptions = { ...options };
+  const fetchOptions = { credentials: 'include', ...options };
   const headers = { ...(fetchOptions.headers || {}) };
 
   // Normalize path to check if this is an API call
@@ -209,6 +209,7 @@ async function authFetch(path, options = {}) {
                        relativePath.startsWith('/api/homework') ||
                        relativePath.startsWith('/api/mistakes') ||
                        relativePath.startsWith('/api/essay') ||
+                       relativePath.startsWith('/api/english') ||
                        relativePath.startsWith('/api/generate-variation') ||
                        relativePath.startsWith('/api/grade-variation') ||
                        relativePath.startsWith('/api/report/weekly') ||
@@ -313,7 +314,14 @@ async function authFetch(path, options = {}) {
   }
 
   fetchOptions.headers = headers;
-  return fetch(url, fetchOptions);
+  const response = await fetch(url, fetchOptions);
+  try {
+    const issuedStudentToken = response?.headers?.get?.('x-student-session-token');
+    if (issuedStudentToken) {
+      sessionStorage.setItem('student_session_token', issuedStudentToken);
+    }
+  } catch {}
+  return response;
 }
 
 const migrateGrade = (g) => {
@@ -351,7 +359,7 @@ function loadProfiles() {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map(p => ({
           ...p,
-          name: (!p.name || p.name === '默认用户') ? '曾练' : p.name,
+          name: (!p.name || p.name === '默认用户') ? '同学' : p.name,
           grade: (!p.grade || p.grade === 'unknown') ? '7_up' : (migrateGrade(p.grade) || '7_up'),
           edition: p.edition || '人教版'
         }));
@@ -359,7 +367,7 @@ function loadProfiles() {
     } catch (e) { /* ignore */ }
   }
   const existingGrade = localStorage.getItem('ai_tutor_grade') || '';
-  return [{ id: 'default', name: '曾练', grade: migrateGrade(existingGrade) || '7_up', edition: '人教版' }];
+  return [{ id: 'default', name: '同学', grade: migrateGrade(existingGrade) || '7_up', edition: '人教版' }];
 }
 
 const getProfileDefaultPreferences = (grade) => {
@@ -556,14 +564,14 @@ export function AppProvider({ children }) {
 
   const t = useCallback((key) => getTranslation(language, key), [language]);
 
-  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '同学', grade: '7_up', edition: '人教版' };
 
   // Persist to localStorage & sync profile-scoped preferences
   useEffect(() => { localStorage.setItem('ai_tutor_profiles', JSON.stringify(profiles)); }, [profiles]);
   useEffect(() => {
     localStorage.setItem('ai_tutor_active_profile', currentProfileId);
     currentProfileIdRef.current = currentProfileId;
-    const target = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+    const target = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '同学', grade: '7_up', edition: '人教版' };
     const def = getProfileDefaultPreferences(target?.grade);
     const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(currentProfileId, 'subject', def.subject));
     const prefSocratic = getProfilePref(currentProfileId, 'socratic_level', def.socraticLevel);
@@ -614,6 +622,35 @@ export function AppProvider({ children }) {
     setIsEinkMode(prev => !prev);
   }, []);
 
+  // 启动时主动向后端初始化/续期服务端签名的学生隔离会话（防止严格生产模式下 403 / 档案脱节）
+  useEffect(() => {
+    let active = true;
+    const initSession = async () => {
+      try {
+        const existingToken = sessionStorage.getItem('student_session_token') || '';
+        const res = await authFetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            existing_token: existingToken || undefined,
+            prefer_default: true,
+            profile_id: currentProfileIdRef.current || 'default'
+          })
+        });
+        if (active && res.ok) {
+          const data = await res.json();
+          if (data?.session_token) {
+            sessionStorage.setItem('student_session_token', data.session_token);
+          }
+        }
+      } catch (e) {
+        console.warn('[AuthSession] 后端会话初始化降级（可能处于离线状态）:', e?.message || e);
+      }
+    };
+    initSession();
+    return () => { active = false; };
+  }, [backendUrl]);
+
   const handleProfileChange = useCallback((profileId) => {
     if (profileId === 'ADD_NEW') {
       return 'ADD_NEW';
@@ -621,7 +658,21 @@ export function AppProvider({ children }) {
     currentProfileIdRef.current = profileId;
     setCurrentProfileId(profileId);
 
-    const target = profiles?.find(p => p.id === profileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+    // 同步向后端切换当前会话活跃档案（仅对服务端签发的档案或 default 生效）
+    authFetch('/api/auth/profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'switch', profile_id: profileId })
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.session_token) {
+          sessionStorage.setItem('student_session_token', data.session_token);
+        }
+      })
+      .catch(() => {});
+
+    const target = profiles?.find(p => p.id === profileId) || profiles?.[0] || { id: 'default', name: '同学', grade: '7_up', edition: '人教版' };
     const def = getProfileDefaultPreferences(target?.grade);
     const prefSubject = sanitizeSubjectForGrade(target?.grade, getProfilePref(profileId, 'subject', def.subject));
     const prefSocratic = getProfilePref(profileId, 'socratic_level', def.socraticLevel);
@@ -635,13 +686,47 @@ export function AppProvider({ children }) {
     return 'changed';
   }, [profiles]);
 
-  const handleAddProfile = useCallback((name, grade, edition) => {
-    const newProfile = { id: 'p_' + Date.now(), name, grade, edition: edition || '人教版' };
+  const handleAddProfile = useCallback(async (name, grade, edition) => {
+    let authoritativeId = 'p_' + Date.now();
+    try {
+      // 确保学生隔离会话已初始化
+      if (!sessionStorage.getItem('student_session_token')) {
+        const sessRes = await authFetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prefer_default: true })
+        });
+        if (sessRes.ok) {
+          const sessData = await sessRes.json();
+          if (sessData?.session_token) {
+            sessionStorage.setItem('student_session_token', sessData.session_token);
+          }
+        }
+      }
+      const createRes = await authFetch('/api/auth/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', name, grade, edition: edition || '人教版' })
+      });
+      if (createRes.ok) {
+        const data = await createRes.json();
+        if (data?.profile_id) {
+          authoritativeId = data.profile_id;
+        }
+        if (data?.session_token) {
+          sessionStorage.setItem('student_session_token', data.session_token);
+        }
+      }
+    } catch (e) {
+      console.warn('[Profiles] 创建后端子档案失败，回退本地档案ID:', e?.message || e);
+    }
+
+    const newProfile = { id: authoritativeId, name, grade: grade || '7_up', edition: edition || '人教版' };
     setProfiles(prev => [...prev, newProfile]);
     currentProfileIdRef.current = newProfile.id;
     setCurrentProfileId(newProfile.id);
 
-    const rawGrade = grade ? parseInt(String(grade).split('_')[0], 10) : 7;
+    const rawGrade = newProfile.grade ? parseInt(String(newProfile.grade).split('_')[0], 10) : 7;
     const defaultSubject = rawGrade <= 3 ? '语文' : '数学';
     const defaultPersona = rawGrade <= 3 ? 'lion' : 'owl';
     const defaultPinyin = rawGrade <= 3;
@@ -671,7 +756,7 @@ export function AppProvider({ children }) {
       const nextId = remaining[0]?.id || 'default';
       setCurrentProfileId(nextId);
       currentProfileIdRef.current = nextId;
-      return remaining.length > 0 ? remaining : [{ id: 'default', name: '曾练', grade: '7_up', edition: '人教版' }];
+      return remaining.length > 0 ? remaining : [{ id: 'default', name: '同学', grade: '7_up', edition: '人教版' }];
     });
   }, []);
 

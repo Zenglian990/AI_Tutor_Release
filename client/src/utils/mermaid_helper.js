@@ -1,6 +1,5 @@
-import mermaid from 'mermaid';
-
 let initialized = false;
+let mermaidInstancePromise = null;
 
 export const stringHash = (str) => {
   let hash = 0;
@@ -10,24 +9,36 @@ export const stringHash = (str) => {
   return (hash >>> 0).toString(36);
 };
 
+export const loadMermaid = async () => {
+  if (!mermaidInstancePromise) {
+    mermaidInstancePromise = import('mermaid').then((mod) => {
+      const m = mod.default || mod;
+      if (!initialized) {
+        m.initialize({
+          startOnLoad: false,
+          theme: 'default',
+          useMaxWidth: false,
+          securityLevel: 'strict', // Fixed S1: changed from 'loose' to 'strict'
+          htmlLabels: false,
+          flowchart: {
+            htmlLabels: false,
+            padding: 18,
+            useWidth: true
+          },
+          mindmap: {
+            htmlLabels: false
+          }
+        });
+        initialized = true;
+      }
+      return m;
+    });
+  }
+  return mermaidInstancePromise;
+};
+
 export const initMermaid = () => {
-  if (initialized) return;
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'default',
-    useMaxWidth: false,
-    securityLevel: 'strict', // Fixed S1: changed from 'loose' to 'strict'
-    htmlLabels: false,
-    flowchart: {
-      htmlLabels: false,
-      padding: 18,
-      useWidth: true
-    },
-    mindmap: {
-      htmlLabels: false
-    }
-  });
-  initialized = true;
+  // 延迟至实际渲染思维导图时按需加载 mermaid，大幅压缩首屏 JS 体积
 };
 
 export const sanitizeMermaid = (code) => {
@@ -105,4 +116,4 @@ export const sanitizeMermaid = (code) => {
   return sanitized;
 };
 
-export { mermaid };
+export const mermaid = null;

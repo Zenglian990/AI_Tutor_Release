@@ -40,13 +40,15 @@ router.post('/auth/session', (req, res) => {
 
   if (existing) {
     sessionId = existing.sid || `sid_${crypto.randomBytes(8).toString('hex')}`;
-    profiles = [...existing.pids];
+    profiles = Array.from(new Set([...existing.pids, 'default'])).slice(0, MAX_PROFILES_PER_SESSION);
     const requestedPid = typeof req.body?.profile_id === 'string' ? req.body.profile_id.trim() : '';
     activeProfileId = requestedPid && profiles.includes(requestedPid) ? requestedPid : existing.pid;
   } else {
     sessionId = `sid_${crypto.randomBytes(8).toString('hex')}`;
-    activeProfileId = `stu_${crypto.randomBytes(8).toString('hex')}`;
-    profiles = [activeProfileId];
+    const generatedPid = `stu_${crypto.randomBytes(8).toString('hex')}`;
+    const preferDefault = req.body?.prefer_default === true;
+    activeProfileId = preferDefault ? 'default' : generatedPid;
+    profiles = Array.from(new Set([activeProfileId, 'default', generatedPid])).slice(0, MAX_PROFILES_PER_SESSION);
   }
 
   const sessionToken = generateStudentSessionToken({
@@ -57,7 +59,7 @@ router.post('/auth/session', (req, res) => {
 
   appendSetCookie(
     res,
-    buildCookieHeaderValue(STUDENT_SESSION_COOKIE, sessionToken, STUDENT_SESSION_TTL_SECONDS, '/api')
+    buildCookieHeaderValue(STUDENT_SESSION_COOKIE, sessionToken, STUDENT_SESSION_TTL_SECONDS, '/api', req)
   );
 
   return res.json({
@@ -105,7 +107,7 @@ router.post('/auth/profiles', requireStudentSession, (req, res) => {
 
     appendSetCookie(
       res,
-      buildCookieHeaderValue(STUDENT_SESSION_COOKIE, updatedToken, STUDENT_SESSION_TTL_SECONDS, '/api')
+      buildCookieHeaderValue(STUDENT_SESSION_COOKIE, updatedToken, STUDENT_SESSION_TTL_SECONDS, '/api', req)
     );
 
     return res.json({
@@ -123,7 +125,7 @@ router.post('/auth/profiles', requireStudentSession, (req, res) => {
 
   const sidPrefix = (req.auth.sessionId || '').replace(/^sid_/, '').slice(0, 6) || crypto.randomBytes(3).toString('hex');
   const newProfileId = `stu_${sidPrefix}_${crypto.randomBytes(4).toString('hex')}`;
-  const updatedProfiles = [...req.auth.allowedProfileIds, newProfileId];
+  const updatedProfiles = Array.from(new Set([...req.auth.allowedProfileIds, newProfileId]));
 
   const updatedToken = generateStudentSessionToken({
     sessionId: req.auth.sessionId,
@@ -133,7 +135,7 @@ router.post('/auth/profiles', requireStudentSession, (req, res) => {
 
   appendSetCookie(
     res,
-    buildCookieHeaderValue(STUDENT_SESSION_COOKIE, updatedToken, STUDENT_SESSION_TTL_SECONDS, '/api')
+    buildCookieHeaderValue(STUDENT_SESSION_COOKIE, updatedToken, STUDENT_SESSION_TTL_SECONDS, '/api', req)
   );
 
   return res.json({

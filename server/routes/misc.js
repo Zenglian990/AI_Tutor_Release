@@ -4,7 +4,7 @@ const multer = require('multer');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
-const { NODE_ENV, API_KEYS } = require('../config');
+const { NODE_ENV, API_KEYS, CHAT_MODEL } = require('../config');
 const logger = require('../services/logger');
 const { encryptField, decryptField, generateFtsIndexText } = require('../utils/crypto');
 const { formatGradeName, GRADE_ALIASES, getPromptGuidelines } = require('../prompts/guidelines');
@@ -18,7 +18,9 @@ const { getChapters } = require('../utils/dataLoader');
 const dbQueue = require('../services/dbQueue');
 const { extractClientAiHeaders, mapAiErrorToHttp } = require('../utils/aiHeaders');
 const { clampInt } = require('../utils/paramValidator');
-const { isVerifiedAdminRequest, isValidMasterApiToken, isWeakPinHash } = require('../utils/adminAuth');
+const { isVerifiedAdminRequest, isValidMasterApiToken, isWeakPinHash, isSetupSecretValid } = require('../utils/adminAuth');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
+const { requireQuotaOrVip } = require('../middleware/quota');
 const dataUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
 // Allowed audio MIME types
@@ -58,6 +60,13 @@ router.get('/health', (req, res) => {
   base.vector_db_ready = !!getTable();
   base.sqlite_ready = !!getSqliteDb();
   base.keys_available = typeof API_KEYS !== 'undefined' ? API_KEYS.length : 0;
+  base.cloud_ai_ready = Boolean(
+    (typeof API_KEYS !== 'undefined' && API_KEYS.length > 0) ||
+    (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim()) ||
+    (process.env.SILICONFLOW_API_KEY && process.env.SILICONFLOW_API_KEY.trim()) ||
+    (process.env.DASHSCOPE_API_KEY && process.env.DASHSCOPE_API_KEY.trim()) ||
+    (process.env.ZHIPU_API_KEY && process.env.ZHIPU_API_KEY.trim())
+  );
   base.mode = NODE_ENV;
   res.json(base);
 });
@@ -82,10 +91,24 @@ function getPrimaryLanIp() {
   return '127.0.0.1';
 }
 
-router.get('/system/network-info', (req, res) => {
+router.get('/system/network-info', async (req, res) => {
+  const isCloudPublic = process.env.CLOUD_PUBLIC_MODE === 'true';
+  const isProd = (process.env.NODE_ENV || NODE_ENV) === 'production';
+  const isAdmin = req.auth?.isAdmin || await isVerifiedAdminRequest(req);
+  // 公网模式或非管理员访问时返回安全空值 200 OK，既防止暴露主机内网 IP/主机名，又消除普通用户打开家访便签触发 401
+  if ((isCloudPublic || isProd) && !isAdmin) {
+    return res.json({
+      publicMode: true,
+      lanIp: null,
+      port: null,
+      lanUrl: '',
+      hostname: ''
+    });
+  }
   const lanIp = getPrimaryLanIp();
   const port = process.env.PORT || 3001;
   res.json({
+    publicMode: false,
     lanIp,
     port,
     lanUrl: `http://${lanIp}:${port}`,
@@ -97,14 +120,14 @@ router.get('/system/network-info', (req, res) => {
 router.get('/system/version', (req, res) => {
   const pkg = require('../../package.json');
   res.json({
-    version: pkg.version || '1.5.5',
-    buildDate: '2026-10-04',
-    appName: '曾练专属私教',
+    version: pkg.version || '1.7.4',
+    buildDate: '2026-11-25',
+    appName: 'AI 智慧私教 (1-12年级)',
     minAppVersion: '1.0.0',
     hasUpdate: false,
     updateType: 'pwa_hot_update',
-    apkFileName: `AI_Tutor_v${pkg.version || '1.5.5'}.apk`,
-    releaseNotes: '支持大模型拍照识题视觉智能自动路由、修复张冠李戴幻觉、新增系统设置模型密钥与令牌直接配置'
+    apkFileName: `AI_Tutor_v${pkg.version || '1.7.4'}.apk`,
+    releaseNotes: '支持 1-12 年级全学段伴学、大模型拍照识题视觉路由、系统设置多模型密钥配置与离线韧性升级'
   });
 });
 
@@ -114,12 +137,15 @@ router.get('/chat-history', async (req, res) => {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id = 'default', grade = 'unknown', subject = 'unknown' } = req.query;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
     // Pagination: default last 100 messages, clamped strictly to [1, 500]
     const limit = clampInt(req.query.limit, 100, 1, 500);
     const offset = clampInt(req.query.offset, 0, 0, 100000);
     const rows = await sqliteDb.all(
       'SELECT role, text FROM chat_history WHERE profile_id = ? AND grade = ? AND subject = ? ORDER BY timestamp ASC LIMIT ? OFFSET ?',
-      [profile_id, grade, subject, limit, offset]
+      [targetPid, grade, subject, limit, offset]
     );
     const decryptedRows = rows.map(r => ({ ...r, text: decryptField(r.text) }));
     res.json({ history: decryptedRows, limit, offset });
@@ -139,6 +165,9 @@ router.post('/chat-history', async (req, res) => {
     if (!profile_id || !messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: "Missing required parameters" });
     }
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
 
     const boundedMessages = messages.slice(-500);
 
@@ -151,8 +180,8 @@ router.post('/chat-history', async (req, res) => {
             SELECT id FROM chat_history 
             WHERE profile_id = ? AND grade = ? AND subject = ?
           )
-        `, [profile_id, grade, subject]);
-        await sqliteDb.run('DELETE FROM chat_history WHERE profile_id = ? AND grade = ? AND subject = ?', [profile_id, grade, subject]);
+        `, [targetPid, grade, subject]);
+        await sqliteDb.run('DELETE FROM chat_history WHERE profile_id = ? AND grade = ? AND subject = ?', [targetPid, grade, subject]);
         let savedCount = 0;
         for (const msg of boundedMessages) {
           // Security / Data hygiene: skip transient offline fallback messages
@@ -167,7 +196,7 @@ router.post('/chat-history', async (req, res) => {
               cleanText = cleanText.slice(0, 8000) + '...[已截断]';
             }
             const result = await sqliteDb.run('INSERT INTO chat_history (profile_id, grade, subject, role, text) VALUES (?, ?, ?, ?, ?)',
-              [profile_id, grade, subject, msg.role, encryptField(cleanText)]);
+              [targetPid, grade, subject, msg.role, encryptField(cleanText)]);
             const chat_id = result.lastID;
             await sqliteDb.run('INSERT INTO chat_history_fts (chat_id, text) VALUES (?, ?)', [chat_id, generateFtsIndexText(cleanText)]);
             savedCount++;
@@ -197,6 +226,9 @@ router.get('/chat-history/search', async (req, res) => {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id = 'default', q = '', grade, subject } = req.query;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
     if (!q.trim()) return res.json({ results: [] });
 
     const hashQuery = generateFtsIndexText(q);
@@ -211,7 +243,7 @@ router.get('/chat-history/search', async (req, res) => {
       JOIN chat_history_fts fts ON ch.id = fts.chat_id
       WHERE ch.profile_id = ? AND chat_history_fts MATCH ?
     `;
-    const params = [profile_id, matchQuery];
+    const params = [targetPid, matchQuery];
     if (grade && grade !== 'unknown') {
       sql += ' AND ch.grade = ?';
       params.push(grade);
@@ -251,11 +283,29 @@ router.delete('/profile', async (req, res) => {
     if (!profile_id) return res.status(400).json({ error: "Missing profile_id" });
     if (profile_id === 'default') return res.status(400).json({ error: "Cannot delete default profile" });
 
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
+
     await dbQueue.enqueue(async () => {
-      await sqliteDb.run('DELETE FROM chat_history_fts WHERE chat_id IN (SELECT id FROM chat_history WHERE profile_id = ?)', [profile_id]);
-      await sqliteDb.run('DELETE FROM chat_history WHERE profile_id = ?', [profile_id]);
-      await sqliteDb.run('DELETE FROM mistakes WHERE profile_id = ?', [profile_id]);
-      await sqliteDb.run('DELETE FROM profile_progress WHERE profile_id = ?', [profile_id]);
+      await sqliteDb.run('BEGIN IMMEDIATE TRANSACTION');
+      try {
+        await sqliteDb.run('DELETE FROM chat_history_fts WHERE chat_id IN (SELECT id FROM chat_history WHERE profile_id = ?)', [targetPid]);
+        const tablesToClean = [
+          'chat_history', 'mistakes', 'profile_progress', 'memberships',
+          'user_gamification', 'cognitive_knowledge_state', 'cognitive_events',
+          'study_checkpoints', 'student_streaks', 'streak_history'
+        ];
+        for (const tbl of tablesToClean) {
+          try {
+            await sqliteDb.run(`DELETE FROM ${tbl} WHERE profile_id = ?`, [targetPid]);
+          } catch {}
+        }
+        await sqliteDb.run('COMMIT');
+      } catch (txErr) {
+        try { await sqliteDb.run('ROLLBACK'); } catch {}
+        throw txErr;
+      }
     });
 
     res.json({ success: true });
@@ -270,7 +320,9 @@ router.get('/stats', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const profile_id = req.query.profile_id || 'default';
+    const authCheck = resolveAuthorizedProfileId(req, req.query.profile_id || 'default');
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const profile_id = authCheck.profileId;
 
     const totalRows = await sqliteDb.get('SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ?', [profile_id]);
     const subjectRows = await sqliteDb.all(
@@ -403,11 +455,14 @@ router.post('/import/data', dataUpload.single('file'), async (req, res) => {
 });
 
 // Weekly report
-router.post('/report/weekly', async (req, res) => {
+router.post('/report/weekly', requireQuotaOrVip('weekly_report'), async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
     const { profile_id = 'default', grade = 'unknown' } = req.body;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
     const parent_name = sanitizeName(req.body.parent_name, '家长');
     const student_name = sanitizeName(req.body.student_name, '学生');
     const safeGrade = formatGradeName(grade);
@@ -417,11 +472,11 @@ router.post('/report/weekly', async (req, res) => {
     // Although chat_history has a grade column, we intentionally count all messages for the profile to reflect overall activity in the weekly report.
     const chatCount = await sqliteDb.get(
       `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')`,
-      [profile_id]
+      [targetPid]
     );
     const mistakeCount = await sqliteDb.get(
       `SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')` + gradeFilter,
-      [profile_id, ...gradeParams]
+      [targetPid, ...gradeParams]
     );
 
     const prompt = `你是一位认真负责的"教导主任"，现在要给家长【${parent_name}】发一份关于他的孩子【${student_name}】（${safeGrade}）的【本周AI私教学习周报】。
@@ -442,6 +497,7 @@ router.post('/report/weekly', async (req, res) => {
     try {
       const response = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
+        profileId: targetPid,
         headers: { 'Content-Type': 'application/json', ...extractClientAiHeaders(req) },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
@@ -473,9 +529,12 @@ router.post('/report/weekly', async (req, res) => {
 });
 
 // Active learning plan
-router.post('/active-plan/generate', async (req, res) => {
+router.post('/active-plan/generate', requireQuotaOrVip('active_plan'), async (req, res) => {
   try {
     const { profile_id, grade, subject, edition } = req.body;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
     if (!grade || !subject) return res.status(400).json({ error: "Grade and subject are required" });
 
 
@@ -506,6 +565,7 @@ ${chaptersStr}
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: targetPid,
       headers: { 'Content-Type': 'application/json', ...extractClientAiHeaders(req) },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -523,9 +583,10 @@ ${chaptersStr}
 });
 
 // Generate variation
-router.post('/generate-variation', async (req, res) => {
+router.post('/generate-variation', requireQuotaOrVip('variation'), async (req, res) => {
   try {
     const { query, answer, grade, subject } = req.body;
+    const targetPid = req.auth?.activeProfileId || 'default';
     if (!query) return res.status(400).json({ error: "Query is required" });
     // Truncate inputs to prevent prompt injection via oversized content
     const safeQuery = String(query).slice(0, 500);
@@ -546,6 +607,7 @@ router.post('/generate-variation', async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: targetPid,
       headers: { 'Content-Type': 'application/json', ...extractClientAiHeaders(req) },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -577,9 +639,10 @@ router.post('/generate-variation', async (req, res) => {
 });
 
 // Grade variation
-router.post('/grade-variation', async (req, res) => {
+router.post('/grade-variation', requireQuotaOrVip('grade_variation'), async (req, res) => {
   try {
     const { question, solution, student_answer, grade } = req.body;
+    const targetPid = req.auth?.activeProfileId || 'default';
     if (!question || !student_answer) return res.status(400).json({ error: "Missing fields" });
     // Truncate inputs to prevent prompt injection
     const safeQuestion = String(question).slice(0, 500);
@@ -601,6 +664,7 @@ router.post('/grade-variation', async (req, res) => {
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: targetPid,
       headers: { 'Content-Type': 'application/json', ...extractClientAiHeaders(req) },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -656,7 +720,7 @@ function detectAudioMimeType(buffer, fallbackMime = 'audio/webm') {
 }
 
 // Transcribe audio
-router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, async (req, res) => {
+router.post('/transcribe', requireQuotaOrVip('transcribe'), upload.single('audio'), verifyMultipartIntegrity, async (req, res) => {
   try {
     const audioBuffer = req.file?.buffer;
     if (!audioBuffer) return res.status(400).json({ error: '没有提供音频文件' });
@@ -681,6 +745,7 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
 
     const response = await fetchWithKeyRotation(buildChatURL, {
       method: 'POST',
+      profileId: req.auth?.activeProfileId || 'default',
       headers: fetchHeaders,
       body: JSON.stringify({
         contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: base64Audio } }, { text: prompt }] }],
@@ -690,7 +755,7 @@ router.post('/transcribe', upload.single('audio'), verifyMultipartIntegrity, asy
           thinkingConfig: { thinkingBudget: 0 }
         }
       })
-    }, 8, 30000, 'gemini-2.5-flash', true); // skipDeepSeek = true, fast STT
+    }, 8, 30000, CHAT_MODEL || 'gemini-3-flash-preview', true); // skipDeepSeek = true, fast STT
 
     const data = await response.json();
     if (data.error) {
@@ -722,10 +787,19 @@ router.post('/admin/pin', async (req, res) => {
     const existingPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
     const needsSetupRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'needs_parent_pin_setup'");
     const hasConfiguredPin = Boolean(existingPinRow && existingPinRow.value && !isWeakPinHash(existingPinRow.value) && !needsSetupRow);
-    if (hasConfiguredPin && (process.env.NODE_ENV === 'production' || process.env.REQUIRE_AUTH === 'true')) {
+    const isStrictEnv = process.env.NODE_ENV === 'production' || process.env.REQUIRE_AUTH === 'true';
+
+    if (hasConfiguredPin && isStrictEnv) {
       const isAdmin = await isVerifiedAdminRequest(req);
       if (!isAdmin) {
         return res.status(403).json({ error: "当前已设置家长 PIN 码，修改密码需先通过原密码验证。" });
+      }
+    } else if (!hasConfiguredPin && isStrictEnv) {
+      // 安全加固：生产环境首次初始化管理员 PIN 必须提供 ADMIN_SETUP_SECRET 或已通过主令牌认证，防止公网匿名抢注接管全站
+      const setupSecretCandidate = req.headers['x-setup-secret'] || req.body?.setup_secret || '';
+      const isAuthorizedBootstrap = isSetupSecretValid(setupSecretCandidate) || await isVerifiedAdminRequest(req);
+      if (!isAuthorizedBootstrap) {
+        return res.status(403).json({ error: "生产环境首次设置管理员 PIN 必须提供有效的初始化密钥 (x-setup-secret) 或主管理员访问令牌。" });
       }
     }
 
@@ -769,9 +843,11 @@ const getPinStatusHandler = async (req, res) => {
       if (parts.length >= 2) questionId = parts[0];
     }
 
+    const isStrictEnv = process.env.NODE_ENV === 'production' || process.env.REQUIRE_AUTH === 'true';
     res.json({
       has_pin: hasValidPin,
       needs_setup: Boolean(needsSetupRow || !hasValidPin),
+      requires_setup_secret: Boolean(isStrictEnv && !hasValidPin),
       has_security_question: Boolean(answerRow && answerRow.value),
       question_id: questionId
     });
@@ -839,6 +915,9 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
 
     const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
     if (!savedPinRow || !savedPinRow.value || isWeakPinHash(savedPinRow.value)) {
+      if (process.env.NODE_ENV === 'production' || process.env.REQUIRE_AUTH === 'true') {
+        return res.status(403).json({ valid: false, unconfigured: true, error: "系统尚未完成家长 PIN 安全初始化，请联系管理员配置。" });
+      }
       return res.json({ valid: true, unconfigured: true });
     }
 
@@ -976,13 +1055,10 @@ router.get('/admin/stats', async (req, res) => {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
 
-    // Verify Parental Gate PIN hash on server side if configured
-    const savedPinHashRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
-    if (savedPinHashRow && savedPinHashRow.value) {
-      const clientPinHash = req.headers['x-parent-pin-hash'];
-      if (!clientPinHash || clientPinHash !== savedPinHashRow.value) {
-        return res.status(403).json({ error: "拒绝访问：家长验证已失效或不匹配，请重新验证。" });
-      }
+    // Verify Admin / Parent Gate authorization uniformly
+    const isAdmin = await isVerifiedAdminRequest(req);
+    if (!isAdmin && (process.env.NODE_ENV === 'production' || process.env.REQUIRE_AUTH === 'true')) {
+      return res.status(403).json({ error: "拒绝访问：家长或管理员验证已失效或不匹配，请重新验证。" });
     }
 
     // 1. Get total active profiles count (excluding 'default')

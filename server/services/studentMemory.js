@@ -132,7 +132,7 @@ async function getStudentCognitiveMemory(profileId = 'default', grade = '', subj
  */
 function formatStudentMemoryForPrompt(mem) {
   if (!mem || !mem.hasHistory) {
-    const sName = mem?.studentName || '曾练';
+    const sName = mem?.studentName || '同学';
     return `【学生专属心智画像】：当前学生为【${sName}】。处于初次学习或基础起步阶段。请直接称呼学生为“${sName}”，以极大热情与鼓励建立师生信任，仔细观察其审题与草稿演算习惯。`;
   }
 

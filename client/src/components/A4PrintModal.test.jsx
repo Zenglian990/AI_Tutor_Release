@@ -14,14 +14,45 @@ describe('A4PrintModal Component', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders default questions in blank_student mode without throwing', () => {
+  const sampleQuestions = [
+    {
+      id: 1,
+      title: '一元一次方程与几何辅助线综合演练',
+      body: '解方程：$3(x - 2) = 2x + 5$，并求满足条件的整数解。',
+      score: 15,
+      standardAnswer: '【解】去括号得 $3x - 6 = 2x + 5$，移项合并得 $x = 11$。',
+      keyInsight: '去括号注意分配律符号，移项必须变号。',
+      mistakeReason: '容易忘记给常数项乘系数或移项漏变号。',
+      variantQuestion: '【变式】解方程：$4(x - 1) = 3x + 7$。',
+      status: 'wrong'
+    }
+  ];
+
+  it('shows empty guidance state instead of fake 7th-grade questions when questions list is empty', () => {
+    const { getByText, queryByText } = render(
+      <A4PrintModal
+        isOpen={true}
+        onClose={() => {}}
+        studentName="高三小明"
+        grade="12_up"
+        subject="数学"
+        questions={[]}
+        initialMode="blank_student"
+      />
+    );
+    expect(getByText(/暂无待打印错题/i)).toBeDefined();
+    expect(queryByText(/一元一次方程与几何辅助线综合演练/i)).toBeNull();
+  });
+
+  it('renders provided questions in blank_student mode without throwing', () => {
     const { getByText } = render(
       <A4PrintModal
         isOpen={true}
         onClose={() => {}}
-        studentName="曾练"
+        studentName="同学"
         grade="八年级"
         subject="数学"
+        questions={sampleQuestions}
         initialMode="blank_student"
       />
     );
@@ -29,14 +60,15 @@ describe('A4PrintModal Component', () => {
     expect(getByText(/一元一次方程与几何辅助线综合演练/i)).toBeDefined();
   });
 
-  it('renders default questions in with_answers mode without throwing', () => {
+  it('renders provided questions in with_answers mode without throwing', () => {
     const { getAllByText } = render(
       <A4PrintModal
         isOpen={true}
         onClose={() => {}}
-        studentName="曾练"
+        studentName="同学"
         grade="八年级"
         subject="数学"
+        questions={sampleQuestions}
         initialMode="with_answers"
       />
     );
@@ -44,14 +76,15 @@ describe('A4PrintModal Component', () => {
     expect(elements.length).toBeGreaterThan(0);
   });
 
-  it('renders default questions in hengshui_dual_column mode without throwing', () => {
+  it('renders provided questions in hengshui_dual_column mode without throwing', () => {
     const { getAllByText } = render(
       <A4PrintModal
         isOpen={true}
         onClose={() => {}}
-        studentName="曾练"
+        studentName="同学"
         grade="八年级"
         subject="数学"
+        questions={sampleQuestions}
         initialMode="hengshui_dual_column"
       />
     );

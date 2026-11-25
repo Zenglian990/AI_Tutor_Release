@@ -22,13 +22,38 @@ const logger = require('./logger');
  */
 function computeQuestionFingerprint(text) {
   if (typeof text !== 'string') return '';
-  let cleaned = text
-    .replace(/^[【\[\(（]?\s*(?:第?\s*\d+\s*[题、.)）\]]|选择题|填空题|解答题|综合题)\s*[】\]\)]?\s*/i, '') // 去除前置题型题号
-    .replace(/[（\(][\s\S]*?[）\)]/g, '') // 去除空括号或括号内容
-    .replace(/[，。！？；：“”‘’、\s,.!?;:'"\\\/]/gu, '') // 去除所有空白和标点
+  let cleaned = text.trim();
+  // 循环剥离连续前导题号/题型标注如 "【第3题】(选择题)"，绝不破坏题干中括号内的数学表达式
+  const prefixRe = /^[【\[\(（]?\s*(?:第?\s*\d+\s*[题、.)）\]]|选择题|填空题|解答题|综合题|单选题|多选题|计算题)\s*[】\]\)）]?\s*/i;
+  while (prefixRe.test(cleaned)) {
+    cleaned = cleaned.replace(prefixRe, '');
+  }
+  cleaned = cleaned
+    .replace(/[（\(]\s*[）\)]/g, '') // 仅去除空括号，严禁删除含数学表达式或坐标的非空括号
+    .replace(/[（\(]\s*\d+\s*分\s*[）\)]/g, '') // 去除分值标注如 (5分)
+    .replace(/[，。！？；：“”‘’、\s,.!?;:'"\\\/]/gu, '') // 去除空白和普通标点（保留括号与数学运算符）
     .toLowerCase();
 
   return crypto.createHash('sha256').update(cleaned).digest('hex');
+}
+
+function extractNumericTokens(text) {
+  return Array.from(new Set(String(text || '').match(/-?\d+(?:\.\d+)?/g) || []));
+}
+
+function computeBigramSimilarity(a, b) {
+  const cleanA = String(a || '').replace(/\s+/g, '').toLowerCase();
+  const cleanB = String(b || '').replace(/\s+/g, '').toLowerCase();
+  if (!cleanA || !cleanB) return 0;
+  if (cleanA === cleanB) return 1;
+  if (cleanA.length < 2 || cleanB.length < 2) return 0;
+  const setA = new Set();
+  for (let i = 0; i < cleanA.length - 1; i++) setA.add(cleanA.slice(i, i + 2));
+  const setB = new Set();
+  for (let i = 0; i < cleanB.length - 1; i++) setB.add(cleanB.slice(i, i + 2));
+  let inter = 0;
+  for (const bg of setA) if (setB.has(bg)) inter++;
+  return (2 * inter) / (setA.size + setB.size);
 }
 
 /**
@@ -473,6 +498,50 @@ async function seedCanonicalQuestionsIfEmpty(db) {
         );
         if (res && res.changes > 0) newlyInserted++;
       }
+
+      // 同步导入仓库自带的 2010-2022 高考数学真题 (gaokao_math_mcq.json)，补齐 10-12 年级高中权威题库
+      const gaokaoPath = path.join(__dirname, '..', '..', 'data', 'gaokao_math_mcq.json');
+      if (fs.existsSync(gaokaoPath)) {
+        try {
+          const gkRaw = JSON.parse(fs.readFileSync(gaokaoPath, 'utf8'));
+          const gkList = Array.isArray(gkRaw?.example) ? gkRaw.example : [];
+          if (gkList.length > 0) {
+            const existingGk = await db.get("SELECT COUNT(*) as cnt FROM canonical_questions WHERE grade = '12_up' AND chapter = '高考数学真题'");
+            if (!existingGk || existingGk.cnt < Math.min(gkList.length, 50)) {
+              for (const item of gkList) {
+                const rawQ = String(item.question || '').trim();
+                if (!rawQ) continue;
+                const optStart = rawQ.search(/\nA[\.\s、]/);
+                const stem = optStart > 0 ? rawQ.slice(0, optStart).trim() : rawQ;
+                const optsStr = optStart > 0 ? rawQ.slice(optStart).trim() : '';
+                const ans = Array.isArray(item.answer) ? item.answer.join(',') : String(item.answer || '');
+                const fp = computeQuestionFingerprint(stem);
+                if (!fp) continue;
+                const ins = await db.run(
+                  `INSERT OR IGNORE INTO canonical_questions
+                   (question, options, standard_answer, analysis, key_insight, grade, subject, chapter, source, fingerprint)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                  [
+                    stem,
+                    optsStr,
+                    ans,
+                    String(item.analysis || '').trim(),
+                    `${item.year || ''}年高考数学真题 ${item.category || ''}`.trim(),
+                    '12_up',
+                    '数学',
+                    '高考数学真题',
+                    `${item.year || ''}年高考全国卷${item.category || ''}`,
+                    fp
+                  ]
+                );
+                if (ins && ins.changes > 0) newlyInserted++;
+              }
+            }
+          }
+        } catch (gkErr) {
+          logger.warn('[CanonicalQuestions] Gaokao math import warning:', gkErr.message);
+        }
+      }
     }, 30000);
     const finalRow = await db.get('SELECT COUNT(*) as cnt FROM canonical_questions');
     logger.info(`[CanonicalQuestions] Grounding bank synchronized. Total canonical questions: ${finalRow ? finalRow.cnt : 0} (newly added: ${newlyInserted}).`);
@@ -484,7 +553,7 @@ async function seedCanonicalQuestionsIfEmpty(db) {
 /**
  * 毫秒级检索权威真题
  * 1. 指纹哈希精确检索 (< 1ms)
- * 2. 数学实体模糊近邻检索
+ * 2. 严格绑定学科 + 核心数值集合校验 + 高相似度门槛的安全近邻检索（严防张冠李戴错判）
  */
 async function lookupCanonicalQuestion(querySnippet, grade, subject, db) {
   if (!db || typeof querySnippet !== 'string' || !querySnippet.trim()) {
@@ -509,26 +578,47 @@ async function lookupCanonicalQuestion(querySnippet, grade, subject, db) {
       }
     }
 
-    // 2. 实体关键词模糊检索 (提取数学实体如：4个、边长3、正方形、长方形、周长等)
+    // 2. 严格绑定学科的实体关键词候选检索 + 数值集合与相似度双重门槛
     const terms = querySnippet.match(/(\d+\s*个|\d+\s*(?:只|头|脚|米|厘米|cm)|边长\s*\d+|正方形|长方形|周长|面积|鸡兔同笼|栽树|方程|勾股定理|剪去|剩下)/g) || [];
     if (terms.length >= 2) {
       const topTerms = terms.slice(0, 3);
       let sql = 'SELECT * FROM canonical_questions WHERE 1=1';
       const params = [];
+      if (subject && subject !== 'unknown') {
+        sql += ' AND subject = ?';
+        params.push(subject);
+      }
       for (const t of topTerms) {
         const cleanT = t.replace(/\s+/g, '');
         sql += ' AND question LIKE ?';
         params.push(`%${cleanT}%`);
       }
-      sql += ' LIMIT 1';
+      sql += ' LIMIT 10';
 
-      const fuzzyMatch = await db.get(sql, params);
-      if (fuzzyMatch) {
-        logger.info(`[CanonicalQuestions] Fuzzy term match hit for ID: ${fuzzyMatch.id} (${topTerms.join(',')})`);
+      const candidates = await db.all(sql, params);
+      const queryNums = extractNumericTokens(querySnippet);
+
+      let bestMatch = null;
+      let bestScore = 0;
+      for (const cand of candidates) {
+        const candNums = extractNumericTokens(cand.question);
+        // 若题目含核心数字，必须要求原题所有数字在候选真题中完全出现，杜绝不同数值的同类题张冠李戴
+        const numsMatch = queryNums.length === 0 || queryNums.every(n => candNums.includes(n));
+        if (!numsMatch) continue;
+        const sim = computeBigramSimilarity(querySnippet, cand.question);
+        if (sim >= 0.45 && sim > bestScore) {
+          bestScore = sim;
+          bestMatch = cand;
+        }
+      }
+
+      if (bestMatch) {
+        logger.info(`[CanonicalQuestions] Verified fuzzy match hit for ID: ${bestMatch.id} (sim=${bestScore.toFixed(2)})`);
         return {
           matched: true,
           matchType: 'fuzzy_keyword',
-          canonical: fuzzyMatch
+          similarity: bestScore,
+          canonical: bestMatch
         };
       }
     }

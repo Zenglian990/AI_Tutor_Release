@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { useAppStore } from '../store/useStore';
 import DOMPurify from 'dompurify';
 import { initMermaid, sanitizeMermaid, stringHash } from '../utils/mermaid_helper';
@@ -69,7 +72,7 @@ function MermaidRenderer({ chart }) {
 
 export default function KnowledgeTest({ onClose, currentProfileId, currentGrade, selectedSubject, currentEdition, authFetch }) {
   const { language, profiles } = useAppStore();
-  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '曾练', grade: '7_up', edition: '人教版' };
+  const currentProfile = profiles?.find(p => p.id === currentProfileId) || profiles?.[0] || { id: 'default', name: '同学', grade: '7_up', edition: '人教版' };
   
   const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
   const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
@@ -225,19 +228,51 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     return maps[grade] || '通用年级';
   };
 
-  // 渲染题目中的文本和内嵌的 Mermaid 图表
+  // 自动修复题库导入时因 JSON 单反斜杠转义受损的 LaTeX 控制字符（如 \b->\bar, \f->\frac, \t->\text/\theta）
+  const sanitizeBrokenLatex = (raw) => String(raw || '')
+    .replace(/\x08(?=[a-zA-Z])/g, '\\b')
+    .replace(/\x0c(?=[a-zA-Z])/g, '\\f')
+    .replace(/\x09(?=(?:text|tan|times|theta|triangle|to|tau|top)\b)/g, '\\t')
+    .replace(/\r(?=(?:right|rho|rightarrow|rangle|rfloor|rceil)\b)/g, '\\r');
+
+  // 渲染题目中的 Markdown + LaTeX 数学公式与内嵌 Mermaid 图表（防止裸露 $...$ 源码与移动端撑宽）
+  const renderMathSegment = (segment, key) => (
+    <div
+      key={key}
+      className="test-math-block"
+      style={{
+        lineHeight: '1.75',
+        overflowX: 'auto',
+        maxWidth: '100%',
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word'
+      }}
+    >
+      <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
+        components={{
+          p: ({ children }) => <p style={{ margin: '4px 0', lineHeight: '1.75' }}>{children}</p>
+        }}
+      >
+        {sanitizeBrokenLatex(segment)}
+      </ReactMarkdown>
+    </div>
+  );
+
   const renderQuestionText = (text) => {
     if (!text) return null;
-    const parts = text.split(/```mermaid([\s\S]*?)```/g);
-    if (parts.length === 1) return <span style={{ whiteSpace: 'pre-wrap', display: 'block', lineHeight: '1.8' }}>{text}</span>;
+    const str = String(text);
+    const parts = str.split(/```mermaid([\s\S]*?)```/g);
+    if (parts.length === 1) return renderMathSegment(str, 'single');
 
     return (
-      <div>
+      <div style={{ maxWidth: '100%', minWidth: 0 }}>
         {parts.map((part, index) => {
           if (index % 2 === 1) {
             return <MermaidRenderer key={index} chart={part.trim()} />;
           }
-          return <span key={index} style={{ whiteSpace: 'pre-wrap', display: 'block', lineHeight: '1.8', margin: '10px 0' }}>{part}</span>;
+          return part.trim() ? renderMathSegment(part, index) : null;
         })}
       </div>
     );
@@ -321,13 +356,16 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     }
   }, [stage]);
 
-  // 开始生成试卷
+  // 开始生成试卷（带 AbortController 超时保护 + 传递 region）
   const handleGenerate = async () => {
     setStage('generating');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
     try {
       const res = await authFetch('/api/test-paper/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           grade: currentGrade,
           subject: selectedSubject,
@@ -335,12 +373,13 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
           chapter_id: testType === 'unit' ? selectedChapterId : undefined,
           edition: currentEdition,
           knowledge_points: testType === 'custom' ? customKnowledgePoints : undefined,
-          region: testType === 'real_exam' ? selectedRegion : undefined
+          region: (testType === 'real_exam' || testType === 'gaokao_hit') ? selectedRegion : undefined
         })
       });
+      clearTimeout(timer);
 
       if (!res.ok) {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || '出卷失败');
       }
 
@@ -350,7 +389,6 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       }
 
       setPaper(data.paper);
-      // 初始化答案状态
       const initialAnswers = {};
       data.paper.questions.forEach(q => {
         initialAnswers[q.id] = '';
@@ -358,16 +396,24 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       setAnswers(initialAnswers);
       setStage('testing');
     } catch (e) {
-      alert(`❌ 出卷失败：${e.message}。请重试。`);
+      clearTimeout(timer);
+      const msg = e.name === 'AbortError' ? '组卷请求超时，请重试' : e.message;
+      alert(`❌ 出卷失败：${msg}。请重试。`);
       setStage('setup');
     }
   };
 
-  // 交卷批改
+  // 交卷批改（严格防御误传 React SyntheticEvent 导致 Converting circular structure to JSON 崩溃）
   const handleSubmitTest = async (customAnswers) => {
-    const activeAnswers = customAnswers || answers;
-    if (!customAnswers) {
-      const uncompleted = paper.questions.filter(q => !activeAnswers[q.id]?.trim());
+    const isValidAnswersMap =
+      customAnswers &&
+      typeof customAnswers === 'object' &&
+      !Array.isArray(customAnswers) &&
+      !('nativeEvent' in customAnswers) &&
+      !('currentTarget' in customAnswers);
+    const activeAnswers = isValidAnswersMap ? customAnswers : answers;
+    if (!isValidAnswersMap) {
+      const uncompleted = (paper?.questions || []).filter(q => !String(activeAnswers[q.id] || '').trim());
       if (uncompleted.length > 0) {
         if (!window.confirm(`你还有 ${uncompleted.length} 道题目尚未作答，确定要提前交卷吗？`)) {
           return;
@@ -375,21 +421,32 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       }
     }
 
+    // 清洗出纯字符串答案映射，100% 杜绝循环引用对象
+    const sanitizedAnswers = {};
+    for (const q of (paper?.questions || [])) {
+      const val = activeAnswers?.[q.id];
+      sanitizedAnswers[q.id] = typeof val === 'string' || typeof val === 'number' ? String(val) : '';
+    }
+
     setStage('grading');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 110000);
     try {
       const res = await authFetch('/api/test-paper/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
-          student_name: currentProfile?.name || '曾练',
-          answers: activeAnswers,
+          student_name: currentProfile?.name || '同学',
+          answers: sanitizedAnswers,
           questions: paper.questions,
           grade: currentGrade
         })
       });
+      clearTimeout(timer);
 
       if (!res.ok) {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || '批改失败');
       }
 
@@ -397,7 +454,9 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       setReport(data);
       setStage('report');
     } catch (e) {
-      alert(`❌ 批改失败：${e.message}。请重试。`);
+      clearTimeout(timer);
+      const msg = e.name === 'AbortError' ? '批改超时，请重试' : e.message;
+      alert(`❌ 批改失败：${msg}。请重试。`);
       setStage('testing');
     }
   };
@@ -472,52 +531,50 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   const questionBlocks = getQuestionBlocks();
 
 
+  const paperActualTotal = paper?.totalScore || (paper?.questions ? paper.questions.reduce((s, q) => s + (Number(q.score) || 0), 0) : null);
+
   return (
-    <div className="mistake-overlay" style={{ zIndex: 1000 }}>
-      <div className="mistake-modal" style={{
-        width: '95%',
-        maxWidth: '850px',
-        maxHeight: '90vh',
-        background: 'var(--card-bg, #111827)',
-        color: 'var(--text-primary, #f9fafb)',
-        padding: '24px',
-        borderRadius: '24px',
-        border: '1px solid var(--glass-border, rgba(255, 255, 255, 0.08))',
+    <div className="mistake-overlay" style={{ zIndex: 1000, padding: '8px', boxSizing: 'border-box' }}>
+      <div className="mistake-modal knowledge-test-modal" style={{
+        width: '100%',
+        maxWidth: 'min(850px, calc(100vw - 16px))',
+        maxHeight: '92vh',
+        background: '#111827',
+        color: '#f9fafb',
+        padding: 'clamp(12px, 3vw, 24px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        boxSizing: 'border-box',
         backdropFilter: 'blur(20px)'
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '24px' }}>📝</span>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold', color: '#fbbf24' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: '22px', flexShrink: 0 }}>📝</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h2 style={{ margin: 0, fontSize: 'clamp(1rem, 3.5vw, 1.25rem)', fontWeight: 'bold', color: '#fbbf24', overflowWrap: 'anywhere', lineHeight: 1.35 }}>
                 {stage === 'testing' ? paper?.title : '真题测试中心'}
               </h2>
               {(() => {
                 const rawGrade = currentGrade ? String(currentGrade).split('_')[0] : '';
                 const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawGrade);
                 const isHighSchool = ['10', '11', '12'].includes(rawGrade);
-                let scoreText = '考试时间：120分钟  满分：150分';
-                if (isElementary) {
-                  scoreText = '考试时间：90分钟  满分：100分';
-                } else if (isHighSchool) {
-                  scoreText = ['语文', '数学', '英语'].includes(selectedSubject) 
-                    ? '考试时间：120分钟  满分：150分'
-                    : '考试时间：75-90分钟  满分：100分';
-                }
+                const actualMax = paperActualTotal || (isElementary ? 100 : (isHighSchool && !['语文', '数学', '英语'].includes(selectedSubject) ? 100 : 150));
+                const dur = paper?.duration || (isElementary ? 60 : (isHighSchool ? 120 : 90));
+                const scoreText = `考试时间：${dur}分钟 · 满分：${actualMax}分`;
                 return (
-                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#9ca3af', overflowWrap: 'anywhere' }}>
                     {getGradeName(currentGrade)} · {selectedSubject} （{scoreText}）
                   </p>
                 );
               })()}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {(stage === 'testing' || stage === 'report') && (
               <button
                 onClick={() => window.print()}
@@ -786,19 +843,21 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
               background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(59, 130, 246, 0.15))',
               border: '1px solid rgba(245, 158, 11, 0.3)',
               borderRadius: '14px',
-              padding: '12px 16px',
+              padding: '12px 14px',
               marginBottom: '14px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
             }}>
-              <div>
+              <div style={{ minWidth: 0, flex: '1 1 180px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  🏛️ 中考/名校全真沉浸考场已就绪
+                  {isHighSchool ? '🎯 新高考全真沉浸考场已就绪' : (isElementary ? '🏫 小学全真沉浸考场已就绪' : '🏛️ 中考/名校全真沉浸考场已就绪')}
                 </div>
                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
-                  支持全屏防作弊、规范倒计时提醒、浮动交互答题卡与演算草稿纸
+                  支持全屏防干扰、规范倒计时提醒、浮动交互答题卡与演算草稿纸
                 </div>
               </div>
               <button
@@ -813,19 +872,21 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}
               >
                 🚀 进入全真考场
               </button>
             </div>
 
-            <div className="test-content-inner" style={{ flex: 1, overflowY: 'auto', paddingRight: '6px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="test-content-inner" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
 
               {questionBlocks.map((block, bIdx) => {
                 const getBlockTitle = (type) => {
                   switch(type) {
                     case 'choice': return '选择题';
+                    case 'multi_choice': return '多项选择题';
                     case 'judgment': return '判断题';
                     case 'blank': return '填空题';
                     case 'essay': return '解答/作图/应用题';
@@ -834,50 +895,65 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                 };
                 
                 return (
-                  <div key={block.id}>
-                    <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fbbf24', borderLeft: '4px solid #3b82f6', paddingLeft: '8px' }}>
-                      {getBlockTitle(block.type)}（共 {block.questions.length} 题，每小题 {block.questions[0]?.score} 分，共 {block.score} 分）
+                  <div key={block.id} style={{ minWidth: 0 }}>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#fbbf24', borderLeft: '4px solid #3b82f6', paddingLeft: '8px', overflowWrap: 'anywhere' }}>
+                      {getBlockTitle(block.type)}（共 {block.questions.length} 题，共 {block.score} 分）
                     </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {block.questions.map((q) => (
-                        <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+                      {block.questions.map((q) => {
+                        const isMulti = q.type === 'multi_choice' || (q.answer && /^[A-D]{2,}$/i.test(String(q.answer).trim()));
+                        return (
+                        <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px' }}>
                             <span style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 'bold' }}>
-                              题 {q.id}.
+                              题 {q.id}.{isMulti ? '（多选）' : ''}
                             </span>
-                            <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
                               {q.score} 分
                             </span>
                           </div>
-                          <div style={{ fontSize: '13px', color: '#f3f4f6', lineHeight: '1.6', marginBottom: '12px' }}>
+                          <div style={{ fontSize: '13px', color: '#f3f4f6', lineHeight: '1.6', marginBottom: '12px', minWidth: 0 }}>
                             {renderQuestionText(q.question)}
                           </div>
                           
-                          {block.type === 'choice' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                          {(block.type === 'choice' || block.type === 'multi_choice') && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', minWidth: 0 }}>
                               {q.options && q.options.map(opt => {
                                 const optLetter = opt.trim().charAt(0).toUpperCase();
-                                const isSelected = answers[q.id] === optLetter;
+                                const currentVal = String(answers[q.id] || '').toUpperCase();
+                                const isSelected = isMulti ? currentVal.includes(optLetter) : currentVal === optLetter;
+                                const handlePick = () => {
+                                  setAnswers(prev => {
+                                    if (!isMulti) return { ...prev, [q.id]: optLetter };
+                                    const cur = new Set(String(prev[q.id] || '').toUpperCase().match(/[A-D]/g) || []);
+                                    if (cur.has(optLetter)) cur.delete(optLetter);
+                                    else cur.add(optLetter);
+                                    return { ...prev, [q.id]: Array.from(cur).sort().join('') };
+                                  });
+                                };
                                 return (
                                   <button
                                     key={opt}
-                                    onClick={() => setAnswers(prev => ({ ...prev, [q.id]: optLetter }))}
+                                    type="button"
+                                    onClick={handlePick}
                                     aria-label={`选择 ${optLetter}`}
                                     aria-pressed={isSelected}
                                     style={{
                                       textAlign: 'left',
-                                      padding: '10px 14px',
+                                      padding: '10px 12px',
                                       borderRadius: '8px',
                                       border: '1px solid',
-                                      borderColor: isSelected ? '#3b82f6' : 'rgba(255,255,255,0.06)',
-                                      background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.01)',
-                                      color: isSelected ? '#60a5fa' : '#d1d5db',
+                                      borderColor: isSelected ? '#3b82f6' : 'rgba(255,255,255,0.1)',
+                                      background: isSelected ? 'rgba(59, 130, 246, 0.16)' : 'rgba(255,255,255,0.02)',
+                                      color: isSelected ? '#93c5fd' : '#e5e7eb',
                                       cursor: 'pointer',
                                       fontSize: '13px',
-                                      transition: 'all 0.15s'
+                                      transition: 'all 0.15s',
+                                      maxWidth: '100%',
+                                      overflowX: 'auto'
                                     }}
                                   >
-                                    {opt}
+                                    {renderQuestionText(opt)}
                                   </button>
                                 );
                               })}
@@ -956,7 +1032,8 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                             />
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -964,7 +1041,8 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
             </div>
 
             <button
-              onClick={handleSubmitTest}
+              type="button"
+              onClick={() => handleSubmitTest()}
               aria-label="提交测试卷"
               className="no-print"
               style={{
@@ -1032,9 +1110,11 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                   </span>
                   <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>分</span>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#f3f4f6' }}>{currentProfile?.name || '曾练'} 的 {isElementary ? '100分制' : '150分制'} 测评报告</h3>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#f3f4f6' }}>
+                      {currentProfile?.name || '同学'} 的 {report.totalMaxScore || paperActualTotal || (isElementary ? 100 : 150)}分制 测评报告
+                    </h3>
                     <span style={{ background: getScoreRating(report.score).color, color: 'white', fontSize: '10px', padding: '1px 6px', borderRadius: '6px', fontWeight: 'bold' }}>
                       {getScoreRating(report.score).label}
                     </span>
@@ -1117,7 +1197,9 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                         </div>
                         <div>
                           <span style={{ color: '#9ca3af' }}>标准解答：</span>
-                          <span style={{ color: '#10b981', fontWeight: 'bold', whiteSpace: 'pre-wrap' }}>{r.standardAnswer}</span>
+                          <div style={{ color: '#10b981', fontWeight: 'bold', marginTop: '4px' }}>
+                            {renderQuestionText(r.standardAnswer)}
+                          </div>
                         </div>
                       </div>
 
@@ -1126,7 +1208,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                         💬 <b>阅卷简评：</b>{r.comment}
                       </div>
 
-                      {/* 中考级步骤采分点细拆 (Step Breakdown) */}
+                      {/* 步骤采分点细拆 (兼容对象与字符串两种格式，按学段自适应标题) */}
                       {r.step_breakdown && (
                         <div style={{
                           margin: '8px 0',
@@ -1137,36 +1219,31 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                           fontSize: '12px'
                         }}>
                           <div style={{ fontWeight: 'bold', color: '#fbbf24', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            ⚖️ 中考级步骤采分诊断明细（步步把关）：
+                            ⚖️ {isHighSchool ? '新高考级步骤采分诊断明细（步步把关）：' : (isElementary ? '小学规范步骤诊断明细：' : '中考级步骤采分诊断明细（步步把关）：')}
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
-                            {r.step_breakdown.concept && (
-                              <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#60a5fa', fontWeight: 'bold', marginBottom: '2px' }}>
-                                  <span>📌 概念公式与立意</span>
-                                  <span>{r.step_breakdown.concept.score}/{r.step_breakdown.concept.maxScore}分</span>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
+                            {[
+                              { key: 'concept', label: '📌 概念公式与立意', color: '#60a5fa' },
+                              { key: 'deduction', label: '⚙️ 逻辑推理推导', color: '#a78bfa' },
+                              { key: 'conclusion', label: '🎯 结果结论与表达', color: '#34d399' }
+                            ].map(({ key, label, color }) => {
+                              const item = r.step_breakdown[key];
+                              if (!item) return null;
+                              const isObj = typeof item === 'object';
+                              const scoreText = isObj && typeof item.score === 'number' && typeof item.maxScore === 'number'
+                                ? `${item.score}/${item.maxScore}分`
+                                : '';
+                              const commentText = isObj ? (item.comment || '') : String(item);
+                              return (
+                                <div key={key} style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', color, fontWeight: 'bold', marginBottom: '2px' }}>
+                                    <span>{label}</span>
+                                    {scoreText && <span>{scoreText}</span>}
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{commentText}</div>
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{r.step_breakdown.concept.comment}</div>
-                              </div>
-                            )}
-                            {r.step_breakdown.deduction && (
-                              <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a78bfa', fontWeight: 'bold', marginBottom: '2px' }}>
-                                  <span>⚙️ 逻辑推理推导</span>
-                                  <span>{r.step_breakdown.deduction.score}/{r.step_breakdown.deduction.maxScore}分</span>
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{r.step_breakdown.deduction.comment}</div>
-                              </div>
-                            )}
-                            {r.step_breakdown.conclusion && (
-                              <div style={{ background: 'rgba(0,0,0,0.25)', padding: '8px', borderRadius: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34d399', fontWeight: 'bold', marginBottom: '2px' }}>
-                                  <span>🎯 结果结论与表达</span>
-                                  <span>{r.step_breakdown.conclusion.score}/{r.step_breakdown.conclusion.maxScore}分</span>
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{r.step_breakdown.conclusion.comment}</div>
-                              </div>
-                            )}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1233,10 +1310,14 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         />
       )}
 
-      {/* 考场内嵌演练草稿纸 */}
+      {/* 考场内嵌演练草稿纸（传入安全 onSendToTutor 防止未定义回调触发 TypeError 崩溃） */}
       <ScratchpadModal
         isOpen={showExamScratchpad}
         onClose={() => setShowExamScratchpad(false)}
+        onSendToTutor={() => {
+          alert('✅ 草稿演算已保存！考场模式请先在答卷框录入答案，交卷后可在错题本中请名师批改草稿。');
+          setShowExamScratchpad(false);
+        }}
       />
     </div>
   );

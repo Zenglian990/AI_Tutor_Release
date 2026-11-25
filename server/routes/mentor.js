@@ -5,19 +5,24 @@ const { decryptField } = require('../utils/crypto');
 const { getStudentCognitiveMemory } = require('../services/studentMemory');
 const { diagnosePrerequisiteKnowledge } = require('../services/knowledgeGraph');
 const { formatGradeName } = require('../prompts/guidelines');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
+const { NODE_ENV } = require('../config');
 const logger = require('../services/logger');
 
 /**
  * GET /api/mentor/daily-briefing
- * Computes an active daily briefing for the student
+ * Computes an active daily briefing for the student (strictly scoped by grade + subject to prevent cross-grade pollution)
  */
 router.get('/mentor/daily-briefing', async (req, res) => {
   try {
     const { profile_id = 'default', grade = '7_up', subject = '数学', student_name = '' } = req.query;
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
     const db = getSqliteDb();
 
-    const memory = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
-    const resolvedName = memory.studentName || '曾练';
+    const memory = await getStudentCognitiveMemory(targetPid, grade, subject, student_name || '同学');
+    const resolvedName = (student_name && student_name.trim()) || memory.studentName || '同学';
 
     let dueMistakes = [];
     let totalMistakeCount = 0;
@@ -25,14 +30,20 @@ router.get('/mentor/daily-briefing', async (req, res) => {
     if (db) {
       try {
         let dueSql = `
-          SELECT id, query, reason, tags, easiness_factor, review_count, next_review_date
+          SELECT id, query, reason, tags, grade, easiness_factor, review_count, next_review_date
           FROM mistakes
           WHERE profile_id = ?
         `;
-        const params = [profile_id];
+        const params = [targetPid];
         if (subject) {
           dueSql += ` AND (subject = ? OR subject IS NULL)`;
           params.push(subject);
+        }
+        // 修复跨年级错题污染：严格按当前年级过滤待复盘任务，杜绝把初一几何题推送给一年级小学生或高一高中生
+        if (grade && grade !== 'unknown') {
+          const gradePrefix = String(grade).split('_')[0];
+          dueSql += ` AND (grade = ? OR grade LIKE ?)`;
+          params.push(grade, `${gradePrefix}_%`);
         }
         dueSql += ` ORDER BY 
           CASE WHEN next_review_date <= datetime('now') THEN 0 ELSE 1 END,
@@ -48,10 +59,18 @@ router.get('/mentor/daily-briefing', async (req, res) => {
           tags: decryptField(m.tags || '')
         }));
 
-        const countRow = await db.get(
-          `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? ${subject ? 'AND (subject = ? OR subject IS NULL)' : ''}`,
-          subject ? [profile_id, subject] : [profile_id]
-        );
+        let countSql = `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ?`;
+        const countParams = [targetPid];
+        if (subject) {
+          countSql += ` AND (subject = ? OR subject IS NULL)`;
+          countParams.push(subject);
+        }
+        if (grade && grade !== 'unknown') {
+          const gradePrefix = String(grade).split('_')[0];
+          countSql += ` AND (grade = ? OR grade LIKE ?)`;
+          countParams.push(grade, `${gradePrefix}_%`);
+        }
+        const countRow = await db.get(countSql, countParams);
         totalMistakeCount = countRow ? countRow.count : 0;
       } catch (dbErr) {
         logger.warn('[MentorBriefing] Failed querying due mistakes:', dbErr.message);
@@ -107,7 +126,7 @@ router.get('/mentor/daily-briefing', async (req, res) => {
     });
   } catch (err) {
     logger.error('[MentorBriefing] Error generating briefing:', err);
-    res.status(500).json({ error: '无法生成今日名师备课简报', details: err.message });
+    res.status(500).json({ error: '无法生成今日名师备课简报', details: NODE_ENV === 'development' ? err.message : undefined });
   }
 });
 
@@ -117,7 +136,7 @@ router.get('/mentor/daily-briefing', async (req, res) => {
  */
 router.post('/mentor/hint', async (req, res) => {
   try {
-    const { problemText, currentStepText = '', subject = '数学', student_name = '曾练' } = req.body;
+    const { problemText, currentStepText = '', subject = '数学', student_name = '同学' } = req.body;
     if (!problemText) {
       return res.status(400).json({ error: 'problemText is required' });
     }
@@ -136,7 +155,7 @@ router.post('/mentor/hint', async (req, res) => {
     });
   } catch (err) {
     logger.error('[MentorHint] Error providing hint:', err);
-    res.status(500).json({ error: '无法生成提示', details: err.message });
+    res.status(500).json({ error: '无法生成提示', details: NODE_ENV === 'development' ? err.message : undefined });
   }
 });
 

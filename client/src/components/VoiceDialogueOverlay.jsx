@@ -14,7 +14,7 @@ import React, { useEffect, useState, useRef } from 'react';
 export default function VoiceDialogueOverlay({
   isOpen,
   mode, // 'speaking' | 'listening' | 'processing'
-  studentName = '曾练',
+  studentName = '同学',
   currentQuestionText = '',
   liveSpokenText = '',
   countdownSeconds = 8,
@@ -31,6 +31,8 @@ export default function VoiceDialogueOverlay({
   const micStreamRef = useRef(null);
   const vadRafRef = useRef(null);
   const consecutiveVoiceFrames = useRef(0);
+  const onInterruptRef = useRef(onInterrupt);
+  onInterruptRef.current = onInterrupt;
 
   // 1. 倒计时逻辑
   useEffect(() => {
@@ -92,6 +94,7 @@ export default function VoiceDialogueOverlay({
         source.connect(analyser);
 
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const vadArmedAt = Date.now() + 700; // 启动后 700ms 抗扬声器外放回声冷却期
 
         const checkVolume = () => {
           if (!isSubscribed) return;
@@ -105,15 +108,14 @@ export default function VoiceDialogueOverlay({
           const energy = sum / 28;
           setLiveMicLevel(Math.min(100, Math.round(energy * 1.5)));
 
-          // 阈值判定：当声音能量持续超过 36（正常说话声压，过滤轻微呼吸杂音）
-          if (energy > 36) {
+          // 提高防外放自打断阈值：冷却期后且连续 6 帧能量 > 48 才触发自动打断
+          if (Date.now() >= vadArmedAt && energy > 48) {
             consecutiveVoiceFrames.current += 1;
-            if (consecutiveVoiceFrames.current >= 4) {
-              // 判定为孩子在主动说话打断！
+            if (consecutiveVoiceFrames.current >= 6) {
               setAutoInterrupted(true);
               consecutiveVoiceFrames.current = 0;
               if (window.speechSynthesis) window.speechSynthesis.cancel();
-              onInterrupt && onInterrupt('auto_barge_in');
+              onInterruptRef.current && onInterruptRef.current('auto_barge_in');
               return;
             }
           } else {
@@ -144,7 +146,7 @@ export default function VoiceDialogueOverlay({
         audioCtxRef.current = null;
       }
     };
-  }, [isOpen, mode, bargeInEnabled, onInterrupt]);
+  }, [isOpen, mode, bargeInEnabled]);
 
   if (!isOpen) return null;
 

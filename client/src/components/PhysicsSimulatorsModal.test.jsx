@@ -16,7 +16,7 @@ describe('PhysicsSimulatorsModal Component', () => {
       />
     );
 
-    expect(screen.getByText(/初中物理动态虚拟微实验台/)).toBeDefined();
+    expect(screen.getByText(/物理动态虚拟微实验台/)).toBeDefined();
     expect(screen.getByText(/成像性质：倒立、缩小、实像/)).toBeDefined();
     expect(screen.getByText(/照相机、手机摄像头/)).toBeDefined();
 
@@ -26,6 +26,12 @@ describe('PhysicsSimulatorsModal Component', () => {
 
     expect(onApplyToChat).toHaveBeenCalledWith(expect.stringContaining('凸透镜成像'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('defaults to high-school Lorentz force magnetic field simulator for grades 10-12', () => {
+    render(<PhysicsSimulatorsModal isOpen={true} currentGrade="11_up" onClose={() => {}} onApplyToChat={() => {}} />);
+    expect(screen.getByText(/匀强磁场 B/)).toBeDefined();
+    expect(screen.getByText(/轨道半径/)).toBeDefined();
   });
 
   it('switches to circuits tab and updates current and voltage', () => {
@@ -38,7 +44,7 @@ describe('PhysicsSimulatorsModal Component', () => {
     );
 
     // Switch to Circuits Tab
-    const circuitTab = screen.getByText(/欧姆定律与滑动变阻器/);
+    const circuitTab = screen.getByText(/欧姆定律电路仿真/);
     fireEvent.click(circuitTab);
 
     expect(screen.getByText(/电路状态：I = 0.24 A \(正常通电\)/)).toBeDefined();

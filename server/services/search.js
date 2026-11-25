@@ -75,12 +75,36 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
   const db = getSqliteDb();
   if (!db) return [];
   try {
-    let gradePattern = '%';
+    let gradeCondition = 'grade LIKE ?';
+    let gradeParams = ['%'];
     if (grade) {
-      if (grade.includes('7') || grade.includes('初一')) gradePattern = '%7%';
-      else if (grade.includes('8') || grade.includes('初二')) gradePattern = '%8%';
-      else if (grade.includes('9') || grade.includes('初三')) gradePattern = '%9%';
-      else if (/^[1-6]/.test(grade)) gradePattern = `%${grade.charAt(0)}%`;
+      const gStr = String(grade).trim();
+      const numMatch = gStr.match(/^(1[0-2]|[1-9])(?:_|$)/);
+      const parsedNum = numMatch ? parseInt(numMatch[1], 10) : null;
+
+      if (parsedNum === 10 || gStr.includes('高一') || gStr.includes('10_')) {
+        gradeCondition = "(grade LIKE '10%' OR grade LIKE '%高一%' OR grade LIKE '%高中%' OR grade LIKE '%高考%')";
+        gradeParams = [];
+      } else if (parsedNum === 11 || gStr.includes('高二') || gStr.includes('11_')) {
+        gradeCondition = "(grade LIKE '11%' OR grade LIKE '%高二%' OR grade LIKE '%高中%' OR grade LIKE '%高考%')";
+        gradeParams = [];
+      } else if (parsedNum === 12 || gStr.includes('高三') || gStr.includes('12_') || gStr.includes('senior') || gStr.includes('高考')) {
+        gradeCondition = "(grade LIKE '12%' OR grade LIKE '%高三%' OR grade LIKE '%高中%' OR grade LIKE '%高考%')";
+        gradeParams = [];
+      } else if (parsedNum === 7 || gStr.includes('初一')) {
+        gradeCondition = "(grade LIKE '7%' OR grade LIKE '%七年级%' OR grade LIKE '%初一%')";
+        gradeParams = [];
+      } else if (parsedNum === 8 || gStr.includes('初二')) {
+        gradeCondition = "(grade LIKE '8%' OR grade LIKE '%八年级%' OR grade LIKE '%初二%')";
+        gradeParams = [];
+      } else if (parsedNum === 9 || gStr.includes('初三')) {
+        gradeCondition = "(grade LIKE '9%' OR grade LIKE '%九年级%' OR grade LIKE '%初三%')";
+        gradeParams = [];
+      } else if (parsedNum && parsedNum >= 1 && parsedNum <= 6) {
+        // 严格限定开头为 1-6 且排除 10/11/12，绝不串入高中或跨年级题目
+        gradeCondition = "(grade = ? OR grade LIKE ? OR grade LIKE ?)";
+        gradeParams = [String(parsedNum), `${parsedNum}_%`, `%${parsedNum}年级%`];
+      }
     }
 
     const cleanSubj = subject ? subject.replace(/[\s\-_]/g, '') : '数学';
@@ -93,8 +117,8 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
     let rows = [];
     if (keywords.length > 0) {
       const topKw = keywords.slice(0, 3);
-      let sql = 'SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE grade LIKE ? AND subject LIKE ?';
-      const params = [gradePattern, `%${cleanSubj}%`];
+      let sql = `SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE ${gradeCondition} AND subject LIKE ?`;
+      const params = [...gradeParams, `%${cleanSubj}%`];
       
       const likeClauses = topKw.map(() => '(question LIKE ? OR chapter LIKE ? OR key_insight LIKE ?)').join(' OR ');
       if (likeClauses) {
@@ -109,8 +133,8 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
     if (rows.length === 0) {
       // Return curated benchmark questions for this grade and subject
       rows = await db.all(
-        'SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE grade LIKE ? AND subject LIKE ? ORDER BY id ASC LIMIT ?',
-        [gradePattern, `%${cleanSubj}%`, limit]
+        `SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE ${gradeCondition} AND subject LIKE ? ORDER BY id ASC LIMIT ?`,
+        [...gradeParams, `%${cleanSubj}%`, limit]
       );
     }
 

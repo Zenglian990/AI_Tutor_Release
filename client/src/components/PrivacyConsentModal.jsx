@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export const CURRENT_PRIVACY_VERSION = '1.5.4';
+export const CURRENT_PRIVACY_VERSION = '1.7.4';
 
 export default function PrivacyConsentModal({ isOpen, onAccept }) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
@@ -43,7 +43,7 @@ export default function PrivacyConsentModal({ isOpen, onAccept }) {
           <span style={{ fontSize: '1.6rem' }}>🛡️</span>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-              儿童个人信息保护与监护人知情同意书 (v1.5.4)
+              儿童个人信息保护与监护人知情同意书 (v1.7.4)
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
               根据《中华人民共和国个人信息保护法》及《未成年人网络保护条例》制定
@@ -64,7 +64,7 @@ export default function PrivacyConsentModal({ isOpen, onAccept }) {
             尊敬的家长 / 监护人：
           </p>
           <p>
-            欢迎使用「曾先生智慧私教」。本产品专门面向 1-9 年级中小学生提供启发式学科辅导。我们高度重视未成年人个人信息与隐私安全，特此公开披露系统的数据处理范围与流向规则：
+            欢迎使用「AI 智慧私教」。本产品专门面向 1-12 年级小学、初中及高中全学段学生提供启发式学科辅导。我们高度重视未成年人个人信息与隐私安全，特此公开披露系统的数据处理范围与第三方服务流向规则（含大模型对话/视觉识别及语音朗读服务）：
           </p>
 
           <h4 style={{ margin: '14px 0 6px', color: '#1e293b', fontSize: '0.9rem' }}>一、信息收集与真实传输范围（最小必要原则）</h4>
@@ -102,7 +102,7 @@ export default function PrivacyConsentModal({ isOpen, onAccept }) {
               style={{ marginTop: '3px', width: '16px', height: '16px', accentColor: '#4f46e5' }}
             />
             <span>
-              我已年满 18 周岁，确认我是该未成年学生的<b>法定监护人</b>，已阅读并充分理解上述《儿童个人信息保护与监护人知情同意书 (v1.5.4)》，同意系统按规则提供辅导服务。
+              我已年满 18 周岁，确认我是该未成年学生的<b>法定监护人</b>，已阅读并充分理解上述《儿童个人信息保护与监护人知情同意书 (v1.7.4)》，同意系统按规则提供辅导服务。
             </span>
           </label>
 

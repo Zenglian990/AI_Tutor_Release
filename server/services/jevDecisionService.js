@@ -27,8 +27,8 @@ class LocalHeuristicClient {
             const q = String(state?.question || '').trim();
             const gradeNum = parseInt(String(state?.grade || '').replace(/\D/g, '')) || 5;
 
-            // Off-topic check (strictly educational)
-            const offTopicPattern = /(王者荣耀|和平精英|原神|英雄联盟|打游戏|玩游戏|吃鸡|段位|充值|明星八卦|娱乐八卦|今日天气|做个自我介绍|讲个笑话|买菜|炒股|基金)/i;
+            // Off-topic check (strictly non-educational entertainment/gambling; avoid false positives on math word problems like 买菜 or English essays like 天气/自我介绍)
+            const offTopicPattern = /(王者荣耀|和平精英|原神|英雄联盟|打游戏|玩游戏|吃鸡|游戏段位|游戏充值|明星八卦|娱乐八卦|讲个笑话|炒股推荐|买基金赚钱)/i;
             const isOffTopic = offTopicPattern.test(q);
 
             // Direct answer demand check (Anti-spoofing / anti-spoonfeeding guard for Socratic teaching)

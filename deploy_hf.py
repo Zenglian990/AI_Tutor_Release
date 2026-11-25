@@ -220,7 +220,7 @@ def bootstrap_ai_tutor(force_pull: bool = False):
             (WORK_DIR / ".env").unlink(missing_ok=True)
         env_srv["PORT"] = str(NODE_PORT)
         env_srv["NODE_ENV"] = "production"
-        env_srv["ALLOWED_ORIGINS"] = "*"
+        env_srv["ALLOWED_ORIGINS"] = os.getenv("ALLOWED_ORIGINS", "https://zenglian110110-ai-tutor-release.hf.space")
         env_srv["CLOUD_PUBLIC_MODE"] = "true"
         env_srv["CHAT_MODEL"] = os.getenv("CHAT_MODEL", "gemini-2.5-flash")
         env_srv["EMBED_MODEL"] = os.getenv("EMBED_MODEL", "gemini-embedding-001")
@@ -413,12 +413,10 @@ with gr.Blocks(title="曾练专属私教 (ZengLian AI Tutor)") as demo:
     )
     with gr.Row():
         btn_status = gr.Button("📊 刷新云端构建/运行状态", variant="primary")
-        btn_sync = gr.Button("🔄 一键从 GitHub 同步最新代码并热重启")
         btn_gpu = gr.Button("⚡ 唤醒免费 48GB 显卡 (ZeroGPU)")
     status_json = gr.JSON(label="云端服务状态与实时日志", value=get_status)
     gpu_out = gr.Textbox(label="ZeroGPU 显卡状态")
     btn_status.click(fn=get_status, outputs=status_json)
-    btn_sync.click(fn=trigger_github_sync, outputs=status_json)
     btn_gpu.click(fn=wake_zerogpu, outputs=gpu_out)
 
 if __name__ == "__main__":

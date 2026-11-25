@@ -59,7 +59,7 @@ router.get('/knowledge-graph/trace', (req, res) => {
     logger.error('[KnowledgeGraph Route] Error tracing prerequisite chain:', err);
     return res.status(500).json({
       success: false,
-      error: '内部服务错误，无法完成考点溯源: ' + err.message
+      error: process.env.NODE_ENV === 'development' ? ('内部服务错误，无法完成考点溯源: ' + err.message) : '内部服务错误，无法完成考点溯源'
     });
   }
 });
@@ -87,7 +87,7 @@ router.get('/knowledge-graph/search', (req, res) => {
     logger.error('[KnowledgeGraph Route] Search error:', err);
     return res.status(500).json({
       success: false,
-      error: '考点检索失败: ' + err.message
+      error: process.env.NODE_ENV === 'development' ? ('考点检索失败: ' + err.message) : '考点检索失败'
     });
   }
 });

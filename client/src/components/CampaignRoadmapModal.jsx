@@ -5,7 +5,7 @@ import { authFetch, getApiUrl } from '../store/useStore';
  * CampaignRoadmapModal
  * 长周期宏观战役沙盘与中考/期末预测推演
  */
-export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '曾练' }) {
+export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '同学' }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -87,7 +87,7 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>知识网格已点亮</span>
                 <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#10b981', marginTop: '4px' }}>
-                  {data?.coveragePercentage || 45}%
+                  {data?.coveragePercentage ?? 0}%
                 </div>
                 <span style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
                   已通关 {data?.masteredCount || 0} / {data?.totalNodesCount || 10} 关键节点

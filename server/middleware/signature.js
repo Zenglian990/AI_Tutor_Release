@@ -7,7 +7,11 @@ const ADMIN_ROUTES = [
   '/config/update-keys',
   '/config/test-llm',
   '/config/keys',
-  '/membership/admin'
+  '/membership/admin',
+  '/admin/shutdown',
+  '/admin/stats',
+  '/export/data',
+  '/import/data'
 ];
 
 function isAdminRoute(reqPath) {
@@ -29,7 +33,11 @@ async function signatureMiddleware(req, res, next) {
     return next();
   }
 
-  const isTargetAdmin = isAdminRoute(req.path);
+  const isPublicModeAnonNetworkInfo =
+    req.path === '/system/network-info' &&
+    process.env.CLOUD_PUBLIC_MODE === 'true' &&
+    !req.headers?.authorization;
+  const isTargetAdmin = isPublicModeAnonNetworkInfo ? false : isAdminRoute(req.path);
   if (isTargetAdmin) {
     const isAdmin = await isVerifiedAdminRequest(req);
     if (isAdmin) return next();
@@ -70,14 +78,10 @@ async function signatureMiddleware(req, res, next) {
   const formFieldsStr = req.headers['x-form-fields'] || '';
   const fileFieldsStr = req.headers['x-file-fields'] || '';
 
-  const authHeader = req.headers.authorization;
-  const bearerToken = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim());
   const effectiveApiToken = getEffectiveApiToken();
-  const validBearer = bearerToken && !config.DEPRECATED_STATIC_TOKENS.has(bearerToken) ? bearerToken : null;
-
+  // 安全加固：绝不将客户端未核验的 Authorization Bearer 原文当作 HMAC 验签密钥（防止自签绕过）
   const candidateTokens = Array.from(new Set([
-    effectiveApiToken,
-    validBearer
+    effectiveApiToken
   ].filter(Boolean)));
 
   let isValid = false;
@@ -101,10 +105,7 @@ async function signatureMiddleware(req, res, next) {
     return next();
   }
 
-  if (!isTargetAdmin && req.authenticated) {
-    return next();
-  }
-
+  // 只要显式携带了签名头但校验失败，严禁借 req.authenticated 兜底放行
   return res.status(401).json({ error: '请求签名验证失败。' });
 }
 

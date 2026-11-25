@@ -218,7 +218,11 @@ const InputBar = React.memo(function InputBar({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => onSubmit(null, input.trim() || '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！')}
+              onClick={() => {
+                const typed = (localVal || input || '').trim();
+                setLocalVal('');
+                onSubmit(null, typed || '老师，请帮我详细讲讲这道题。先点破核心题眼套路，给出草稿纸第一步动笔支架！');
+              }}
               disabled={isLoading}
               style={{
                 padding: '5px 12px',
@@ -818,7 +822,10 @@ const InputBar = React.memo(function InputBar({
                     color: '#10b981',
                     background: 'rgba(16, 185, 129, 0.1)',
                     borderRadius: '10px',
-                    padding: '4px 6px',
+                    width: 'auto',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    padding: '4px 10px',
                     marginRight: '2px',
                     display: 'flex',
                     alignItems: 'center',

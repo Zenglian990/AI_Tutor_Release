@@ -7,6 +7,7 @@ const { PORT, NODE_ENV, API_KEYS } = config;
 const { initSqlite, initVectorDB, getSqliteDb, closeDB } = require('./db/init');
 const { seedCanonicalQuestionsIfEmpty } = require('./services/canonicalQuestions');
 const { startDataRetentionCleanup } = require('./services/data-retention');
+const { startPersistSyncSchedule, stopPersistSyncSchedule, syncSqliteToPersistDir } = require('./services/stateSync');
 const { createApp } = require('./app');
 const logger = require('./services/logger');
 
@@ -47,7 +48,7 @@ async function start() {
   // 2. 立即绑定 HTTP 端口响应健康检查
   await new Promise((resolve) => {
     server = app.listen(PORT, () => {
-      logger.info(`曾练专属私教 backend running on http://localhost:${PORT} (${NODE_ENV})`);
+      logger.info(`AI 智慧私教 backend running on http://localhost:${PORT} (${NODE_ENV})`);
       logger.info(`  Health check: http://localhost:${PORT}/api/health`);
       resolve();
     });
@@ -68,6 +69,7 @@ async function start() {
   startDataRetentionCleanup(getSqliteDb);
   require('./services/backup').startBackupSchedule();
   require('./services/embedding').startEmbeddingCheck();
+  startPersistSyncSchedule();
 }
 
 process.on('SIGTERM', shutdown);
@@ -75,12 +77,13 @@ process.on('SIGINT', shutdown);
 
 async function shutdown(signal) {
   logger.info(`Received ${signal}, shutting down gracefully...`);
-  if (!server) {
-    try { await closeDB(); } catch {}
-    process.exit(0);
-  }
-  server.close(async () => {
-    logger.info('HTTP server closed.');
+  stopPersistSyncSchedule();
+  const finalizeAndClose = async () => {
+    try {
+      await syncSqliteToPersistDir('shutdown', true);
+    } catch (syncErr) {
+      logger.warn('Final state sync warning during shutdown:', syncErr.message);
+    }
     try {
       await closeDB();
       logger.info('Database closed gracefully.');
@@ -88,8 +91,16 @@ async function shutdown(signal) {
       logger.error('Failed to close database:', e);
     }
     process.exit(0);
+  };
+  if (!server) {
+    await finalizeAndClose();
+    return;
+  }
+  server.close(async () => {
+    logger.info('HTTP server closed.');
+    await finalizeAndClose();
   });
-  setTimeout(() => process.exit(0), 5000).unref();
+  setTimeout(() => process.exit(0), 8000).unref();
 }
 
 start();

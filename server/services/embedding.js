@@ -62,7 +62,7 @@ async function checkKeysHealth() {
   logger.info('[HealthCheck] Starting Gemini API keys validation...');
   for (const key of API_KEYS) {
     try {
-      const modelToPing = CHAT_MODEL || 'gemini-2.5-flash';
+      const modelToPing = CHAT_MODEL || 'gemini-3-flash-preview';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToPing}:generateContent?key=${key}`;
       const payload = {
         contents: [{ parts: [{ text: 'ping' }] }],
@@ -526,8 +526,9 @@ async function fetchDeepSeek(urlType, originalOptions, modelName = null, timeout
     logger.info('[Gateway] Received non-streaming response from DeepSeek.');
     const text = data.choices?.[0]?.message?.content || '';
 
+    const usageProfileId = originalOptions?.profileId || originalOptions?.headers?.['x-internal-profile-id'] || 'default';
     try {
-      logApiUsage(selectedModel, 'chat', geminiPayload.contents?.[0]?.parts?.[0]?.text || '', text, 'success');
+      logApiUsage(selectedModel, 'chat', geminiPayload.contents?.[0]?.parts?.[0]?.text || '', text, 'success', usageProfileId);
     } catch (err) {
       logger.error('[API Usage Log Failed]', err);
     }
@@ -563,14 +564,16 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     logger.warn(`Invalid model name format provided: ${rawModel}, falling back to default`);
     rawModel = CHAT_MODEL;
   }
+  const primaryGeminiModel = CHAT_MODEL || 'gemini-3-flash-preview';
+  const liteGeminiModel = process.env.CHAT_LITE_MODEL || 'gemini-3.1-flash-lite';
   if (rawModel === 'gemini' || rawModel === 'gemini-flash' || rawModel === 'gemini-2.5' || rawModel === 'gemini-3.6-flash') {
-    rawModel = 'gemini-2.5-flash';
+    rawModel = primaryGeminiModel;
   }
   if (rawModel === 'deepseek' || rawModel === 'deepseek-v3') {
     rawModel = 'deepseek-chat';
   }
-  if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel.includes('gemini-2.5-flash-lite')) {
-    rawModel = 'gemini-2.5-flash';
+  if (rawModel.includes('gemini-2.0-flash') || rawModel.includes('gemini-1.5') || rawModel === 'gemini-2.5-flash' || rawModel === 'gemini-2.5-flash-lite') {
+    rawModel = primaryGeminiModel;
   }
   let currentModel = rawModel;
 
@@ -628,7 +631,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
         currentModel = 'glm-4v-flash';
         logger.info(`[Model Router] Auto-switched to Zhipu vision model '${currentModel}'.`);
       } else if (!hasClientDomesticKey) {
-        currentModel = CHAT_MODEL || 'gemini-2.5-flash';
+        currentModel = primaryGeminiModel;
       }
     }
   } else if (!hasImage && hasClientDomesticKey && !hasClientGeminiKey && currentModel.toLowerCase().includes('gemini') && !skipDeepSeek) {
@@ -668,7 +671,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       }
       if (validKeys.length > 0) {
         logger.warn(`[Gateway] ${currentModel} failed (${dsErr.message}). Falling back to Gemini...`);
-        currentModel = CHAT_MODEL || 'gemini-2.5-flash';
+        currentModel = primaryGeminiModel;
         url = buildURL(currentModel);
       } else {
         throw dsErr;
@@ -783,10 +786,17 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       }
     };
 
+    const cleanOutboundHeaders = {};
+    for (const [k, v] of Object.entries(options?.headers || {})) {
+      if (k.toLowerCase() === 'x-internal-profile-id') continue;
+      cleanOutboundHeaders[k] = v;
+    }
+    const usageProfileId = options?.profileId || getClientHeader('x-internal-profile-id') || 'default';
+
     try {
       const fetchOptions = {
         ...options,
-        headers: { ...(options.headers || {}), 'x-goog-api-key': key },
+        headers: { ...cleanOutboundHeaders, 'x-goog-api-key': key },
         signal: controller.signal
       };
       if (proxyAgent) fetchOptions.dispatcher = proxyAgent;
@@ -795,6 +805,15 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
       if (response.ok) {
         cleanup();
         consecutiveErrors = 0;
+        // 补全非流式 Gemini 计费记账（作文/组卷/批卷/整页作业/识题/错题变式等），确保免费配额真实累加且按 profileId 隔离
+        if (urlType === 'chat' && !isIsolatedClient) {
+          let promptText = '';
+          try {
+            const parsedReq = typeof options?.body === 'string' ? JSON.parse(options.body) : options?.body;
+            promptText = parsedReq?.contents?.[0]?.parts?.find(p => typeof p?.text === 'string')?.text || '';
+          } catch {}
+          logApiUsage(currentModel, 'chat', promptText || 'non_stream_prompt', 0, 'success', usageProfileId);
+        }
         return response;
       }
 
@@ -808,18 +827,25 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
           url = buildURL(currentModel);
           continue;
         }
-        if (urlType !== 'embed' && currentModel !== 'gemini-2.5-flash' && !isOpenAiCompatible) {
-          currentModel = 'gemini-2.5-flash';
-          url = buildURL(currentModel);
-          continue;
+        if (urlType !== 'embed' && !isOpenAiCompatible) {
+          if (currentModel !== primaryGeminiModel) {
+            currentModel = primaryGeminiModel;
+            url = buildURL(currentModel);
+            continue;
+          }
+          if (currentModel !== liteGeminiModel) {
+            currentModel = liteGeminiModel;
+            url = buildURL(currentModel);
+            continue;
+          }
         }
         throw new Error(`MODEL_NOT_FOUND: Model '${currentModel}' is not supported or not found.`);
       }
 
       if (response.status === 429 || response.status === 503) {
         if (/quota/i.test(body)) {
-          if (urlType !== 'embed' && currentModel !== 'gemini-2.5-flash-lite' && !isOpenAiCompatible) {
-            currentModel = 'gemini-2.5-flash-lite';
+          if (urlType !== 'embed' && currentModel !== liteGeminiModel && !isOpenAiCompatible) {
+            currentModel = liteGeminiModel;
             url = buildURL(currentModel);
             continue;
           }
@@ -831,7 +857,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
         }
 
         if (urlType !== 'embed' && !isOpenAiCompatible) {
-          const alternateModel = currentModel === 'gemini-2.5-flash' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash';
+          const alternateModel = currentModel === primaryGeminiModel ? liteGeminiModel : primaryGeminiModel;
           currentModel = alternateModel;
           url = buildURL(currentModel);
           if (!hasClientGeminiKey) keyCooldown.set(key, Date.now() + 5000);
@@ -914,7 +940,7 @@ function setCachedEmbedding(text, vector) {
   _embedCache.set(cleaned, vector);
 }
 
-async function getEmbedding(text, clientHeaders = {}) {
+async function getEmbedding(text, clientHeaders = {}, profileId = 'default') {
   const cleanedText = String(text).trim().substring(0, 1500);
   if (!cleanedText) return null;
 
@@ -924,10 +950,12 @@ async function getEmbedding(text, clientHeaders = {}) {
     return cached;
   }
 
+  const effectivePid = profileId || clientHeaders?.['x-internal-profile-id'] || 'default';
   try {
     const response = await fetchWithKeyRotation(buildEmbedURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(clientHeaders || {}) },
+      profileId: effectivePid,
       body: JSON.stringify({
         model: `models/${EMBED_MODEL}`,
         content: { parts: [{ text: cleanedText }] },
@@ -938,13 +966,13 @@ async function getEmbedding(text, clientHeaders = {}) {
     const vector = data.embedding?.values || null;
     if (vector) {
       setCachedEmbedding(cleanedText, vector);
-      logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'success');
+      logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'success', effectivePid);
     } else {
-      logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'error');
+      logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'error', effectivePid);
     }
     return vector;
   } catch (err) {
-    logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'error');
+    logApiUsage(EMBED_MODEL, 'embed', cleanedText, 0, 'error', effectivePid);
     const msg = String(err?.message || '');
     if (msg.includes('429') || /quota/i.test(msg) || msg.includes('QUOTA_EXHAUSTED')) {
       const quotaErr = new Error('EMBED_QUOTA_EXHAUSTED');

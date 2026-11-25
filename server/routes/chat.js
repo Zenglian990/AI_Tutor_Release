@@ -12,6 +12,8 @@ const jev = require('../services/jevDecisionService');
 const { coordinateTriEngine } = require('../services/triEngineCoordinator');
 const { getSqliteDb } = require('../db/init');
 const { saveStudyCheckpoint, formatCheckpointPromptSection } = require('../services/checkpointService');
+const { requireQuotaOrVip } = require('../middleware/quota');
+const { resolveAuthorizedProfileId } = require('../middleware/auth');
 
 /**
  * Isolates turnCount per problem / question session rather than dividing global history.length / 2.
@@ -64,11 +66,15 @@ function computeProblemTurnCount(history, currentQuery) {
 }
 
 // POST /api/chat — main chat endpoint with SSE streaming
-router.post('/chat', async (req, res) => {
+router.post('/chat', requireQuotaOrVip('chat'), async (req, res) => {
   try {
     const { query, grade, subject, history, profile_id, socratic, edition, model, student_name, voice_mode, teaching_mode, feynman_mode, turn_count } = req.body;
     if (!query) return res.status(400).json({ error: "Query is required", code: "ERR_VALIDATION" });
     if (query.length > 2000) return res.status(400).json({ error: "Query is too long (max 2000 characters)", code: "ERR_VALIDATION" });
+
+    const authCheck = resolveAuthorizedProfileId(req, profile_id);
+    if (!authCheck.ok) return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    const targetPid = authCheck.profileId;
 
     // Trie Safety Check
     const safetyRedirect = checkSafetyAndRedirect(query);
@@ -144,7 +150,7 @@ router.post('/chat', async (req, res) => {
 
     const memoryPromise = (async () => {
       try {
-        const mem = await getStudentCognitiveMemory(profile_id, grade, subject, student_name);
+        const mem = await getStudentCognitiveMemory(targetPid, grade, subject, student_name);
         const memStr = formatStudentMemoryForPrompt(mem);
         
         let triPrompt = '';
@@ -152,32 +158,44 @@ router.post('/chat', async (req, res) => {
         const turnCount = (typeof turn_count === 'number' && turn_count >= 1) 
           ? turn_count 
           : computeProblemTurnCount(history, query);
+        // 消除 Prompt 策略冲突：直答模式或语音极简模式不再叠加苏格拉底“严禁给答案”强制指令
+        const shouldSkipSocraticTri = socratic === 'direct' || Boolean(voice_mode);
         const triCoord = await coordinateTriEngine({
           db,
           query,
-          profileId: profile_id || 'default',
+          profileId: targetPid,
           subject: subject || '数学',
           turnCount,
           teachingMode: teaching_mode || (feynman_mode ? 'feynman_roleplay' : 'standard'),
-          studentName: student_name || '曾练'
+          studentName: student_name || '同学'
         });
-        if (triCoord && triCoord.prompts && triCoord.prompts.compositeSystemPrompt) {
+        if (!shouldSkipSocraticTri && triCoord && triCoord.prompts && triCoord.prompts.compositeSystemPrompt) {
           triPrompt = '\n' + triCoord.prompts.compositeSystemPrompt;
+        }
+
+        // 真正激活 L1-L3 动态认知状态演化引擎：记录真实互动事件落库
+        if (db && !isGreeting && typeof triCoord?.recordOutcome === 'function') {
+          const inferredCorrect = /懂了|明白了|算出来|做对了/.test(cleanQuery);
+          triCoord.recordOutcome({
+            eventType: feynman_mode ? 'feynman_explain' : 'chat_practice',
+            isCorrect: inferredCorrect,
+            evidenceText: cleanQuery.slice(0, 120)
+          }).catch(() => {});
         }
 
         if (db && !isGreeting && cleanQuery.length > 5) {
           saveStudyCheckpoint(db, {
-            profileId: profile_id || 'default',
+            profileId: targetPid,
             subject: subject || '数学',
             conceptId: triCoord?.matchedConceptId || '',
             conceptName: triCoord?.matchedConcept?.name || '',
             lastQuerySnippet: cleanQuery,
-            progressPct: 50
+            progressPct: Math.min(95, 20 + turnCount * 15)
           }).catch(e => {});
         }
 
         if (isGreeting && mem?.checkpoint) {
-          triPrompt += formatCheckpointPromptSection(mem.checkpoint, student_name || '曾练', true);
+          triPrompt += formatCheckpointPromptSection(mem.checkpoint, student_name || '同学', true);
         }
 
         return { mem, memStr, gStr: triPrompt };
@@ -338,7 +356,7 @@ router.post('/chat', async (req, res) => {
       generationConfig
     };
 
-    await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id, model, clientHeaders });
+    await streamChatToClient(contentsPayload, res, { query, grade, subject, sources, profile_id: targetPid, model, clientHeaders });
 
   } catch (e) {
     logger.error("Chat Error:", e);

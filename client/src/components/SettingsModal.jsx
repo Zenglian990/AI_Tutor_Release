@@ -3,12 +3,22 @@ import { useAppStore, getApiUrl, authFetch, getApiToken, DEFAULT_API_TOKEN } fro
 import { encryptData, decryptData } from '../utils/crypto_helper';
 
 const EDITIONS = [
-  { value: '人教版', label: '📖 人民教育出版社 (人教版 - 推荐)' },
+  { value: '人教版', label: '📖 人民教育出版社 (人教版 - 全国通用推荐)' },
   { value: '北师大版', label: '📖 北京师范大学出版社 (北师大版)' },
   { value: '苏教版', label: '📖 江苏凤凰教育出版社 (苏教版)' },
+  { value: '苏科版', label: '📖 江苏科学技术出版社 (苏科版)' },
+  { value: '外研版', label: '📖 外语教学与研究出版社 (外研版英语)' },
+  { value: '译林版', label: '📖 译林出版社 (译林版英语)' },
   { value: '华东师大版', label: '📖 华东师范大学出版社 (华东师大版)' },
   { value: '沪教版', label: '📖 上海教育出版社 (沪教版)' },
+  { value: '沪科版', label: '📖 上海科学技术出版社 (沪科版)' },
+  { value: '浙教版', label: '📖 浙江教育出版社 (浙教版)' },
+  { value: '湘教版', label: '📖 湖南教育出版社 (湘教版)' },
   { value: '鲁教版', label: '📖 山东教育出版社 (鲁教版)' },
+  { value: '粤教版', label: '📖 广东教育出版社 (粤教版)' },
+  { value: '教科版', label: '📖 教育科学出版社 (教科版)' },
+  { value: '西南大学版', label: '📖 西南大学版 (西教版 2024新版)' },
+  { value: '西师大版', label: '📖 西师大版 (川渝旧版)' },
   { value: '冀教版', label: '📖 河北教育出版社 (冀教版)' },
   { value: '仁爱版', label: '📖 仁爱教育版 (英语专版)' },
 ];
@@ -47,7 +57,8 @@ export default function SettingsModal({
   backendUrl: propBackendUrl,
   onSaveBackendUrl,
   apiToken: propApiToken,
-  onSaveApiToken
+  onSaveApiToken,
+  onOpenAddProfile
 }) {
   const {
     language,
@@ -57,7 +68,10 @@ export default function SettingsModal({
     toggleEinkMode,
     tutorPersona,
     setTutorPersona,
+    profiles,
     currentProfile,
+    handleProfileChange,
+    handleDeleteProfile,
     chatModel,
     setChatModel,
     backendUrl: storeBackendUrl,
@@ -429,18 +443,18 @@ export default function SettingsModal({
       <div
         className="modal-content"
         style={{
-          maxWidth: '640px',
-          width: '95%',
+          maxWidth: 'min(640px, calc(100vw - 16px))',
+          width: '100%',
           maxHeight: 'calc(100dvh - max(env(safe-area-inset-bottom, 24px), 36px) - 40px)',
           display: 'flex',
           flexDirection: 'column',
           padding: '0',
           borderRadius: '20px',
           overflow: 'hidden',
-          background: 'var(--bg-secondary, #1e293b)',
-          color: 'var(--text-primary, #f8fafc)',
+          background: '#1e293b',
+          color: '#f8fafc',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.65)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.14)',
           boxSizing: 'border-box'
         }}
         onClick={(e) => e.stopPropagation()}
@@ -559,6 +573,72 @@ export default function SettingsModal({
           {/* ============================================================== */}
           {activeTab === 'preferences' && (
             <>
+              {/* Section 0: 多孩家庭学生档案切换与新建（移动端/桌面端统一闭环） */}
+              <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(59, 130, 246, 0.28)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.95rem', color: '#60a5fa' }}>
+                    👨‍👩‍👧‍👦 学生档案管理（多孩隔离）
+                  </label>
+                  {onOpenAddProfile && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenAddProfile()}
+                      style={{
+                        background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ➕ 新建孩子档案
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {(profiles || []).map(p => {
+                    const isActive = p.id === currentProfileId;
+                    return (
+                      <div
+                        key={p.id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 10px',
+                          borderRadius: '10px',
+                          border: isActive ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.14)',
+                          background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(15, 23, 42, 0.45)',
+                          color: isActive ? '#f8fafc' : '#cbd5e1',
+                          fontSize: '0.84rem'
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleProfileChange && handleProfileChange(p.id)}
+                          style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: isActive ? 700 : 500, cursor: 'pointer', padding: 0 }}
+                        >
+                          👤 {p.name}
+                        </button>
+                        {(profiles || []).length > 1 && p.id !== 'default' && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProfile && handleDeleteProfile(p.id)}
+                            title="删除此档案"
+                            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.78rem', padding: '0 2px' }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Section 1: 教材版本 */}
               <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: '0.95rem', marginBottom: '8px', color: '#60a5fa' }}>
@@ -1068,7 +1148,7 @@ export default function SettingsModal({
                 <div style={{ fontSize: '0.82rem', color: '#e2e8f0', lineHeight: 1.5 }}>
                   <strong style={{ color: '#c084fc' }}>大模型密钥与系统通信令牌配置中心</strong>
                   <div style={{ color: '#94a3b8', marginTop: '2px' }}>
-                    在此配置的模型密钥与访问令牌在本地安全加密保存，并在智能问答、拍照解题和试卷分析中立即生效。留空时将自动使用云端默认官方密钥。
+                    在此配置的模型密钥仅保存在您当前设备的浏览器本地，在智能问答、拍照解题和试卷分析中立即生效。若当前服务端已配置托管密钥，留空即可直接体验；若提示未检测到 API Key，请在此填入您的 Gemini 或 DeepSeek 个人密钥。
                   </div>
                 </div>
               </div>
@@ -1802,9 +1882,9 @@ export default function SettingsModal({
             flexWrap: 'wrap'
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>曾练专属私教 v1.7.1</span>
-            <span style={{ opacity: 0.7 }}>· 人教版全科</span>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>AI 智慧私教 v1.7.4</span>
+            <span style={{ opacity: 0.75 }}>· 1-12年级全科全版本</span>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
             <button
