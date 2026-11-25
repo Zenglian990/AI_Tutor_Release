@@ -56,8 +56,8 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
   });
   const [targetUrl, setTargetUrl] = useState(() => localStorage.getItem('parent_poster_target_url') || '');
   const [lanUrl, setLanUrl] = useState('');
-  const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || '曾练专属私教 · 纯净学习档案');
-  const [promoLine1, setPromoLine1] = useState(() => localStorage.getItem('parent_poster_promo_line1') || '中小学 1-9 年级教材同步深度辅导');
+  const [contactName, setContactName] = useState(() => localStorage.getItem('parent_poster_contact_name') || 'AI 智慧私教 · 专属学习档案');
+  const [promoLine1, setPromoLine1] = useState(() => localStorage.getItem('parent_poster_promo_line1') || '1-12 年级全学段教材同步深度辅导');
   const [promoLine2, setPromoLine2] = useState(() => localStorage.getItem('parent_poster_promo_line2') || '苏格拉底启发引导 · 专注思维训练');
 
   const studentName = currentProfile?.name || '同学';
@@ -129,7 +129,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
     ctx.fillStyle = template === 'primary' ? '#78350f' : '#38bdf8';
     ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('曾先生智慧私教 · 1-9年级AI深度辅导', width / 2, 55);
+    ctx.fillText('AI 智慧私教 · 1-12年级全学段AI深度辅导', width / 2, 55);
 
     ctx.fillStyle = template === 'primary' ? '#92400e' : '#94a3b8';
     ctx.font = '14px sans-serif';
@@ -278,9 +278,9 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
 
       ctx.fillStyle = template === 'primary' ? '#92400e' : '#94a3b8';
       ctx.font = '14px sans-serif';
-      ctx.fillText(promoLine1 || '中小学 1-9 年级教材同步深度辅导', 215, 822);
+      ctx.fillText(promoLine1 || '1-12 年级全学段教材同步深度辅导', 215, 822);
       ctx.fillText(promoLine2 || '苏格拉底启发引导 · 专注思维训练', 215, 852);
-      ctx.fillText(contactName || '曾练专属私教 · 纯净学习档案', 215, 882);
+      ctx.fillText(contactName || 'AI 智慧私教 · 专属学习档案', 215, 882);
       ctx.restore();
     } catch (qrErr) {
       console.warn('QR Code generation failed:', qrErr);
@@ -300,12 +300,12 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL('image/png');
-    const filename = `曾练专属私教_学情报告_${template}.png`;
+    const filename = `AI智慧私教_学情报告_${template}.png`;
     await saveOrShareImage({
       dataUrl,
       filename,
-      title: '曾练专属私教 · 学情报告',
-      text: '中小学1-9年级AI深度辅导，专注思维启发与自主学习！'
+      title: 'AI 智慧私教 · 学情报告',
+      text: '1-12年级全学段AI深度辅导，专注思维启发与自主学习！'
     });
   };
 

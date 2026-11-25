@@ -55,7 +55,7 @@ async function coordinateTriEngine({
   subject = '数学',
   turnCount = 1,
   teachingMode = 'standard',
-  studentName = '曾练同学'
+  studentName = '同学'
 }) {
   try {
     // 1. [Item 3: Multimodal Knowledge DAG Grounding]

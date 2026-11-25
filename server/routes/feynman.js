@@ -36,7 +36,7 @@ const DOMAIN_TERMS = {
   ]
 };
 
-function evaluateFeynmanExplanation({ question = '', explanation = '', studentName = '曾练', subject = '数学' }) {
+function evaluateFeynmanExplanation({ question = '', explanation = '', studentName = '同学', subject = '数学' }) {
   const text = (explanation || '').trim();
 
   // 1. 长度过短防御
@@ -129,7 +129,7 @@ router.post('/feynman/evaluate', (req, res) => {
     const evaluation = evaluateFeynmanExplanation({
       question: question || '',
       explanation: student_explanation,
-      studentName: student_name || '曾练',
+      studentName: student_name || '同学',
       subject: subject || '数学',
       grade: grade || '7_up'
     });

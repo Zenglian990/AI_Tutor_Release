@@ -112,7 +112,7 @@ async function getStudyCheckpoint(db, profileId = 'default', subject = '') {
 /**
  * Formats natural reconnect greeting when student logs in or sends initial greeting.
  */
-function formatResumeGreeting(checkpoint, studentName = '曾练') {
+function formatResumeGreeting(checkpoint, studentName = '同学') {
   if (!checkpoint) {
     return `${studentName}同学，欢迎来到课堂！今天咱们从哪个考点开始攻克？随时把题目发给我！`;
   }
@@ -131,7 +131,7 @@ function formatResumeGreeting(checkpoint, studentName = '曾练') {
 /**
  * Formats prompt injection so the AI tutor actively resumes where the student left off.
  */
-function formatCheckpointPromptSection(checkpoint, studentName = '曾练', isGreetingOrStart = false) {
+function formatCheckpointPromptSection(checkpoint, studentName = '同学', isGreetingOrStart = false) {
   if (!checkpoint) return '';
 
   const topic = checkpoint.concept_name || checkpoint.chapter_name || `${checkpoint.subject}模块`;

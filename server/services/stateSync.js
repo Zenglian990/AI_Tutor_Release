@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pipeline } = require('stream/promises');
 const { SQLITE_DB_PATH, PERSIST_STATE_DIR, NODE_ENV } = require('../config');
 const logger = require('./logger');
 
@@ -28,6 +29,16 @@ function isValidSqliteFile(filePath) {
   } catch {
     return false;
   }
+}
+
+/**
+ * 使用纯流式 I/O 复制文件，彻底规避 Linux/GCSFuse 挂载卷上 fs.copyFileSync 触发 EPERM (copy_file_range/fchmod) 问题
+ */
+async function streamCopyFile(srcPath, destPath) {
+  await pipeline(
+    fs.createReadStream(srcPath),
+    fs.createWriteStream(destPath, { flags: 'w' })
+  );
 }
 
 /**
@@ -71,7 +82,9 @@ function restoreSqliteFromPersistDir() {
         fs.unlinkSync(sidecar);
       }
     }
-    fs.copyFileSync(remoteDbPath, SQLITE_DB_PATH);
+    // 纯读取+写入规避跨文件系统 copyFileSync 权限元操作
+    const buf = fs.readFileSync(remoteDbPath);
+    fs.writeFileSync(SQLITE_DB_PATH, buf);
     lastSyncedSignature = computeLocalDbSignature();
     const sizeMB = (fs.statSync(SQLITE_DB_PATH).size / (1024 * 1024)).toFixed(2);
     logger.info(`[StateSync] Restored SQLite snapshot from ${remoteDbPath} (${sizeMB} MB).`);
@@ -83,7 +96,7 @@ function restoreSqliteFromPersistDir() {
 }
 
 /**
- * 事务一致性热同步：通过 VACUUM INTO 在本地生成单文件干净快照，再原子 rename 写入 PERSIST_STATE_DIR（规避 GCS FUSE WAL 锁死风险）
+ * 事务一致性热同步：通过 VACUUM INTO 在本地生成单文件干净快照，再纯流式写入 PERSIST_STATE_DIR（零锁死、零 EPERM）
  */
 async function syncSqliteToPersistDir(reason = 'periodic', force = false) {
   if (!PERSIST_STATE_DIR) return false;
@@ -102,7 +115,7 @@ async function syncSqliteToPersistDir(reason = 'periodic', force = false) {
   syncInProgress = true;
   const tempLocalSnapshot = path.join(os.tmpdir(), `ai-tutor-sync-${process.pid}-${Date.now()}.db`);
   const remoteTarget = path.join(PERSIST_STATE_DIR, 'mistakes.db');
-  const remoteTemp = path.join(PERSIST_STATE_DIR, `.mistakes.db.tmp.${process.pid}.${Date.now()}`);
+  const remoteTemp = path.join(PERSIST_STATE_DIR, `mistakes.db.tmp.${process.pid}.${Date.now()}`);
 
   try {
     if (!fs.existsSync(PERSIST_STATE_DIR)) {
@@ -112,15 +125,21 @@ async function syncSqliteToPersistDir(reason = 'periodic', force = false) {
     await dbQueue.enqueue(async () => {
       await sqliteDb.run('PRAGMA wal_checkpoint(PASSIVE);');
       await sqliteDb.run('VACUUM INTO ?', [tempLocalSnapshot.replace(/\\/g, '/')]);
-    }, 30000);
+    }, 60000);
 
     if (!isValidSqliteFile(tempLocalSnapshot)) {
       throw new Error('Generated SQLite snapshot failed header validation');
     }
 
-    // 写入 GCS FUSE 挂载卷临时文件并原子重命名
-    fs.copyFileSync(tempLocalSnapshot, remoteTemp);
-    fs.renameSync(remoteTemp, remoteTarget);
+    // 纯流式写入 GCS FUSE 挂载卷临时文件并尝试原子重命名；若某些 FUSE 配置不支持 rename 覆写则回退直接流式写入目标文件
+    await streamCopyFile(tempLocalSnapshot, remoteTemp);
+    try {
+      fs.renameSync(remoteTemp, remoteTarget);
+    } catch (renameErr) {
+      logger.warn(`[StateSync] Rename fallback triggered on FUSE volume (${renameErr.message}); writing target directly.`);
+      await streamCopyFile(tempLocalSnapshot, remoteTarget);
+      try { if (fs.existsSync(remoteTemp)) fs.unlinkSync(remoteTemp); } catch {}
+    }
 
     lastSyncedSignature = computeLocalDbSignature();
     const sizeMB = (fs.statSync(tempLocalSnapshot).size / (1024 * 1024)).toFixed(2);
@@ -145,13 +164,13 @@ async function syncSqliteToPersistDir(reason = 'periodic', force = false) {
  */
 function startPersistSyncSchedule() {
   if (!PERSIST_STATE_DIR || NODE_ENV === 'test' || process.env.NODE_ENV === 'test') return;
-  const intervalMs = Math.max(15000, parseInt(process.env.PERSIST_SYNC_INTERVAL_MS || '60000', 10) || 60000);
+  const intervalMs = Math.max(30000, parseInt(process.env.PERSIST_SYNC_INTERVAL_MS || '120000', 10) || 120000);
   logger.info(`[StateSync] Cloud persistence enabled: dir=${PERSIST_STATE_DIR}, interval=${intervalMs}ms`);
 
-  // 首次启动 20 秒后确保至少落盘一份基线快照
+  // 错开冷启动重型初始化峰值，35 秒后落盘首份基线快照
   setTimeout(() => {
     syncSqliteToPersistDir('startup', true).catch(() => {});
-  }, 20000).unref();
+  }, 35000).unref();
 
   syncTimer = setInterval(() => {
     syncSqliteToPersistDir('periodic', false).catch(() => {});

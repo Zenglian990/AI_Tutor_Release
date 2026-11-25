@@ -79,11 +79,11 @@ export default function MembershipModal({ isOpen, onClose }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '1.6rem' }}>🎓</span>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.02em' }}>
-                曾练专属私教 · 纯净全功能开放说明
+                AI 智慧私教 · 纯净全功能开放说明
               </h2>
             </div>
             <div style={{ fontSize: '0.82rem', color: '#c7d2fe', marginTop: '6px' }}>
-              零商业化收费 · 专注打磨教学品质 · 1-9年级全学科教材真题永久畅享
+              专注打磨教学品质 · 1-12年级全学科教材真题智慧辅导
             </div>
           </div>
           <button
@@ -270,7 +270,7 @@ export default function MembershipModal({ isOpen, onClose }) {
           borderTop: '1px solid #f1f5f9', background: '#fafafa', padding: '12px 24px',
           display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.78rem', color: '#94a3b8'
         }}>
-          <span>曾练专属私教 · 权威教材题库与启发式伴学</span>
+          <span>AI 智慧私教 · 权威教材题库与启发式伴学</span>
         </div>
       </div>
     </div>

@@ -229,11 +229,10 @@ async function authFetch(path, options = {}) {
       const customDeepseekKey = localStorage.getItem('ai_tutor_deepseek_key');
       if (customDeepseekKey && customDeepseekKey.trim()) {
         headers['x-deepseek-api-key'] = customDeepseekKey.trim();
-      }
-
-      const customDeepseekUrl = localStorage.getItem('ai_tutor_deepseek_url');
-      if (customDeepseekUrl && customDeepseekUrl.trim()) {
-        headers['x-deepseek-api-url'] = customDeepseekUrl.trim();
+        const customDeepseekUrl = localStorage.getItem('ai_tutor_deepseek_url');
+        if (customDeepseekUrl && customDeepseekUrl.trim()) {
+          headers['x-deepseek-api-url'] = customDeepseekUrl.trim();
+        }
       }
 
       const customSiliconflowKey = localStorage.getItem('ai_tutor_siliconflow_key');
@@ -254,11 +253,10 @@ async function authFetch(path, options = {}) {
       const customOpenaiKey = localStorage.getItem('ai_tutor_openai_key');
       if (customOpenaiKey && customOpenaiKey.trim()) {
         headers['x-openai-api-key'] = customOpenaiKey.trim();
-      }
-
-      const customApiUrl = localStorage.getItem('ai_tutor_custom_api_url');
-      if (customApiUrl && customApiUrl.trim()) {
-        headers['x-custom-api-url'] = customApiUrl.trim();
+        const customApiUrl = localStorage.getItem('ai_tutor_custom_api_url');
+        if (customApiUrl && customApiUrl.trim()) {
+          headers['x-custom-api-url'] = customApiUrl.trim();
+        }
       }
     }
 
@@ -359,7 +357,7 @@ function loadProfiles() {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map(p => ({
           ...p,
-          name: (!p.name || p.name === '默认用户') ? '同学' : p.name,
+          name: (!p.name || p.name === '默认用户' || (p.id === 'default' && p.name === '曾练')) ? '同学' : p.name,
           grade: (!p.grade || p.grade === 'unknown') ? '7_up' : (migrateGrade(p.grade) || '7_up'),
           edition: p.edition || '人教版'
         }));
@@ -471,7 +469,13 @@ export function AppProvider({ children }) {
   );
   const [chatModel, setChatModel] = useState(() => {
     const saved = localStorage.getItem('ai_tutor_chat_model');
-    if (!saved || saved === 'default') return 'deepseek-chat';
+    const hasCustomDsKey = Boolean((localStorage.getItem('ai_tutor_deepseek_key') || '').trim());
+    if (!saved || saved === 'default' || saved === 'gemini-2.5-flash') {
+      return 'gemini-3-flash-preview';
+    }
+    if (saved === 'deepseek-chat' && !hasCustomDsKey) {
+      return 'gemini-3-flash-preview';
+    }
     return saved;
   });
   const [tutorPersona, setTutorPersonaState] = useState(() => {

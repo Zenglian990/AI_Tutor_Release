@@ -157,7 +157,7 @@ export default function SettingsModal({
         body: JSON.stringify({
           provider: 'gemini',
           apiKey: geminiKey.trim() || undefined,
-          model: 'gemini-2.5-flash'
+          model: 'gemini-3-flash-preview'
         })
       });
       const data = await res.json();
@@ -865,17 +865,17 @@ export default function SettingsModal({
                     </div>
                   </div>
 
-                  {/* Gemini 2.5 Flash */}
+                  {/* Gemini 3 Flash */}
                   <div
-                    onClick={() => setChatModel('gemini-2.5-flash')}
+                    onClick={() => setChatModel('gemini-3-flash-preview')}
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: (chatModel === 'gemini-2.5-flash') ? '1.5px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: (chatModel === 'gemini-2.5-flash') ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: chatModel.includes('gemini') ? '1.5px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: chatModel.includes('gemini') ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -883,18 +883,18 @@ export default function SettingsModal({
                     <input
                       type="radio"
                       name="chatModelOption"
-                      checked={chatModel === 'gemini-2.5-flash'}
-                      onChange={() => setChatModel('gemini-2.5-flash')}
+                      checked={chatModel.includes('gemini')}
+                      onChange={() => setChatModel('gemini-3-flash-preview')}
                       style={{ marginTop: '4px', accentColor: '#a855f7' }}
                     />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'gemini-2.5-flash') ? '#c084fc' : '#f8fafc' }}>
-                          🧠 Google Gemini 2.5 Flash（国际顶流 · 多模态图文）
+                        <strong style={{ fontSize: '0.95rem', color: chatModel.includes('gemini') ? '#c084fc' : '#f8fafc' }}>
+                          🧠 Google Gemini 3 Flash（官方云端默认 · 多模态图文）
                         </strong>
                       </div>
                       <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                        谷歌官方大模型，擅长跨学科全局知识检索与国际化思维启发。（国内环境需网络代理）
+                        谷歌新一代旗舰推理模型，原生支持高难度数理推导、识图批改与全学段教材融合检索。
                       </p>
                     </div>
                   </div>
@@ -1169,22 +1169,22 @@ export default function SettingsModal({
                 <div>
                   <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>当前主界面问答调用引擎：</div>
                   <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
-                    {chatModel.includes('gemini') ? '🔮 Google Gemini 2.5 Flash' : (chatModel.includes('deepseek') ? '🚀 DeepSeek-V3 文本模式' : (chatModel.includes('Qwen') ? '👑 通义千问 Qwen2.5-VL' : chatModel))}
+                    {chatModel.includes('gemini') ? '🔮 Google Gemini 3 Flash' : (chatModel.includes('deepseek') ? '🚀 DeepSeek-V3 文本模式' : (chatModel.includes('Qwen') ? '👑 通义千问 Qwen2.5-VL' : chatModel))}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => {
-                      setChatModel('gemini-2.5-flash');
-                      localStorage.setItem('ai_tutor_chat_model', 'gemini-2.5-flash');
+                      setChatModel('gemini-3-flash-preview');
+                      localStorage.setItem('ai_tutor_chat_model', 'gemini-3-flash-preview');
                     }}
                     style={{
                       padding: '6px 12px',
                       borderRadius: '8px',
-                      border: chatModel === 'gemini-2.5-flash' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.15)',
-                      background: chatModel === 'gemini-2.5-flash' ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)',
-                      color: chatModel === 'gemini-2.5-flash' ? '#e9d5ff' : '#94a3b8',
+                      border: chatModel.includes('gemini') ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.15)',
+                      background: chatModel.includes('gemini') ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)',
+                      color: chatModel.includes('gemini') ? '#e9d5ff' : '#94a3b8',
                       fontSize: '0.8rem',
                       fontWeight: 600,
                       cursor: 'pointer'

@@ -272,7 +272,7 @@ export default function AdminConsoleModal({
     try {
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `曾练专属私教_学情报告_${posterTemplate === 'primary' ? '小学版' : '初中版'}.png`;
+      link.download = `AI智慧私教_学情报告_${posterTemplate === 'primary' ? '小学版' : '中学版'}.png`;
       link.href = dataUrl;
       link.click();
     } catch (e) {
@@ -452,7 +452,7 @@ export default function AdminConsoleModal({
         body: JSON.stringify({
           provider: 'gemini',
           apiKey: geminiKey.trim() || undefined,
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           pin_hash: getAdminPinHash()
         })
       });

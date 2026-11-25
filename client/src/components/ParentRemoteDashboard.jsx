@@ -126,7 +126,7 @@ export default function ParentRemoteDashboard({ token: initialToken }) {
   }
 
   const {
-    studentName = '曾练',
+    studentName = '同学',
     date = new Date().toLocaleDateString('zh-CN'),
     todayStats = {},
     overallStats = {},
@@ -464,7 +464,7 @@ export default function ParentRemoteDashboard({ token: initialToken }) {
             {copied ? '✅ 已复制本页微信查看链接' : '🔗 复制本页链接，发送给微信群'}
           </button>
           <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '12px' }}>
-            曾先生智慧私教系统 · 家校协同名师督学技术支持
+            AI 智慧私教系统 · 家校协同名师督学技术支持
           </div>
         </div>
 

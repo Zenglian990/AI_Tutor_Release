@@ -77,7 +77,7 @@ async function checkKeysHealth() {
       if (proxyAgent) fetchOptions.dispatcher = proxyAgent;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       fetchOptions.signal = controller.signal;
 
       const res = await undici.fetch(url, fetchOptions);
@@ -110,7 +110,7 @@ async function checkKeysHealth() {
 
 function startEmbeddingCheck() {
   setInterval(checkKeysHealth, 10 * 60 * 1000).unref();
-  setTimeout(checkKeysHealth, 5000).unref();
+  setTimeout(checkKeysHealth, 15000).unref();
 }
 
 function isOpenAiVisionModel(modelName) {
@@ -596,8 +596,14 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
   const hasClientGeminiKey = Boolean(clientGeminiKey);
   const hasClientDomesticKey = Boolean(clientSfKey || clientDsKey || clientZpKey || clientDeepseekKey || clientOpenaiKey);
-  const hasClientUrl = Boolean(clientCustomUrl || clientDeepseekUrl);
-  const isIsolatedClient = hasClientGeminiKey || hasClientDomesticKey || hasClientUrl;
+  const normalizedDeepseekUrl = clientDeepseekUrl ? clientDeepseekUrl.replace(/\/+$/, '').toLowerCase() : '';
+  // 孤立的默认 x-deepseek-api-url (未携带任何自定义 Key) 不应触发客户端隔离锁而架空服务端 Gemini 密钥池
+  const hasNonDefaultCustomUrl = Boolean(
+    clientCustomUrl ||
+    (clientDeepseekUrl && normalizedDeepseekUrl !== 'https://api.deepseek.com/v1')
+  );
+  const hasClientUrl = Boolean(clientCustomUrl || (clientDeepseekUrl && hasClientDomesticKey));
+  const isIsolatedClient = hasClientGeminiKey || hasClientDomesticKey || Boolean(clientCustomUrl);
 
   let hasImage = false;
   try {
@@ -657,7 +663,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
                              currentModel.toLowerCase().includes('step-') ||
                              currentModel.startsWith('Qwen/') ||
                              currentModel.startsWith('Pro/') ||
-                             (hasClientUrl && !hasClientGeminiKey);
+                             (hasNonDefaultCustomUrl && !hasClientGeminiKey);
 
   let url = buildURL(currentModel);
   const urlType = url.includes('streamGenerateContent') ? 'stream' : (url.includes('embedContent') ? 'embed' : 'chat');

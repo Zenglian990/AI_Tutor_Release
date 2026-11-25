@@ -20,7 +20,7 @@ const { getStudyCheckpoint, formatCheckpointPromptSection } = require('./checkpo
  */
 async function getStudentCognitiveMemory(profileId = 'default', grade = '', subject = '', studentNameFromClient = '') {
   const cleanClientName = typeof studentNameFromClient === 'string' ? studentNameFromClient.trim() : '';
-  const fallbackName = cleanClientName || (profileId === 'default' ? '曾练' : (profileId || '同学'));
+  const fallbackName = cleanClientName || (profileId === 'default' ? '同学' : (profileId || '同学'));
   const db = getSqliteDb();
   if (!db) {
     return {

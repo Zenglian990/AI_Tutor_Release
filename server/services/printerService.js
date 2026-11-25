@@ -31,7 +31,7 @@ function isSafeLocalPrinterHost(host) {
  */
 function formatExamForPrinter({
   title = '名师专属微测试卷',
-  studentName = '曾练',
+  studentName = '同学',
   grade = '7_up',
   subject = '数学',
   questions = [],

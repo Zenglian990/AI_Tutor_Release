@@ -41,7 +41,7 @@ const PEER_CHALLENGES = {
  * @param {string} grade - Current grade
  * @returns {string} System prompt block
  */
-function generatePeerStudentPersonaPrompt(conceptName = '数学定理', studentName = '曾练同学', grade = '初中') {
+function generatePeerStudentPersonaPrompt(conceptName = '数学定理', studentName = '同学', grade = '初中') {
   return `【🧑‍🤝‍🧑 虚拟小同桌角色扮演模式（费曼以教代学系统）】
 - 你的身份：你现在不是威严的名师，而是${studentName}的初中同班同学兼好朋友“小明”。
 - 性格特征：真诚求知、性格谦逊活泼、对数理规律充满好奇，但偶尔被抽象符号绕晕。
