@@ -1,27 +1,27 @@
 <div align="center">
 
-# 🎓 ZengLian AI Tutor (曾练专属私教)
+# 🎓 AI Tutor (1-12 Full K-12 Edition)
 
-**The Next-Gen Open-Source RAG AI Tutoring System specifically tailored for K-9 Education**
-*Comprehensive K-9 Textbooks Knowledge Base · Dual-Modal Adaptive Mind Engines · Closed-Loop Learning System*
+**Open-Source RAG AI Tutoring System tailored for Full K-12 Education (Grades 1-12: Primary, Middle & High School)**
+*Comprehensive K-12 Textbooks Knowledge Base · Adaptive Cognitive Engines · Closed-Loop Exam Prep System*
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.7.3_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
-[![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.7.5_Download-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.apk)
+[![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.7.5_Download-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_Cloud_Web-Google_Cloud_Run-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.7.3)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.7.5)
 
 <br/>
 
-[![React](https://img.shields.io/badge/Frontend-React_18-blue?style=flat-square&logo=react)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/Frontend-React_19-blue?style=flat-square&logo=react)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Mobile Dual](https://img.shields.io/badge/Mobile-Capacitor_Android_%26_iOS-3DDC84?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
-[![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
+[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_3_Flash_%26_DeepSeek_V3-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.7.3 Full-Page Batch Grading·39k Grounding·Ergonomics)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android APK (v1.7.5 Full K-12 · Gemini 3 Flash)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.apk) | [**🍎 iOS Guide**](#-multi-platform-support-android--ios--pc) | [**🌐 Cloud Web**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *"Education equality is not just a slogan. We aim to bring top-tier AI private tutors to every ordinary household."*
 
@@ -34,9 +34,11 @@
 Zero complicated dev setup required. Enjoy seamless, synchronized tutoring across mobile phones, tablets, and desktop computers:
 
 ### 🤖 1. Android (Phone & Tablet)
-- **📥 Direct APK Download**: [AI_Tutor_v1.7.3.apk (~4.5MB · Full-Page Batch Grading · 39,114 Canonical Question Grounding · Mobile Ergonomics)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
-- **📥 Stable Fallback**: [AI_Tutor_v1.6.3.apk (~10.5MB · FSRS Scientific Memory Scheduler · Interactive Math Canvas · Feynman Peer Mode)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
-- **✨ v1.7.3 Major Milestone Upgrades (Batch Grading & 39k Grounding & Ergonomics)**:
+- **📥 Direct APK Download**: [AI_Tutor_v1.7.5.apk (Full K-12 Grades 1-12 · Google Gemini 3 Flash · Hardened Production Security)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.apk)
+- **📥 Previous Release**: [AI_Tutor_v1.7.3.apk](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
+- **✨ v1.7.5 Major Release (Full K-12 · Gaokao Prep · Gemini 3 Flash · GCS Persistence)**:
+  - Full Grades 1–12 curriculum support with 150-point Gaokao mock exams, KaTeX auto-healing, Conic Section interactive sandbox, multi-profile server isolation, and Cloud Run Gen2 GCS snapshot persistence.
+- **✨ Continued v1.7.3 Core Capabilities (Batch Grading & 39,335 Grounding Bank & Ergonomics)**:
   - **🔴 Full-Page Homework Red Ink Batch Grading**:
     - One-shot full-page sheet capture, automatic multiple question detection (`box_2d` coordinate bounding);
     - Teacher red ink overlay (✓/✕/step score line), high-precision slice review, and one-click mistake notebook archiving;
@@ -65,9 +67,9 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
   1. Open Safari on your iPhone/iPad and visit Google Cloud Run: [https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)
   2. Tap the **Share button 📤** at the bottom of Safari;
   3. Scroll down and tap **"Add to Home Screen"** ➔ Tap **"Add"** at top right;
-  4. The **【曾练专属私教】** native App icon appears on your home screen with immersive full-screen UX and camera support!
+  4. The **【AI 智慧私教】** native App icon appears on your home screen with immersive full-screen UX and camera support!
 - **📦 Method B (IPA Native Package)**:
-  - [Download ZengLian_AI_Tutor_v1.0.0.ipa](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
+  - [Download AI_Tutor_v1.7.5.ipa](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.ipa)
   - Install via AltStore, Sideloadly, or Apple Enterprise Certificate.
 
 ### 💻 3. PC Desktop (Windows / Mac / Linux)
@@ -118,7 +120,7 @@ Zero complicated dev setup required. Enjoy seamless, synchronized tutoring acros
 
 ## 🌟 Core Features
 
-**ZengLian AI Tutor** eliminates the drawbacks of traditional "homework search engines" that encourage rote copying. Utilizing large language models and LanceDB textbook vector knowledge bases, it establishes a true **"Learn - Practice - Test - Guide - Manage" closed-loop tutoring agent**:
+**AI Tutor (1-12)** eliminates the drawbacks of traditional "homework search engines" that encourage rote copying. Utilizing large language models and LanceDB textbook vector knowledge bases, it establishes a true **"Learn - Practice - Test - Guide - Manage" closed-loop K-12 tutoring agent**:
 
 - 📸 **Industrial Photo Question Search & OCR Grounding**:
   - **5-Step Ground-Truth Vision Chain**: Mandatory transcription of original formulas (`### 📝 【原题精确还原】`) using LaTeX before derivation to eradicate hallucinated numbers or missed minus signs; seamlessly followed by clue breakdown, draftpad scaffolding, derivation, and parallel variations.

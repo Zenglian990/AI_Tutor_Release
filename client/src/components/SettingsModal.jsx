@@ -1883,7 +1883,7 @@ export default function SettingsModal({
           }}
         >
           <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>AI 智慧私教 v1.7.4</span>
+            <span>AI 智慧私教 v1.7.5</span>
             <span style={{ opacity: 0.75 }}>· 1-12年级全科全版本</span>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>

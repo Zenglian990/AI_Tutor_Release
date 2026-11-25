@@ -13,8 +13,8 @@ permissions:
 
 jobs:
   build-ios:
-    runs-on: macos-14
-    name: Build ZengLian AI Tutor iOS App
+    runs-on: macos-15
+    name: Build AI Tutor iOS App (v1.7.5)
 
     steps:
       - name: Checkout repository
@@ -30,11 +30,13 @@ jobs:
           npm install
           cd client
           npm install
-          npm run build
+          VITE_API_URL=https://ai-tutor-79709693345.asia-east1.run.app npm run build
           npx cap sync ios
 
-      - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app
+      - name: Verify Xcode toolchain
+        run: |
+          xcode-select -p
+          xcodebuild -version
 
       - name: Build iOS Project & Generate IPA
         run: |
@@ -42,33 +44,32 @@ jobs:
           xcodebuild -project App.xcodeproj -scheme App -configuration Release -derivedDataPath build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO build
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
-          zip -qr ../../../ZengLian_AI_Tutor_v1.0.0.ipa Payload
-          ls -lh ../../../ZengLian_AI_Tutor_v1.0.0.ipa
+          zip -qr ../../../AI_Tutor_v1.7.5.ipa Payload
+          ls -lh ../../../AI_Tutor_v1.7.5.ipa
 
       - name: Compress iOS Xcode Project Bundle
         run: |
           cd client/ios
-          zip -qr ../../ZengLian_AI_Tutor_iOS_Project.zip App
+          zip -qr ../../AI_Tutor_v1.7.5_iOS_Project.zip App -x "App/build/*" "App/Payload/*"
 
       - name: Upload Artifacts to Workflow
         uses: actions/upload-artifact@v4
         with:
-          name: ZengLian_AI_Tutor_iOS_Package
+          name: AI_Tutor_v1.7.5_iOS_Package
           path: |
-            ./ZengLian_AI_Tutor_v1.0.0.ipa
-            ./ZengLian_AI_Tutor_iOS_Project.zip
+            ./AI_Tutor_v1.7.5.ipa
+            ./AI_Tutor_v1.7.5_iOS_Project.zip
           retention-days: 30
 
-      - name: Upload iOS Assets to GitHub Release
+      - name: Attach iOS Assets to v1.7.5 Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.0.0-apk
-          name: "曾练专属私教 移动双端独立安装包 (Android APK + iOS IPA v1.0.0)"
+          tag_name: v1.7.5
           draft: false
           prerelease: false
           files: |
-            ./ZengLian_AI_Tutor_v1.0.0.ipa
-            ./ZengLian_AI_Tutor_iOS_Project.zip
+            ./AI_Tutor_v1.7.5.ipa
+            ./AI_Tutor_v1.7.5_iOS_Project.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -120,13 +120,13 @@ router.get('/system/network-info', async (req, res) => {
 router.get('/system/version', (req, res) => {
   const pkg = require('../../package.json');
   res.json({
-    version: pkg.version || '1.7.4',
+    version: pkg.version || '1.7.5',
     buildDate: '2026-11-25',
     appName: 'AI 智慧私教 (1-12年级)',
     minAppVersion: '1.0.0',
     hasUpdate: false,
     updateType: 'pwa_hot_update',
-    apkFileName: `AI_Tutor_v${pkg.version || '1.7.4'}.apk`,
+    apkFileName: `AI_Tutor_v${pkg.version || '1.7.5'}.apk`,
     releaseNotes: '支持 1-12 年级全学段伴学、大模型拍照识题视觉路由、系统设置多模型密钥配置与离线韧性升级'
   });
 });

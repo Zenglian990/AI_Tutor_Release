@@ -1,16 +1,16 @@
 <div align="center">
 
-# 🎓 曾练专属私教 (ZengLian AI Tutor)
+# 🎓 AI 智慧私教 (AI Tutor · 1-12年级全学段)
 
 **国内首个专为 1-12 年级（小学·初中·高中全学段）量身定制的开源 RAG AI 智能私教系统**
 *覆盖人教版 1-12 年级全学科教材知识库 · 分龄自适应心智教学 · 中高考闭环提分体系*
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.7.3_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
-[![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.0.0_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
+[![Download APK](https://img.shields.io/badge/🤖_Android_APK-v1.7.5_立即下载-2ea44f?style=for-the-badge&logo=android)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.apk)
+[![Download IPA](https://img.shields.io/badge/🍎_iOS_IPA-v1.7.5_立即下载-000000?style=for-the-badge&logo=apple)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.ipa)
 [![Online Web](https://img.shields.io/badge/🌐_云端免安装-谷歌云亚太极速直达-blue?style=for-the-badge)](https://ai-tutor-79709693345.asia-east1.run.app)
-[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.7.3)
+[![Release](https://img.shields.io/github/v/release/Zenglian990/AI_Tutor_Release?style=for-the-badge&color=blue)](https://github.com/Zenglian990/AI_Tutor_Release/releases/tag/v1.7.5)
 
 <br/>
 
@@ -18,10 +18,10 @@
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_Express-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Mobile Dual](https://img.shields.io/badge/Mobile-Capacitor_Android_%26_iOS-3DDC84?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![RAG](https://img.shields.io/badge/RAG-LanceDB_Vector-orange?style=flat-square)](https://lancedb.com/)
-[![LLM](https://img.shields.io/badge/AI_Engine-DeepSeek_V3_%26_Gemini_2.5-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
+[![LLM](https://img.shields.io/badge/AI_Engine-Gemini_3_Flash_%26_DeepSeek_V3-brightgreen?style=flat-square)](https://github.com/Zenglian990/AI_Tutor_Release)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.7.3 整页红墨水秒批·3.9万真题防幻觉·人体工程学)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
+[**中文文档**](README.md) | [**English**](README_en.md) | [**🤖 Android 下载 (v1.7.5 1-12年级全学段·Gemini 3满血引擎)**](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.apk) | [**🍎 iOS 安装指南**](#-移动双端与桌面全平台支持-android--ios--pc) | [**🌐 谷歌云端体验**](https://ai-tutor-79709693345.asia-east1.run.app)
 
 > *“教育公平从来不是一句口号。让普通家庭的孩子，也能拥有最顶尖的专属私教。”*
 
@@ -34,9 +34,12 @@
 无需繁琐的本地开发环境配置，手机和电脑均可即装即用体验专为全场景优化的 **全学科智能私教**：
 
 ### 🤖 1. 安卓端 (Android 手机 / 平板)
-- **📦 最新版安装包直链下载**：[AI_Tutor_v1.7.3.apk (约 4.5MB · 整页红墨水秒批改·39,114道全国权威真题防幻觉·移动端人体工程学自适应)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
-- **📦 稳定备用直链**：[AI_Tutor_v1.6.3.apk (约 10.5MB · FSRS现代科学记忆调度·Mafs可交互数学画板·费曼以教代学同桌模式)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.6.3/AI_Tutor_v1.6.3.apk)
-- **✅ v1.7.3 重磅体验跃升 (整页红墨水秒批 · 权威真题硬锚定防幻觉 · 人体工程学旗舰版)**：
+- **📦 最新版安装包直链下载**：[AI_Tutor_v1.7.5.apk (1-12年级全学段强化 · Google Gemini 3 Flash 满血引擎 · 多孩服务端隔离 · 生产安全加固)](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.apk)
+- **📦 历史稳定版本**：[AI_Tutor_v1.7.3.apk](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.3/AI_Tutor_v1.7.3.apk)
+- **✅ v1.7.5 旗舰升级 (1-12年级全学段 · 新高考闭环 · Gemini 3 引擎 · 生产级安全与持久化)**：
+  - **🎓 1-12 年级（小学·初中·高中）全学段覆盖**：新增新高考 150 分全真模考、KaTeX 公式自愈零报错、高中圆锥曲线与离心率交互沙盒、初/高中公式宝典分流、真实全学段课标章节目录与高考作文/英语真 AI 思辨精批。
+  - **🚀 Google Gemini 3 Flash 云端默认引擎 + GCS 持久化**：Cloud Run Gen2 搭载 Secret Manager 零明文托管与 GCS 流式事务快照持久化，全栈 70 套自动化测试（349 项用例）100% 绿灯。
+- **✅ 延续 v1.7.3 核心体验 (整页红墨水秒批 · 39,335 道权威真题防幻觉 · 移动端人体工程学)**：
   - **🔴 整页作业多题智能秒批改 (Homework Batch Grading)**：
     - 告别单题拍照切图，支持整页试卷一键拍摄，多题自动定位（`box_2d` 外接矩形定位）；
     - 名师红墨水原图勾叉覆写（✓/✕/步骤得分折线），多题高精度交互画框与一键错题归档；
@@ -75,9 +78,9 @@
   1. 使用 iPhone / iPad 自带的 **Safari 浏览器** 打开谷歌云高可用集群地址：[https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)
   2. 点击 Safari 底部中央的 **【分享按钮 📤】**；
   3. 下滑选择 **【添加到主屏幕】** ➔ 点击右上角 **【添加】**；
-  4. 手机桌面上立即生成 **【曾练专属私教】** 独立 App 图标，全屏沉浸运行，自带原生高清拍照拍题答疑与麦克风！
+  4. 手机桌面上立即生成 **【AI 智慧私教】** 独立 App 图标，全屏沉浸运行，自带原生高清拍照拍题答疑与麦克风！
 - **📦 方案 B（IPA 原生安装包）**：
-  - [下载 ZengLian_AI_Tutor_v1.0.0.ipa](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.0.0-apk/ZengLian_AI_Tutor_v1.0.0.ipa)
+  - [下载 AI_Tutor_v1.7.5.ipa](https://github.com/Zenglian990/AI_Tutor_Release/releases/download/v1.7.5/AI_Tutor_v1.7.5.ipa)
   - 可使用爱思助手、AltStore、Sideloadly 或企业证书导入 iPhone 安装。
 
 ### 💻 3. 电脑桌面端 (Windows / Mac / Linux)
@@ -128,7 +131,7 @@
 
 ## 🌟 核心杀手级特性 (Core Features)
 
-「曾练专属私教」摒弃了市面上传统搜题软件“直接给答案抄袭”的应试弊端，基于大语言模型与 LanceDB 精准教材向量知识库构建了真正的**“学-练-测-辅-管”全闭环 AI 私教智能体**：
+「AI 智慧私教」摒弃了市面上传统搜题软件“直接给答案抄袭”的应试弊端，基于大语言模型与 LanceDB 精准教材向量知识库构建了真正的**“学-练-测-辅-管”全闭环 1-12 年级 AI 私教智能体**：
 
 - 📸 **工业级拍照搜题与智能分题（对标小猿搜题/作业帮）**：
   - **五步视觉转录锚定**：前置强制完整输出 `### 📝 【原题精确还原】`，彻底杜绝看错符号、漏看已知条件的视觉幻觉，后续考点分析、草稿纸第一步动笔支架、推导与变式母题环环相扣。
@@ -138,15 +141,16 @@
 - 🎙️ **三引擎极速语音交互系统（亚秒级转写响应）**：
   - **Web Speech 原生引擎**：Android Chrome / 桌面端 0 延迟边说边实时上屏。
   - **VAD 智能静音检测**：停止说话 900ms 自动断句交割，流畅无感。
-  - **0 思考预算服务端兜底**：Gemini 2.5 Flash 0-thinking 配置，录音停止后 <1 秒完成精准转写。
+  - **0 思考预算服务端兜底**：Gemini 3 Flash 0-thinking 配置，录音停止后 <1 秒完成精准转写。
 - ⚡ **AI 极速双引擎（用户自主选择 · 严格执行）**：
-  - **DeepSeek-V3 极速版**：国内高速直连，首字响应（TTFT）低至 **0.4 秒**，问答干脆利落，体验行云流水。
-  - **Gemini 2.5 Flash 深度版**：原生多模态深度理解，复杂几何图形识别与大题长思维链推导更强悍。
-  - **顶栏一键秒切**：顶栏显式提供【⚡ 极速 / 🧠 Gemini】胶囊切换，严格执行用户所选模型，绝不擅自篡改。
-- 🧠 **Jev 1~9 年级心智模型决策大脑（年级全自动智能匹配）**：
+  - **Google Gemini 3 Flash（官方云端默认）**：原生多模态深度理解，复杂高中导数/圆锥曲线推导、整页批改与长思维链讲解更强悍。
+  - **DeepSeek-V3 极速版（可选自定义 Key）**：国内高速直连，数理思维链干脆利落。
+  - **顶栏/设置一键秒切**：支持灵活切换推理引擎，严格执行用户所选模型。
+- 🧠 **Jev 1~12 年级心智模型决策大脑（年级全自动智能匹配）**：
   - **1-3 年级（童趣萌芽）**：生动趣味、情境背诵与具象化拆解，保护好奇心与专注习惯。
   - **4-6 年级（条理与规范）**：强化计算验算、草稿纸规范演练与知识点分类收敛。
   - **7-9 年级（严谨逻辑与中考攻坚）**：思维导图骨架梳理、反向追问防坑避雷、大题多步严密证明。
+  - **10-12 年级（新高考思辨与压轴突破）**：导数与圆锥曲线建模、150 分新高考全真模考、高考作文五维精批与高阶跨学科迁移。
   - **底层自适应装配**：学生选择年级后自动匹配心智认知模式，无需手动干预；本地 0ms 启发式裁决，实时捕捉挫败情绪并自适应降级引导。
 - 🌊 **45ms 流式帧缓冲抗掉帧平滑渲染**：
   - 前端独创基于 `requestAnimationFrame` 的 45ms 平滑渲染缓冲池，彻底解决 AI 吐字过快导致的 DOM 重绘抖动与掉帧卡顿，呈现如丝般顺滑的打字机交互体验。
@@ -156,7 +160,7 @@
   - 遇到难题绝不直接给答案，而是通过层层递进的提问引导孩子自主思考（“你觉得第一步应该先求什么？”）。
   - 内置语音朗读（TTS）、演练草稿纸、几何白板、整页秒批、题眼与陷阱专项剖析。
 - 🗺️ **游戏化知识图谱与关卡地图**：
-  - 覆盖人教版 1-9 年级小初全学段全学科章节图谱（并支持初高衔接拓展），将教材知识解构成探险副本。
+  - 覆盖人教版 1-12 年级小学·初中·高中全学段全学科真实课标章节图谱，将教材知识解构成探险副本。
   - 支持开启自由探索与闯关锁定，激发孩子自主通关的内生驱动力。
 - 📒 **智能错题闭环与靶向变式卷**：
   - **错题一键收录**：智能归类知识点盲区与失分原因。

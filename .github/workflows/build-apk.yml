@@ -11,7 +11,7 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    name: Build ZengLian AI Tutor APK
+    name: Build AI Tutor Android APK (v1.7.5)
 
     steps:
       - name: Checkout repository
@@ -45,72 +45,73 @@ jobs:
       - name: Build Signed Release Android APK
         run: |
           cd client/android
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > app/release.keystore
-            ./gradlew assembleRelease \
-              -Pandroid.injected.signing.store.file=release.keystore \
-              -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
-              -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
-              -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD" \
-              --stacktrace
-          else
-            echo "::error::Missing ANDROID_KEYSTORE_BASE64 secret. Refusing to publish unsigned/debug APK as production release."
+          STORE_PASS="${ANDROID_STORE_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$STORE_PASS" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Missing Android signing secrets (ANDROID_KEYSTORE_BASE64 / ANDROID_STORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD)."
             exit 1
           fi
+          KEYSTORE_ABS_PATH="$(pwd)/app/release.keystore"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_ABS_PATH"
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file="$KEYSTORE_ABS_PATH" \
+            -Pandroid.injected.signing.store.password="$STORE_PASS" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD" \
+            -PRELEASE_STORE_FILE="$KEYSTORE_ABS_PATH" \
+            -PRELEASE_STORE_PASSWORD="$STORE_PASS" \
+            -PRELEASE_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
+            -PRELEASE_KEY_PASSWORD="$ANDROID_KEY_PASSWORD" \
+            --stacktrace
+          rm -f "$KEYSTORE_ABS_PATH"
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/release/app-release.apk ./AI_Tutor_v1.7.4.apk
-          ls -lh ./AI_Tutor_v1*.apk
+          cp client/android/app/build/outputs/apk/release/app-release.apk ./AI_Tutor_v1.7.5.apk
+          ls -lh ./AI_Tutor_v1.7.5.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.7.3
-          path: ./AI_Tutor_v1.7.3.apk
+          name: AI_Tutor_v1.7.5
+          path: ./AI_Tutor_v1.7.5.apk
           retention-days: 30
 
-      - name: Create or Update v1.7.3 Latest Release
+      - name: Create or Update v1.7.5 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.7.3
-          name: "曾练专属私教 v1.7.3 - 整页红墨水秒批改·39,114道权威真题防幻觉·移动端人体工程学自适应"
+          tag_name: v1.7.5
+          name: "AI 智慧私教 (1-12年级) v1.7.5 - 全学段K12强化 · Gemini 3满血引擎 · 生产安全与GCS持久化"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 曾练专属私教 v1.7.3 (整页红墨水秒批改 · 39,114道真题防幻觉Grounding · 移动端人体工程学)
+            ## 🚀 AI 智慧私教（1-12年级全学段）v1.7.5 正式版
 
-            - 🔴 **对标小猿口算/作业帮：整页作业红墨水多题精准秒批 (Homework Batch Grading)**：
-              - 告别单题拍照切图，支持整页试卷一键拍摄，多题自动检测（`box_2d` 外接矩形定位）；
-              - 名师红墨水原图勾叉覆写（✓/✕/步骤得分折线），多题高精度交互画框与一键错题归档；
-              - 多源大模型智能路由：优先调度国产百亿视觉模型（SiliconFlow / DashScope / 智谱）与云端双引擎。
-            - 🎯 **39,114 道全国百强名校权威真题 Grounding 题库 (Anti-Hallucination Sandbox)**：
-              - 权威真题指纹与关键词毫秒级本地硬锚定，强行覆盖大模型几何计算幻觉；
-              - 确定性理科沙盒动态校验，做对题目绝对禁止误判，保护学生学习自信心与作答证据。
-            - 📱 **移动端头部与输入栏人体工程学自适应优化**：
-              - 彻底解决年级学段长文本换行与顶部胶囊拥挤溢出，横向自适应流式排版；
-              - 底部工具栏与输入框层叠间距优化，大拇指单手握持轻松盲操。
-            - 🖨️ **A4 纸质试卷动态页数联动与费曼反思追问闭环**：
-              - 支持试题量与字体行距智能排版自适应（自动计算 1/2/4 页标准 A4 面数）；
-              - 费曼同桌角色互换支持模态内多轮自然语音/文字深度复盘。
-            - 💯 **全栈自动化测试套件持续保障**：
-              - 服务端 222 项单元/集成测试 100% 通过，客户端 104 项 Vitest 测试全面绿灯！
+            - 🎓 **1-12 年级（小学·初中·高中）全学段深度闭环**：
+              - 完整保留并深度强化高中新高考体系：150 分制新高考模考（防重复、严学段隔离、多选完整判分、全真考场防秒交/防跳题）、KaTeX 公式自愈零报错、高中圆锥曲线与离心率交互沙盒、初/高中公式宝典分流、真实 1-12 年级课标章节目录。
+              - 全新 **Google Gemini 3 Flash** 默认云端推理引擎（含 `gemini-3.1-flash-lite` 容灾切换），覆盖全科数理推导、高考作文五维思辨精批与英语情景对练真实文法诊断。
+            - 🔒 **生产级安全防线与多孩服务端权威隔离**：
+              - 全链路服务端权威签发 `stu_*` 隔离档案、防 IDOR 越权、配额防绕过、生产异常脱敏，以及 GCP Secret Manager 零明文托管。
+              - 云端 Cloud Run Gen2 + GCS 流式事务快照持久化（[stateSync.js](server/services/stateSync.js)），容器扩缩容零数据丢失。
+            - 📱 **移动端与 PWA 体验全面升级**：
+              - 375px 窄屏全核心弹窗与顶栏多孩入口响应式适配、全站亮色模式高对比度、番茄钟墨水屏一键退出、PWA `NetworkFirst` 升级自愈策略防旧缓存锁死。
+            - 💯 **全栈自动化测试持续绿灯**：
+              - 后端 43 套（238 项用例）+ 前端 27 套（111 项用例）100% PASS。
 
             ---
-            ### 🤖 安卓端下载与安装 (Android APK)：
-            1. 点击下方 Assets 列表中的 **`AI_Tutor_v1.7.3.apk`** 直接下载安装；
-            2. 安装后手机桌面将更新至 **【曾练专属私教 v1.7.3】**，点开即用！
-            *(按照规范，发布区严格保持最新的两个 APK 安装包: v1.7.3 与 v1.6.3)*
+            ### 📥 安装与使用
+            - **Android 端**：下载下方 **`AI_Tutor_v1.7.5.apk`**（已使用正式发布密钥签名）直接安装；
+            - **iOS 端**：使用 Safari 打开 [线上云端版](https://ai-tutor-79709693345.asia-east1.run.app) 添加到主屏幕，或下载下方 `AI_Tutor_v1.7.5.ipa`；
+            - **Web / PC 端**：直达 [https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)。
           files: |
-            ./AI_Tutor_v1.7.3.apk
-            ./AI_Tutor_v1.6.3.apk
+            ./AI_Tutor_v1.7.5.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

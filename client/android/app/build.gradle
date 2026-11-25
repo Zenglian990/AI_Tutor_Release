@@ -7,8 +7,8 @@ android {
         applicationId "com.zentutor.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 29
-        versionName "1.7.3"
+        versionCode 31
+        versionName "1.7.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -21,9 +21,9 @@ android {
             def keystoreFile = project.hasProperty('RELEASE_STORE_FILE') ? file(RELEASE_STORE_FILE) : file('release.keystore')
             if (keystoreFile.exists()) {
                 storeFile keystoreFile
-                storePassword project.findProperty('RELEASE_STORE_PASSWORD') ?: 'zenglian_tutor_2026'
-                keyAlias project.findProperty('RELEASE_KEY_ALIAS') ?: 'zenglian_release'
-                keyPassword project.findProperty('RELEASE_KEY_PASSWORD') ?: 'zenglian_tutor_2026'
+                storePassword project.findProperty('RELEASE_STORE_PASSWORD') ?: System.getenv('ANDROID_STORE_PASSWORD') ?: ''
+                keyAlias project.findProperty('RELEASE_KEY_ALIAS') ?: System.getenv('ANDROID_KEY_ALIAS') ?: ''
+                keyPassword project.findProperty('RELEASE_KEY_PASSWORD') ?: System.getenv('ANDROID_KEY_PASSWORD') ?: ''
             }
         }
     }
