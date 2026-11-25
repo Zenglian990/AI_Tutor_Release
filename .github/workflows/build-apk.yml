@@ -45,22 +45,46 @@ jobs:
       - name: Build Signed Release Android APK
         run: |
           cd client/android
-          STORE_PASS="${ANDROID_STORE_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$STORE_PASS" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+          STORE_PASS="$(printf '%s' "${ANDROID_STORE_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}" | tr -d '\r\n')"
+          KEY_ALIAS="$(printf '%s' "$ANDROID_KEY_ALIAS" | tr -d '\r\n')"
+          KEY_PASS="$(printf '%s' "${ANDROID_KEY_PASSWORD:-$STORE_PASS}" | tr -d '\r\n')"
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$STORE_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
             echo "::error::Missing Android signing secrets (ANDROID_KEYSTORE_BASE64 / ANDROID_STORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD)."
             exit 1
           fi
           KEYSTORE_ABS_PATH="$(pwd)/app/release.keystore"
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_ABS_PATH"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE_ABS_PATH"
+
+          # 验证 keystore 与 key 密码兼容性（兼容 PKCS12 storepass==keypass 场景并清理潜在 Windows CRLF）
+          if ! keytool -list -keystore "$KEYSTORE_ABS_PATH" -storepass "$STORE_PASS" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Cannot open keystore with ANDROID_STORE_PASSWORD and ANDROID_KEY_ALIAS."
+            rm -f "$KEYSTORE_ABS_PATH"
+            exit 1
+          fi
+
+          # 通过 keytool 实际验证私钥解密口令；若 KEY_PASS 失败而 STORE_PASS 可解则自动回退至 STORE_PASS
+          if ! keytool -importkeystore -srckeystore "$KEYSTORE_ABS_PATH" -srcstorepass "$STORE_PASS" -srcalias "$KEY_ALIAS" -srckeypass "$KEY_PASS" -destkeystore /tmp/verify_key.p12 -deststoretype PKCS12 -deststorepass "$STORE_PASS" -noprompt >/dev/null 2>&1; then
+            rm -f /tmp/verify_key.p12
+            if keytool -importkeystore -srckeystore "$KEYSTORE_ABS_PATH" -srcstorepass "$STORE_PASS" -srcalias "$KEY_ALIAS" -srckeypass "$STORE_PASS" -destkeystore /tmp/verify_key.p12 -deststoretype PKCS12 -deststorepass "$STORE_PASS" -noprompt >/dev/null 2>&1; then
+              echo "Notice: Using STORE_PASS as KEY_PASS (PKCS12 unified password)."
+              KEY_PASS="$STORE_PASS"
+            else
+              echo "::error::Private key decryption failed for alias '$KEY_ALIAS' with both KEY_PASS and STORE_PASS."
+              rm -f "$KEYSTORE_ABS_PATH" /tmp/verify_key.p12
+              exit 1
+            fi
+          fi
+          rm -f /tmp/verify_key.p12
+
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file="$KEYSTORE_ABS_PATH" \
             -Pandroid.injected.signing.store.password="$STORE_PASS" \
-            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASS" \
             -PRELEASE_STORE_FILE="$KEYSTORE_ABS_PATH" \
             -PRELEASE_STORE_PASSWORD="$STORE_PASS" \
-            -PRELEASE_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
-            -PRELEASE_KEY_PASSWORD="$ANDROID_KEY_PASSWORD" \
+            -PRELEASE_KEY_ALIAS="$KEY_ALIAS" \
+            -PRELEASE_KEY_PASSWORD="$KEY_PASS" \
             --stacktrace
           rm -f "$KEYSTORE_ABS_PATH"
         env:
