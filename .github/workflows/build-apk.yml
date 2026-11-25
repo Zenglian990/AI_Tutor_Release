@@ -62,19 +62,35 @@ jobs:
             exit 1
           fi
 
-          # 通过 keytool 实际验证私钥解密口令；若 KEY_PASS 失败而 STORE_PASS 可解则自动回退至 STORE_PASS
-          if ! keytool -importkeystore -srckeystore "$KEYSTORE_ABS_PATH" -srcstorepass "$STORE_PASS" -srcalias "$KEY_ALIAS" -srckeypass "$KEY_PASS" -destkeystore /tmp/verify_key.p12 -deststoretype PKCS12 -deststorepass "$STORE_PASS" -noprompt >/dev/null 2>&1; then
-            rm -f /tmp/verify_key.p12
-            if keytool -importkeystore -srckeystore "$KEYSTORE_ABS_PATH" -srcstorepass "$STORE_PASS" -srcalias "$KEY_ALIAS" -srckeypass "$STORE_PASS" -destkeystore /tmp/verify_key.p12 -deststoretype PKCS12 -deststorepass "$STORE_PASS" -noprompt >/dev/null 2>&1; then
-              echo "Notice: Using STORE_PASS as KEY_PASS (PKCS12 unified password)."
-              KEY_PASS="$STORE_PASS"
-            else
-              echo "::error::Private key decryption failed for alias '$KEY_ALIAS' with both KEY_PASS and STORE_PASS."
-              rm -f "$KEYSTORE_ABS_PATH" /tmp/verify_key.p12
-              exit 1
-            fi
+          # 使用与 AGP KeystoreHelper 相同的 JDK KeyStore.getKey() 实测私钥口令（兼容 PKCS12 忽略独立 -keypass 行为）
+          cat <<'EOF' > /tmp/CheckKeystore.java
+          import java.io.File;
+          import java.security.KeyStore;
+          public class CheckKeystore {
+            public static void main(String[] args) throws Exception {
+              File f = new File(args[0]);
+              char[] sp = args[1].toCharArray();
+              String alias = args[2];
+              char[] kp = args[3].toCharArray();
+              KeyStore ks = KeyStore.getInstance(f, sp);
+              try {
+                if (ks.getKey(alias, kp) != null) { System.out.println("KEY_PASS"); return; }
+              } catch (Exception ignored) {}
+              if (ks.getKey(alias, sp) != null) { System.out.println("STORE_PASS"); return; }
+              System.exit(2);
+            }
+          }
+          EOF
+          RESOLVED_MODE="$(java /tmp/CheckKeystore.java "$KEYSTORE_ABS_PATH" "$STORE_PASS" "$KEY_ALIAS" "$KEY_PASS" | tr -d '\r\n')"
+          rm -f /tmp/CheckKeystore.java
+          if [ "$RESOLVED_MODE" = "STORE_PASS" ]; then
+            echo "Notice: PKCS12 keystore uses unified store password for private key."
+            KEY_PASS="$STORE_PASS"
+          elif [ "$RESOLVED_MODE" != "KEY_PASS" ]; then
+            echo "::error::Unable to unlock private key in keystore with either KEY_PASS or STORE_PASS."
+            rm -f "$KEYSTORE_ABS_PATH"
+            exit 1
           fi
-          rm -f /tmp/verify_key.p12
 
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file="$KEYSTORE_ABS_PATH" \
