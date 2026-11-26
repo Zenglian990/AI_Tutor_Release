@@ -41,6 +41,7 @@ const DailyAchievementCardModal = lazy(() => import('./components/DailyAchieveme
 const EyeCareTimerModal = lazy(() => import('./components/EyeCareTimerModal'));
 const PrerequisiteTraceModal = lazy(() => import('./components/PrerequisiteTraceModal'));
 const StreakModal = lazy(() => import('./components/StreakModal'));
+const MembershipModal = lazy(() => import('./components/MembershipModal'));
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -129,6 +130,10 @@ function AppInner() {
   const [showEnglishRolePlay, setShowEnglishRolePlay] = useState(false);
   const [showDailyCard, setShowDailyCard] = useState(false);
   const [showEyeCare, setShowEyeCare] = useState(false);
+  const [showMembership, setShowMembership] = useState(false);
+  const [eyeCareSecondsLeft, setEyeCareSecondsLeft] = useState(20 * 60);
+  const [eyeCareMode, setEyeCareMode] = useState('focus'); // 'focus' | 'rest'
+  const [eyeCareRunning, setEyeCareRunning] = useState(false);
   const [showPrerequisiteTrace, setShowPrerequisiteTrace] = useState(false);
   const [traceTargetTopic, setTraceTargetTopic] = useState(null);
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(() => {
@@ -209,10 +214,84 @@ function AppInner() {
     setInput(prev => prev || '老师，这是我在草稿纸上的手写演算过程，请帮我看看做对了没有，哪一步需要调整？');
   };
 
-  // Parental gate
+  // Parental gate (双锁解耦：family = 家庭家长锁 / admin = 站长超管控制台锁)
   const [gateOpen, setGateOpen] = useState(false);
   const [gateReason, setGateReason] = useState('');
+  const [gateScope, setGateScope] = useState('family');
   const [gateAction, setGateAction] = useState(null);
+
+  // 顶层护眼番茄钟全局后台计时器（收起弹窗绝不停止，满 20 分钟自动弹出 20 秒远眺护眼提醒）
+  useEffect(() => {
+    if (!eyeCareRunning) return;
+    const timer = setInterval(() => {
+      setEyeCareSecondsLeft(prev => {
+        if (prev <= 1) {
+          if (eyeCareMode === 'focus') {
+            setEyeCareMode('rest');
+            setShowEyeCare(true);
+            return 20;
+          } else {
+            setEyeCareMode('focus');
+            return 20 * 60;
+          }
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [eyeCareRunning, eyeCareMode]);
+
+  const handleOpenEyeCare = useCallback(() => {
+    setEyeCareRunning(true);
+    setShowEyeCare(true);
+  }, []);
+
+  const getGradeDefaultEquation = useCallback((gradeVal) => {
+    const gNum = parseInt(String(gradeVal || '7').replace(/\D/g, ''), 10) || 7;
+    if (gNum <= 6) return '3x + 5 = 20';
+    if (gNum >= 10) return 'f(x) = x^3 - 3x';
+    return 'x^2 - 5x + 6 = 0';
+  }, []);
+
+  const handleOpenWeeklyReport = useCallback(async () => {
+    setShowReportModal(true);
+    setReportLoading(true);
+    setReportData('');
+    try {
+      const res = await authFetch('/api/report/weekly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: currentProfileId || 'default',
+          student_name: currentProfile?.name || '同学',
+          grade: currentProfile?.grade || '7_up',
+          subject: selectedSubject || '数学'
+        })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && (json.report || json.summary)) {
+        setReportData(json.report || json.summary);
+      } else {
+        setReportData(json.error || '本周学习记录较少，先完成几道学科对话或错题复盘后再生成专属学习周报吧！');
+      }
+    } catch {
+      setReportData('暂时无法连接云端周报服务，请检查网络后重试。');
+    } finally {
+      setReportLoading(false);
+    }
+  }, [currentProfileId, currentProfile, selectedSubject]);
+
+  const handleSocraticModeChange = useCallback((level) => {
+    const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
+    if (level === 'direct' && isAntiCheatLocked) {
+      setGateScope('family');
+      setGateAction(() => () => setSocraticLevel('direct'));
+      setGateReason('切换至【直接解答】模式（家庭家长防抄题监督锁已生效）');
+      setGateOpen(true);
+    } else {
+      setSocraticLevel(level);
+    }
+  }, [setSocraticLevel]);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -418,14 +497,15 @@ function AppInner() {
     if (result === 'ADD_NEW') setShowAddProfile(true);
   }, [handleProfileChange]);
 
-  // Admin console gate handler (曾先生·管理员专属控制台安全密码锁)
+  // Admin console gate handler (管理员控制台安全锁 — 与家庭家长锁彻底解耦)
   const handleOpenAdminConsole = useCallback(() => {
-    const isVerified = sessionStorage.getItem('parent_gate_verified_pin_hash');
+    const isVerified = sessionStorage.getItem('parent_session_token') || sessionStorage.getItem('parent_gate_verified_pin_hash');
     if (isVerified) {
       setShowAdminConsole(true);
     } else {
+      setGateScope('admin');
       setGateAction(() => () => setShowAdminConsole(true));
-      setGateReason('进入【曾先生·管理员专属控制台】');
+      setGateReason('进入【管理员控制台】');
       setGateOpen(true);
     }
   }, []);
@@ -1227,6 +1307,7 @@ function AppInner() {
                 .catch(() => showToast('删除档案失败，请稍后重试', 'error'));
             }
           });
+          setGateScope('family');
           setGateReason(`删除学生档案 "${currentProfile?.name || ''}"`);
           setGateOpen(true);
         }}
@@ -1236,16 +1317,7 @@ function AppInner() {
         onSubjectChange={setSelectedSubject}
         onClearChat={clearChat}
         socraticLevel={socraticLevel}
-        onSocraticCycle={(level) => {
-          const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';
-          if (level === 'direct' && isAntiCheatLocked) {
-            setGateAction(() => () => setSocraticLevel('direct'));
-            setGateReason('切换至【直接解答】模式（家长防抄题监督锁已生效）');
-            setGateOpen(true);
-          } else {
-            setSocraticLevel(level);
-          }
-        }}
+        onSocraticCycle={handleSocraticModeChange}
         isLightMode={isLightMode}
         onThemeToggle={() => {
           if (isEinkMode) {
@@ -1259,9 +1331,11 @@ function AppInner() {
         onOpenGamification={() => setShowGamification(true)}
         onOpenManipulatives={() => setShowManipulatives(true)}
         onOpenGeometrySandbox={() => setShowGeometrySandbox(true)}
-        onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenEyeCare={handleOpenEyeCare}
         onOpenDailyCard={() => setShowDailyCard(true)}
         onOpenVoiceCompanion={handleOpenVoiceCompanion}
+        onOpenStats={() => setShowStats(true)}
+        eyeCareBadgeText={eyeCareRunning ? `${String(Math.floor(eyeCareSecondsLeft / 60)).padStart(2, '0')}:${String(eyeCareSecondsLeft % 60).padStart(2, '0')}` : ''}
       />
 
       {/* 仅在对话进行中时显示轻量级返回首页条（彻底解耦返回看板与清空历史） */}
@@ -1359,7 +1433,7 @@ function AppInner() {
             onOpenMentalMath={() => setShowMentalMathModal(true)}
             onOpenFormulaHandbook={() => setShowFormulaModal(true)}
             onOpenStepScratchpad={() => {
-              setStepScratchpadEq('2x + 4 = 10');
+              setStepScratchpadEq(getGradeDefaultEquation(currentProfile?.grade));
               setShowStepScratchpad(true);
             }}
             onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
@@ -1367,7 +1441,10 @@ function AppInner() {
             onOpenChemistry={() => setShowChemistryModal(true)}
             onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
             onOpenDailyCard={() => setShowDailyCard(true)}
-            onOpenEyeCare={() => setShowEyeCare(true)}
+            onOpenEyeCare={handleOpenEyeCare}
+            onOpenStats={() => setShowStats(true)}
+            onOpenWeeklyReport={handleOpenWeeklyReport}
+            onOpenMembership={() => setShowMembership(true)}
             onOpenPrerequisiteTrace={() => handleOpenPrerequisiteTrace(null)}
             onQuickPrompt={(prompt) => handleSubmit(null, prompt)}
           />
@@ -1403,12 +1480,17 @@ function AppInner() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Modals — 全部按需条件渲染 + React.lazy 懒加载，根治流式重绘卡顿与首屏体积膨胀 */}
-      <Suspense fallback={null}>
-      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile?.grade || '7_up'} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
+      {/* Modals — 全部按需条件渲染 + React.lazy 懒加载，加载期间显示轻量提示消除点击静默感 */}
+      <Suspense fallback={
+        <div style={{ position: 'fixed', top: '76px', left: '50%', transform: 'translateX(-50%)', zIndex: 2000, background: 'rgba(15,23,42,0.92)', color: '#e2e8f0', padding: '8px 18px', borderRadius: '20px', fontSize: '0.84rem', border: '1px solid rgba(99,102,241,0.4)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+          ⏳ 正在加载学习模块...
+        </div>
+      }>
+      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile?.grade || '7_up'} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateScope('family'); setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
       {showStats && <StatsDashboard profiles={profiles} onClose={() => setShowStats(false)} currentProfileId={currentProfileId} />}
       {showMap && (
         <LearningMap
+          currentProfileId={currentProfileId}
           currentGrade={currentProfile?.grade || '7_up'}
           currentSubject={selectedSubject || '数学'}
           currentEdition={currentProfile?.edition || '人教版'}
@@ -1429,7 +1511,15 @@ function AppInner() {
           }}
         />
       )}
-      <ParentalGate isOpen={gateOpen} reason={gateReason} onVerify={async () => { if (gateAction) { try { await gateAction(); } catch (e) { console.error('Gate action failed:', e); } } }} onClose={() => { setGateOpen(false); setGateAction(null); }} />
+      <ParentalGate
+        isOpen={gateOpen}
+        scope={gateScope}
+        profileId={currentProfileId}
+        reason={gateReason}
+        onVerify={async () => { if (gateAction) { try { await gateAction(); } catch (e) { console.error('Gate action failed:', e); } } }}
+        onClose={() => { setGateOpen(false); setGateAction(null); }}
+      />
+      {showMembership && <MembershipModal isOpen={showMembership} onClose={() => setShowMembership(false)} />}
       <AddProfileModal isOpen={showAddProfile} onClose={() => setShowAddProfile(false)} onConfirm={handleAddProfile} />
       {showClearConfirm && (
         <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
@@ -1466,7 +1556,7 @@ function AppInner() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         socraticLevel={socraticLevel}
-        onSocraticToggle={(level) => setSocraticLevel(level)}
+        onSocraticToggle={handleSocraticModeChange}
         autoRead={autoRead}
         onAutoReadToggle={() => setAutoRead(!autoRead)}
         currentProfileId={currentProfileId}
@@ -1480,6 +1570,10 @@ function AppInner() {
           setShowSettings(false);
           setShowAddProfile(true);
         }}
+        onOpenMembership={() => setShowMembership(true)}
+        onOpenAdminConsole={handleOpenAdminConsole}
+        onOpenStats={() => setShowStats(true)}
+        onOpenWeeklyReport={handleOpenWeeklyReport}
       />
       <AdminConsoleModal
         isOpen={showAdminConsole}
@@ -1703,12 +1797,15 @@ function AppInner() {
       )}
 
       {showDailyCard && (() => {
-        const validAiTurns = messages.filter(m => m.role === 'ai' && !m.isError && !m.isTransient && m.text && m.text !== '思考中...').length;
-        const realMinutes = validAiTurns > 0 ? Math.max(validAiTurns * 3, 3) : 0;
+        // 与后端 /api/parent/remote-view 严格统一口径：按真实 user 互动轮次 * 3 分钟计算
+        const userTurns = messages.filter(m => m.role === 'user' && m.text && m.text.trim().length > 0).length;
+        const realMinutes = userTurns > 0 ? Math.max(userTurns * 3, 3) : 0;
         const recentTopics = messages
           .filter(m => m.role === 'user' && m.text && m.text.trim().length > 2)
           .slice(-3)
-          .map(m => m.text.trim().slice(0, 42));
+          .map(m => m.text.replace(/\[ACTION_[A-Z0-9_]+\]\s*/g, '').trim().slice(0, 42))
+          .filter(Boolean);
+        const storedFeynmanStars = parseInt(localStorage.getItem(`ai_tutor_feynman_stars_${currentProfileId || 'default'}`) || '0', 10) || 0;
         return (
           <DailyAchievementCardModal
             isOpen={showDailyCard}
@@ -1717,8 +1814,8 @@ function AppInner() {
             currentGrade={currentProfile?.grade || '7_up'}
             subject={selectedSubject || '数学'}
             studyMinutes={realMinutes}
-            masteredCount={validAiTurns}
-            feynmanStars={0}
+            masteredCount={userTurns}
+            feynmanStars={storedFeynmanStars}
             recentTopics={recentTopics}
           />
         );
@@ -1729,6 +1826,15 @@ function AppInner() {
           isOpen={showEyeCare}
           onClose={() => setShowEyeCare(false)}
           onToggleEink={toggleEinkMode}
+          secondsLeft={eyeCareSecondsLeft}
+          currentMode={eyeCareMode}
+          isRunning={eyeCareRunning}
+          onSwitchMode={(nextMode) => {
+            setEyeCareMode(nextMode);
+            setEyeCareSecondsLeft(nextMode === 'rest' ? 20 : 20 * 60);
+            setEyeCareRunning(true);
+          }}
+          onToggleRunning={() => setEyeCareRunning(r => !r)}
         />
       )}
 
@@ -1760,7 +1866,7 @@ function AppInner() {
         onOpenBatchGrade={() => setShowBatchGrade(true)}
         onOpenFormulaHandbook={() => setShowFormulaModal(true)}
         onOpenStepScratchpad={() => {
-          setStepScratchpadEq('2x + 4 = 10');
+          setStepScratchpadEq(getGradeDefaultEquation(currentProfile?.grade));
           setShowStepScratchpad(true);
         }}
         onOpenPhysicsSimulator={() => setShowPhysicsSimulator(true)}
@@ -1768,7 +1874,7 @@ function AppInner() {
         onOpenChemistry={() => setShowChemistryModal(true)}
         onOpenEnglishRolePlay={() => setShowEnglishRolePlay(true)}
         onOpenDailyCard={() => setShowDailyCard(true)}
-        onOpenEyeCare={() => setShowEyeCare(true)}
+        onOpenEyeCare={handleOpenEyeCare}
         onOpenPrerequisiteTrace={() => handleOpenPrerequisiteTrace(null)}
         onOpenVoiceCompanion={handleOpenVoiceCompanion}
         isFeynmanMode={isFeynmanMode}

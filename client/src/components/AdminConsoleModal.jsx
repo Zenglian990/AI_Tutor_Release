@@ -78,7 +78,7 @@ export default function AdminConsoleModal({
   const [activeTab, setActiveTab] = useState('poster'); // 'poster' | 'cards' | 'ai_keys' | 'security'
 
   // -------------------------------------------------------------
-  // Tab 1: 营销获客海报 (搞钱裂变)
+  // Tab 1: 教学推广海报生成
   // -------------------------------------------------------------
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -176,7 +176,7 @@ export default function AdminConsoleModal({
       ctx.fillStyle = '#38bdf8';
       ctx.font = 'bold 26px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('中考压轴 20 分 · 冲刺逆袭特训', width / 2, 175);
+      ctx.fillText('中高考压轴突破 · 冲刺逆袭特训', width / 2, 175);
 
       ctx.fillStyle = '#818cf8';
       ctx.font = 'bold 18px sans-serif';
@@ -247,7 +247,7 @@ export default function AdminConsoleModal({
 
     ctx.fillStyle = posterTemplate === 'primary' ? '#d97706' : '#38bdf8';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('中小学 1-9 年级教材同步深度辅导', 215, 835);
+    ctx.fillText('中小学 1-12 年级全学段教材同步深度辅导', 215, 835);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '12px sans-serif';
@@ -671,7 +671,7 @@ export default function AdminConsoleModal({
                       fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
                     }}
                   >
-                    📐 中考压轴冲刺版 (7-9年级)
+                    📐 初高中压轴冲刺版 (7-12年级)
                   </button>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -762,7 +762,7 @@ export default function AdminConsoleModal({
                       <option value={7}>7 天 (短期辅导周卡)</option>
                       <option value={30}>30 天 (月度提分月卡 - 推荐)</option>
                       <option value={90}>90 天 (学期攻坚季卡)</option>
-                      <option value={365}>365 天 (学年中考年卡)</option>
+                      <option value={365}>365 天 (全学段学年卡)</option>
                       <option value={3650}>永久特权 (终身卡)</option>
                     </select>
                   </div>
@@ -875,7 +875,7 @@ export default function AdminConsoleModal({
                   </label>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '10px' }}>
-                  70ms 拦截闲聊无意义提问（0 Token），精准分流中考压轴难题并自动注入启发式教学策略。
+                  70ms 拦截闲聊无意义提问（0 Token），精准分流中高考压轴难题并自动注入启发式教学策略。
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1217,7 +1217,9 @@ export default function AdminConsoleModal({
       {showPinSetupGate && (
         <ParentalGate
           isOpen={showPinSetupGate}
-          reason="重置管理员 6 位安全 PIN 码"
+          scope="admin"
+          forceSetup={true}
+          reason="重设管理员 6 位安全 PIN 码与密保"
           onVerify={() => {
             setShowPinSetupGate(false);
             setPinChangeMsg('✓ 管理员 PIN 码与密保已更新成功！');

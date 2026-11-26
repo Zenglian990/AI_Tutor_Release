@@ -28,11 +28,11 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
 
   if (!isOpen) return null;
 
-  // Calculate balance tilt
+  // Calculate balance tilt: 左重 (diff > 0) 应逆时针旋转 (负角度) 表现为左沉右翘，与文字提示严格一致
   const leftTotal = (leftUnknown * UNKNOWN_ACTUAL_VAL) + leftWeights;
   const rightTotal = rightWeights;
   const diff = leftTotal - rightTotal;
-  const tiltAngle = Math.max(-15, Math.min(15, diff * 3)); // tilt degrees
+  const tiltAngle = Math.max(-15, Math.min(15, -diff * 3)); // CSS rotate 负角=逆时针=左沉右翘
 
   const totalValue = tensCount * 10 + onesCount;
 
@@ -335,7 +335,8 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
                   {/* Left Pan */}
                   <div style={{
                     position: 'absolute', left: '-10px', top: '8px', width: '100px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center'
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    transform: `rotate(${-tiltAngle}deg)`, transformOrigin: 'top center', transition: 'transform 0.4s ease-out'
                   }}>
                     <div style={{ width: '2px', height: '35px', background: '#94a3b8' }} />
                     <div style={{
@@ -355,7 +356,8 @@ export default function PrimaryVisualManipulatives({ isOpen, onClose, onApplyToC
                   {/* Right Pan */}
                   <div style={{
                     position: 'absolute', right: '-10px', top: '8px', width: '100px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center'
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    transform: `rotate(${-tiltAngle}deg)`, transformOrigin: 'top center', transition: 'transform 0.4s ease-out'
                   }}>
                     <div style={{ width: '2px', height: '35px', background: '#94a3b8' }} />
                     <div style={{

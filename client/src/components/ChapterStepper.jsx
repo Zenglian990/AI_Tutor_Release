@@ -4,6 +4,133 @@ import confetti from 'canvas-confetti';
 function buildMasteryQuestions(chapterName, subject = '数学', grade = '7') {
   const cName = chapterName || '当前章节';
   const s = subject || '数学';
+  const gradeNum = parseInt(String(grade || '7').replace(/\D/g, ''), 10) || 7;
+  const isPrimary = gradeNum <= 6;
+  const isHigh = gradeNum >= 10;
+
+  // 小学 1–6 年级专属童趣基础题（严禁出现初中同位角/中考几何/方程移项等超纲内容）
+  if (isPrimary) {
+    if (s === '数学' && /图形|长方|正方|三角|圆|角|周长|面积|对称/.test(cName)) {
+      return [
+        {
+          id: 1,
+          question: `在《${cName}》中，关于常见平面图形的特点，下面哪一项说法是正确的？`,
+          options: [
+            'A. 正方形的四条边都一样长，四个角都是直角',
+            'B. 三角形有四条边和四个角',
+            'C. 圆形的边都是直直的线段',
+            'D. 长方形的四条边一定全都相等'
+          ],
+          correct: 0,
+          explanation: '正方形四条边长度相等且四个角都是直角；三角形有 3 条边 3 个角；圆的边是曲线。'
+        },
+        {
+          id: 2,
+          question: `学习《${cName}》时，如果把一个长方形纸片沿一条直线对折后两边完全重合，这种图形叫做：`,
+          options: [
+            'A. 任意多边形',
+            'B. 轴对称图形',
+            'C. 立体图形',
+            'D. 不规则图形'
+          ],
+          correct: 1,
+          explanation: '对折后两侧能够完全重合的图形就是轴对称图形，折痕所在直线是对称轴。'
+        },
+        {
+          id: 3,
+          question: `在生活中辨认或拼接《${cName}》里的图形时，最科学的小妙招是：`,
+          options: [
+            'A. 动手数一数边数、比一比角的大小，再用尺子量一量',
+            'B. 只看图形涂了什么颜色来判断',
+            'C. 随便猜一个图形名字',
+            'D. 图形旋转后就变成了另一种新图形'
+          ],
+          correct: 0,
+          explanation: '辨认图形要抓住边和角的特征，图形旋转或移动位置不会改变它的形状和大小。'
+        }
+      ];
+    }
+    return [
+      {
+        id: 1,
+        question: `学习小学《${cName}》这一单元时，遇到应用题或计算题，第一步应该先做什么？`,
+        options: [
+          'A. 认真读两遍题目，圈出已知数字和问题要求',
+          'B. 不看题目条件，直接把所有数字加起来',
+          'C. 随便写一个数交卷',
+          'D. 只看最后一个字就下笔'
+        ],
+        correct: 0,
+        explanation: '审清题目条件与问题，圈画关键词，是小学阶段零粗心拿满分的黄金习惯。'
+      },
+      {
+        id: 2,
+        question: `在《${cName}》计算或朗读背诵遇到卡壳时，哪种办法最能帮你真正学会？`,
+        options: [
+          'A. 借助画图、小棒/计数器等实物模型把道理讲清楚',
+          'B. 直接抄写答案不再思考',
+          'C. 跳过不学',
+          'D. 死记结果不问为什么'
+        ],
+        correct: 0,
+        explanation: '小学阶段通过画图和动手演示把抽象概念可视化，理解最牢固。'
+      },
+      {
+        id: 3,
+        question: `做完《${cName}》练习题之后，怎样检查才能避免“会做却算错”？`,
+        options: [
+          'A. 把答案代回题目条件验证一遍，并检查单位和作答',
+          'B. 写完马上合上本子不看',
+          'C. 只检查第一道题',
+          'D. 不用管题目单位'
+        ],
+        correct: 0,
+        explanation: '代入检验与核对单位/答语是小学数学和语文阅读答题的满分收官步骤。'
+      }
+    ];
+  }
+
+  // 高中 10–12 年级专属高阶思维题（贴合新高考逻辑，绝不写“中考”）
+  if (isHigh) {
+    return [
+      {
+        id: 1,
+        question: `在高中《${cName}》核心模块中，分析关键性质或推导定理时，最容易忽略的前提条件是：`,
+        options: [
+          'A. 定义域边界、特例情况（如参数为 0 / 斜率不存在 / 临界状态）的分类讨论',
+          'B. 只验证一个特殊数值即可推广到全部实数范围',
+          'C. 忽略题目中的隐含约束直接套用二级结论',
+          'D. 无需检验等价变形是否产生增根或漏解'
+        ],
+        correct: 0,
+        explanation: '新高考压轴题高频失分点正是定义域限制与参数分类讨论（如斜率不存在、临界端点）。'
+      },
+      {
+        id: 2,
+        question: `在构建《${cName}》的高中知识网络时，实现从“会做单题”到“通解通法”跃升的关键在于：`,
+        options: [
+          'A. 提炼核心数学/科学模型，将数形结合、转化与化归思想贯穿同类母题',
+          'B. 机械刷题但不归纳题型结构与错因',
+          'C. 只背最终结论，不理解公式推导来源',
+          'D. 每次遇到新情境都重新从零试错'
+        ],
+        correct: 0,
+        explanation: '高中学科强调模型抽象、数形结合与转化化归，掌握母题结构才能以不变应万变。'
+      },
+      {
+        id: 3,
+        question: `针对《${cName}》的高考综合压轴题，规范书面表达以拿满步骤分的最佳策略是：`,
+        options: [
+          'A. 关键定理依据、核心方程与必要结论清晰呈现，逻辑链条严密无跳步',
+          'B. 只写最终数值结果省略推导过程',
+          'C. 把草稿纸上试探的错误思路全部抄到答题卡上',
+          'D. 忽略向量方向、单位量纲或有效数字要求'
+        ],
+        correct: 0,
+        explanation: '高考阅卷按采分点给分，核心公式、临界判断与严谨结论缺一不可。'
+      }
+    ];
+  }
 
   if (s === '数学') {
     if (/几何|角|线|三角形|四边形|圆|平行|垂直|轴对称|全等|相似/.test(cName)) {
@@ -42,7 +169,7 @@ function buildMasteryQuestions(chapterName, subject = '数学', grade = '7') {
             'D. 题目没有给图形时只需画一种特殊图形即可'
           ],
           correct: 0,
-          explanation: '中考几何常见陷阱之一是漏掉未指明位置关系时的分类讨论（如高在三角形内部或外部）。'
+          explanation: '初中几何常见陷阱之一是漏掉未指明位置关系时的分类讨论（如高在三角形内部或外部）。'
         }
       ];
     }
@@ -89,7 +216,7 @@ function buildMasteryQuestions(chapterName, subject = '数学', grade = '7') {
     }
   }
 
-  // 通用学科（语文、英语、物理、化学、历史、地理、道法）
+  // 初中通用学科
   return [
     {
       id: 1,
@@ -142,11 +269,17 @@ export default function ChapterStepper({
   const confettiTimersRef = useRef([]);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // 🏆 通关测验门禁状态
+  // 🏆 通关测验门禁状态（支持后端按当前年级/章节动态出题）
   const [showMasteryModal, setShowMasteryModal] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [masterySubmitted, setMasterySubmitted] = useState(false);
   const [masteryScore, setMasteryScore] = useState(0);
+  const [dynamicQuestions, setDynamicQuestions] = useState(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+
+  useEffect(() => {
+    setDynamicQuestions(null);
+  }, [activeChapterData?.id, selectedSubject, currentGrade]);
 
   useEffect(() => {
     return () => {
@@ -157,10 +290,12 @@ export default function ChapterStepper({
     };
   }, []);
 
-  const questions = useMemo(() => {
+  const fallbackQuestions = useMemo(() => {
     if (!activeChapterData) return [];
     return buildMasteryQuestions(activeChapterData.name, selectedSubject, currentGrade);
   }, [activeChapterData, selectedSubject, currentGrade]);
+
+  const questions = (dynamicQuestions && dynamicQuestions.length >= 2) ? dynamicQuestions : fallbackQuestions;
 
   if (!activeChapterData) return null;
 
@@ -211,11 +346,38 @@ export default function ChapterStepper({
         triggerCompletion();
         return;
       }
-      // 弹出 3 题通关测评门禁
+      // 弹出 3 题通关测评门禁，并向后端按当前年级/章节请求动态真题
       setSelectedAnswers({});
       setMasterySubmitted(false);
       setMasteryScore(0);
       setShowMasteryModal(true);
+      if (authFetch && !dynamicQuestions) {
+        setQuizLoading(true);
+        authFetch('/api/chapters/quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            grade: currentGrade,
+            subject: selectedSubject || '数学',
+            chapter_title: activeChapterData.name
+          })
+        })
+          .then(r => (r.ok ? r.json() : null))
+          .then(d => {
+            if (d?.success && Array.isArray(d.questions) && d.questions.length >= 2) {
+              const letters = ['A', 'B', 'C', 'D'];
+              setDynamicQuestions(d.questions.map((q, i) => ({
+                id: q.id || (i + 1),
+                question: q.question,
+                options: q.options.map((o, oi) => /^[A-D][.、\s]/.test(o) ? o : `${letters[oi] || ''}. ${o}`),
+                correct: typeof q.correctIdx === 'number' ? q.correctIdx : 0,
+                explanation: q.explanation || q.hint || '紧扣本单元核心概念即可得出正解。'
+              })));
+            }
+          })
+          .catch(() => {})
+          .finally(() => setQuizLoading(false));
+      }
       return;
     }
 
@@ -270,27 +432,52 @@ export default function ChapterStepper({
   return (
     <>
       <div className="chapter-stepper-bar glass-panel animate-fade-in" style={{
-        position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)',
-        width: '90%', maxWidth: '800px', zIndex: 90, padding: '12px 20px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '12px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+        position: 'relative',
+        width: 'calc(100% - 24px)',
+        maxWidth: '860px',
+        margin: '8px auto 4px',
+        zIndex: 40,
+        padding: '10px 14px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '8px',
+        background: 'rgba(15, 23, 42, 0.88)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(139, 92, 246, 0.35)',
+        borderRadius: '12px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        boxSizing: 'border-box'
       }}>
-        <div style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 'bold' }}>📍 当前探索: 《{activeChapterData.name}》</div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: 0, flex: '1 1 200px' }}>
+          <div style={{ color: '#e2e8f0', fontSize: '13px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            📍 当前探索: 《{activeChapterData.name}》
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveChapterData(null)}
+            aria-label="关闭当前探索条"
+            title="退出当前章节探索"
+            style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: '24px', height: '24px', color: '#cbd5e1', cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
           {[{ pct: 25, label: '⛳ 导学' }, { pct: 50, label: '⚔️ 挑战' }, { pct: 75, label: '📝 脑图' }, { pct: 100, label: '🏆 通关' }].map(step => {
             const isActive = (activeChapterData.progress_pct || 0) >= step.pct;
             return (
               <button
                 key={step.pct}
+                type="button"
                 onClick={() => handleStepClick(step)}
                 disabled={isAnimating}
                 style={{
-                  padding: '6px 12px', borderRadius: '20px', fontSize: '13px',
+                  padding: '5px 10px', borderRadius: '16px', fontSize: '12px', whiteSpace: 'nowrap',
                   background: isActive ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'rgba(255,255,255,0.1)',
                   color: isActive ? '#fff' : '#94a3b8', border: 'none', cursor: isAnimating ? 'not-allowed' : 'pointer',
-                  boxShadow: isActive ? '0 0 10px rgba(139, 92, 246, 0.5)' : 'none',
+                  boxShadow: isActive ? '0 0 10px rgba(139, 92, 246, 0.45)' : 'none',
                   opacity: isAnimating ? 0.6 : 1
                 }}
               >
@@ -298,7 +485,6 @@ export default function ChapterStepper({
               </button>
             );
           })}
-          <button onClick={() => setActiveChapterData(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', marginLeft: '4px' }}>✕</button>
         </div>
       </div>
 
@@ -340,6 +526,11 @@ export default function ChapterStepper({
 
             {/* Questions Body */}
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {quizLoading && (
+                <div style={{ textAlign: 'center', padding: '12px', fontSize: '0.84rem', color: '#93c5fd', background: 'rgba(59,130,246,0.1)', borderRadius: '10px' }}>
+                  ⏳ 正在结合当前年级与章节《{activeChapterData.name}》动态生成专属通关测评题...
+                </div>
+              )}
               {questions.map((q, idx) => {
                 const userChoice = selectedAnswers[q.id];
                 const isCorrect = userChoice === q.correct;

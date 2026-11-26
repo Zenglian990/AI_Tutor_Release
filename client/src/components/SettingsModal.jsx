@@ -58,7 +58,11 @@ export default function SettingsModal({
   onSaveBackendUrl,
   apiToken: propApiToken,
   onSaveApiToken,
-  onOpenAddProfile
+  onOpenAddProfile,
+  onOpenMembership,
+  onOpenAdminConsole,
+  onOpenStats,
+  onOpenWeeklyReport
 }) {
   const {
     language,
@@ -1882,9 +1886,45 @@ export default function SettingsModal({
             flexWrap: 'wrap'
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>AI 智慧私教 v1.7.5</span>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>AI 智慧私教 v1.7.6</span>
             <span style={{ opacity: 0.75 }}>· 1-12年级全科全版本</span>
+            {onOpenMembership && (
+              <button
+                type="button"
+                onClick={() => { onClose && onClose(); onOpenMembership(); }}
+                style={{ background: 'rgba(139,92,246,0.16)', border: '1px solid rgba(139,92,246,0.35)', color: '#c4b5fd', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+              >
+                💎 权益与激活码
+              </button>
+            )}
+            {onOpenStats && (
+              <button
+                type="button"
+                onClick={() => { onClose && onClose(); onOpenStats(); }}
+                style={{ background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.35)', color: '#7dd3fc', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+              >
+                📊 学情统计
+              </button>
+            )}
+            {onOpenWeeklyReport && (
+              <button
+                type="button"
+                onClick={() => { onClose && onClose(); onOpenWeeklyReport(); }}
+                style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', color: '#6ee7b7', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+              >
+                📑 学习周报
+              </button>
+            )}
+            {onOpenAdminConsole && (
+              <button
+                type="button"
+                onClick={() => { onClose && onClose(); onOpenAdminConsole(); }}
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+              >
+                🛡️ 管理员控制台
+              </button>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
             <button

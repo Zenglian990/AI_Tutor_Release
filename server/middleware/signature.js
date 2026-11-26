@@ -5,7 +5,6 @@ const { isVerifiedAdminRequest, getEffectiveApiToken } = require('../utils/admin
 const ADMIN_ROUTES = [
   '/system/network-info',
   '/config/update-keys',
-  '/config/test-llm',
   '/config/keys',
   '/membership/admin',
   '/admin/shutdown',
@@ -22,7 +21,22 @@ function isAdminRoute(reqPath) {
  * 请求签名校验中间件（仅用于仍显式调用的签名场景，已彻底移除硬编码公开静态令牌与不可达死代码）。
  */
 async function signatureMiddleware(req, res, next) {
-  if (req.path === '/health' || req.path === '/parent/remote-view' || req.path === '/system/version') {
+  const isPublicBootstrapPath =
+    req.path === '/health' ||
+    req.path === '/parent/remote-view' ||
+    req.path === '/system/version' ||
+    req.path === '/auth/session' ||
+    req.path === '/admin/pin-status' ||
+    req.path === '/admin/pin' ||
+    req.path === '/admin/verify-pin' ||
+    req.path === '/admin/reset-pin' ||
+    req.path === '/admin/secret-login' ||
+    req.path === '/family/pin-status' ||
+    req.path === '/family/pin' ||
+    req.path === '/family/verify-pin' ||
+    req.path === '/family/reset-pin';
+
+  if (isPublicBootstrapPath && !req.headers['x-signature'] && !req.headers['x-timestamp']) {
     return next();
   }
 

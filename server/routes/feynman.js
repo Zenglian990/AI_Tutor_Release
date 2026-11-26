@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../services/logger');
+const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
+const { extractClientAiHeaders } = require('../utils/aiHeaders');
+const { extractAndParseJson } = require('../utils/jsonParser');
+const { requireQuotaOrVip } = require('../middleware/quota');
+const { formatGradeName } = require('../prompts/guidelines');
 
 /**
  * 费曼以教代学评估服务 (Feynman Technique Reverse Tutoring Engine)
@@ -31,8 +36,10 @@ const DOMAIN_TERMS = {
     '折射', '反射', '实像', '虚像'
   ],
   chemistry: [
-    '分子', '原子', '元素', '化学式', '反应物', '生成物', '质量守恒', '化学方程式',
-    '配平', '溶液', '溶质', '溶剂', '溶解度', '酸', '碱', '盐', '中和反应', '沉淀'
+    '高锰酸钾', '氯酸钾', '二氧化锰', '过氧化氢', '氧气', '二氧化碳', '排水法', '向上排空气法',
+    '试管口略向下倾斜', '冷凝水倒流', '质量守恒', '化学方程式', '催化剂', '分解反应', '化合反应',
+    '置换反应', '复分解反应', '中和反应', '氧化还原', '摩尔质量', '物质的量',
+    '分子', '原子', '离子', '元素', '化学式', '反应物', '生成物', '配平', '溶液', '溶质', '溶剂', '溶解度', '沉淀', '酸碱中和'
   ]
 };
 
@@ -55,9 +62,10 @@ function evaluateFeynmanExplanation({ question = '', explanation = '', studentNa
   // 2. 检测逻辑关联词
   const detectedLogics = LOGIC_CONNECTORS.filter(c => text.includes(c));
 
-  // 3. 检测学科术语
-  const termsList = DOMAIN_TERMS[subject === '物理' ? 'physics' : (subject === '化学' ? 'chemistry' : 'math')];
-  const detectedTerms = termsList.filter(t => text.includes(t) || question.includes(t) && text.includes(t.slice(0, 2)));
+  // 3. 检测学科术语（按词长降序优先匹配完整术语，严禁把“高锰酸钾”错误截断成单字“酸”）
+  const termsList = [...(DOMAIN_TERMS[subject === '物理' ? 'physics' : (subject === '化学' ? 'chemistry' : 'math')] || DOMAIN_TERMS.math)]
+    .sort((a, b) => b.length - a.length);
+  const detectedTerms = termsList.filter(t => t.length >= 2 && text.includes(t));
 
   // 4. 计算掌握度评分 (60 ~ 98)
   let score = 70;
@@ -114,30 +122,111 @@ function evaluateFeynmanExplanation({ question = '', explanation = '', studentNa
   };
 }
 
-// POST /api/feynman/evaluate
-router.post('/feynman/evaluate', (req, res) => {
+// POST /api/feynman/evaluate — 真实 AI 费曼以教代学评估与苏格拉底同桌追问（极速轻量模式，异常时安全兜底）
+router.post('/feynman/evaluate', requireQuotaOrVip('feynman'), async (req, res) => {
   try {
-    const { question, student_explanation, student_name, subject, grade } = req.body || {};
+    const { question = '', student_explanation, student_name = '同学', subject = '数学', grade = '7_up' } = req.body || {};
 
-    if (!student_explanation || typeof student_explanation !== 'string') {
+    if (!student_explanation || typeof student_explanation !== 'string' || !student_explanation.trim()) {
       return res.status(400).json({
         success: false,
         error: '缺少学生口述讲解内容'
       });
     }
 
-    const evaluation = evaluateFeynmanExplanation({
-      question: question || '',
-      explanation: student_explanation,
-      studentName: student_name || '同学',
-      subject: subject || '数学',
-      grade: grade || '7_up'
-    });
+    const cleanExplanation = student_explanation.trim().slice(0, 1500);
+    const cleanQuestion = String(question || '').trim().slice(0, 800);
+    const gradeLabel = formatGradeName(grade);
+    const profileId = req.auth?.activeProfileId || 'default';
 
-    return res.json({
-      success: true,
-      data: evaluation
-    });
+    // 短于 6 字的敷衍回答直接快速反馈
+    if (cleanExplanation.length < 6) {
+      const quickEval = evaluateFeynmanExplanation({
+        question: cleanQuestion,
+        explanation: cleanExplanation,
+        studentName: student_name,
+        subject
+      });
+      return res.json({ success: true, engine: 'quick-check', data: quickEval });
+    }
+
+    const prompt = `你是“费曼以教代学”模式里好奇又爱钻研的虚拟同桌“小明”。当前你的“小老师”是${gradeLabel}的${student_name}同学，学科：${subject}。
+【原题/知识点】：${cleanQuestion || '学生自选知识点讲解'}
+【小老师刚才的讲解】：${cleanExplanation}
+
+请严格完成以下任务：
+1. 真正检查小老师讲的科学/逻辑内容是否准确、是否遗漏关键条件或存在概念误区（绝不胡乱吹捧错误讲解，也不要机械抠字眼）。
+2. 以同桌“小明”的自然口吻回应，并针对本次讲解中最关键的原理漏洞或容易混淆的细节，提出一个真正有启发性的深度追问。
+3. 给出客观掌握度评分（40~98）与 1~5 颗星。
+
+严格输出纯 JSON（禁止 Markdown 代码块）：
+{
+  "mastery_score": 85,
+  "stars": 4,
+  "peer_reply": "小明以同桌口吻给出的具体、针对本次讲解内容的回应（60字以内）",
+  "follow_up_question": "小明紧扣本题核心原理提出的一个高质量追问（40字以内）",
+  "key_points_covered": ["学生实际讲到的核心概念词，最多4个，没讲到就留空数组"],
+  "praise": "一句具体、有教学针对性的点评或纠偏建议（45字以内）",
+  "logic_rating": "逻辑严密 | 清晰准确 | 需补关键步骤 | 存在概念偏差"
+}`;
+
+    try {
+      const response = await fetchWithKeyRotation(buildChatURL, {
+        method: 'POST',
+        profileId,
+        headers: {
+          'Content-Type': 'application/json',
+          ...extractClientAiHeaders(req)
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 600,
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 }
+          }
+        })
+      }, 2, 12000);
+
+      if (!response.ok) throw new Error(`Upstream status ${response.status}`);
+      const rawJson = await response.json();
+      const rawText = rawJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const parsed = extractAndParseJson(rawText);
+      if (!parsed || typeof parsed.peer_reply !== 'string') {
+        throw new Error('Malformed JSON from Feynman LLM');
+      }
+
+      const safeScore = Math.max(40, Math.min(98, Math.round(Number(parsed.mastery_score) || 75)));
+      const safeStars = Math.max(1, Math.min(5, Math.round(Number(parsed.stars) || (safeScore >= 90 ? 5 : safeScore >= 80 ? 4 : safeScore >= 65 ? 3 : 2))));
+      return res.json({
+        success: true,
+        engine: 'llm-feynman',
+        data: {
+          mastery_score: safeScore,
+          stars: safeStars,
+          peer_reply: parsed.peer_reply,
+          follow_up_question: parsed.follow_up_question || '如果换一个条件，你觉得结论还会成立吗？',
+          key_points_covered: Array.isArray(parsed.key_points_covered) ? parsed.key_points_covered.slice(0, 4) : [],
+          praise: parsed.praise || '你能把知识讲给别人听，已经迈出了深度学习最关键的一步！',
+          logic_rating: parsed.logic_rating || '清晰准确'
+        }
+      });
+    } catch (llmErr) {
+      logger.warn(`[Feynman] LLM unavailable (${llmErr.message}), falling back to local heuristic evaluator.`);
+      const evaluation = evaluateFeynmanExplanation({
+        question: cleanQuestion,
+        explanation: cleanExplanation,
+        studentName: student_name,
+        subject
+      });
+      return res.json({
+        success: true,
+        engine: 'local-feynman-fallback',
+        isFallback: true,
+        data: evaluation
+      });
+    }
   } catch (err) {
     logger.error(`[Feynman API Error]: ${err.message}`);
     return res.status(500).json({

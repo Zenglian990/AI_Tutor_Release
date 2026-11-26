@@ -42,6 +42,7 @@ export default function SmartPhotoCropperModal({
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const loupeCanvasRef = useRef(null);
+  const userModifiedCropRef = useRef(false);
   const dragRef = useRef({
     isDragging: false,
     handle: null,
@@ -66,15 +67,17 @@ export default function SmartPhotoCropperModal({
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.question_boxes) && data.question_boxes.length > 0) {
         setDetectedQuestions(data.question_boxes);
-        // 默认自动聚焦第一题
-        const first = data.question_boxes[0];
-        setSelectedQuestionId(first.id);
-        setCrop({
-          x: Math.max(0.01, first.box.x - 0.01),
-          y: Math.max(0.01, first.box.y - 0.01),
-          width: Math.min(0.98, first.box.width + 0.02),
-          height: Math.min(0.98, first.box.height + 0.02)
-        });
+        // 若用户已经手动拖动选框，异步分题结果严禁覆盖用户的选区！
+        if (!userModifiedCropRef.current) {
+          const first = data.question_boxes[0];
+          setSelectedQuestionId(first.id);
+          setCrop({
+            x: Math.max(0.01, first.box.x - 0.01),
+            y: Math.max(0.01, first.box.y - 0.01),
+            width: Math.min(0.98, first.box.width + 0.02),
+            height: Math.min(0.98, first.box.height + 0.02)
+          });
+        }
       }
     } catch (err) {
       console.warn('Auto detect questions error:', err);
@@ -86,6 +89,7 @@ export default function SmartPhotoCropperModal({
   // 1. 加载图片文件并执行前端毫秒级画质预检与静默分题
   useEffect(() => {
     if (!isOpen || !imageFile) {
+      userModifiedCropRef.current = false;
       setImgObj(null);
       setRotation(0);
       setCrop({ x: 0.05, y: 0.08, width: 0.9, height: 0.84 });
@@ -337,6 +341,7 @@ export default function SmartPhotoCropperModal({
         });
       }
 
+      userModifiedCropRef.current = true;
       setCrop({
         x: Math.round(nextX * 1000) / 1000,
         y: Math.round(nextY * 1000) / 1000,

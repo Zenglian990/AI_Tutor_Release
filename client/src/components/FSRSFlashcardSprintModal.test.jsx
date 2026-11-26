@@ -71,7 +71,7 @@ describe('FSRSFlashcardSprintModal Component', () => {
         '/api/mistakes/review-feedback',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ mistake_id: 101, rating: 3 })
+          body: JSON.stringify({ mistake_id: 101, profile_id: 'default', rating: 3 })
         })
       );
       expect(onMistakeUpdated).toHaveBeenCalledWith(101, expect.objectContaining({ success: true }));

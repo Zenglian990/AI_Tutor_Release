@@ -607,10 +607,19 @@ body {
     display: none !important;
   }
 
-  .header-btn-socratic,
+  .header-btn-socratic {
+    padding: 0 7px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+  }
+  .header-btn-socratic .btn-label {
+    display: none !important;
+  }
+
   .header-btn-theme,
   .header-btn-eyecare,
   .header-btn-daily,
+  .header-btn-stats,
   .header-actions-divider {
     display: none !important;
   }

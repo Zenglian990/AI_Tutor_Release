@@ -8,16 +8,33 @@ import { authFetch, getApiUrl } from '../store/useStore';
 export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId = 'default', grade = '7_up', subject = '数学', studentName = '同学' }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const gradeNum = parseInt(String(grade || '7').replace(/\D/g, ''), 10) || 7;
+  const stageExamLabel = gradeNum >= 10 ? '新高考/月考' : (gradeNum <= 6 ? '单元/期末' : '中考/期末');
+
+  const fetchRoadmap = () => {
+    setLoading(true);
+    setLoadError('');
+    authFetch(`${getApiUrl()}/api/campaign/roadmap?profile_id=${encodeURIComponent(currentProfileId)}&grade=${encodeURIComponent(grade)}&subject=${encodeURIComponent(subject)}`)
+      .then(async res => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.success) throw new Error(json.error || `请求失败 (${res.status})`);
+        setData(json);
+      })
+      .catch(e => {
+        console.warn('Roadmap fetch error:', e);
+        setData(null);
+        setLoadError(e.message || '无法拉取战役推演数据，请稍后重试');
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setLoading(true);
-      authFetch(`${getApiUrl()}/api/campaign/roadmap?profile_id=${encodeURIComponent(currentProfileId)}&grade=${encodeURIComponent(grade)}&subject=${encodeURIComponent(subject)}`)
-        .then(res => res.json())
-        .then(d => setData(d))
-        .catch(e => console.warn('Roadmap fetch error:', e))
-        .finally(() => setLoading(false));
+      fetchRoadmap();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentProfileId, grade, subject]);
 
   if (!isOpen) return null;
@@ -55,7 +72,7 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
               🏛️ {studentName}专属：长周期宏观战役沙盘
             </h2>
             <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '0.9rem' }}>
-              从中考/期末宏观全局把控，告别走马观花，步步为营锁定核心分
+              从{data?.examName || stageExamLabel}宏观全局把控，告别走马观花，步步为营锁定核心分
             </p>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer' }}>✕</button>
@@ -63,6 +80,20 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>正在推演宏观知识网格...</div>
+        ) : loadError || !data ? (
+          <div style={{ textAlign: 'center', padding: '36px 20px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '14px' }}>
+            <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>⚠️</div>
+            <div style={{ color: '#fca5a5', fontSize: '0.95rem', marginBottom: '12px' }}>
+              {loadError || '暂未获取到真实的战役进度数据，系统拒绝展示虚拟估算分。'}
+            </div>
+            <button
+              type="button"
+              onClick={fetchRoadmap}
+              style={{ padding: '8px 20px', borderRadius: '10px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+            >
+              🔄 重新拉取真实学情
+            </button>
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Score & Tier Banner */}
@@ -73,15 +104,17 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
               padding: '18px 24px',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px'
             }}>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>当前战役阶段能力推演分</span>
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>当前战役阶段能力推演分（{data.examName || stageExamLabel}）</span>
                 <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '4px' }}>
-                  {data?.simulatedScore || '92 / 120'}
+                  {data.simulatedScore}
                 </div>
                 <span style={{ fontSize: '0.82rem', background: '#2563eb', color: '#fff', padding: '2px 8px', borderRadius: '12px' }}>
-                  {data?.scoreTier || '良好·中坚梯队'}
+                  {data.scoreTier}
                 </span>
               </div>
               <div style={{ textAlign: 'right' }}>

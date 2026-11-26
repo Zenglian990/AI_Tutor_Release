@@ -698,6 +698,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
         <FSRSFlashcardSprintModal
           isOpen={showFlashcardSprint}
           mistakes={filtered}
+          currentProfileId={currentProfileId}
           onClose={() => setShowFlashcardSprint(false)}
           onMistakeUpdated={(id, data) => {
             setMistakes(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));

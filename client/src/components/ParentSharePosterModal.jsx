@@ -331,7 +331,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '1.2rem' }}>📣</span>
             <span style={{ fontWeight: 'bold', fontSize: '1.05rem' }}>
-              家长圈营销与获客海报生成器 (搞钱裂变)
+              家长圈教学成果海报生成器 (1-12年级)
             </span>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer' }}>✕</button>
@@ -363,7 +363,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
                 color: template === 'junior' ? '#3730a3' : '#475569'
               }}
             >
-              📐 中考压轴冲刺版 (7-9年级)
+              📐 初高中压轴冲刺版 (7-12年级)
             </button>
 
             <button

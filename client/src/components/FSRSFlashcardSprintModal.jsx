@@ -23,6 +23,7 @@ import { triggerHaptic } from '../utils/sensoryFeedback';
 export default function FSRSFlashcardSprintModal({
   isOpen,
   mistakes = [],
+  currentProfileId = 'default',
   onClose,
   onMistakeUpdated
 }) {
@@ -33,16 +34,18 @@ export default function FSRSFlashcardSprintModal({
   const [isFinished, setIsFinished] = useState(false);
   const [cards, setCards] = useState([]);
 
+  // 仅在弹窗打开瞬间抓取一次错题队列快照，严禁因评分后父组件 mistakes 引用更新导致重置 currentIndex=0 死循环！
   useEffect(() => {
     if (isOpen) {
-      const activeCards = (mistakes && mistakes.length > 0) ? [...mistakes] : [];
+      const activeCards = (mistakes && mistakes.length > 0) ? mistakes.map(m => ({ ...m, _retried: false })) : [];
       setCards(activeCards);
       setCurrentIndex(0);
       setIsFlipped(false);
       setIsFinished(false);
       setStats({ again: 0, hard: 0, good: 0, easy: 0 });
     }
-  }, [isOpen, mistakes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -59,6 +62,7 @@ export default function FSRSFlashcardSprintModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mistake_id: currentCard.id,
+          profile_id: currentProfileId || 'default',
           rating: rating // 1: Again, 2: Hard, 3: Good, 4: Easy
         })
       });
@@ -76,10 +80,17 @@ export default function FSRSFlashcardSprintModal({
         return { ...prev, [key]: prev[key] + 1 };
       });
 
+      // 遵循 FSRS 遗忘即时重排：评 1 (Again) 且尚未重排过的卡片插回队尾，本轮再巩固 1 次
+      let totalAfter = cards.length;
+      if (rating === 1 && !currentCard._retried) {
+        totalAfter = cards.length + 1;
+        setCards(prev => [...prev, { ...currentCard, _retried: true }]);
+      }
+
       setIsSubmitting(false);
       setIsFlipped(false);
 
-      if (currentIndex + 1 < cards.length) {
+      if (currentIndex + 1 < totalAfter) {
         setCurrentIndex(prev => prev + 1);
       } else {
         setIsFinished(true);

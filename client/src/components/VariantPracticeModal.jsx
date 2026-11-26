@@ -61,11 +61,15 @@ export default function VariantPracticeModal({
         if (mounted) {
           if (res.ok && json.success && json.data) {
             setData(json.data);
-            // If cross-grade gap is detected and initialStep wasn't forced, prioritize root cause
-            if (json.data.prerequisite_root_cause?.hasCrossGradeGap && initialStep === 0) {
+            // 仅当确实存在跨年级底层断层且包含有效补救小题时才落到 -1，彻底避免无断层时题面空白卡死
+            const hasValidRemedy = Boolean(
+              json.data.prerequisite_root_cause?.hasCrossGradeGap &&
+              json.data.prerequisite_root_cause?.remedy?.question
+            );
+            if (hasValidRemedy && (initialStep === -1 || initialStep === 0)) {
               setCurrentStep(-1);
             } else {
-              setCurrentStep(initialStep);
+              setCurrentStep(initialStep < 0 ? 0 : initialStep);
             }
           } else {
             setError(json.error || '生成变式题失败，请稍后重试');
@@ -87,9 +91,11 @@ export default function VariantPracticeModal({
   if (!isOpen) return null;
 
   const rootCause = data?.prerequisite_root_cause || null;
-  const currentVariant = currentStep === -1
+  const hasValidRemedy = Boolean(rootCause?.hasCrossGradeGap && rootCause?.remedy?.question);
+  const safeStep = (currentStep === -1 && !hasValidRemedy) ? 0 : currentStep;
+  const currentVariant = safeStep === -1
     ? (rootCause?.remedy || null)
-    : (data?.variants?.[currentStep] || null);
+    : (data?.variants?.[safeStep] || data?.variants?.[0] || null);
 
   // 2. 提交作答并即时批改 (含 CAS 神经符号快速验算)
   const handleSubmitAnswer = async () => {
@@ -128,15 +134,24 @@ export default function VariantPracticeModal({
   };
 
   const handleNextStep = () => {
-    if (currentStep === -1) {
+    if (safeStep === -1) {
       setCurrentStep(0);
-    } else if (data?.variants && currentStep < data.variants.length - 1) {
-      setCurrentStep(s => s + 1);
+      setStudentInput('');
+      setFeedback(null);
+      setShowHint(false);
+      setShowAnalysis(false);
+      return;
     }
-    setStudentInput('');
-    setFeedback(null);
-    setShowHint(false);
-    setShowAnalysis(false);
+    if (data?.variants && safeStep < data.variants.length - 1) {
+      setCurrentStep(s => s + 1);
+      setStudentInput('');
+      setFeedback(null);
+      setShowHint(false);
+      setShowAnalysis(false);
+      return;
+    }
+    // 末关“通关大满贯”直接收官关闭，绝不再清空输入强迫重做
+    onClose && onClose();
   };
 
   return (
@@ -661,7 +676,7 @@ export default function VariantPracticeModal({
               )}
 
               {/* 查看标准解析 */}
-              {(showAnalysis || completedSteps[currentStep]) && currentVariant.analysis && (
+              {(showAnalysis || completedSteps[safeStep]) && currentVariant?.analysis && (
                 <div style={{
                   background: 'rgba(30, 41, 59, 0.4)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',

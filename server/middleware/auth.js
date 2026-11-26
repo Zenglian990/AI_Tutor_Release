@@ -138,7 +138,6 @@ function extractStudentTokenFromRequest(req) {
 
 const ADMIN_ROUTES = [
   '/config/update-keys',
-  '/config/test-llm',
   '/config/keys',
   '/membership/admin',
   '/admin/shutdown',
@@ -223,9 +222,14 @@ async function attachSessionMiddleware(req, res, next) {
     req.path === '/admin/pin-status' ||
     req.path === '/admin/pin' ||
     req.path === '/admin/verify-pin' ||
+    req.path === '/admin/secret-login' ||
     req.path === '/parent/auth-session' ||
     req.path === '/admin/reset-pin' ||
     req.path === '/admin/logout' ||
+    req.path === '/family/pin-status' ||
+    req.path === '/family/pin' ||
+    req.path === '/family/verify-pin' ||
+    req.path === '/family/reset-pin' ||
     req.path === '/auth/session';
 
   if (isPublicAuthBootstrap) {
@@ -327,9 +331,11 @@ async function attachSessionMiddleware(req, res, next) {
   }
 
   // 非管理路由（学生正常教学流程）：
-  // 生产环境无有效会话 Cookie 时，严禁把客户端任意请求的 fallbackPid 签发为授权档案（防止清 Cookie IDOR 绕过）
+  // 生产环境无有效会话 Cookie 时，为每台匿名新设备自动签发独立 stu_* 档案，彻底杜绝全站访客共用 'default' 挤爆每日免费额度，同时严禁信任客户端任意伪造的 fallbackPid（防清 Cookie IDOR 绕过）
   const autoSid = `sid_${crypto.randomBytes(8).toString('hex')}`;
-  const safeInitialPid = !skipStrictAuthInDev ? 'default' : fallbackPid;
+  const safeInitialPid = !skipStrictAuthInDev
+    ? `stu_${crypto.randomBytes(8).toString('hex')}`
+    : fallbackPid;
   const autoProfiles = Array.from(new Set([safeInitialPid, 'default']));
   if (!cookies[STUDENT_SESSION_COOKIE] && !skipStrictAuthInDev) {
     try {

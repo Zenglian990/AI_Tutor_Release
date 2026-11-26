@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /**
  * ChemistryLabModal
@@ -25,21 +25,44 @@ export default function ChemistryLabModal({
 
   // Molecular Simulation State
   const [reactionStep, setReactionStep] = useState(1); // 1: Initial molecules, 2: Atoms split, 3: Recombined products
+  const reactionTimerRef = useRef(null);
+
+  const clearReactionTimer = () => {
+    if (reactionTimerRef.current) {
+      clearInterval(reactionTimerRef.current);
+      reactionTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(isHighSchool ? 'galvanic' : 'gas_prep');
+    } else {
+      clearReactionTimer();
+    }
+    return () => clearReactionTimer();
+  }, [isOpen, isHighSchool]);
+
+  useEffect(() => {
+    clearReactionTimer();
+    setIsReacting(false);
+  }, [activeTab]);
 
   if (!isOpen) return null;
 
   const handleStartReaction = () => {
+    clearReactionTimer();
     setIsReacting(true);
     setIsTestedFull(false);
     setGasJarFullness(0);
 
     let progress = 0;
-    const interval = setInterval(() => {
+    reactionTimerRef.current = setInterval(() => {
       progress += 25;
       if (progress >= 100) {
         setGasJarFullness(100);
         setIsReacting(false);
-        clearInterval(interval);
+        clearReactionTimer();
       } else {
         setGasJarFullness(progress);
       }
@@ -47,6 +70,7 @@ export default function ChemistryLabModal({
   };
 
   const handleReset = () => {
+    clearReactionTimer();
     setIsReacting(false);
     setIsTestedFull(false);
     setGasJarFullness(0);
@@ -87,81 +111,74 @@ export default function ChemistryLabModal({
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      position: 'fixed', inset: 0, width: '100%', height: '100%',
       background: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(10px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
-      padding: '16px'
+      padding: '8px', boxSizing: 'border-box'
     }}>
       <div style={{
-        background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '780px',
-        maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
-        display: 'flex', flexDirection: 'column'
+        background: '#ffffff', borderRadius: '20px', width: '100%', maxWidth: 'min(780px, calc(100vw - 16px))',
+        maxHeight: '94vh', overflowY: 'auto', overflowX: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+        display: 'flex', flexDirection: 'column', boxSizing: 'border-box'
       }}>
         {/* Header */}
         <div style={{
           background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
-          color: '#ffffff', padding: '16px 24px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          color: '#ffffff', padding: '14px 16px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.6rem' }}>⚗️</span>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>⚗️</span>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, lineHeight: 1.3 }}>
                 {isHighSchool ? '高中·初中化学动态虚拟微实验台' : '化学动态虚拟微实验台（初中·高中）'}
               </h3>
-              <div style={{ fontSize: '0.8rem', color: '#a7f3d0', marginTop: '2px' }}>
-                高中原电池与盐桥电化学 · 气体制备装置 · 微观分子重组探究
+              <div style={{ fontSize: '0.76rem', color: '#a7f3d0', marginTop: '2px', lineHeight: 1.3 }}>
+                {isHighSchool ? '高中原电池与盐桥电化学 · 气体制备 · 微观分子重组' : '气体制备与净化 · 微观分子重组 · 高中原电池拓展'}
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="关闭化学实验台"
             style={{
-              background: 'transparent', border: 'none', color: '#ffffff',
-              fontSize: '1.4rem', cursor: 'pointer', padding: '4px'
+              background: 'rgba(255,255,255,0.16)', border: 'none', color: '#ffffff',
+              fontSize: '1.25rem', cursor: 'pointer', padding: '4px 10px', borderRadius: '8px', flexShrink: 0
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Tab Switcher — 手机端紧凑换行不挤爆，按学段排列顺序 */}
         <div style={{
-          display: 'flex', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 12px 0', gap: '4px'
+          display: 'flex', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 10px 0', gap: '4px'
         }}>
-          <button
-            onClick={() => setActiveTab('galvanic')}
-            style={{
-              padding: '10px 14px', border: 'none', background: 'transparent', whiteSpace: 'nowrap',
-              fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
-              color: activeTab === 'galvanic' ? '#0d9488' : '#64748b',
-              borderBottom: activeTab === 'galvanic' ? '3px solid #0d9488' : '3px solid transparent'
-            }}
-          >
-            🔋 高中电化学：铜锌双液原电池
-          </button>
-          <button
-            onClick={() => setActiveTab('gas_prep')}
-            style={{
-              padding: '10px 14px', border: 'none', background: 'transparent', whiteSpace: 'nowrap',
-              fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
-              color: activeTab === 'gas_prep' ? '#0d9488' : '#64748b',
-              borderBottom: activeTab === 'gas_prep' ? '3px solid #0d9488' : '3px solid transparent'
-            }}
-          >
-            ⚗️ 气体制备与净化 (O₂ / CO₂)
-          </button>
-          <button
-            onClick={() => setActiveTab('molecular')}
-            style={{
-              padding: '10px 14px', border: 'none', background: 'transparent', whiteSpace: 'nowrap',
-              fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
-              color: activeTab === 'molecular' ? '#0d9488' : '#64748b',
-              borderBottom: activeTab === 'molecular' ? '3px solid #0d9488' : '3px solid transparent'
-            }}
-          >
-            ⚛️ 微观分子重组 (2H₂O 拆解)
-          </button>
+          {(isHighSchool
+            ? [
+                { key: 'galvanic', label: '🔋 高中电化学：铜锌原电池' },
+                { key: 'gas_prep', label: '⚗️ 气体制备 (O₂ / CO₂)' },
+                { key: 'molecular', label: '⚛️ 微观分子重组 (2H₂O 拆解)' }
+              ]
+            : [
+                { key: 'gas_prep', label: '⚗️ 气体制备 (O₂ / CO₂)' },
+                { key: 'molecular', label: '⚛️ 微观分子重组 (2H₂O 拆解)' },
+                { key: 'galvanic', label: '🔋 拓展(高中)：原电池' }
+              ]
+          ).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '8px 10px', border: 'none', background: 'transparent',
+                fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                color: activeTab === tab.key ? '#0d9488' : '#64748b',
+                borderBottom: activeTab === tab.key ? '3px solid #0d9488' : '3px solid transparent'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {activeTab === 'galvanic' ? (
@@ -283,28 +300,28 @@ export default function ChemistryLabModal({
                 <rect x="117" y="100" width="45" height="8" fill="#64748b" />
 
                 {gasType === 'O2_heating' ? (
-                  /* Solid-Heating Apparatus: Test tube tilted downwards, cotton, alcohol burner */
+                  /* 严格遵守化学规范：试管底（左侧 y=86~106）略高，试管口（右侧 y=104~124）略向下倾斜，防冷凝水倒流炸裂试管；导气管一直伸入集气瓶底部 */
                   <g>
-                    {/* Alcohol Burner (酒精灯) */}
-                    <path d="M 170 210 L 190 170 L 220 170 L 240 210 Z" fill="#475569" stroke="#94a3b8" strokeWidth="2" />
+                    {/* Alcohol Burner (酒精灯置于左侧加热试管底部药品) */}
+                    <path d="M 140 210 L 155 168 L 185 168 L 200 210 Z" fill="#475569" stroke="#94a3b8" strokeWidth="2" />
                     {/* Flame */}
-                    <circle cx="205" cy="160" r="8" fill="#f59e0b" opacity="0.9" />
-                    <circle cx="205" cy="158" r="4" fill="#fef08a" />
-                    <text x="180" y="226" fill="#cbd5e1" fontSize="10">酒精灯外焰</text>
+                    <circle cx="170" cy="154" r="8" fill="#f59e0b" opacity="0.9" />
+                    <circle cx="170" cy="152" r="4" fill="#fef08a" />
+                    <text x="142" y="226" fill="#cbd5e1" fontSize="10">酒精灯外焰加热</text>
 
-                    {/* Test Tube tilted downward: center around (150, 100) to (270, 115) */}
-                    <path d="M 150 95 L 270 110 A 10 10 0 0 1 270 130 L 150 115 Z" fill="rgba(255,255,255,0.08)" stroke="#38bdf8" strokeWidth="2.5" />
-                    {/* Purple KMnO4 powder */}
-                    <path d="M 240 106 L 268 110 A 8 8 0 0 1 268 128 L 240 125 Z" fill="#9333ea" opacity="0.8" />
-                    <text x="245" y="145" fill="#c084fc" fontSize="10">KMnO₄粉末</text>
+                    {/* Test Tube: closed round bottom on LEFT (higher y=86..106), open mouth on RIGHT tilted DOWNWARD (lower y=104..124) */}
+                    <path d="M 270 104 L 152 86 A 10 10 0 0 0 152 106 L 270 124 Z" fill="rgba(255,255,255,0.08)" stroke="#38bdf8" strokeWidth="2.5" />
+                    {/* Purple KMnO4 powder at the closed left bottom */}
+                    <path d="M 185 92 L 152 87 A 9 9 0 0 0 152 105 L 185 110 Z" fill="#9333ea" opacity="0.85" />
+                    <text x="132" y="75" fill="#c084fc" fontSize="10">KMnO₄固体(略高)</text>
 
-                    {/* Cotton plug */}
-                    <circle cx="165" cy="106" r="6" fill="#e2e8f0" opacity="0.85" />
-                    <text x="145" y="85" fill="#fcd34d" fontSize="10">棉花团(防堵)</text>
+                    {/* Cotton plug near right downward mouth */}
+                    <circle cx="255" cy="112" r="6" fill="#e2e8f0" opacity="0.9" />
+                    <text x="228" y="96" fill="#fcd34d" fontSize="10">棉花团(口微向下)</text>
 
-                    {/* Rubber stopper & glass tube */}
-                    <line x1="150" y1="105" x2="130" y2="103" stroke="#94a3b8" strokeWidth="5" />
-                    <path d="M 130 103 L 110 103 L 110 170 L 400 170 L 450 170" fill="none" stroke="#38bdf8" strokeWidth="3" />
+                    {/* Rubber stopper & delivery tube extending deep to bottom of gas jar (向上排空气法伸至瓶底) */}
+                    <line x1="270" y1="114" x2="286" y2="117" stroke="#94a3b8" strokeWidth="6" />
+                    <path d="M 286 117 L 312 121 L 312 65 L 495 65 L 495 190" fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="round" />
                   </g>
                 ) : (
                   /* Liquid-Solid Apparatus (Conical Flask + Funnel) */
@@ -323,8 +340,8 @@ export default function ChemistryLabModal({
                     <path d="M 185 80 L 205 80 L 195 95 Z" fill="#38bdf8" />
                     <text x="145" y="75" fill="#fcd34d" fontSize="10">长颈漏斗(液封)</text>
 
-                    {/* Delivery tube */}
-                    <path d="M 215 130 L 215 110 L 400 110 L 450 170" fill="none" stroke="#38bdf8" strokeWidth="3" />
+                    {/* Delivery tube extending deep to bottom of gas jar */}
+                    <path d="M 215 130 L 215 65 L 495 65 L 495 190" fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="round" />
                   </g>
                 )}
 

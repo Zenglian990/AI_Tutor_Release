@@ -101,8 +101,12 @@ function createApp() {
       } catch (e) {}
     }
 
-    // Allow Capacitor / Ionic local app origins
-    if (/^(capacitor|ionic):\/\/localhost(:\d+)?$/.test(origin)) {
+    // Allow Capacitor / Ionic native app WebView origins (iOS capacitor://localhost, Android https://localhost & http://localhost)
+    if (
+      /^(capacitor|ionic):\/\/localhost(:\d+)?$/.test(origin) ||
+      origin === 'https://localhost' ||
+      origin === 'http://localhost'
+    ) {
       return true;
     }
 

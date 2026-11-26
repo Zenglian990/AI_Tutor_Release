@@ -320,7 +320,13 @@ const ChatMessage = React.memo(function ChatMessage({
   const [isMistakeMarked, setIsMistakeMarked] = useState(false);
 
   const displayMessageText = msg.text ? msg.text.replace(/\[ACTION_START_CHAPTER\]\s*/g, '') : '';
-  const { thinking, body: cleanAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
+  const { thinking, body: rawAiBody } = msg.role === 'ai' ? splitThinkingContent(displayMessageText) : { thinking: null, body: displayMessageText };
+  // 修复 CommonMark 中文全角括号/引号紧贴 ** 导致偶发未解析裸 ** 的渲染缺陷
+  const cleanAiBody = (!isStreaming && rawAiBody)
+    ? rawAiBody
+        .replace(/\*\*([^*\n]+?[）)】」》"”'’])\*\*(?=[\u4e00-\u9fa5A-Za-z0-9])/g, '**$1** ')
+        .replace(/([\u4e00-\u9fa5A-Za-z0-9])\*\*([（(【「《"“'’][^*\n]+?)\*\*/g, '$1 **$2**')
+    : rawAiBody;
   const isSystemErrorMsg = msg.role === 'ai' && (
     Boolean(msg.isError) ||
     /未检测到可用大模型\s*API\s*Key|请点击右上角设置.*配置有效密钥|今日免费体验额度.*已用完|连接超时|请求失败|对不起，系统忙碌中/i.test(displayMessageText)

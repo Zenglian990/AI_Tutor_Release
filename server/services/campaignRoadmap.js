@@ -7,8 +7,21 @@ const logger = require('./logger');
  */
 async function computeCampaignRoadmap(profileId = 'default', grade = '7_up', subject = '数学') {
   const db = getSqliteDb();
-  const subjectNodes = Object.values(KNOWLEDGE_GRAPH).filter(n => !subject || n.subject === subject);
-  const totalNodesCount = Math.max(subjectNodes.length, 1);
+  const gradeNum = parseInt(String(grade || '7').replace(/\D/g, ''), 10) || 7;
+  const isHighSchool = gradeNum >= 10;
+  const isPrimary = gradeNum <= 6;
+  const gradePrefix = String(grade || '').split('_')[0];
+
+  // 严格按学科与当前学段筛选知识图谱节点，防止不同学段互相混算
+  const subjectNodes = Object.values(KNOWLEDGE_GRAPH).filter(n => {
+    if (subject && n.subject !== subject) return false;
+    const nodeGradeNum = parseInt(String(n.grade || '').replace(/\D/g, ''), 10);
+    if (!nodeGradeNum) return true;
+    if (isHighSchool) return nodeGradeNum >= 10;
+    if (isPrimary) return nodeGradeNum <= 6;
+    return nodeGradeNum >= 7 && nodeGradeNum <= 9;
+  });
+  const totalNodesCount = Math.max(subjectNodes.length, 6);
 
   let masteredCount = 0;
   let inProgressCount = 0;
@@ -16,19 +29,29 @@ async function computeCampaignRoadmap(profileId = 'default', grade = '7_up', sub
 
   if (db) {
     try {
-      // 1. Progress count from profile_progress
-      const progressList = await db.all(
-        `SELECT chapter_id, progress_pct, status FROM profile_progress WHERE profile_id = ? AND subject = ?`,
-        [profileId, subject]
-      );
+      // 1. 仅统计当前学段/年级的章节进度，严禁把初中/小学进度混入高中
+      const progressList = gradePrefix
+        ? await db.all(
+            `SELECT chapter_id, progress_pct, status FROM profile_progress WHERE profile_id = ? AND subject = ? AND (grade = ? OR grade LIKE ?)`,
+            [profileId, subject, grade, `${gradePrefix}_%`]
+          )
+        : await db.all(
+            `SELECT chapter_id, progress_pct, status FROM profile_progress WHERE profile_id = ? AND subject = ?`,
+            [profileId, subject]
+          );
       masteredCount = progressList.filter(p => p.progress_pct >= 100 || p.status === 'completed').length;
       inProgressCount = progressList.filter(p => p.progress_pct > 0 && p.progress_pct < 100).length;
 
-      // 2. Mistakes count
-      const mistakeRow = await db.get(
-        `SELECT COUNT(*) as cnt FROM mistakes WHERE profile_id = ? AND (subject = ? OR subject IS NULL)`,
-        [profileId, subject]
-      );
+      // 2. 仅统计当前学段/年级的错题数
+      const mistakeRow = gradePrefix
+        ? await db.get(
+            `SELECT COUNT(*) as cnt FROM mistakes WHERE profile_id = ? AND (subject = ? OR subject IS NULL) AND (grade = ? OR grade LIKE ?)`,
+            [profileId, subject, grade, `${gradePrefix}_%`]
+          )
+        : await db.get(
+            `SELECT COUNT(*) as cnt FROM mistakes WHERE profile_id = ? AND (subject = ? OR subject IS NULL)`,
+            [profileId, subject]
+          );
       totalMistakeCount = mistakeRow?.cnt || 0;
     } catch (e) {
       logger.warn('[CampaignRoadmap] DB query error:', e.message);
@@ -36,9 +59,6 @@ async function computeCampaignRoadmap(profileId = 'default', grade = '7_up', sub
   }
 
   // Dynamic exam scale across K12 (1-12 grades): High school main subjects 150 / electives 100; Middle school 120; Primary 100
-  const gradeNum = parseInt(String(grade || '7').replace(/\D/g, ''), 10) || 7;
-  const isHighSchool = gradeNum >= 10;
-  const isPrimary = gradeNum <= 6;
   const isMainSubject = ['语文', '数学', '英语'].includes(subject);
   const maxScore = isHighSchool ? (isMainSubject ? 150 : 100) : (isPrimary ? 100 : 120);
   const examName = isHighSchool ? '新高考/月考' : (isPrimary ? '单元/期末' : '中考/期末');

@@ -109,30 +109,75 @@ function generateQuestion(gradeLevel) {
   }
 
   // 7-9年级: 初中有理数正负数四则 / 平方速算 / 绝对值
-  const type = rand(1, 4);
-  if (type === 1) {
-    // 负数乘负数 或 负乘正
-    const a = rand(-9, -2);
-    const b = rand(-9, 8);
-    const bStr = b < 0 ? `(${b})` : `${b}`;
-    return { expr: `(${a}) × ${bStr}`, ans: a * b };
-  } else if (type === 2) {
-    // 负数加减
-    const a = rand(-25, 15);
-    const b = rand(-20, 20);
-    const bStr = b < 0 ? `(${b})` : `${b}`;
-    return { expr: `${a} - ${bStr}`, ans: a - b };
-  } else if (type === 3) {
-    // 常用平方数
-    const bases = [11, 12, 13, 14, 15, 16, 17, 18, 19, 25];
-    const base = bases[rand(0, bases.length - 1)];
-    return { expr: `${base}²`, ans: base * base };
-  } else {
-    // 绝对值计算
-    const a = rand(-15, -3);
-    const b = rand(2, 10);
-    return { expr: `|${a}| - ${b}`, ans: Math.abs(a) - b };
+  if (gradeLevel <= 9) {
+    const type = rand(1, 4);
+    if (type === 1) {
+      const a = rand(-9, -2);
+      const b = rand(-9, 8);
+      const bStr = b < 0 ? `(${b})` : `${b}`;
+      return { expr: `(${a}) × ${bStr}`, ans: a * b };
+    } else if (type === 2) {
+      const a = rand(-25, 15);
+      const b = rand(-20, 20);
+      const bStr = b < 0 ? `(${b})` : `${b}`;
+      return { expr: `${a} - ${bStr}`, ans: a - b };
+    } else if (type === 3) {
+      const bases = [11, 12, 13, 14, 15, 16, 17, 18, 19, 25];
+      const base = bases[rand(0, bases.length - 1)];
+      return { expr: `${base}²`, ans: base * base };
+    } else {
+      const a = rand(-15, -3);
+      const b = rand(2, 10);
+      return { expr: `|${a}| - ${b}`, ans: Math.abs(a) - b };
+    }
   }
+
+  // 10-12年级: 高中数学高频心算速算（幂指对数、阶乘/组合、特殊角三角与向量点积）
+  const hsType = rand(1, 4);
+  if (hsType === 1) {
+    const pairs = [
+      { expr: 'log₂(8)', ans: 3 },
+      { expr: 'log₂(16)', ans: 4 },
+      { expr: 'log₂(32)', ans: 5 },
+      { expr: 'log₃(27)', ans: 3 },
+      { expr: 'log₃(81)', ans: 4 },
+      { expr: 'lg(1000)', ans: 3 },
+      { expr: '2⁶', ans: 64 },
+      { expr: '3⁴', ans: 81 }
+    ];
+    return pairs[rand(0, pairs.length - 1)];
+  } else if (hsType === 2) {
+    // 平面向量数量积 (a, b)·(c, d)
+    const a = rand(-5, 6), b = rand(-5, 6), c = rand(-4, 5), d = rand(-4, 5);
+    return { expr: `(${a}, ${b}) · (${c}, ${d})`, ans: a * c + b * d };
+  } else if (hsType === 3) {
+    // 排列组合基础速算
+    const combos = [
+      { expr: 'C(5, 2)', ans: 10 },
+      { expr: 'C(6, 2)', ans: 15 },
+      { expr: 'C(6, 3)', ans: 20 },
+      { expr: 'A(4, 2)', ans: 12 },
+      { expr: 'A(5, 2)', ans: 20 },
+      { expr: '4!', ans: 24 },
+      { expr: '5!', ans: 120 }
+    ];
+    return combos[rand(0, combos.length - 1)];
+  } else {
+    // 导数/特殊函数求值
+    const k = rand(2, 5);
+    const x = rand(1, 4);
+    return { expr: `f(x)=${k}x²，则 f'(${x})`, ans: 2 * k * x };
+  }
+}
+
+function normalizeMentalGrade(rawGrade) {
+  const gNum = typeof rawGrade === 'number'
+    ? rawGrade
+    : (parseInt(String(rawGrade || '3').replace(/\D/g, ''), 10) || 3);
+  if (gNum >= 10) return 10;
+  if (gNum >= 7) return 7;
+  if (gNum >= 5) return 5;
+  return Math.max(1, Math.min(4, gNum));
 }
 
 export default function DailyMentalMathModal({
@@ -141,7 +186,7 @@ export default function DailyMentalMathModal({
   currentGrade = 3,
   onAwardExp
 }) {
-  const [grade, setGrade] = useState(currentGrade || 3);
+  const [grade, setGrade] = useState(() => normalizeMentalGrade(currentGrade));
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [questions, setQuestions] = useState([]);
@@ -149,19 +194,22 @@ export default function DailyMentalMathModal({
   const [inputVal, setInputVal] = useState('');
   const [startTime, setStartTime] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [isFinished, setIsFinished] = useState(false);
   const [feedbackState, setFeedbackState] = useState(null); // 'correct' | 'wrong' | null
   const [streak, setStreak] = useState(0);
   const [maxStreak, setMaxStreak] = useState(0);
 
   const timerRef = useRef(null);
+  const submittingLockRef = useRef(false);
 
-  // 初始化本轮题库
+  // 初始化本轮题库（真实 60 秒倒计时冲刺）
   const startNewSession = useCallback((targetGrade = grade, qCount = totalQuestions) => {
     const list = [];
     for (let i = 0; i < qCount; i++) {
       list.push(generateQuestion(targetGrade));
     }
+    submittingLockRef.current = false;
     setQuestions(list);
     setUserInputs([]);
     setCurrentIndex(0);
@@ -171,12 +219,13 @@ export default function DailyMentalMathModal({
     setStreak(0);
     setMaxStreak(0);
     setElapsedSeconds(0);
+    setRemainingSeconds(60);
     setStartTime(Date.now());
   }, [grade, totalQuestions]);
 
   useEffect(() => {
     if (isOpen) {
-      const g = (currentGrade >= 1 && currentGrade <= 9) ? currentGrade : 3;
+      const g = normalizeMentalGrade(currentGrade);
       setGrade(g);
       startNewSession(g, 10);
     } else {
@@ -184,12 +233,19 @@ export default function DailyMentalMathModal({
     }
   }, [isOpen, currentGrade]);
 
-  // 计时器
+  // 真实 60 秒倒计时器（归零自动截止结算，严禁无限正计时）
   useEffect(() => {
     if (isOpen && !isFinished && startTime) {
       timerRef.current = setInterval(() => {
-        setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
-      }, 500);
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const rem = Math.max(0, 60 - elapsed);
+        setElapsedSeconds(Math.min(60, elapsed));
+        setRemainingSeconds(rem);
+        if (rem <= 0) {
+          clearInterval(timerRef.current);
+          setIsFinished(true);
+        }
+      }, 250);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
     }
@@ -198,20 +254,26 @@ export default function DailyMentalMathModal({
     };
   }, [isOpen, isFinished, startTime]);
 
-  // 物理键盘支持
+  // 物理键盘支持（同时兼容主键盘与小键盘 Numpad，并防连按跳题）
   useEffect(() => {
     if (!isOpen || isFinished) return;
 
     const handleKeyDown = (e) => {
-      if (['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
+      if (submittingLockRef.current) return;
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
         setInputVal((prev) => (prev.length < 6 ? prev + e.key : prev));
       } else if (e.key === '-' && !inputVal.includes('-')) {
+        e.preventDefault();
         setInputVal((prev) => '-' + prev);
       } else if (e.key === '.' && !inputVal.includes('.')) {
+        e.preventDefault();
         setInputVal((prev) => (prev === '' ? '0.' : prev + '.'));
       } else if (e.key === 'Backspace') {
+        e.preventDefault();
         setInputVal((prev) => prev.slice(0, -1));
       } else if (e.key === 'Enter') {
+        e.preventDefault();
         handleConfirmAnswer();
       }
     };
@@ -243,7 +305,8 @@ export default function DailyMentalMathModal({
   };
 
   const handleConfirmAnswer = () => {
-    if (!inputVal || isNaN(Number(inputVal)) || !currentQ) return;
+    if (submittingLockRef.current || !inputVal || isNaN(Number(inputVal)) || !currentQ) return;
+    submittingLockRef.current = true;
 
     const parsedUserAns = Number(inputVal);
     const isCorrect = Math.abs(parsedUserAns - currentQ.ans) < 0.001;
@@ -272,6 +335,7 @@ export default function DailyMentalMathModal({
     }
 
     setTimeout(() => {
+      submittingLockRef.current = false;
       setFeedbackState(null);
       setInputVal('');
 
@@ -357,7 +421,7 @@ export default function DailyMentalMathModal({
                     border: '1px solid rgba(56, 189, 248, 0.4)'
                   }}
                 >
-                  {grade <= 6 ? `${grade}年级` : '初中7-9年级'}
+                  {grade >= 10 ? '高中10-12年级' : (grade >= 7 ? '初中7-9年级' : (grade >= 5 ? '5-6年级' : `${grade}年级`))}
                 </span>
               </div>
               <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
@@ -421,14 +485,15 @@ export default function DailyMentalMathModal({
               <option value={4}>4年级 (混合运算与速算)</option>
               <option value={5}>5-6年级 (小数与简算)</option>
               <option value={7}>初中7-9 (有理数与平方)</option>
+              <option value={10}>高中10-12 (指对数/向量/组合)</option>
             </select>
           </div>
 
           {/* 实时状态 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: remainingSeconds <= 10 ? '#ef4444' : '#f59e0b' }}>
               <span>⏱️</span>
-              <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{elapsedSeconds}s</span>
+              <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>剩余 {remainingSeconds}s</span>
             </div>
             {streak >= 2 && (
               <div

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
 
 function getStageLabel(gradeCode) {
   const num = parseInt(String(gradeCode || '7').replace(/\D/g, ''), 10) || 7;
@@ -23,9 +24,34 @@ export default function DailyAchievementCardModal({
   recentTopics = []
 }) {
   const [copied, setCopied] = useState(false);
+  const [exportingImg, setExportingImg] = useState(false);
   const cardRef = useRef(null);
 
   if (!isOpen) return null;
+
+  const cleanTopics = (Array.isArray(recentTopics) ? recentTopics : [])
+    .map(t => String(t || '').replace(/\[ACTION_[A-Z0-9_]+\]\s*/g, '').trim())
+    .filter(Boolean);
+
+  const handleDownloadPoster = async () => {
+    if (!cardRef.current || exportingImg) return;
+    setExportingImg(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true
+      });
+      const link = document.createElement('a');
+      link.download = `AI私教战报_${studentName}_${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.warn('[DailyCard] Export image failed:', err);
+    } finally {
+      setExportingImg(false);
+    }
+  };
 
   const todayStr = new Date().toLocaleDateString('zh-CN', {
     year: 'numeric',
@@ -66,8 +92,10 @@ export default function DailyAchievementCardModal({
         maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
         display: 'flex', flexDirection: 'column'
       }}>
+        {/* Full Printable Poster Wrapper */}
+        <div ref={cardRef} style={{ borderRadius: '24px 24px 0 0', overflow: 'hidden', background: '#ffffff' }}>
         {/* Card Header Poster */}
-        <div ref={cardRef} style={{
+        <div style={{
           background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
           color: '#ffffff', padding: '24px 20px 18px', borderRadius: '24px 24px 0 0',
           position: 'relative', overflow: 'hidden'
@@ -120,7 +148,7 @@ export default function DailyAchievementCardModal({
                   🎯 今日真实研讨足迹（{subject}）：
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem', color: '#334155' }}>
-                  {recentTopics.length > 0 ? recentTopics.slice(0, 3).map((topic, idx) => (
+                  {cleanTopics.length > 0 ? cleanTopics.slice(0, 3).map((topic, idx) => (
                     <div key={idx}>• {topic}</div>
                   )) : (
                     <div>• 已完成 {masteredCount} 轮启发式互动学习，保持了独立思考节奏</div>
@@ -152,16 +180,32 @@ export default function DailyAchievementCardModal({
               </p>
             </div>
           )}
+        </div>
+        </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: '8px', padding: '0 20px 20px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleDownloadPoster}
+              disabled={exportingImg}
+              style={{
+                flex: 1, padding: '10px 12px', borderRadius: '12px',
+                background: 'linear-gradient(135deg, #059669, #10b981)',
+                color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '0.85rem', cursor: exportingImg ? 'wait' : 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {exportingImg ? '⏳ 生成中...' : '🖼️ 保存战报图片'}
+            </button>
             <button
               type="button"
               onClick={handleCopyText}
               style={{
-                flex: 1, padding: '10px 14px', borderRadius: '12px',
+                flex: 1, padding: '10px 12px', borderRadius: '12px',
                 background: copied ? '#10b981' : 'linear-gradient(135deg, #4338ca, #3730a3)',
-                color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer'
+                color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
               {copied ? '✅ 已复制真实日报文案' : '📋 复制微信战报'}
@@ -172,12 +216,11 @@ export default function DailyAchievementCardModal({
               style={{
                 padding: '10px 16px', borderRadius: '12px',
                 background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1',
-                fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer'
+                fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
               }}
             >
               关闭
             </button>
-          </div>
         </div>
       </div>
     </div>

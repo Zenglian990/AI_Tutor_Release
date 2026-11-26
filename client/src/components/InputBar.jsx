@@ -66,6 +66,8 @@ const InputBar = React.memo(function InputBar({
   const { selectedGrade, selectedSubject, currentProfile } = useAppStore();
   const activeGrade = selectedGrade || currentProfile?.grade || '7_up';
   const activeSubject = selectedSubject || '';
+  const activeGradeNum = parseInt(String(activeGrade).replace(/\D/g, ''), 10) || 7;
+  const isLowerPrimary = activeGradeNum >= 1 && activeGradeNum <= 3;
 
   const handleInsertSymbol = (sym) => {
     const ta = textareaRef.current;
@@ -264,7 +266,7 @@ const InputBar = React.memo(function InputBar({
               🎙️ 面对面伴学
             </button>
           )}
-          {onOpenPrerequisiteTrace && (
+          {onOpenPrerequisiteTrace && !isLowerPrimary && (
             <button
               type="button"
               className="quick-hint-chip"
@@ -285,18 +287,22 @@ const InputBar = React.memo(function InputBar({
             className="quick-hint-chip"
             title="一句话点破出题人在哪里藏了陷阱与核心突破口"
             disabled={isLoading}
-            onClick={() => onSubmit(null, "老师，请一句话点破这道题的【核心题眼】和出题人套路陷阱！")}
+            onClick={() => onSubmit(null, isLowerPrimary
+              ? '老师，请用简单有趣的话帮我找找这道题最关键的小提示吧！'
+              : '老师，请一句话点破这道题的【核心题眼】和出题人套路陷阱！')}
           >
-            🎯 题眼与陷阱
+            {isLowerPrimary ? '✨ 找找关键小线索' : '🎯 题眼与陷阱'}
           </button>
           <button
             type="button"
             className="quick-hint-chip"
-            title="给草稿纸上的第一步画线或公式支架，不要直接给答案"
+            title={isLowerPrimary ? '给我第一步画图或列式小提示，不要直接给答案' : '给草稿纸上的第一步画线或公式支架，不要直接给答案'}
             disabled={isLoading}
-            onClick={() => onSubmit(null, "老师，请给我草稿纸上的【第一步动笔支架】（辅助线画法或公式首步），引导我动手算！")}
+            onClick={() => onSubmit(null, isLowerPrimary
+              ? '老师，请教我画个小图或列出第一步算式，让我自己算出来！'
+              : '老师，请给我草稿纸上的【第一步动笔支架】（辅助线画法或公式首步），引导我动手算！')}
           >
-            ✏️ 动笔支架
+            {isLowerPrimary ? '🖍️ 第一步小提示' : '✏️ 动笔支架'}
           </button>
           <button
             type="button"

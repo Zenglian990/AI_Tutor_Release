@@ -238,7 +238,9 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
       if (!res.writableEnded) {
         let errorMsg = '服务器流式响应出错，请稍后重试。';
         const errStr = (e && e.message) ? e.message : String(e);
-        if (e?.code === 'ERR_MISSING_API_KEY' || e?.isMissingKey || /缺少.*Key/i.test(errStr)) {
+        if (e?.name === 'AbortError' || /aborted|ECONNRESET|socket|timeout|UND_ERR/i.test(errStr)) {
+          errorMsg = '对话连接已中断或响应超时，请点击重试继续交流。';
+        } else if (e?.code === 'ERR_MISSING_API_KEY' || e?.isMissingKey || /缺少.*Key/i.test(errStr)) {
           errorMsg = '未检测到可用大模型 API Key，请点击右上角设置 (⚙️) 配置有效密钥。';
         } else if (e?.code === 'ERR_INVALID_CLIENT_KEY' || /API_KEY_INVALID|API key not valid|401/i.test(errStr)) {
           errorMsg = '您配置的 API Key 无效或权限受限，请在设置 (⚙️) 中检查密钥。';
@@ -246,7 +248,7 @@ async function streamChatToClient(contentsPayload, res, opts = {}) {
           errorMsg = '今日 AI 调用额度已达上限。请稍后再试，或在设置 (⚙️) 中填入可用的自定义 API Key。';
         } else if (/insufficient_quota|balance|402/i.test(errStr)) {
           errorMsg = '当前 AI 大模型账户余额不足 (402)。请充值或点击右上角设置 (⚙️) 切换其他模型通道。';
-        } else if (/API_KEY|auth|invalid|400|403|not configured/i.test(errStr)) {
+        } else if (/API_KEY|PERMISSION_DENIED|not configured/i.test(errStr)) {
           errorMsg = 'AI 密钥配置异常或当前所选模型未配置有效 Key。请点击右上角设置 (⚙️) 检查对应模型的密钥。';
         }
         res.write(`data: ${JSON.stringify({ error: errorMsg, details: isSafeProductionMode() ? undefined : e.message })}\n\n`);

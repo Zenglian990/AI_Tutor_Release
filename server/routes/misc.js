@@ -18,8 +18,8 @@ const { getChapters } = require('../utils/dataLoader');
 const dbQueue = require('../services/dbQueue');
 const { extractClientAiHeaders, mapAiErrorToHttp } = require('../utils/aiHeaders');
 const { clampInt } = require('../utils/paramValidator');
-const { isVerifiedAdminRequest, isValidMasterApiToken, isWeakPinHash, isSetupSecretValid } = require('../utils/adminAuth');
-const { resolveAuthorizedProfileId } = require('../middleware/auth');
+const { isVerifiedAdminRequest, isValidMasterApiToken, isWeakPinHash, isSetupSecretValid, generateParentSessionToken, ADMIN_SESSION_COOKIE } = require('../utils/adminAuth');
+const { resolveAuthorizedProfileId, buildCookieHeaderValue, appendSetCookie } = require('../middleware/auth');
 const { requireQuotaOrVip } = require('../middleware/quota');
 const dataUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
@@ -120,14 +120,14 @@ router.get('/system/network-info', async (req, res) => {
 router.get('/system/version', (req, res) => {
   const pkg = require('../../package.json');
   res.json({
-    version: pkg.version || '1.7.5',
-    buildDate: '2026-11-25',
+    version: pkg.version || '1.7.6',
+    buildDate: '2026-11-26',
     appName: 'AI 智慧私教 (1-12年级)',
     minAppVersion: '1.0.0',
     hasUpdate: false,
     updateType: 'pwa_hot_update',
-    apkFileName: `AI_Tutor_v${pkg.version || '1.7.5'}.apk`,
-    releaseNotes: '支持 1-12 年级全学段伴学、大模型拍照识题视觉路由、系统设置多模型密钥配置与离线韧性升级'
+    apkFileName: `AI_Tutor_v${pkg.version || '1.7.6'}.apk`,
+    releaseNotes: '放通 Android APK 全站通信、家庭家长锁与站长超管双锁解耦、独立设备免费配额、四大理科科学纠偏与 1-12 年级全学段升级'
   });
 });
 
@@ -330,9 +330,9 @@ router.get('/stats', async (req, res) => {
       [profile_id]
     );
     const recentRows = await sqliteDb.all(
-      `SELECT date(timestamp, 'localtime') as date, COUNT(*) as count
+      `SELECT date(timestamp, '+8 hours') as date, COUNT(*) as count
        FROM mistakes WHERE profile_id = ? AND timestamp >= datetime('now', '-7 days')
-       GROUP BY date(timestamp, 'localtime') ORDER BY date DESC`,
+       GROUP BY date(timestamp, '+8 hours') ORDER BY date DESC`,
       [profile_id]
     );
 
@@ -771,7 +771,236 @@ router.post('/transcribe', requireQuotaOrVip('transcribe'), upload.single('audio
   }
 });
 
-// POST /api/admin/pin — Store parent PIN hash and security question in database
+// ============================================================
+// 一、家庭家长安全锁（按学习档案独立隔离，完全与站长超管密钥解耦）
+// 控制直答模式切换、清空记录等家庭内监督操作，普通家长开箱即设 6 位 PIN + 密保
+// ============================================================
+const familyPinAttempts = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, entry] of familyPinAttempts.entries()) {
+    if (now > entry.resetTime) familyPinAttempts.delete(k);
+  }
+}, 10 * 60 * 1000).unref();
+
+function getFamilyLockKey(req) {
+  const requestedPid = req.body?.profile_id || req.query?.profile_id;
+  const authCheck = req.auth ? resolveAuthorizedProfileId(req, requestedPid) : null;
+  const pid = (authCheck?.ok && authCheck.profileId)
+    ? authCheck.profileId
+    : (req.auth?.activeProfileId || String(requestedPid || 'default').trim() || 'default');
+  return String(pid).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+}
+
+function checkFamilyPinRateLimit(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const pid = getFamilyLockKey(req);
+  const bucketKey = `${ip}:${pid}`;
+  const now = Date.now();
+  if (familyPinAttempts.size > 10000) familyPinAttempts.clear();
+  const entry = familyPinAttempts.get(bucketKey) || { count: 0, resetTime: now + 5 * 60 * 1000 };
+  if (now > entry.resetTime) {
+    entry.count = 0;
+    entry.resetTime = now + 5 * 60 * 1000;
+  }
+  if (entry.count >= 5) {
+    const retryAfter = Math.max(1, Math.ceil((entry.resetTime - now) / 1000));
+    res.set('Retry-After', String(retryAfter));
+    return res.status(429).json({
+      valid: false,
+      locked: true,
+      retry_after_seconds: retryAfter,
+      error: `家长密码错误次数过多，请在 ${retryAfter} 秒后重试`
+    });
+  }
+  familyPinAttempts.set(bucketKey, entry);
+  req._familyPinAttemptEntry = entry;
+  req._familyPinBucketKey = bucketKey;
+  next();
+}
+
+// GET /api/family/pin-status — 查询当前家庭档案的家长锁状态（绝不要求站长初始化密钥）
+router.get('/family/pin-status', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: 'Database not ready' });
+    const pid = getFamilyLockKey(req);
+    const pinRow = await sqliteDb.get('SELECT value FROM system_settings WHERE key = ?', [`family_pin:${pid}`]);
+    const secRow = await sqliteDb.get('SELECT value FROM system_settings WHERE key = ?', [`family_sec:${pid}`]);
+    const hasValidPin = Boolean(pinRow && pinRow.value && !isWeakPinHash(pinRow.value));
+    let questionId = null;
+    if (secRow && secRow.value) {
+      const parts = String(secRow.value).split(':');
+      if (parts.length >= 2) questionId = parts[0];
+    }
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const entry = familyPinAttempts.get(`${ip}:${pid}`);
+    const now = Date.now();
+    const isLocked = Boolean(entry && entry.count >= 5 && now < entry.resetTime);
+    const retryAfter = isLocked ? Math.max(1, Math.ceil((entry.resetTime - now) / 1000)) : 0;
+
+    return res.json({
+      scope: 'family',
+      profile_id: pid,
+      has_pin: hasValidPin,
+      needs_setup: !hasValidPin,
+      requires_setup_secret: false,
+      has_security_question: Boolean(secRow && secRow.value),
+      question_id: questionId,
+      locked: isLocked,
+      retry_after_seconds: retryAfter,
+      remaining_attempts: isLocked ? 0 : Math.max(0, 5 - (entry && now < entry.resetTime ? entry.count : 0))
+    });
+  } catch (e) {
+    logger.error('Failed to get family PIN status:', e);
+    return res.status(500).json({ error: '获取家庭家长锁状态失败' });
+  }
+});
+
+// POST /api/family/pin — 设置或修改家庭家长 6 位 PIN 与密保（首次无需站长密钥，修改需验证原 PIN）
+router.post('/family/pin', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: 'Database not ready' });
+    const pid = getFamilyLockKey(req);
+    const { pin_hash, security_answer_hash, current_pin_hash } = req.body || {};
+    if (!pin_hash || typeof pin_hash !== 'string') {
+      return res.status(400).json({ error: '请提供 6 位安全密码哈希' });
+    }
+    if (isWeakPinHash(pin_hash)) {
+      return res.status(400).json({ error: '安全拦截：禁止使用 888888、000000、123456 等弱口令，请设置自定义 6 位家长密码。' });
+    }
+
+    const existingRow = await sqliteDb.get('SELECT value FROM system_settings WHERE key = ?', [`family_pin:${pid}`]);
+    const hasConfigured = Boolean(existingRow && existingRow.value && !isWeakPinHash(existingRow.value));
+    if (hasConfigured) {
+      if (!current_pin_hash || typeof current_pin_hash !== 'string') {
+        return res.status(403).json({ error: '当前已设置家庭家长密码，修改需先验证原密码。' });
+      }
+      const savedBuf = Buffer.from(String(existingRow.value));
+      const inputBuf = Buffer.from(String(current_pin_hash));
+      const matched = savedBuf.length === inputBuf.length && crypto.timingSafeEqual(savedBuf, inputBuf);
+      if (!matched) {
+        return res.status(401).json({ error: '原家庭家长密码不正确，无法修改。' });
+      }
+    } else if (!security_answer_hash || !String(security_answer_hash).includes(':')) {
+      return res.status(400).json({ error: '首次设置家庭家长密码必须同时设置密保问题与答案，便于后续找回。' });
+    }
+
+    await dbQueue.enqueue(async () => {
+      await sqliteDb.run(
+        'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        [`family_pin:${pid}`, pin_hash]
+      );
+      if (security_answer_hash && String(security_answer_hash).includes(':')) {
+        await sqliteDb.run(
+          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+          [`family_sec:${pid}`, String(security_answer_hash)]
+        );
+      }
+    });
+
+    return res.json({ success: true, scope: 'family', profile_id: pid });
+  } catch (e) {
+    logger.error('Failed to save family PIN:', e);
+    return res.status(500).json({ error: '保存家庭家长密码失败' });
+  }
+});
+
+// POST /api/family/verify-pin — 验证家庭家长 6 位 PIN
+router.post('/family/verify-pin', checkFamilyPinRateLimit, async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: 'Database not ready' });
+    const pid = getFamilyLockKey(req);
+    const { pin_hash } = req.body || {};
+    if (!pin_hash || typeof pin_hash !== 'string') {
+      return res.status(400).json({ valid: false, error: '请输入 6 位家长密码' });
+    }
+    if (isWeakPinHash(pin_hash)) {
+      if (req._familyPinAttemptEntry) req._familyPinAttemptEntry.count += 1;
+      const remaining = Math.max(0, 5 - (req._familyPinAttemptEntry?.count || 0));
+      return res.status(400).json({ valid: false, remaining_attempts: remaining, error: '弱口令已被禁用，请输入自定义 6 位家长密码。' });
+    }
+    const savedRow = await sqliteDb.get('SELECT value FROM system_settings WHERE key = ?', [`family_pin:${pid}`]);
+    if (!savedRow || !savedRow.value || isWeakPinHash(savedRow.value)) {
+      return res.status(403).json({ valid: false, unconfigured: true, error: '尚未设置家庭家长密码，请先完成首次设置。' });
+    }
+    const savedBuf = Buffer.from(String(savedRow.value));
+    const inputBuf = Buffer.from(String(pin_hash));
+    const isValid = savedBuf.length === inputBuf.length && crypto.timingSafeEqual(savedBuf, inputBuf);
+    if (isValid) {
+      if (req._familyPinAttemptEntry) req._familyPinAttemptEntry.count = 0;
+      return res.json({ valid: true, scope: 'family', profile_id: pid });
+    }
+    if (req._familyPinAttemptEntry) req._familyPinAttemptEntry.count += 1;
+    const count = req._familyPinAttemptEntry?.count || 1;
+    const remaining = Math.max(0, 5 - count);
+    if (count >= 5) {
+      const retryAfter = Math.max(1, Math.ceil(((req._familyPinAttemptEntry?.resetTime || Date.now()) - Date.now()) / 1000));
+      return res.status(429).json({
+        valid: false,
+        locked: true,
+        retry_after_seconds: retryAfter,
+        remaining_attempts: 0,
+        error: `家长密码错误次数过多，请在 ${retryAfter} 秒后重试`
+      });
+    }
+    return res.status(401).json({
+      valid: false,
+      remaining_attempts: remaining,
+      error: `密码不正确（还可尝试 ${remaining} 次）`
+    });
+  } catch (e) {
+    logger.error('Failed to verify family PIN:', e);
+    return res.status(500).json({ valid: false, error: '验证家庭家长密码失败' });
+  }
+});
+
+// POST /api/family/reset-pin — 严格校验密保后重置家庭家长 PIN（未设密保或答案错误坚决拦截）
+router.post('/family/reset-pin', checkFamilyPinRateLimit, async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    if (!sqliteDb) return res.status(503).json({ error: 'Database not ready' });
+    const pid = getFamilyLockKey(req);
+    const { question_id, answer_hash, new_pin_hash } = req.body || {};
+    if (!question_id || !answer_hash || !new_pin_hash) {
+      return res.status(400).json({ error: '请填写完整的密保答案与新密码' });
+    }
+    if (isWeakPinHash(new_pin_hash)) {
+      return res.status(400).json({ error: '安全拦截：禁止重置为 888888、000000、123456 等弱口令' });
+    }
+    const secRow = await sqliteDb.get('SELECT value FROM system_settings WHERE key = ?', [`family_sec:${pid}`]);
+    if (!secRow || !secRow.value) {
+      return res.status(400).json({ error: '当前家庭档案尚未设置密保问题，无法通过密保重置' });
+    }
+    const expected = `${question_id}:${answer_hash}`;
+    const savedBuf = Buffer.from(String(secRow.value));
+    const inputBuf = Buffer.from(String(expected));
+    const matched = savedBuf.length === inputBuf.length && crypto.timingSafeEqual(savedBuf, inputBuf);
+    if (!matched) {
+      if (req._familyPinAttemptEntry) req._familyPinAttemptEntry.count += 1;
+      const remaining = Math.max(0, 5 - (req._familyPinAttemptEntry?.count || 0));
+      return res.status(401).json({ error: `密保答案不正确（还可尝试 ${remaining} 次）`, remaining_attempts: remaining });
+    }
+    await dbQueue.enqueue(async () => {
+      await sqliteDb.run(
+        'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        [`family_pin:${pid}`, new_pin_hash]
+      );
+    });
+    if (req._familyPinAttemptEntry) req._familyPinAttemptEntry.count = 0;
+    return res.json({ success: true, scope: 'family', profile_id: pid });
+  } catch (e) {
+    logger.error('Failed to reset family PIN:', e);
+    return res.status(500).json({ error: '重置家庭家长密码失败' });
+  }
+});
+
+// ============================================================
+// 二、站长超管安全锁（保护全站数据、服务端 API Key 池与 VIP 激活码生成）
+// ============================================================
+// POST /api/admin/pin — Store admin PIN hash and security question in database
 router.post('/admin/pin', async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
@@ -891,7 +1120,15 @@ function checkPinRateLimit(req, res, next) {
 
   // 5 failed attempts locks for 15 minutes
   if (entry.count >= 5) {
-    return res.status(429).json({ error: "PIN 验证错误次数过多，为保障安全已锁定 15 分钟" });
+    const retryAfter = Math.max(1, Math.ceil((entry.resetTime - now) / 1000));
+    res.set('Retry-After', String(retryAfter));
+    return res.status(429).json({
+      valid: false,
+      locked: true,
+      retry_after_seconds: retryAfter,
+      remaining_attempts: 0,
+      error: `管理员验证错误次数过多，为保障安全请在 ${retryAfter} 秒后重试`
+    });
   }
 
   pinAttempts.set(ip, entry);
@@ -899,7 +1136,63 @@ function checkPinRateLimit(req, res, next) {
   next();
 }
 
-// POST /api/admin/verify-pin — Verify parent PIN hash and issue short-lived session token
+// POST /api/admin/secret-login — 站长通过初始化密钥 (ADMIN_SETUP_SECRET) 或主令牌 (API_TOKEN) 直登管理员台（并可选同步初始化/重设站长 PIN 与密保）
+router.post('/admin/secret-login', checkPinRateLimit, async (req, res) => {
+  try {
+    const secret = String(req.body?.secret || req.headers['x-setup-secret'] || '').trim();
+    if (!secret) {
+      return res.status(400).json({ valid: false, error: '请输入站长管理密钥' });
+    }
+    const isAuthorized = isSetupSecretValid(secret) || isValidMasterApiToken(secret);
+    if (!isAuthorized) {
+      if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
+      const remaining = Math.max(0, 5 - (req._pinAttemptEntry?.count || 0));
+      return res.status(401).json({
+        valid: false,
+        remaining_attempts: remaining,
+        error: `站长管理密钥不正确（还可尝试 ${remaining} 次）`
+      });
+    }
+
+    if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
+
+    // 若同时提交了新的站长 PIN 哈希（且非弱口令），一并保存，避免手机端二次配置
+    const { new_pin_hash, security_answer_hash } = req.body || {};
+    const sqliteDb = getSqliteDb();
+    if (sqliteDb && new_pin_hash && typeof new_pin_hash === 'string' && !isWeakPinHash(new_pin_hash)) {
+      await dbQueue.enqueue(async () => {
+        await sqliteDb.run(
+          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+          ['parent_pin_hash', new_pin_hash]
+        );
+        await sqliteDb.run("DELETE FROM system_settings WHERE key = 'needs_parent_pin_setup'");
+        if (security_answer_hash && String(security_answer_hash).includes(':')) {
+          await sqliteDb.run(
+            'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+            ['security_answer_hash', String(security_answer_hash)]
+          );
+        }
+      });
+    }
+
+    const session_token = generateParentSessionToken('admin', 1800);
+    appendSetCookie(
+      res,
+      buildCookieHeaderValue(ADMIN_SESSION_COOKIE, session_token, 1800, '/api', req)
+    );
+    return res.json({
+      valid: true,
+      success: true,
+      session_token,
+      expires_in_seconds: 1800
+    });
+  } catch (e) {
+    logger.error('Failed admin secret login:', e);
+    return res.status(500).json({ valid: false, error: '站长密钥认证失败' });
+  }
+});
+
+// POST /api/admin/verify-pin — Verify admin PIN hash and issue short-lived session token
 router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
@@ -907,16 +1200,16 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
     const { pin_hash } = req.body;
     if (!pin_hash) return res.status(400).json({ error: "PIN hash is required" });
 
-    const { isWeakPinHash, generateParentSessionToken } = require('../utils/adminAuth');
     if (isWeakPinHash(pin_hash)) {
       if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
-      return res.status(400).json({ valid: false, error: "系统已强制停用 888888、000000 等弱口令，请重设安全密码。" });
+      const remaining = Math.max(0, 5 - (req._pinAttemptEntry?.count || 0));
+      return res.status(400).json({ valid: false, remaining_attempts: remaining, error: "系统已强制停用 888888、000000 等弱口令，请重设安全密码。" });
     }
 
     const savedPinRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'parent_pin_hash'");
     if (!savedPinRow || !savedPinRow.value || isWeakPinHash(savedPinRow.value)) {
       if (process.env.NODE_ENV === 'production' || process.env.REQUIRE_AUTH === 'true') {
-        return res.status(403).json({ valid: false, unconfigured: true, error: "系统尚未完成家长 PIN 安全初始化，请联系管理员配置。" });
+        return res.status(403).json({ valid: false, unconfigured: true, error: "站长 PIN 尚未初始化，请点击下方「站长密钥直登」或完成首次配置。" });
       }
       return res.json({ valid: true, unconfigured: true });
     }
@@ -928,14 +1221,30 @@ router.post('/admin/verify-pin', checkPinRateLimit, async (req, res) => {
     if (isValid) {
       if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
       const session_token = generateParentSessionToken('admin', 1800);
+      appendSetCookie(
+        res,
+        buildCookieHeaderValue(ADMIN_SESSION_COOKIE, session_token, 1800, '/api', req)
+      );
       return res.json({ valid: true, session_token, expires_in_seconds: 1800 });
     } else {
       if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
-      return res.status(401).json({ valid: false, error: "密码不正确" });
+      const count = req._pinAttemptEntry?.count || 1;
+      const remaining = Math.max(0, 5 - count);
+      if (count >= 5) {
+        const retryAfter = Math.max(1, Math.ceil(((req._pinAttemptEntry?.resetTime || Date.now()) - Date.now()) / 1000));
+        return res.status(429).json({
+          valid: false,
+          locked: true,
+          retry_after_seconds: retryAfter,
+          remaining_attempts: 0,
+          error: `密码错误次数过多，请在 ${retryAfter} 秒后重试`
+        });
+      }
+      return res.status(401).json({ valid: false, remaining_attempts: remaining, error: `密码不正确（还可尝试 ${remaining} 次）` });
     }
   } catch (e) {
     logger.error("Failed to verify parent PIN:", e);
-    res.status(500).json({ error: "验证家长密码失败" });
+    res.status(500).json({ error: "验证管理员密码失败" });
   }
 });
 
@@ -1009,14 +1318,14 @@ router.post('/admin/anti-cheat', async (req, res) => {
   }
 });
 
-// POST /api/admin/reset-pin — Reset PIN via verified security question
+// POST /api/admin/reset-pin — Reset admin PIN via verified security question OR valid admin setup_secret / master token
 router.post('/admin/reset-pin', checkPinRateLimit, async (req, res) => {
   try {
     const sqliteDb = getSqliteDb();
     if (!sqliteDb) return res.status(503).json({ error: "Database not ready" });
-    const { question_id, answer_hash, new_pin_hash } = req.body;
-    if (!question_id || !answer_hash || !new_pin_hash) {
-      return res.status(400).json({ error: "缺少重置密码必要参数" });
+    const { question_id, answer_hash, new_pin_hash, setup_secret, security_answer_hash } = req.body || {};
+    if (!new_pin_hash) {
+      return res.status(400).json({ error: "缺少新密码参数" });
     }
 
     if (isWeakPinHash(new_pin_hash)) {
@@ -1024,28 +1333,52 @@ router.post('/admin/reset-pin', checkPinRateLimit, async (req, res) => {
       return res.status(400).json({ error: "安全拦截：禁止重置为 888888、000000 等默认弱口令" });
     }
 
-    const answerRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'security_answer_hash'");
-    if (!answerRow || !answerRow.value) {
-      return res.status(400).json({ error: "系统尚未设置密保问题" });
-    }
+    const secretCandidate = String(setup_secret || req.headers['x-setup-secret'] || '').trim();
+    const hasValidSecret = Boolean(secretCandidate && (isSetupSecretValid(secretCandidate) || isValidMasterApiToken(secretCandidate)));
 
-    const expected = `${question_id}:${answer_hash}`;
-    if (answerRow.value !== expected) {
-      if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
-      return res.status(401).json({ error: "密保答案不正确，无法重置密码" });
+    if (!hasValidSecret) {
+      if (!question_id || !answer_hash) {
+        return res.status(400).json({ error: "缺少密保验证参数或站长管理密钥" });
+      }
+      const answerRow = await sqliteDb.get("SELECT value FROM system_settings WHERE key = 'security_answer_hash'");
+      if (!answerRow || !answerRow.value) {
+        return res.status(400).json({ error: "管理员尚未设置密保问题，请使用站长管理密钥重置。" });
+      }
+
+      const expected = `${question_id}:${answer_hash}`;
+      const savedBuf = Buffer.from(String(answerRow.value));
+      const inputBuf = Buffer.from(String(expected));
+      const matched = savedBuf.length === inputBuf.length && crypto.timingSafeEqual(savedBuf, inputBuf);
+      if (!matched) {
+        if (req._pinAttemptEntry) req._pinAttemptEntry.count += 1;
+        return res.status(401).json({ error: "密保答案不正确，无法重置管理员密码" });
+      }
     }
 
     await dbQueue.enqueue(async () => {
       await sqliteDb.run(
-        'UPDATE system_settings SET value = ? WHERE key = \'parent_pin_hash\'',
+        "INSERT INTO system_settings (key, value) VALUES ('parent_pin_hash', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [new_pin_hash]
       );
+      await sqliteDb.run("DELETE FROM system_settings WHERE key = 'needs_parent_pin_setup'");
+      if (security_answer_hash && String(security_answer_hash).includes(':')) {
+        await sqliteDb.run(
+          "INSERT INTO system_settings (key, value) VALUES ('security_answer_hash', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+          [String(security_answer_hash)]
+        );
+      }
     });
 
-    res.json({ success: true });
+    if (req._pinAttemptEntry) req._pinAttemptEntry.count = 0;
+    const session_token = generateParentSessionToken('admin', 1800);
+    appendSetCookie(
+      res,
+      buildCookieHeaderValue(ADMIN_SESSION_COOKIE, session_token, 1800, '/api', req)
+    );
+    res.json({ success: true, session_token, expires_in_seconds: 1800 });
   } catch (e) {
     logger.error("Failed to reset parent PIN:", e);
-    res.status(500).json({ error: "重置家长密码失败" });
+    res.status(500).json({ error: "重置管理员密码失败" });
   }
 });
 
@@ -1071,11 +1404,11 @@ router.get('/admin/stats', async (req, res) => {
     `);
     const totalProfiles = profilesResult.filter(p => p.profile_id && p.profile_id !== 'default').length;
 
-    // 2. Daily active profiles (distinct profiles active today in chat_history, excluding 'default')
+    // 2. Daily active profiles (distinct profiles active today in Beijing time)
     const activeTodayResult = await sqliteDb.get(`
       SELECT COUNT(DISTINCT profile_id) as active_count 
       FROM chat_history 
-      WHERE date(timestamp) = date('now') AND profile_id != 'default'
+      WHERE date(timestamp, '+8 hours') = date('now', '+8 hours') AND profile_id != 'default'
     `);
     const dailyActive = activeTodayResult?.active_count || 0;
 
@@ -1122,10 +1455,10 @@ router.get('/admin/stats', async (req, res) => {
     `);
 
     const dailyUsage = await sqliteDb.all(`
-      SELECT date(timestamp, 'localtime') as date, SUM(prompt_tokens + completion_tokens) as tokens, COUNT(*) as calls
+      SELECT date(timestamp, '+8 hours') as date, SUM(prompt_tokens + completion_tokens) as tokens, COUNT(*) as calls
       FROM api_usage 
       WHERE timestamp >= datetime('now', '-7 days')
-      GROUP BY date(timestamp, 'localtime')
+      GROUP BY date(timestamp, '+8 hours')
       ORDER BY date ASC
     `);
 

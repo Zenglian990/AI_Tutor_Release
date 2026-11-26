@@ -33,8 +33,12 @@ export default function VoiceDialogueOverlay({
   const consecutiveVoiceFrames = useRef(0);
   const onInterruptRef = useRef(onInterrupt);
   onInterruptRef.current = onInterrupt;
+  const onSubmitSpokenRef = useRef(onSubmitSpokenText);
+  onSubmitSpokenRef.current = onSubmitSpokenText;
+  const liveSpokenRef = useRef(liveSpokenText);
+  liveSpokenRef.current = liveSpokenText;
 
-  // 1. 倒计时逻辑
+  // 1. 倒计时逻辑（归零自动提交已识别口述或触发递麦完成，不再卡死在 0s）
   useEffect(() => {
     if (mode === 'listening') {
       setTimeLeft(countdownSeconds);
@@ -42,6 +46,10 @@ export default function VoiceDialogueOverlay({
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(timer);
+            const spoken = String(liveSpokenRef.current || '').trim();
+            if (spoken && onSubmitSpokenRef.current) {
+              setTimeout(() => onSubmitSpokenRef.current(spoken), 0);
+            }
             return 0;
           }
           return prev - 1;
@@ -114,8 +122,21 @@ export default function VoiceDialogueOverlay({
             if (consecutiveVoiceFrames.current >= 6) {
               setAutoInterrupted(true);
               consecutiveVoiceFrames.current = 0;
+              // 先立即释放 VAD 占用麦克风再交还给语音识别，根治麦克风抢占竞态！
+              isSubscribed = false;
+              if (vadRafRef.current) cancelAnimationFrame(vadRafRef.current);
+              if (micStreamRef.current) {
+                micStreamRef.current.getTracks().forEach(t => t.stop());
+                micStreamRef.current = null;
+              }
+              if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(() => {});
+                audioCtxRef.current = null;
+              }
               if (window.speechSynthesis) window.speechSynthesis.cancel();
-              onInterruptRef.current && onInterruptRef.current('auto_barge_in');
+              setTimeout(() => {
+                onInterruptRef.current && onInterruptRef.current('auto_barge_in');
+              }, 80);
               return;
             }
           } else {

@@ -239,10 +239,15 @@ export default function HomeworkBatchModal({
       if (processed && Array.isArray(processed.results) && processed.results.length > 0) {
         const hasBoxes = processed.results.some(r => Array.isArray(r.box_2d) && r.box_2d.length === 4);
         if (!hasBoxes && fileToUpload) {
+          let tempObjUrl = null;
           try {
             const img = new Image();
-            img.src = URL.createObjectURL(fileToUpload);
-            await new Promise(res => { img.onload = res; });
+            tempObjUrl = URL.createObjectURL(fileToUpload);
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = () => reject(new Error('作业图片损坏或格式不受支持，无法解码'));
+              img.src = tempObjUrl;
+            });
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
             canvas.height = img.height;
@@ -256,6 +261,8 @@ export default function HomeworkBatchModal({
             }
           } catch (sliceErr) {
             console.warn('[HomeworkBatch] Local slice fallback warning:', sliceErr);
+          } finally {
+            if (tempObjUrl) URL.revokeObjectURL(tempObjUrl);
           }
         }
       }

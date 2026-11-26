@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { authFetch } from '../store/useStore';
 
 /**
@@ -112,6 +113,15 @@ export default function FeynmanReverseTutorModal({
       const json = await res.json();
       if (res.ok && json.success && json.data) {
         setEvaluationResult(json.data);
+        // 同步写入本地费曼星级记录，让今日学情战报海报真实点亮星级！
+        try {
+          const starsNum = Number(json.data.stars) || 0;
+          if (starsNum > 0) {
+            const activePid = localStorage.getItem('ai_tutor_current_profile') || 'default';
+            const prev = parseInt(localStorage.getItem(`ai_tutor_feynman_stars_${activePid}`) || '0', 10) || 0;
+            localStorage.setItem(`ai_tutor_feynman_stars_${activePid}`, String(Math.max(prev, starsNum)));
+          }
+        } catch {}
       } else {
         alert(json.error || '评估服务暂时不可用，请稍后重试');
       }
@@ -132,17 +142,17 @@ export default function FeynmanReverseTutorModal({
 
   if (!isOpen) return null;
 
-  return (
+  const modalNode = (
     <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      position: 'fixed', inset: 0, width: '100vw', height: '100dvh',
       background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)',
-      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
-      padding: '16px'
+      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2200,
+      padding: '16px', boxSizing: 'border-box'
     }}>
       <div style={{
         background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '720px',
-        maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
-        display: 'flex', flexDirection: 'column'
+        maxHeight: '90dvh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column', boxSizing: 'border-box'
       }}>
         {/* Header */}
         <div style={{
@@ -403,4 +413,6 @@ export default function FeynmanReverseTutorModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalNode, document.body) : modalNode;
 }

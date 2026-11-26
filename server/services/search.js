@@ -150,6 +150,51 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
   }
 }
 
+const SUBJECT_MATCH_KEYWORDS = {
+  '语文': ['语文', 'Chinese'],
+  '数学': ['数学', 'Math'],
+  '英语': ['英语', 'English'],
+  '物理': ['物理', 'Physics'],
+  '化学': ['化学', 'Chemistry'],
+  '生物': ['生物', 'Biology'],
+  '生物学': ['生物', 'Biology'],
+  '历史': ['历史', 'History'],
+  '地理': ['地理', 'Geography'],
+  '政治': ['思想政治', '政治', '道德与法治', '思想品德', 'Politics'],
+  '思想政治': ['思想政治', '政治', '道德与法治', 'Politics'],
+  '道德与法治': ['道德与法治', '思想政治', '政治', 'Politics'],
+  '科学': ['科学', 'Science']
+};
+
+function filterResultsBySubjectAndStage(results, subject, grade) {
+  if (!Array.isArray(results) || results.length === 0) return [];
+  const subjTokens = subject && SUBJECT_MATCH_KEYWORDS[subject] ? SUBJECT_MATCH_KEYWORDS[subject] : null;
+  const gradeNum = grade ? parseInt(String(grade).replace(/\D/g, ''), 10) : null;
+  return results.filter(r => {
+    if (!r || r.source === 'mock.txt') return false;
+    const src = String(r.source || '');
+    // 1. 严格锁定同科目，绝不允许高三数学串出七年级道法/九年级英语
+    if (subjTokens && !subjTokens.some(tok => src.includes(tok))) {
+      return false;
+    }
+    // 2. 严格阻止跨大阶段串台（如高中生不返回小学一~六年级教材，小学生不返回高中选修）
+    if (gradeNum >= 10) {
+      if (/(一年级|二年级|三年级|四年级|五年级|六年级|七年级|八年级|九年级|初一|初二|初三|小学|初中)/.test(src)) {
+        return false;
+      }
+    } else if (gradeNum >= 1 && gradeNum <= 6) {
+      if (/(高一|高二|高三|高中|必修|选择性必修|七年级|八年级|九年级|初一|初二|初三|初中)/.test(src)) {
+        return false;
+      }
+    } else if (gradeNum >= 7 && gradeNum <= 9) {
+      if (/(一年级|二年级|三年级|四年级|五年级|六年级|小学|高一|高二|高三|高中|选择性必修)/.test(src)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 /**
  * Execute Hybrid Search (Dense Vector Search + Sparse Text Search) with automatic fallback.
  * 
@@ -181,6 +226,8 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition, cl
     }
 
     const whereClause = buildLanceDBWhereClause(grade, subject, edition);
+    // 二级学科锁定子句：当精准年级+版本无命中时，只允许在同科目内放宽，绝不全局跨学科裸搜
+    const subjectOnlyWhere = subject ? buildLanceDBWhereClause(null, subject, null) : '';
     const ftsQuery = cleanQueryForFTS(query);
 
     // Fallback: If no queryVector available (quota exhausted or offline), execute FTS text search only
@@ -189,14 +236,14 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition, cl
       try {
         let builder = table.search(ftsQuery, "fts");
         if (whereClause) builder = builder.where(whereClause);
-        ftsResults = await builder.limit(limit).toArray();
-        if (ftsResults.length === 0 && whereClause) {
-          ftsResults = await table.search(ftsQuery, "fts").limit(limit).toArray();
+        ftsResults = await builder.limit(limit * 2).toArray();
+        if (ftsResults.length === 0 && subjectOnlyWhere && subjectOnlyWhere !== whereClause) {
+          ftsResults = await table.search(ftsQuery, "fts").where(subjectOnlyWhere).limit(limit * 2).toArray();
         }
       } catch (ftsErr) {
         logger.warn('[SearchService] FTS text search failed in fallback:', ftsErr.message);
       }
-      ftsResults = ftsResults.filter(r => r.source !== 'mock.txt');
+      ftsResults = filterResultsBySubjectAndStage(ftsResults, subject, grade);
 
       if (ftsResults.length < limit) {
         const canonicalMatches = await searchCanonicalQuestions(query, grade, subject, limit - ftsResults.length);
@@ -236,29 +283,26 @@ async function performHybridSearch(query, grade, subject, limit = 3, edition, cl
       })()
     ]);
 
-    let results = reciprocalRankFusion(vectorRes, ftsRes);
+    let results = filterResultsBySubjectAndStage(reciprocalRankFusion(vectorRes, ftsRes), subject, grade);
 
-    // Fallback: If no results found with filter, search globally
-    if (results.length === 0 && whereClause) {
-      logger.warn(`[SearchService] No results matched with filter: "${whereClause}". Retrying search globally.`);
+    // Fallback: 精准过滤无命中时，严格锁定同科目放宽版本/具体册别，绝不做无条件全库跨学科裸搜
+    if (results.length === 0 && subjectOnlyWhere && subjectOnlyWhere !== whereClause) {
+      logger.warn(`[SearchService] No results matched strict filter: "${whereClause}". Retrying within same subject "${subjectOnlyWhere}".`);
       
       const [fallbackVectorRes, fallbackFtsRes] = await Promise.all([
         (async () => {
           try {
-            return await table.search(queryVector).limit(limit * 2).toArray();
+            return await table.search(queryVector).where(subjectOnlyWhere).limit(limit * 2).toArray();
           } catch (e) { return []; }
         })(),
         (async () => {
           try {
-            return await table.search(ftsQuery, "fts").limit(limit * 2).toArray();
+            return await table.search(ftsQuery, "fts").where(subjectOnlyWhere).limit(limit * 2).toArray();
           } catch (e) { return []; }
         })()
       ]);
-      results = reciprocalRankFusion(fallbackVectorRes, fallbackFtsRes);
+      results = filterResultsBySubjectAndStage(reciprocalRankFusion(fallbackVectorRes, fallbackFtsRes), subject, grade);
     }
-
-    // Filter out mock placeholder data
-    results = results.filter(r => r.source !== 'mock.txt');
 
     // Ground with verified Canonical Questions from SQLite if needed
     if (results.length < limit) {

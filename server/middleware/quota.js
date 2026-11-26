@@ -64,18 +64,25 @@ function requireQuotaOrVip(featureName = 'ai', allowedByokHeaders = null) {
         return next();
       }
 
-      // 优先采用已验签授权档案，杜绝通过伪造 profile_id 重置免费配额
+      // 优先采用已验签授权档案，杜绝通过伪造 profile_id 重置免费配额；
+      // 若旧客户端或首屏请求传 'default' 但会话已签发独立 stu_* 档案，按独立设备档案计桶，避免全站匿名访客互相挤爆每日 30 次免费额度
       const requestedPid = req.body?.profile_id || req.query?.profile_id;
       const authCheck = req.auth ? resolveAuthorizedProfileId(req, requestedPid) : null;
       if (authCheck && !authCheck.ok) {
         return res.status(authCheck.status || 403).json({ error: authCheck.error });
       }
-      const profileId = (authCheck?.profileId || req.auth?.activeProfileId || String(requestedPid || 'default').trim() || 'default');
+      const resolvedPid = (authCheck?.profileId || req.auth?.activeProfileId || String(requestedPid || 'default').trim() || 'default');
+      const sessionPrimaryPid = req.auth?.activeProfileId && req.auth.activeProfileId !== 'default'
+        ? req.auth.activeProfileId
+        : resolvedPid;
+      const profileId = (resolvedPid === 'default' && sessionPrimaryPid !== 'default')
+        ? sessionPrimaryPid
+        : resolvedPid;
 
-      // 1. 校验有效 VIP 会员
+      // 1. 校验有效 VIP 会员（同时检查当前档案与会话主档案）
       const member = await sqliteDb.get(
-        `SELECT tier, expire_at FROM memberships WHERE profile_id = ?`,
-        [profileId]
+        `SELECT tier, expire_at FROM memberships WHERE profile_id IN (?, ?) ORDER BY expire_at DESC LIMIT 1`,
+        [profileId, resolvedPid]
       );
       if (member && member.tier && member.tier !== 'free' && member.expire_at) {
         const expireMs = new Date(member.expire_at).getTime();
@@ -84,9 +91,9 @@ function requireQuotaOrVip(featureName = 'ai', allowedByokHeaders = null) {
         }
       }
 
-      // 2. 校验免费用户当日累计调用次数
+      // 2. 校验免费用户当日累计调用次数（严格使用北京时间 UTC+8 防止凌晨 0-8 点跨日错位）
       const usageRow = await sqliteDb.get(
-        `SELECT COUNT(*) as cnt FROM api_usage WHERE profile_id = ? AND date(timestamp) = date('now')`,
+        `SELECT COUNT(*) as cnt FROM api_usage WHERE profile_id = ? AND date(timestamp, '+8 hours') = date('now', '+8 hours')`,
         [profileId]
       );
       const todayUsed = usageRow?.cnt || 0;

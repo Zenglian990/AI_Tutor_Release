@@ -191,13 +191,19 @@ function fallbackLocalSpeech(cleanText, grade, onStart, onEnd, ctrl, canFallback
   } catch (e) {}
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = 'zh-CN';
-  utterance.rate = 1.0;
+  // 自动根据文本主体语种切换英/中文语音包（英文占比超 50% 自动使用 en-US，彻底解决英语情景对练读死中文腔）
+  const latinChars = (cleanText.match(/[A-Za-z]/g) || []).length;
+  const cjkChars = (cleanText.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const isEnglishText = latinChars > 6 && latinChars > cjkChars * 1.5;
+  utterance.lang = isEnglishText ? 'en-US' : 'zh-CN';
+  utterance.rate = isEnglishText ? 0.96 : 1.0;
   utterance.pitch = 1.0;
 
   const voices = window.speechSynthesis.getVoices() || [];
-  const chineseVoice = voices.find(v => v.lang && (v.lang.includes('zh') || v.lang.includes('cmn') || v.lang.includes('CN')));
-  if (chineseVoice) utterance.voice = chineseVoice;
+  const preferredVoice = isEnglishText
+    ? voices.find(v => v.lang && /^en(-|_)/i.test(v.lang))
+    : voices.find(v => v.lang && (v.lang.includes('zh') || v.lang.includes('cmn') || v.lang.includes('CN')));
+  if (preferredVoice) utterance.voice = preferredVoice;
 
   utterance.onstart = () => {
     started = true;

@@ -11,36 +11,47 @@ export default function EyeCareTimerModal({
   isOpen,
   onClose,
   isRestMode = false,
-  onToggleEink
+  onToggleEink,
+  // 可选受控全局计时器（由 App 顶层驱动，收起弹窗后后台继续精准走时）
+  secondsLeft: controlledSeconds,
+  currentMode: controlledMode,
+  isRunning: controlledRunning,
+  onSwitchMode,
+  onToggleRunning
 }) {
-  const [secondsLeft, setSecondsLeft] = useState(isRestMode ? 20 : 20 * 60);
-  const [isRunning, setIsRunning] = useState(true);
-  const [currentMode, setCurrentMode] = useState(isRestMode ? 'rest' : 'focus'); // 'focus' | 'rest'
+  const isControlled = typeof controlledSeconds === 'number';
+  const [localSecondsLeft, setLocalSecondsLeft] = useState(isRestMode ? 20 : 20 * 60);
+  const [localRunning, setLocalRunning] = useState(true);
+  const [localMode, setLocalMode] = useState(isRestMode ? 'rest' : 'focus'); // 'focus' | 'rest'
+
+  const secondsLeft = isControlled ? controlledSeconds : localSecondsLeft;
+  const currentMode = isControlled ? (controlledMode || 'focus') : localMode;
+  const isRunning = isControlled ? Boolean(controlledRunning) : localRunning;
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (isControlled || !isOpen) return;
     if (isRestMode) {
-      setCurrentMode('rest');
-      setSecondsLeft(20);
+      setLocalMode('rest');
+      setLocalSecondsLeft(20);
     } else {
-      setCurrentMode('focus');
-      setSecondsLeft(20 * 60);
+      setLocalMode('focus');
+      setLocalSecondsLeft(20 * 60);
     }
-    setIsRunning(true);
-  }, [isOpen, isRestMode]);
+    setLocalRunning(true);
+  }, [isControlled, isOpen, isRestMode]);
 
   useEffect(() => {
-    if (!isOpen || !isRunning) return;
+    if (isControlled || !isOpen || !localRunning) return;
 
     const timer = setInterval(() => {
-      setSecondsLeft(prev => {
+      setLocalSecondsLeft(prev => {
         if (prev <= 1) {
-          if (currentMode === 'focus') {
-            setCurrentMode('rest');
-            return 20; // 20s rest
+          if (localMode === 'focus') {
+            setLocalMode('rest');
+            return 20;
           } else {
-            setCurrentMode('focus');
-            return 20 * 60; // 20m focus
+            setLocalMode('focus');
+            return 20 * 60;
           }
         }
         return prev - 1;
@@ -48,7 +59,7 @@ export default function EyeCareTimerModal({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isOpen, isRunning, currentMode]);
+  }, [isControlled, isOpen, localRunning, localMode]);
 
   if (!isOpen) return null;
 
@@ -158,16 +169,30 @@ export default function EyeCareTimerModal({
           </div>
 
           {/* Bottom Actions */}
-          <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '6px' }}>
+          <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '6px', flexWrap: 'wrap' }}>
+            {isControlled && onToggleRunning && (
+              <button
+                type="button"
+                onClick={onToggleRunning}
+                style={{
+                  padding: '10px 14px', borderRadius: '10px',
+                  background: isRunning ? '#fef3c7' : '#dcfce7',
+                  color: isRunning ? '#92400e' : '#166534',
+                  border: 'none', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer'
+                }}
+              >
+                {isRunning ? '⏸️ 暂停' : '▶️ 继续'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
-                if (currentMode === 'focus') {
-                  setCurrentMode('rest');
-                  setSecondsLeft(20);
+                const next = currentMode === 'focus' ? 'rest' : 'focus';
+                if (isControlled && onSwitchMode) {
+                  onSwitchMode(next);
                 } else {
-                  setCurrentMode('focus');
-                  setSecondsLeft(20 * 60);
+                  setLocalMode(next);
+                  setLocalSecondsLeft(next === 'rest' ? 20 : 20 * 60);
                 }
               }}
               style={{

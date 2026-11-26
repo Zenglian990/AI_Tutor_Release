@@ -210,17 +210,19 @@ router.post('/config/test-llm', async (req, res) => {
     const body = req.body || {};
     provider = body.provider || 'unknown';
     const { apiKey, apiUrl, model } = body;
+    // 安全边界：仅管理员允许省略 apiKey 回退测试服务端内置密钥；普通用户必须显式提供自己的个人 BYOK 密钥
+    const allowServerFallback = Boolean(req.auth?.isAdmin) || (process.env.NODE_ENV !== 'production' && process.env.REQUIRE_AUTH !== 'true');
+    const userProvidedKey = typeof apiKey === 'string' ? apiKey.trim() : '';
 
     if (provider === 'siliconflow') {
-      // 安全加固：当用户传入自定义 apiUrl 时，绝不回退使用服务端环境变量中的商业 API Key（防止凭证外泄）
       const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
-      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.SILICONFLOW_API_KEY) || '').trim();
+      const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.SILICONFLOW_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'siliconflow',
           error: '缺少 SiliconFlow API Key',
-          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的硅基流动 API 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入您自己的硅基流动 API 密钥后再诊断',
           latencyMs: 0
         });
       }
@@ -326,13 +328,13 @@ router.post('/config/test-llm', async (req, res) => {
 
     } else if (provider === 'dashscope') {
       const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
-      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.DASHSCOPE_API_KEY) || '').trim();
+      const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.DASHSCOPE_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'dashscope',
           error: '缺少 DashScope API Key',
-          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的阿里百炼 API 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入您自己的阿里百炼 API 密钥后再诊断',
           latencyMs: 0
         });
       }
@@ -401,13 +403,13 @@ router.post('/config/test-llm', async (req, res) => {
 
     } else if (provider === 'zhipu') {
       const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
-      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.ZHIPU_API_KEY) || '').trim();
+      const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.ZHIPU_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'zhipu',
           error: '缺少智谱 API Key',
-          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的智谱 AI 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入您自己的智谱 AI 密钥后再诊断',
           latencyMs: 0
         });
       }
@@ -476,13 +478,13 @@ router.post('/config/test-llm', async (req, res) => {
 
     } else if (provider === 'deepseek') {
       const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
-      const keyToUse = (apiKey || (isCustomUrl ? '' : process.env.DEEPSEEK_API_KEY) || '').trim();
+      const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.DEEPSEEK_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'deepseek',
           error: '缺少 DeepSeek API Key',
-          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入有效的 DeepSeek API 密钥',
+          details: isCustomUrl ? '使用自定义 API 地址时必须提供对应的 API 密钥' : '请在上方输入您自己的 DeepSeek API 密钥后再诊断',
           latencyMs: 0
         });
       }
@@ -563,13 +565,13 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'gemini') {
-      const keyToUse = (apiKey || (config.API_KEYS.length > 0 ? config.API_KEYS[0] : '')).trim();
+      const keyToUse = (userProvidedKey || (allowServerFallback && config.API_KEYS.length > 0 ? config.API_KEYS[0] : '')).trim();
       if (!keyToUse) {
         return res.json({
           success: false,
           provider: 'gemini',
           error: '缺少 Gemini API Key',
-          details: '请在上方输入有效的 Google Gemini API 密钥',
+          details: '请在上方输入您自己的 Google Gemini API 密钥后再诊断',
           latencyMs: 0
         });
       }
@@ -588,7 +590,10 @@ router.post('/config/test-llm', async (req, res) => {
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: 'hi' }] }],
-          generationConfig: { maxOutputTokens: 2 }
+          generationConfig: {
+            maxOutputTokens: 8,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
         }),
         signal: AbortSignal.timeout(10000)
       };
@@ -656,7 +661,7 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'jev' || provider === 'typesafe') {
-      const keyToUse = (apiKey || process.env.TYPESAFE_API_KEY || config.TYPESAFE_API_KEY || '').trim();
+      const keyToUse = (userProvidedKey || (allowServerFallback ? (process.env.TYPESAFE_API_KEY || config.TYPESAFE_API_KEY) : '') || '').trim();
       if (!keyToUse) {
         return res.json({
           success: false,

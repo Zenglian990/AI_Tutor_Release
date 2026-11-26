@@ -148,25 +148,25 @@ export default function MembershipModal({ isOpen, onClose }) {
                       fontSize: '1.05rem', fontWeight: 'bold',
                       color: '#166534'
                     }}>
-                      🌟 全功能纯净体验版（永久免费 · 无需付费）
+                      {isVip ? `👑 尊享全功能会员（剩余 ${daysRemaining} 天）` : '🌟 每台设备每日免费 30 次 AI 深度互动'}
                     </span>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#166534' }}>
-                  无互动限制 · 无商业广告
+                  {isVip ? '无限高速通道已开启' : '支持自带 Key 无限畅用'}
                 </div>
               </div>
 
-              {/* Free Educational Guarantee */}
+              {/* Educational Guarantee */}
               <div style={{
                 background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px',
                 padding: '16px 20px', marginBottom: '20px'
               }}>
                 <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem', marginBottom: '6px' }}>
-                  🌱 纯净教育承诺：零商业付费，100% 潜心打磨产品
+                  🎓 1–12 年级全学段纯净智慧辅导权益说明
                 </div>
                 <div style={{ fontSize: '0.84rem', color: '#475569', lineHeight: 1.6 }}>
-                  本系统核心定位于打磨最优质的 1-9 年级名师启发式 AI 私教体验。所有学科题库、动点几何、科学实验沙盘、苏格拉底启发引导与错题翻新打印功能均向全体学员永久免费开放，不设任何消费门槛或商业付费套餐。
+                  覆盖小学、初中、高中 1–12 年级全学科！所有本地题库、动点几何、物理/化学实验沙盘、错题翻新打印均零门槛免费使用；每台设备每日免费赠送 30 次云端 AI 深度辅导额度，如需无限高频使用，可在“设置”中填入个人 API Key 或在右侧标签页核销特权激活码。
                 </div>
               </div>
 
@@ -181,11 +181,11 @@ export default function MembershipModal({ isOpen, onClose }) {
                     <span style={{ textAlign: 'center', color: '#16a34a' }}>开放状态</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>名师苏格拉底启发式辅导</span>
-                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 无限次免费畅用</span>
+                    <span>名师苏格拉底启发式辅导 (1–12年级)</span>
+                    <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 每日免费30次 / 会员无限</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>
-                    <span>全国名校中考真卷库 (39,114+套题库)</span>
+                    <span>全国名校中高考真题母题库 (39,335+道)</span>
                     <span style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>✓ 完整开放</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', padding: '10px 14px', borderTop: '1px solid #f1f5f9' }}>

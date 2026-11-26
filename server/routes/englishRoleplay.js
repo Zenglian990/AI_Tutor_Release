@@ -170,6 +170,7 @@ Return STRICT JSON only (no markdown fences):
 }`;
 
     try {
+      // 关闭 Gemini 3 深度思考链（thinkingBudget: 0），将口语情景交互响应压至 2-4 秒，避免 25s+ 超时降级
       const response = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
         profileId,
@@ -181,11 +182,12 @@ Return STRICT JSON only (no markdown fences):
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.4,
-            maxOutputTokens: 1024,
-            responseMimeType: 'application/json'
+            maxOutputTokens: 600,
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 }
           }
         })
-      }, 3, 25000);
+      }, 2, 15000);
 
       if (!response.ok) throw new Error(`Upstream status ${response.status}`);
       const data = await response.json();
@@ -211,11 +213,16 @@ Return STRICT JSON only (no markdown fences):
     } catch (llmErr) {
       logger.warn(`[EnglishRoleplay] LLM unavailable (${llmErr.message}), using strict local grammar diagnostics.`);
       const localResult = diagnoseEnglishLocally(cleanUserText, scenario_title, grade, history);
+      const isMissingKey = Boolean(llmErr?.isMissingKey || llmErr?.code === 'ERR_MISSING_API_KEY');
+      const accurateNotice = isMissingKey
+        ? '当前未配置可用 AI 大模型密钥，正在使用本地基础英文语法核验引擎（配置有效 AI Key 后可开启真实外教深度对话）。'
+        : 'AI 外教通道刚刚响应超时或网络波动，本次已临时切换为本地基础语法核验，请稍后重试即可恢复真实外教对话。';
+      localResult.fallbackNotice = accurateNotice;
       return res.json({
         success: true,
         engine: 'local-grammar-fallback',
         isFallback: true,
-        fallbackNotice: localResult.fallbackNotice,
+        fallbackNotice: accurateNotice,
         data: localResult
       });
     }

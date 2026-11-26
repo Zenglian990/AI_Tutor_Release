@@ -30,6 +30,9 @@ export default function WelcomeDashboard({
   onOpenEnglishRolePlay,
   onOpenDailyCard,
   onOpenEyeCare,
+  onOpenStats,
+  onOpenWeeklyReport,
+  onOpenMembership,
   onOpenPrerequisiteTrace
 }) {
   const [briefing, setBriefing] = useState(null);
@@ -488,6 +491,39 @@ export default function WelcomeDashboard({
             </div>
             <p className="action-card-desc">真动脑时长与考点攻克一目了然，家长放心掌上掌控</p>
             <div className="action-card-cta" style={{ color: '#fbbf24' }}>查看便签 →</div>
+          </div>
+        )}
+
+        {onOpenStats && (
+          <div className="action-card" onClick={onOpenStats} role="button" tabIndex={0} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">📊</span>
+              <span className="action-card-name" style={{ color: '#38bdf8' }}>学情统计看板</span>
+            </div>
+            <p className="action-card-desc">错题学科分布与近7天成长趋势可视化一眼看清</p>
+            <div className="action-card-cta" style={{ color: '#38bdf8' }}>查看统计 →</div>
+          </div>
+        )}
+
+        {onOpenWeeklyReport && (
+          <div className="action-card" onClick={onOpenWeeklyReport} role="button" tabIndex={0} style={{ borderColor: 'rgba(16, 185, 129, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">📑</span>
+              <span className="action-card-name" style={{ color: '#34d399' }}>AI 专属学习周报</span>
+            </div>
+            <p className="action-card-desc">一键总结本周薄弱知识点与下周靶向提分计划</p>
+            <div className="action-card-cta" style={{ color: '#34d399' }}>生成周报 →</div>
+          </div>
+        )}
+
+        {onOpenMembership && (
+          <div className="action-card" onClick={onOpenMembership} role="button" tabIndex={0} style={{ borderColor: 'rgba(168, 85, 247, 0.4)' }}>
+            <div className="action-card-header">
+              <span className="action-card-icon">💎</span>
+              <span className="action-card-name" style={{ color: '#c084fc' }}>权益与特权激活</span>
+            </div>
+            <p className="action-card-desc">1-12年级每日免费额度、自带Key配置与特权码核销</p>
+            <div className="action-card-cta" style={{ color: '#c084fc' }}>查看权益 →</div>
           </div>
         )}
       </div>

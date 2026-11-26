@@ -4,7 +4,7 @@ import { getApiUrl } from '../store/useStore';
 /**
  * ParentRemoteDashboard
  * 家长端微信/手机随身学情看板 (纯只读·零配置直连)
- * 供曾先生及家长在手机微信、企微、移动端随时随地查看孩子当日学情与思维进阶
+ * 供家长在手机微信、企微、移动端随时随地查看孩子当日学情与思维进阶
  */
 export default function ParentRemoteDashboard({ token: initialToken }) {
   const [token, setToken] = useState(() => {
@@ -12,6 +12,9 @@ export default function ParentRemoteDashboard({ token: initialToken }) {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('token') || '';
   });
+  const urlStudentName = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('student_name') || '')
+    : '';
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,9 @@ export default function ParentRemoteDashboard({ token: initialToken }) {
     setError('');
     try {
       let url = getApiUrl(`/api/parent/remote-view?token=${encodeURIComponent(targetToken)}`);
+      if (urlStudentName) {
+        url += `&student_name=${encodeURIComponent(urlStudentName)}`;
+      }
       if (switchProfile) {
         url += `&switch_profile_id=${encodeURIComponent(switchProfile)}`;
       }
@@ -328,11 +334,11 @@ export default function ParentRemoteDashboard({ token: initialToken }) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { label: '概念透彻度 (底层定理推演)', score: radarData.conceptClarity || 85, color: '#3b82f6' },
-              { label: '计算严谨度 (草稿验算习惯)', score: radarData.computationPrecision || 88, color: '#10b981' },
-              { label: '逻辑推演度 (分步有据论证)', score: radarData.logicDeduction || 90, color: '#8b5cf6' },
-              { label: '主动探究力 (反向挑战费曼)', score: radarData.activeFocus || 92, color: '#f59e0b' },
-              { label: '错题清零度 (艾宾浩斯抗遗忘)', score: radarData.habitConsistency || 95, color: '#ec4899' }
+              { label: '概念透彻度 (底层定理推演)', score: radarData.conceptClarity ?? 0, color: '#3b82f6' },
+              { label: '计算严谨度 (草稿验算习惯)', score: radarData.computationPrecision ?? 0, color: '#10b981' },
+              { label: '逻辑推演度 (分步有据论证)', score: radarData.logicDeduction ?? 0, color: '#8b5cf6' },
+              { label: '主动探究力 (反向挑战费曼)', score: radarData.activeFocus ?? 0, color: '#f59e0b' },
+              { label: '错题清零度 (艾宾浩斯抗遗忘)', score: radarData.habitConsistency ?? 0, color: '#ec4899' }
             ].map(item => (
               <div key={item.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>

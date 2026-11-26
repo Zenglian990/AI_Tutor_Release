@@ -317,6 +317,7 @@ async function authFetch(path, options = {}) {
     const issuedStudentToken = response?.headers?.get?.('x-student-session-token');
     if (issuedStudentToken) {
       sessionStorage.setItem('student_session_token', issuedStudentToken);
+      localStorage.setItem('ai_tutor_student_session_token', issuedStudentToken);
     }
   } catch {}
   return response;
@@ -626,25 +627,26 @@ export function AppProvider({ children }) {
     setIsEinkMode(prev => !prev);
   }, []);
 
-  // 启动时主动向后端初始化/续期服务端签名的学生隔离会话（防止严格生产模式下 403 / 档案脱节）
+  // 启动时主动向后端初始化/续期服务端签名的学生隔离会话（按设备持久化，彻底杜绝新访客共用 default 挤爆配额）
   useEffect(() => {
     let active = true;
     const initSession = async () => {
       try {
-        const existingToken = sessionStorage.getItem('student_session_token') || '';
+        const existingToken = sessionStorage.getItem('student_session_token') || localStorage.getItem('ai_tutor_student_session_token') || '';
         const res = await authFetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             existing_token: existingToken || undefined,
-            prefer_default: true,
-            profile_id: currentProfileIdRef.current || 'default'
+            prefer_default: false,
+            profile_id: currentProfileIdRef.current !== 'default' ? currentProfileIdRef.current : undefined
           })
         });
         if (active && res.ok) {
           const data = await res.json();
           if (data?.session_token) {
             sessionStorage.setItem('student_session_token', data.session_token);
+            localStorage.setItem('ai_tutor_student_session_token', data.session_token);
           }
         }
       } catch (e) {

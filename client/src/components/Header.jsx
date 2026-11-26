@@ -113,7 +113,8 @@ export default function Header({
   onClearChat, socraticLevel, onSocraticCycle, isLightMode, onThemeToggle, onSettingsOpen,
   onOpenGamification, onOpenManipulatives, onOpenGeometrySandbox,
   onOpenPoster, onOpenAdminConsole,
-  onOpenEyeCare, onOpenDailyCard, onOpenVoiceCompanion
+  onOpenEyeCare, onOpenDailyCard, onOpenVoiceCompanion,
+  onOpenStats, eyeCareBadgeText
 }) {
   const { language, isEinkMode, toggleEinkMode, tutorPersona, setTutorPersona, chatModel, setChatModel } = useAppStore();
   const normalizedSocratic = socraticLevel === 'socratic' ? 'guided' : socraticLevel;
@@ -149,8 +150,8 @@ export default function Header({
           role="button"
           tabIndex={0}
           aria-label="应用图标"
-          onKeyDown={e => e.key === 'Enter' && onClearChat && onClearChat()}
-          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && handleLogoClick()}
+          style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >
           <img src="/pwa-192x192.png" alt="AI 智慧私教" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 2px 8px rgba(59,130,246,0.2)' }} />
         </div>
@@ -286,15 +287,27 @@ export default function Header({
           {isLightMode ? '🌙' : '☀️'}
         </button>
 
-        {/* 视力守护与学情日报 */}
+        {/* 视力守护、学情统计与日报 */}
+        {onOpenStats && (
+          <button
+            onClick={onOpenStats}
+            className="header-btn-icon header-btn-stats"
+            title="查看个人学情统计看板"
+            aria-label="打开学情统计看板"
+          >
+            📊
+          </button>
+        )}
         {onOpenEyeCare && (
           <button
             onClick={onOpenEyeCare}
             className="header-btn-icon header-btn-eyecare"
-            title="国际眼科 20-20-20 视力守护与专注番茄钟"
+            title={eyeCareBadgeText ? `视力守护运行中 (${eyeCareBadgeText})，点击打开` : '国际眼科 20-20-20 视力守护与专注番茄钟'}
             aria-label="打开视力守护番茄钟"
+            style={eyeCareBadgeText ? { position: 'relative', width: 'auto', padding: '0 8px', gap: '4px', fontSize: '0.76rem', color: '#34d399', borderColor: 'rgba(16,185,129,0.4)' } : undefined}
           >
-            🌿
+            <span>🌿</span>
+            {eyeCareBadgeText && <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{eyeCareBadgeText}</span>}
           </button>
         )}
         {onOpenDailyCard && (

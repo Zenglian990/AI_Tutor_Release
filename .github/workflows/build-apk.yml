@@ -11,7 +11,7 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    name: Build AI Tutor Android APK (v1.7.5)
+    name: Build AI Tutor Android APK (v1.7.6)
 
     steps:
       - name: Checkout repository
@@ -113,45 +113,50 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/release/app-release.apk ./AI_Tutor_v1.7.5.apk
-          ls -lh ./AI_Tutor_v1.7.5.apk
+          cp client/android/app/build/outputs/apk/release/app-release.apk ./AI_Tutor_v1.7.6.apk
+          ls -lh ./AI_Tutor_v1.7.6.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.7.5
-          path: ./AI_Tutor_v1.7.5.apk
+          name: AI_Tutor_v1.7.6
+          path: ./AI_Tutor_v1.7.6.apk
           retention-days: 30
 
-      - name: Create or Update v1.7.5 Latest Release
+      - name: Create or Update v1.7.6 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.7.5
-          name: "AI 智慧私教 (1-12年级) v1.7.5 - 全学段K12强化 · Gemini 3满血引擎 · 生产安全与GCS持久化"
+          tag_name: v1.7.6
+          name: "AI 智慧私教 (1-12年级) v1.7.6 - Android全站放通 · 双锁彻底解耦 · 理科科学纠偏与全学段精修"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 AI 智慧私教（1-12年级全学段）v1.7.5 正式版
+            ## 🚀 AI 智慧私教（1-12年级全学段）v1.7.6 正式版
 
-            - 🎓 **1-12 年级（小学·初中·高中）全学段深度闭环**：
-              - 完整保留并深度强化高中新高考体系：150 分制新高考模考（防重复、严学段隔离、多选完整判分、全真考场防秒交/防跳题）、KaTeX 公式自愈零报错、高中圆锥曲线与离心率交互沙盒、初/高中公式宝典分流、真实 1-12 年级课标章节目录。
-              - 全新 **Google Gemini 3 Flash** 默认云端推理引擎（含 `gemini-3.1-flash-lite` 容灾切换），覆盖全科数理推导、高考作文五维思辨精批与英语情景对练真实文法诊断。
-            - 🔒 **生产级安全防线与多孩服务端权威隔离**：
-              - 全链路服务端权威签发 `stu_*` 隔离档案、防 IDOR 越权、配额防绕过、生产异常脱敏，以及 GCP Secret Manager 零明文托管。
-              - 云端 Cloud Run Gen2 + GCS 流式事务快照持久化（[stateSync.js](server/services/stateSync.js)），容器扩缩容零数据丢失。
-            - 📱 **移动端与 PWA 体验全面升级**：
-              - 375px 窄屏全核心弹窗与顶栏多孩入口响应式适配、全站亮色模式高对比度、番茄钟墨水屏一键退出、PWA `NetworkFirst` 升级自愈策略防旧缓存锁死。
-            - 💯 **全栈自动化测试持续绿灯**：
-              - 后端 43 套（238 项用例）+ 前端 27 套（111 项用例）100% PASS。
+            - 📱 **彻底打通 Android APK 手机真机通信 & 双锁安全架构重构**：
+              - 服务端生产 CORS 白名单正式放通 Android Capacitor WebView 源（`https://localhost` / `http://localhost`），彻底解决手机 APK 访问云端接口 403 报错；
+              - **家庭家长安全锁**与**站长超管控制台**彻底解耦：普通家庭按档案独立设置 6 位 PIN + 必填密保（绝不再索要站长密钥），严堵“忘记密码吞错绕过”与“设置页直答绕过”高危漏洞；
+              - 新增**站长密钥一键直登**与设置页底部快捷入口，手机端粘贴密钥 1 秒直进管理控制台，彻底告别死锁。
+            - 🔥 **核心业务与获客/变现阻断全量根治**：
+              - 每台匿名新设备自动签发独立 `stu_*` 档案，彻底根治全站新访客共享 `default` 每日 30 次额度互相挤爆；
+              - 放通普通用户「诊断个人 API Key」（不回退消耗服务端密钥），正式挂载会员权益与特权激活中心；
+              - 修复 FSRS 3 分钟闪卡冲刺死循环与多档案 404、多档案学习地图串号、错题根因溯源空白页；
+              - 费曼以教代学升级为全屏 Portal + 真实 Gemini 轻量追问引擎；高三英语情景对练关闭重思考链提速至 2–4 秒级；
+              - 375px 手机端保留顶栏模式切换入口，重构 `📍 当前探索` 横幅彻底告别遮挡与关不掉。
+            - 🔬 **四大理科科学性纠偏与真实学情口径统一**：
+              - 修复小学等式天平倾斜画反、高中物理洛伦兹力周期量纲 10 倍偏差与凸透镜虚像光路/变阻器悬空、初中化学高锰酸钾制氧试管口画反与定时器泄漏、以及单元通关测评动态按年级出题；
+              - 家长远程视图修复 `?? 0` 与北京时间统计、今日战报支持高清 PNG 图片导出且过滤内部标签、恢复学情统计看板与 AI 周报全站入口、护眼番茄钟升级顶层全局后台计时、RAG 检索强锁同学科防跨学科串台。
+            - 💯 **全栈自动化测试 100% 绿灯**：
+              - 后端 244 项测试（18 套）+ 前端全量 Vitest 单测 100% PASS。
 
             ---
             ### 📥 安装与使用
-            - **Android 端**：下载下方 **`AI_Tutor_v1.7.5.apk`**（已使用正式发布密钥签名）直接安装；
-            - **iOS 端**：使用 Safari 打开 [线上云端版](https://ai-tutor-79709693345.asia-east1.run.app) 添加到主屏幕，或下载下方 `AI_Tutor_v1.7.5.ipa`；
+            - **Android 端**：下载下方 **`AI_Tutor_v1.7.6.apk`**（`versionCode 32`，正式密钥签名）覆盖安装即可；
+            - **iOS 端**：使用 Safari 打开 [线上云端版](https://ai-tutor-79709693345.asia-east1.run.app) 添加到主屏幕，或下载下方 `AI_Tutor_v1.7.6.ipa`；
             - **Web / PC 端**：直达 [https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)。
           files: |
-            ./AI_Tutor_v1.7.5.apk
+            ./AI_Tutor_v1.7.6.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

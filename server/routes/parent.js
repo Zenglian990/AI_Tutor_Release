@@ -97,9 +97,10 @@ router.get('/parent/remote-view', async (req, res) => {
       return res.status(503).json({ error: '伴学数据库尚未就绪' });
     }
 
-    // 1. Fetch cognitive memory and student name
-    const memory = await getStudentCognitiveMemory(activeProfileId, '7_up', '数学', '同学');
-    const studentName = memory.studentName || '同学';
+    // 1. Fetch cognitive memory and student name (优先使用分享链接显式透传昵称，避免回退为通用「同学」)
+    const explicitStudentName = typeof req.query.student_name === 'string' ? req.query.student_name.trim().slice(0, 30) : '';
+    const memory = await getStudentCognitiveMemory(activeProfileId, '7_up', '数学', explicitStudentName || '同学');
+    const studentName = explicitStudentName || (memory.studentName && memory.studentName !== '同学' ? memory.studentName : '学习者');
 
     // 2. Fetch Gamification & Rank (merge student_streaks as primary truth + user_gamification fallback)
     let gameRow = null;
@@ -117,18 +118,18 @@ router.get('/parent/remote-view', async (req, res) => {
     const streakDays = streakRow?.current_streak ?? gameRow?.streak_days ?? 0;
     const rankTier = gameRow?.rank_tier || (rankPoints >= 1500 ? '王者·通识宗师' : rankPoints >= 800 ? '钻石·敏思学者' : rankPoints >= 400 ? '黄金·明辨辨士' : rankPoints >= 150 ? '白银·躬行敏求' : '青铜·求知学童');
 
-    // 3. Daily activity stats (strictly count real user turns, excluding system error rows)
+    // 3. Daily activity stats (strictly count real user turns in Beijing time UTC+8 to prevent midnight-8am timezone mismatch)
     let todayChatCount = 0;
     let todayMistakesSolved = 0;
     try {
       const chatRow = await db.get(
-        `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND date(timestamp) = date('now')`,
+        `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND date(timestamp, '+8 hours') = date('now', '+8 hours')`,
         [activeProfileId]
       );
       todayChatCount = chatRow ? chatRow.count : 0;
 
       const mistakeRow = await db.get(
-        `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(COALESCE(last_reviewed_at, timestamp)) = date('now')`,
+        `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(COALESCE(last_reviewed_at, timestamp), '+8 hours') = date('now', '+8 hours')`,
         [activeProfileId]
       );
       todayMistakesSolved = mistakeRow ? mistakeRow.count : 0;
@@ -250,7 +251,7 @@ router.get('/parent/remote-view', async (req, res) => {
       success: true,
       profileId: activeProfileId,
       studentName,
-      date: new Date().toLocaleDateString('zh-CN'),
+      date: new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' }),
       todayStats: {
         activeMinutes,
         chatCount: todayChatCount,

@@ -40,15 +40,27 @@ router.post('/auth/session', (req, res) => {
 
   if (existing) {
     sessionId = existing.sid || `sid_${crypto.randomBytes(8).toString('hex')}`;
-    profiles = Array.from(new Set([...existing.pids, 'default'])).slice(0, MAX_PROFILES_PER_SESSION);
+    const existingHasIsolated = existing.pids.some(p => p && p !== 'default');
+    const generatedFallbackPid = existingHasIsolated ? null : `stu_${crypto.randomBytes(8).toString('hex')}`;
+    profiles = Array.from(new Set([
+      ...(generatedFallbackPid ? [generatedFallbackPid] : []),
+      ...existing.pids,
+      'default'
+    ])).slice(0, MAX_PROFILES_PER_SESSION);
     const requestedPid = typeof req.body?.profile_id === 'string' ? req.body.profile_id.trim() : '';
-    activeProfileId = requestedPid && profiles.includes(requestedPid) ? requestedPid : existing.pid;
+    if (requestedPid && requestedPid !== 'default' && profiles.includes(requestedPid)) {
+      activeProfileId = requestedPid;
+    } else if (existing.pid && existing.pid !== 'default') {
+      activeProfileId = existing.pid;
+    } else {
+      activeProfileId = profiles.find(p => p !== 'default') || existing.pid;
+    }
   } else {
     sessionId = `sid_${crypto.randomBytes(8).toString('hex')}`;
     const generatedPid = `stu_${crypto.randomBytes(8).toString('hex')}`;
-    const preferDefault = req.body?.prefer_default === true;
-    activeProfileId = preferDefault ? 'default' : generatedPid;
-    profiles = Array.from(new Set([activeProfileId, 'default', generatedPid])).slice(0, MAX_PROFILES_PER_SESSION);
+    // 始终为每个新设备签发独立主档案 ID，彻底杜绝全站匿名访客挤爆共享 default 每日免费额度桶
+    activeProfileId = generatedPid;
+    profiles = Array.from(new Set([generatedPid, 'default'])).slice(0, MAX_PROFILES_PER_SESSION);
   }
 
   const sessionToken = generateStudentSessionToken({

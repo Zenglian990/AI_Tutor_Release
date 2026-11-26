@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getLocalChapters } from '../utils/chapterData';
 
-export default function LearningMap({ currentGrade, currentSubject, currentEdition, currentProfileName, onSelectChapter, onClose, authFetch }) {
-  // Initialize with local curriculum chapters to guarantee zero waiting & offline instant display
+export default function LearningMap({ currentProfileId = 'default', currentGrade, currentSubject, currentEdition, currentProfileName, onSelectChapter, onClose, authFetch }) {
+  const cacheKey = `ai_tutor_chapters_cache_${currentProfileId || 'default'}_${currentGrade}_${currentSubject}_${currentEdition || '人教版'}`;
+  // 优先读取当前档案已缓存进度，无缓存再回退本地大纲，避免每次切年级/科目闪现 2 秒全未开始占位章节
   const [chapters, setChapters] = useState(() => {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
     const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
     return (local || []).map(c => ({ ...c, status: 'not_started', progress_pct: 0 }));
   });
@@ -30,7 +38,6 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
     return maps[grade] || '通用课本';
   };
 
-  const cacheKey = `ai_tutor_chapters_cache_${currentProfileName || 'default'}_${currentGrade}_${currentSubject}_${currentEdition || '人教版'}`;
   const [offlineMode, setOfflineMode] = useState(false);
 
   const fetchChapters = () => {
@@ -43,10 +50,10 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
         if (Array.isArray(parsed) && parsed.length > 0) cachedChapters = parsed;
       }
     } catch {}
-    if (!chapters || chapters.length === 0) {
-      if (cachedChapters) {
-        setChapters(cachedChapters);
-      } else if (local && local.length > 0) {
+    if (cachedChapters) {
+      setChapters(cachedChapters);
+    } else if (!chapters || chapters.length === 0) {
+      if (local && local.length > 0) {
         setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
       } else {
         setLoading(true);
@@ -54,7 +61,8 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
     }
     setError(null);
     setOfflineMode(false);
-    authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
+    const pidParam = encodeURIComponent(currentProfileId || 'default');
+    authFetch(`/api/chapters?profile_id=${pidParam}&grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load chapters');
         return res.json();
@@ -93,12 +101,8 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
   }, [fetchChapters]);
 
   useEffect(() => {
-    const local = getLocalChapters(currentGrade, currentSubject, currentEdition);
-    if (local && local.length > 0) {
-      setChapters(local.map(c => ({ ...c, status: 'not_started', progress_pct: 0 })));
-    }
     fetchChapters();
-  }, [currentGrade, currentSubject, currentEdition]);
+  }, [currentProfileId, currentGrade, currentSubject, currentEdition]);
 
   useEffect(() => {
     const handler = () => {
@@ -152,7 +156,7 @@ export default function LearningMap({ currentGrade, currentSubject, currentEditi
               <button onClick={() => {
                 setLoading(true);
                 setError(null);
-                authFetch(`/api/chapters?grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
+                authFetch(`/api/chapters?profile_id=${encodeURIComponent(currentProfileId || 'default')}&grade=${currentGrade}&subject=${encodeURIComponent(currentSubject)}&edition=${encodeURIComponent(currentEdition || '')}`)
                   .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
                   .then(d => { setChapters(d.chapters||[]); setLoading(false); })
                   .catch(e => { setError(e.message); setLoading(false); });

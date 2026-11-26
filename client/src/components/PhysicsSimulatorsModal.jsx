@@ -149,51 +149,47 @@ export default function PhysicsSimulatorsModal({
           </button>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Tab Switcher — 按学段分流默认 Tab 顺序：初中优先展示光学与电路，高中优先展示洛伦兹力 */}
         <div style={{
           display: 'flex', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 10px 0', gap: '4px', boxSizing: 'border-box'
         }}>
-          <button
-            onClick={() => setActiveTab('lorentz')}
-            style={{
-              padding: '8px 10px', border: 'none', background: 'transparent',
-              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-              color: activeTab === 'lorentz' ? '#7c3aed' : '#64748b',
-              borderBottom: activeTab === 'lorentz' ? '3px solid #7c3aed' : '3px solid transparent'
-            }}
-          >
-            🧲 高中电磁：洛伦兹力圆周运动
-          </button>
-          <button
-            onClick={() => setActiveTab('optics')}
-            style={{
-              padding: '8px 10px', border: 'none', background: 'transparent',
-              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-              color: activeTab === 'optics' ? '#0284c7' : '#64748b',
-              borderBottom: activeTab === 'optics' ? '3px solid #0284c7' : '3px solid transparent'
-            }}
-          >
-            🔍 凸透镜成像规律
-          </button>
-          <button
-            onClick={() => setActiveTab('circuits')}
-            style={{
-              padding: '8px 10px', border: 'none', background: 'transparent',
-              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-              color: activeTab === 'circuits' ? '#0284c7' : '#64748b',
-              borderBottom: activeTab === 'circuits' ? '3px solid #0284c7' : '3px solid transparent'
-            }}
-          >
-            ⚡ 欧姆定律电路仿真
-          </button>
+          {(isHighSchool
+            ? [
+                { key: 'lorentz', label: '🧲 高中电磁：洛伦兹力圆周运动', color: '#7c3aed' },
+                { key: 'optics', label: '🔍 凸透镜成像规律', color: '#0284c7' },
+                { key: 'circuits', label: '⚡ 欧姆定律电路仿真', color: '#0284c7' }
+              ]
+            : [
+                { key: 'optics', label: '🔍 凸透镜成像规律', color: '#0284c7' },
+                { key: 'circuits', label: '⚡ 欧姆定律电路仿真', color: '#0284c7' },
+                { key: 'lorentz', label: '🧲 拓展(高中)：洛伦兹力圆周运动', color: '#7c3aed' }
+              ]
+          ).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '8px 10px', border: 'none', background: 'transparent',
+                fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                color: activeTab === tab.key ? tab.color : '#64748b',
+                borderBottom: activeTab === tab.key ? `3px solid ${tab.color}` : '3px solid transparent'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Body Container */}
         <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box', minWidth: 0 }}>
           {activeTab === 'lorentz' ? (() => {
+            // 严格物理量纲一致性校验：
+            // v = velocity × 10^5 m/s, q/m = chargeMassRatio × 10^7 C/kg, B = magneticB T
+            // R = v / ((q/m)·B) = (velocity / (B · chargeMassRatio)) × 10^-2 m = (velocity / (B · chargeMassRatio)) cm
+            // T = 2π / ((q/m)·B) = 2πR / v = (0.2π / (B · chargeMassRatio)) μs（严格满足 T = 2πR / v！）
             const radiusCm = velocity / Math.max(0.1, magneticB * chargeMassRatio);
             const svgRadius = Math.max(22, Math.min(92, radiusCm * 14));
-            const periodVal = (2 * Math.PI) / Math.max(0.1, magneticB * chargeMassRatio);
+            const periodVal = (0.2 * Math.PI) / Math.max(0.1, magneticB * chargeMassRatio);
             return (
               <div>
                 <div style={{
@@ -233,7 +229,7 @@ export default function PhysicsSimulatorsModal({
                   </div>
                   <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#047857', marginBottom: '6px' }}>
-                      比荷系数 q/m = {chargeMassRatio.toFixed(1)}
+                      比荷 q/m = {chargeMassRatio.toFixed(1)} ×10⁷ C/kg
                     </label>
                     <input type="range" min="1" max="4" step="0.5" value={chargeMassRatio} onChange={e => setChargeMassRatio(Number(e.target.value))} style={{ width: '100%' }} />
                   </div>
@@ -241,7 +237,7 @@ export default function PhysicsSimulatorsModal({
 
                 <div style={{ marginTop: '14px', padding: '12px 16px', background: '#faf5ff', borderRadius: '12px', border: '1px solid #e9d5ff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                   <div style={{ fontSize: '0.85rem', color: '#4c1d95' }}>
-                    <div>📐 轨道半径 <b>R = mv/(qB) ≈ {radiusCm.toFixed(2)} cm</b> ｜ 周期 <b>T = 2πm/(qB) ≈ {periodVal.toFixed(2)} μs</b>（与速度 v 无关！）</div>
+                    <div>📐 轨道半径 <b>R = mv/(qB) ≈ {radiusCm.toFixed(2)} cm</b> ｜ 周期 <b>T = 2πm/(qB) = 2πR/v ≈ {periodVal.toFixed(3)} μs</b>（与速度 v 无关！）</div>
                   </div>
                   <button
                     type="button"
@@ -350,9 +346,18 @@ export default function PhysicsSimulatorsModal({
                         </g>
                       );
                     } else {
-                      // Virtual image
-                      const imgX = 350 - imageDistance * 7;
-                      const imgY = 120 - imageHeight;
+                      // Virtual image (u < f)：严格沿两条折射光线反向直线延长，若超出画布左边界则按同斜率截断，绝不折弯！
+                      const rawImgX = 350 - imageDistance * 7;
+                      const rawImgY = 120 - imageHeight;
+                      const clipRayBack = (x0, y0, x1, y1, minX = 20, minY = 12) => {
+                        let t = 1;
+                        if (x1 < minX && x0 !== x1) t = Math.min(t, (minX - x0) / (x1 - x0));
+                        if (y1 < minY && y0 !== y1) t = Math.min(t, (minY - y0) / (y1 - y0));
+                        return { x: x0 + t * (x1 - x0), y: y0 + t * (y1 - y0) };
+                      };
+                      const ray1End = clipRayBack(350, candleTopY, rawImgX, rawImgY);
+                      const ray2End = clipRayBack(350, 120, rawImgX, rawImgY);
+                      const showImgInside = rawImgX >= 20 && rawImgY >= 12;
 
                       return (
                         <g>
@@ -361,14 +366,20 @@ export default function PhysicsSimulatorsModal({
                           <line x1="350" y1={candleTopY} x2="650" y2={candleTopY + (650 - 350) * ((120 - candleTopY) / (focalLength * 7))} stroke="#fef08a" strokeWidth="1.5" />
                           <line x1={objX} y1={candleTopY} x2="650" y2={candleTopY + (650 - objX) * ((120 - candleTopY) / (350 - objX))} stroke="#38bdf8" strokeWidth="1.5" />
 
-                          {/* Backward virtual dashed trace rays to imgX */}
-                          <line x1="350" y1={candleTopY} x2={Math.max(20, imgX)} y2={imgY} stroke="#fef08a" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.6" />
-                          <line x1="350" y1="120" x2={Math.max(20, imgX)} y2={imgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.6" />
+                          {/* Backward virtual dashed trace rays strictly collinear with refracted rays */}
+                          <line x1="350" y1={candleTopY} x2={ray1End.x} y2={ray1End.y} stroke="#fef08a" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.7" />
+                          <line x1="350" y1="120" x2={ray2End.x} y2={ray2End.y} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.7" />
 
                           {/* Virtual Image Candle (Dashed) */}
-                          <line x1={imgX} y1="120" x2={imgX} y2={imgY} stroke="#a855f7" strokeWidth="3" strokeDasharray="4 3" strokeLinecap="round" />
-                          <circle cx={imgX} cy={imgY - 4} r="5" fill="#d8b4fe" />
-                          <text x={imgX - 16} y={imgY - 12} fill="#a855f7" fontSize="11" fontWeight="bold">虚像</text>
+                          {showImgInside ? (
+                            <>
+                              <line x1={rawImgX} y1="120" x2={rawImgX} y2={rawImgY} stroke="#a855f7" strokeWidth="3" strokeDasharray="4 3" strokeLinecap="round" />
+                              <circle cx={rawImgX} cy={rawImgY - 4} r="5" fill="#d8b4fe" />
+                              <text x={rawImgX - 16} y={Math.max(16, rawImgY - 12)} fill="#a855f7" fontSize="11" fontWeight="bold">虚像</text>
+                            </>
+                          ) : (
+                            <text x="26" y="28" fill="#c084fc" fontSize="11" fontWeight="bold">← 虚像位于更远处 (v≈{imageDistance.toFixed(1)}cm)</text>
+                          )}
                         </g>
                       );
                     }
@@ -461,8 +472,8 @@ export default function PhysicsSimulatorsModal({
                 boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)', position: 'relative'
               }}>
                 <svg viewBox="0 0 700 240" style={{ width: '100%', height: 'auto', display: 'block' }}>
-                  {/* Circuit Loop Wires */}
-                  <rect x="80" y="40" width="540" height="150" fill="none" stroke="#64748b" strokeWidth="3" rx="10" />
+                  {/* Circuit Loop Wires — 底部在变阻器处正确断开，由左接线柱进、滑片 P 引线出，彻底消除滑片悬空 */}
+                  <path d="M 300 190 L 90 190 Q 80 190 80 180 L 80 50 Q 80 40 90 40 L 610 40 Q 620 40 620 50 L 620 180 Q 620 190 610 190 L 445 190" fill="none" stroke="#64748b" strokeWidth="3" />
 
                   {/* Battery (Left branch) */}
                   <line x1="80" y1="100" x2="80" y2="108" stroke="#38bdf8" strokeWidth="4" />
@@ -521,14 +532,23 @@ export default function PhysicsSimulatorsModal({
                     <line x1="390" y1="182" x2="390" y2="198" stroke="#94a3b8" strokeWidth="1.5" />
                     <line x1="405" y1="182" x2="405" y2="198" stroke="#94a3b8" strokeWidth="1.5" />
 
-                    {/* Slider contact arrow */}
+                    {/* Slider contact arrow connected to upper rod -> right terminal (445, 190) */}
                     {(() => {
                       const sliderX = 305 + (rheostatVal / 50) * 105;
                       return (
                         <g>
-                          <polygon points={`${sliderX},180 ${sliderX - 5},170 ${sliderX + 5},170`} fill="#f43f5e" />
-                          <line x1={sliderX} y1="170" x2={sliderX} y2="162" stroke="#f43f5e" strokeWidth="2" />
-                          <text x={sliderX - 8} y="158" fill="#f43f5e" fontSize="10" fontWeight="bold">滑片P</text>
+                          {/* 高亮左侧已接入电路的有效电阻段 */}
+                          <rect x="302" y="182" width={Math.max(2, sliderX - 302)} height="16" fill="rgba(56, 189, 248, 0.35)" rx="2" />
+                          {/* 金属滑杆与右端接线 */}
+                          <line x1="300" y1="162" x2="445" y2="162" stroke="#94a3b8" strokeWidth="2.5" />
+                          <line x1="445" y1="162" x2="445" y2="190" stroke="#64748b" strokeWidth="3" />
+                          <circle cx="300" cy="190" r="3.5" fill="#38bdf8" />
+                          <circle cx="445" cy="190" r="3.5" fill="#38bdf8" />
+                          {/* 滑片 P 触头紧贴电阻丝 */}
+                          <polygon points={`${sliderX},181 ${sliderX - 5},170 ${sliderX + 5},170`} fill="#f43f5e" />
+                          <line x1={sliderX} y1="170" x2={sliderX} y2="162" stroke="#f43f5e" strokeWidth="2.5" />
+                          <circle cx={sliderX} cy="162" r="3" fill="#f43f5e" />
+                          <text x={sliderX - 10} y="152" fill="#f43f5e" fontSize="10" fontWeight="bold">滑片P</text>
                         </g>
                       );
                     })()}

@@ -39,7 +39,7 @@ export default function ParentMemoModal({ isOpen, onClose, currentProfileId = 'd
           const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && netData?.lanUrl
             ? netData.lanUrl
             : window.location.origin;
-          const shareUrl = `${baseOrigin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(tokenData.token)}`;
+          const shareUrl = `${baseOrigin}${window.location.pathname}?parent_view=1&token=${encodeURIComponent(tokenData.token)}&student_name=${encodeURIComponent(studentName || '')}`;
           QRCode.toDataURL(shareUrl, { width: 160, margin: 1, color: { dark: '#1e3a8a', light: '#ffffff' } })
             .then(url => setQrDataUrl(url))
             .catch(err => console.warn('QR code gen error:', err));

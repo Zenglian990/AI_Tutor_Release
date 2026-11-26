@@ -561,32 +561,41 @@ router.post('/mistakes/check-variant-answer', requireQuotaOrVip('check_variant')
       headers: getClientAiHeaders(req),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3 }
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 512,
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 0 }
+        }
       })
-    }, 2, 60000);
+    }, 2, 20000);
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     const parsed = extractAndParseJson(rawText);
 
-    if (parsed) {
+    if (parsed && typeof parsed.is_correct === 'boolean') {
       if (is_foundation && parsed.is_correct) {
         parsed.is_foundation_cleared = true;
       }
       return res.json({ success: true, feedback: parsed });
     }
 
+    // 严禁在 AI 批改输出解析失败时盲判“全对”：做保守文本归一化核对，未精确匹配则诚实要求复查
+    const norm = (s) => String(s || '').replace(/[\s，。、；;：:（）()【】\[\]$]/g, '').toLowerCase();
+    const exactMatched = Boolean(standard_answer && norm(student_answer) && norm(student_answer) === norm(standard_answer));
     return res.json({
       success: true,
       feedback: {
-        is_correct: true,
-        rating: "good",
-        score_earned: 15,
-        is_foundation_cleared: !!is_foundation,
-        comment: is_foundation
-          ? "底层基石漏洞已被你攻克！现在解答主考点将更加自信！"
-          : "回答很有条理！勤学好思，举一反三能力显著提升！",
-        detailed_step: "参考标准步骤推导，思路正确。"
+        is_correct: exactMatched,
+        rating: exactMatched ? 'excellent' : 'need_retry',
+        score_earned: exactMatched ? (is_foundation ? 25 : 20) : 0,
+        is_foundation_cleared: exactMatched && !!is_foundation,
+        parse_fallback: !exactMatched,
+        comment: exactMatched
+          ? '你的作答与参考答案核心结果完全一致！'
+          : 'AI 批改未能自动确认你的推导过程，请对照下方参考解析自查关键步骤，或补充完整步骤后重试。',
+        detailed_step: standard_answer ? `参考标准答案：${standard_answer}` : '请核对关键公式与计算步骤。'
       }
     });
   } catch (e) {

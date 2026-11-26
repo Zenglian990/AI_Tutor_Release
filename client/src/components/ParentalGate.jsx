@@ -1,32 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { authFetch } from '../store/useStore';
 import { encryptData, decryptData } from '../utils/crypto_helper';
 
 /**
- * Strengthened ParentalGate:
- * - 6-digit PIN with SHA-256 hashing
- * - Maximum 5 failed attempts before 60-second lockout (increased from 30s)
- * - PIN reset mechanism (requires answering a security question)
- * - Anti-tamper: clears localStorage if tampering detected
+ * 双锁解耦安全门禁组件 (ParentalGate)
+ * - scope="family"（默认）：家庭家长安全锁，按当前学生档案独立存储 PIN + 必填密保，绝不需要站长初始化密钥，普通家庭开箱即用。
+ * - scope="admin"：站长超管控制台锁，支持 6 位站长 PIN、密保重置以及「站长密钥一键直登」（手机端可粘贴 ADMIN_SETUP_SECRET 或 API_TOKEN 秒进）。
+ * - 安全铁律：严禁弱口令（888888 / 000000 / 123456）、严禁忘记密码前端吞错绕过、前后端冷却倒计时严格同步。
  */
-const GATE_PIN_HASH_KEY = 'parent_gate_pin_hash_v2';
-const GATE_ATTEMPT_KEY = 'parent_gate_attempts_v2';
-const GATE_LOCKOUT_KEY = 'parent_gate_lockout_until_v2';
-const GATE_SECURITY_ANSWER_HASH = 'parent_gate_security_answer_hash_v2';
 const PIN_LENGTH = 6;
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 60_000; // 60 seconds
-const MASTER_PIN = '888888';
+const WEAK_PINS = new Set(['888888', '000000', '123456', '111111', '666666', '654321']);
 const MASTER_PIN_HASH = '92925488b28ab12584ac8fcaa8a27a0f497b2c62940c8f4fbc8ef19ebc87c43e';
 
-// Security question options
 const SECURITY_QUESTIONS = [
-  { id: 'mother_name', text: '妈妈的名字是什么？（拼音小写）' },
-  { id: 'birth_city', text: '你出生在哪个城市？（拼音小写）' },
-  { id: 'pet_name', text: '你第一个宠物的名字？（拼音小写）' },
+  { id: 'mother_name', text: '妈妈的名字是什么？（拼音小写或汉字）' },
+  { id: 'birth_city', text: '你出生在哪个城市？（拼音小写或汉字）' },
+  { id: 'pet_name', text: '你第一个宠物的名字？（拼音小写或汉字）' },
 ];
 
-// Simple SHA-256 via Web Crypto API
 async function sha256(message) {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -34,847 +26,957 @@ async function sha256(message) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export default function ParentalGate({ isOpen, onVerify, onClose, reason = '敏感操作' }) {
+export default function ParentalGate({
+  isOpen,
+  onVerify,
+  onClose,
+  reason = '敏感操作',
+  scope = 'family', // 'family' | 'admin'
+  profileId = 'default',
+  forceSetup = false
+}) {
+  const isAdminScope = scope === 'admin';
+  const safeProfile = String(profileId || 'default').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  const storagePinKey = isAdminScope ? 'parent_gate_pin_hash_v2' : `family_gate_pin_hash_${safeProfile}`;
+  const storageSecKey = isAdminScope ? 'parent_gate_security_answer_hash_v2' : `family_gate_sec_hash_${safeProfile}`;
+  const storageLockKey = isAdminScope ? 'parent_gate_lockout_until_v2' : `family_gate_lockout_${safeProfile}`;
+
+  // 主状态
+  const [viewMode, setViewMode] = useState('verify'); // 'verify' | 'setup_pin' | 'setup_sec' | 'reset' | 'admin_secret'
   const [pin, setPin] = useState('');
-  const [error, setError] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isSettingUp, setIsSettingUp] = useState(false);
-  const [setupStep, setSetupStep] = useState('pin'); // 'pin' | 'security_question'
   const [firstPin, setFirstPin] = useState('');
   const [confirmedPin, setConfirmedPin] = useState('');
-  const [setupError, setSetupError] = useState('');
+  const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // 服务端状态同步
+  const [backendHasPin, setBackendHasPin] = useState(false);
+  const [backendHasSec, setBackendHasSec] = useState(false);
+  const [requiresSetupSecret, setRequiresSetupSecret] = useState(false);
+  const [setupSecret, setSetupSecret] = useState('');
   const [lockedUntil, setLockedUntil] = useState(0);
   const [remainingTime, setRemainingTime] = useState(0);
 
-  // Reset flow state
-  const [showResetFlow, setShowResetFlow] = useState(false);
-  const [resetStep, setResetStep] = useState(0); // 0=choose question, 1=answer, 2=new pin
+  // 密保 & 重置状态
   const [selectedQuestion, setSelectedQuestion] = useState(SECURITY_QUESTIONS[0].id);
   const [securityAnswer, setSecurityAnswer] = useState('');
-  const [newPin, setNewPin] = useState('');
-  const [newPinConfirm, setNewPinConfirm] = useState('');
-  const [resetError, setResetError] = useState('');
-  const [isTampered, setIsTampered] = useState(false);
-  const [tamperedToken, setTamperedToken] = useState('');
-  const [tamperedError, setTamperedError] = useState('');
-  const [backendHasPin, setBackendHasPin] = useState(false);
-  const [requiresSetupSecret, setRequiresSetupSecret] = useState(false);
-  const [setupSecret, setSetupSecret] = useState('');
+  const [resetNewPin, setResetNewPin] = useState('');
+  const [resetNewPinConfirm, setResetNewPinConfirm] = useState('');
+  const [resetUseSecret, setResetUseSecret] = useState(false);
+  const [resetSecretInput, setResetSecretInput] = useState('');
 
-  const handleVerifyTamperedToken = async () => {
-    const inputToken = tamperedToken.trim();
-    if (!inputToken) {
-      setTamperedError('请输入系统访问令牌');
-      return;
-    }
+  // 站长密钥直登状态
+  const [adminSecretInput, setAdminSecretInput] = useState('');
+  const [showSecretPlain, setShowSecretPlain] = useState(false);
 
-    const encrypted = localStorage.getItem('ai_tutor_api_token') || '';
-    const activeToken = decryptData(encrypted) || '';
-    if (activeToken && inputToken === activeToken) {
-      setIsTampered(false);
-      setIsSettingUp(true);
-      setSetupStep('pin');
-      setTamperedError('');
-      setTamperedToken('');
-      return;
-    }
-
-    // Verify token with backend
-    try {
-      const checkRes = await authFetch('/api/system/network-info', {
-        headers: { 'Authorization': `Bearer ${inputToken}` }
-      });
-      if (checkRes.ok) {
-        localStorage.setItem('ai_tutor_api_token', encryptData(inputToken));
-        setIsTampered(false);
-        setIsSettingUp(true);
-        setSetupStep('pin');
-        setTamperedError('');
-        setTamperedToken('');
-        return;
-      }
-    } catch (e) {
-      console.warn('Backend token check exception:', e);
-    }
-
-    setTamperedError('系统访问令牌不正确，请重新输入或联系系统管理员。');
-  };
-
-  const savedPinHashEnc = localStorage.getItem(GATE_PIN_HASH_KEY);
+  const savedPinHashEnc = localStorage.getItem(storagePinKey);
   const savedPinHash = useMemo(() => decryptData(savedPinHashEnc), [savedPinHashEnc]);
-  const savedSecurityAnswerHashEnc = localStorage.getItem(GATE_SECURITY_ANSWER_HASH);
-  const savedSecurityAnswerHash = useMemo(() => decryptData(savedSecurityAnswerHashEnc), [savedSecurityAnswerHashEnc]);
-  const hasConfiguredPin = Boolean(savedPinHash) || backendHasPin;
+  const hasConfiguredPin = Boolean(backendHasPin || (savedPinHash && savedPinHash !== MASTER_PIN_HASH));
 
+  // 弹窗打开时彻底重置内部状态并拉取真实服务端状态
   useEffect(() => {
-    if (isOpen) {
-      setPin('');
-      setFirstPin('');
-      setConfirmedPin('');
-      setError(false);
-      setSuccess(false);
-      setIsVerifying(false);
-      setLockedUntil(0);
-      setSetupStep('pin');
-      setSetupError('');
-      setIsTampered(false);
-      setIsSettingUp(false);
-      setSetupSecret('');
-      
-      // Check backend status
-      authFetch('/api/admin/pin-status')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.question_id) {
-            setSelectedQuestion(data.question_id);
-          }
-          if (data) {
-            setBackendHasPin(Boolean(data.has_pin && !data.needs_setup));
-            setRequiresSetupSecret(Boolean(data.requires_setup_secret));
-            if (data.needs_setup && !data.has_pin) {
-              setIsSettingUp(true);
-            }
-          }
-        })
-        .catch(err => console.error('Failed to fetch parent gate status from backend', err));
-        
-      setShowResetFlow(false);
-      setResetStep(0);
-      setSecurityAnswer('');
-      setNewPin('');
-      setNewPinConfirm('');
-      setResetError('');
+    if (!isOpen) return;
 
-      // Check lockout
-      const lockoutUntil = parseInt(localStorage.getItem(GATE_LOCKOUT_KEY) || '0', 10);
-      if (lockoutUntil > Date.now()) {
-        setLockedUntil(lockoutUntil);
-      } else {
-        setLockedUntil(0);
-      }
-    }
-  }, [isOpen]);
+    setPin('');
+    setFirstPin('');
+    setConfirmedPin('');
+    setError(false);
+    setErrorMsg('');
+    setInfoMsg('');
+    setSuccess(false);
+    setIsVerifying(false);
+    setSetupSecret('');
+    setSecurityAnswer('');
+    setResetNewPin('');
+    setResetNewPinConfirm('');
+    setResetUseSecret(false);
+    setResetSecretInput('');
+    setAdminSecretInput('');
+    setShowSecretPlain(false);
+    setViewMode(forceSetup ? 'setup_pin' : 'verify');
 
-  // Lockout countdown timer
+    const localLock = parseInt(localStorage.getItem(storageLockKey) || '0', 10);
+    setLockedUntil(localLock > Date.now() ? localLock : 0);
+
+    const statusUrl = isAdminScope
+      ? '/api/admin/pin-status'
+      : `/api/family/pin-status?profile_id=${encodeURIComponent(profileId || 'default')}`;
+
+    let active = true;
+    authFetch(statusUrl)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!active || !data) return;
+        const hasPin = Boolean(data.has_pin && !data.needs_setup);
+        setBackendHasPin(hasPin);
+        setBackendHasSec(Boolean(data.has_security_question));
+        setRequiresSetupSecret(Boolean(isAdminScope && data.requires_setup_secret));
+        if (data.question_id && SECURITY_QUESTIONS.some(q => q.id === data.question_id)) {
+          setSelectedQuestion(data.question_id);
+        }
+        if (data.locked && data.retry_after_seconds > 0) {
+          const until = Date.now() + data.retry_after_seconds * 1000;
+          setLockedUntil(until);
+          localStorage.setItem(storageLockKey, String(until));
+        }
+        if (forceSetup) {
+          setViewMode('setup_pin');
+        } else if (!hasPin && data.needs_setup) {
+          setViewMode('setup_pin');
+        }
+      })
+      .catch(err => {
+        console.warn('[ParentalGate] Status check failed:', err);
+      });
+
+    return () => { active = false; };
+  }, [isOpen, isAdminScope, profileId, forceSetup, storageLockKey]);
+
+  // 同步冷却倒计时
   useEffect(() => {
     if (lockedUntil > Date.now()) {
-      setRemainingTime(Math.ceil((lockedUntil - Date.now()) / 1000));
+      setRemainingTime(Math.max(1, Math.ceil((lockedUntil - Date.now()) / 1000)));
       const timer = setInterval(() => {
-        const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
-        if (remaining <= 0) {
+        const rem = Math.ceil((lockedUntil - Date.now()) / 1000);
+        if (rem <= 0) {
           setLockedUntil(0);
           setRemainingTime(0);
-          localStorage.removeItem(GATE_LOCKOUT_KEY);
-          localStorage.removeItem(GATE_ATTEMPT_KEY);
+          localStorage.removeItem(storageLockKey);
           clearInterval(timer);
         } else {
-          setRemainingTime(remaining);
+          setRemainingTime(rem);
         }
       }, 1000);
       return () => clearInterval(timer);
+    } else {
+      setRemainingTime(0);
     }
-  }, [lockedUntil]);
+  }, [lockedUntil, storageLockKey]);
 
   if (!isOpen) return null;
 
-  const recordFailedAttempt = () => {
-    const attempts = parseInt(localStorage.getItem(GATE_ATTEMPT_KEY) || '0', 10) + 1;
-    localStorage.setItem(GATE_ATTEMPT_KEY, String(attempts));
-    if (attempts >= MAX_ATTEMPTS) {
-      const lockUntil = Date.now() + LOCKOUT_DURATION_MS;
-      localStorage.setItem(GATE_LOCKOUT_KEY, String(lockUntil));
-      setLockedUntil(lockUntil);
-      localStorage.removeItem(GATE_ATTEMPT_KEY);
+  const isLockedOut = lockedUntil > Date.now();
+
+  const applyServerLockoutIfNeeded = (status, data) => {
+    if (status === 429 || data?.locked) {
+      const sec = Number(data?.retry_after_seconds) || 60;
+      const until = Date.now() + sec * 1000;
+      setLockedUntil(until);
+      localStorage.setItem(storageLockKey, String(until));
     }
   };
 
-  const resetAttempts = () => {
-    localStorage.removeItem(GATE_ATTEMPT_KEY);
-    localStorage.removeItem(GATE_LOCKOUT_KEY);
+  const clearLockout = () => {
+    setLockedUntil(0);
+    setRemainingTime(0);
+    localStorage.removeItem(storageLockKey);
+  };
+
+  const finishVerificationSuccess = (hash, sessionToken = null) => {
+    setSuccess(true);
+    setError(false);
+    setErrorMsg('');
+    clearLockout();
+    if (hash) {
+      localStorage.setItem(storagePinKey, encryptData(hash));
+      if (isAdminScope) {
+        sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
+      }
+    }
+    if (sessionToken) {
+      sessionStorage.setItem('parent_session_token', sessionToken);
+    }
+    setTimeout(() => {
+      onVerify && onVerify();
+      onClose && onClose();
+    }, 300);
   };
 
   const handleKeyPress = async (num) => {
-    if (isVerifying || success || pin.length >= PIN_LENGTH || lockedUntil > Date.now()) return;
+    if (isVerifying || success || pin.length >= PIN_LENGTH || isLockedOut) return;
     setError(false);
-    setSetupError('');
-    const newPinVal = pin + num;
-    setPin(newPinVal);
+    setErrorMsg('');
+    setInfoMsg('');
 
-    if (newPinVal.length === PIN_LENGTH) {
-      // 1. 如果在密码设置模式 (Setup Mode)
-      if (isSettingUp) {
-        if (!firstPin) {
-          // 记录第一次输入，提示再次输入以确认
-          setFirstPin(newPinVal);
-          setPin('');
-          setSetupError('已记录第一次输入，请再次输入同一密码以确认');
-          return;
-        } else {
-          // 第二次确认输入
-          if (newPinVal === firstPin) {
-            if (newPinVal === MASTER_PIN || newPinVal === '000000' || newPinVal === '123456') {
-              setError(true);
-              setSetupError('禁止使用 888888 / 000000 / 123456 等弱口令，请重新设置 6 位强密码');
-              setTimeout(() => { setPin(''); setFirstPin(''); setError(false); }, 800);
-              return;
-            }
-            if (requiresSetupSecret && !setupSecret.trim()) {
-              setError(true);
-              setSetupError('生产环境首次初始化必须先填写上方服务端初始化密钥 (ADMIN_SETUP_SECRET)');
-              setTimeout(() => { setPin(''); setFirstPin(''); setError(false); }, 800);
-              return;
-            }
-            const hash = await sha256(newPinVal);
-            try {
-              const reqHeaders = { 'Content-Type': 'application/json' };
-              if (setupSecret.trim()) {
-                reqHeaders['x-setup-secret'] = setupSecret.trim();
-              }
-              const res = await authFetch('/api/admin/pin', {
-                method: 'POST',
-                headers: reqHeaders,
-                body: JSON.stringify({ pin_hash: hash, setup_secret: setupSecret.trim() || undefined })
-              });
-              const data = await res.json().catch(() => ({}));
-              if (!res.ok) {
-                setError(true);
-                setSetupError(data.error || '服务端拒绝修改家长密码，请检查初始化密钥或管理员身份验证');
-                setTimeout(() => {
-                  setPin('');
-                  setFirstPin('');
-                  setError(false);
-                }, 800);
-                return;
-              }
-              // 设置成功后立即换取短期 parent_session_token，避免后续管理接口 401
-              try {
-                const verifyRes = await authFetch('/api/admin/verify-pin', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ pin_hash: hash })
-                });
-                const verifyData = await verifyRes.json().catch(() => ({}));
-                if (verifyData?.session_token) {
-                  sessionStorage.setItem('parent_session_token', verifyData.session_token);
-                }
-              } catch (_) {}
-            } catch (_) {
-              setError(true);
-              setSetupError('网络连接失败，无法保存新密码');
-              setTimeout(() => {
-                setPin('');
-                setFirstPin('');
-                setError(false);
-              }, 800);
-              return;
-            }
-            setSuccess(true);
-            setBackendHasPin(true);
-            setRequiresSetupSecret(false);
-            localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-            sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-            resetAttempts();
-            setTimeout(() => {
-              setIsSettingUp(false);
-              onVerify();
-              onClose();
-            }, 350);
-            return;
-          } else {
-            setError(true);
-            setSetupError('两次输入的密码不一致，请重新输入');
-            setTimeout(() => {
-              setPin('');
-              setFirstPin('');
-              setError(false);
-            }, 700);
-            return;
-          }
-        }
-      }
+    const nextPin = pin + num;
+    setPin(nextPin);
 
-      // 2. 正常密码验证模式 (Verification Mode) — 严禁 888888 弱口令绕过，始终走服务端校验换取签名会话令牌
-      setIsVerifying(true);
-      const hash = await sha256(newPinVal);
+    if (nextPin.length < PIN_LENGTH) return;
 
-      try {
-        const verifyRes = await authFetch('/api/admin/verify-pin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin_hash: hash })
-        });
-        const verifyData = await verifyRes.json().catch(() => ({}));
-        if (verifyRes.ok && verifyData.valid) {
-          setSuccess(true);
-          if (verifyData.session_token) {
-            sessionStorage.setItem('parent_session_token', verifyData.session_token);
-          }
-          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-          localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-          resetAttempts();
-          setTimeout(() => {
-            onVerify();
-            onClose();
-          }, 350);
+    // ─── 模式 A：首次设置 / 重设 PIN（第 1 步：两次输入 PIN -> 进入必填密保步骤） ───
+    if (viewMode === 'setup_pin') {
+      if (!firstPin) {
+        if (WEAK_PINS.has(nextPin)) {
+          setError(true);
+          setErrorMsg('禁止使用 888888 / 000000 / 123456 等弱口令，请换一个 6 位安全数字');
+          setTimeout(() => { setPin(''); setError(false); }, 650);
           return;
         }
-        if (verifyData?.unconfigured) {
-          setIsVerifying(false);
-          setIsSettingUp(true);
-          setPin('');
-          setSetupError(verifyData.error || '系统尚未初始化家长 PIN，请先完成首次设置');
-          return;
-        }
-        if (verifyData?.error) {
-          setSetupError(verifyData.error);
-        }
-      } catch (e) {
-        // 仅在彻底断网离线时允许校验已配置的本地强密码哈希，绝不放行 888888
-        if (savedPinHash && savedPinHash !== MASTER_PIN_HASH && hash === savedPinHash) {
-          setSuccess(true);
-          sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-          resetAttempts();
-          setTimeout(() => {
-            onVerify();
-            onClose();
-          }, 350);
-          return;
-        }
-      }
-
-      // 验证未通过：保留 6 位红点震动提示 700ms，明确告知错误，绝不瞬间闪退重置
-      setIsVerifying(false);
-      setError(true);
-      recordFailedAttempt();
-      setTimeout(() => {
+        setFirstPin(nextPin);
         setPin('');
-        setError(false);
-      }, 700);
-    }
-  };
-
-  const handleBackspace = () => {
-    setPin(pin.slice(0, -1));
-    setError(false);
-  };
-
-  const handleCompleteSetup = async () => {
-    if (!securityAnswer.trim()) {
-      setSetupError('请输入安全密保答案');
-      return;
-    }
-    const hash = await sha256(confirmedPin);
-    const ansHash = await sha256(securityAnswer.trim().toLowerCase());
-    const combinedSecurityHash = selectedQuestion + ':' + ansHash;
-    localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-    localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(combinedSecurityHash));
-    sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-    try {
-      await authFetch('/api/admin/pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin_hash: hash, security_answer_hash: combinedSecurityHash })
-      });
-    } catch (err) {
-      console.error("Failed to sync PIN hash to backend:", err);
-    }
-    resetAttempts();
-    setIsSettingUp(false);
-    onVerify();
-    onClose();
-  };
-
-  // ── Reset Flow Handlers ──
-  const handleStartReset = () => {
-    setShowResetFlow(true);
-    setResetStep(0);
-    setResetError('');
-  };
-
-  const handleSelectQuestion = (qId) => {
-    setSelectedQuestion(qId);
-    setResetStep(1);
-    setResetError('');
-  };
-
-  const handleSubmitAnswer = async () => {
-    if (!securityAnswer.trim()) {
-      setResetError('请输入答案');
-      return;
-    }
-    if (savedSecurityAnswerHash) {
-      const answerHash = await sha256(securityAnswer.trim().toLowerCase());
-      const [storedQuestion, storedHash] = savedSecurityAnswerHash.split(':');
-      if (selectedQuestion !== storedQuestion || answerHash !== storedHash) {
-        setResetError('答案不正确，请重试。');
-        setSecurityAnswer('');
+        setInfoMsg('已记录第 1 次输入，请再次输入同一 6 位密码确认');
         return;
       }
-    }
-    setResetStep(2);
-    setResetError('');
-  };
 
-  const handleSetNewPin = async () => {
-    if (newPin.length !== PIN_LENGTH) {
-      setResetError(`请输入 ${PIN_LENGTH} 位数字密码`);
-      return;
-    }
-    if (newPin !== newPinConfirm) {
-      setResetError('两次输入的密码不一致');
-      setNewPin('');
-      setNewPinConfirm('');
-      return;
-    }
-    const hash = await sha256(newPin);
-    const ansHash = await sha256(securityAnswer.trim().toLowerCase());
-    try {
-      try {
-        const res = await authFetch('/api/admin/reset-pin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question_id: selectedQuestion,
-            answer_hash: ansHash,
-            new_pin_hash: hash
-          })
-        });
-        if (!res.ok) {
-          await authFetch('/api/admin/pin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pin_hash: hash,
-              security_answer_hash: selectedQuestion + ':' + ansHash
-            })
-          }).catch(() => {});
-        }
-      } catch (_) {}
+      if (nextPin !== firstPin) {
+        setError(true);
+        setErrorMsg('两次输入的密码不一致，请重新设置');
+        setTimeout(() => { setPin(''); setFirstPin(''); setError(false); }, 700);
+        return;
+      }
 
-      localStorage.setItem(GATE_PIN_HASH_KEY, encryptData(hash));
-      localStorage.setItem(GATE_SECURITY_ANSWER_HASH, encryptData(selectedQuestion + ':' + ansHash));
-      sessionStorage.setItem('parent_gate_verified_pin_hash', hash);
-      resetAttempts();
-      setShowResetFlow(false);
-      setIsSettingUp(false);
+      if (isAdminScope && requiresSetupSecret && !setupSecret.trim()) {
+        setError(true);
+        setErrorMsg('站长首次设置管理员密码需先在上方填入站长初始化密钥');
+        setTimeout(() => { setPin(''); setError(false); }, 700);
+        return;
+      }
+
+      // 强制进入第 2 步：设置密保问题与答案（绝不跳过！）
+      setConfirmedPin(nextPin);
       setPin('');
       setFirstPin('');
-      alert('✅ 密码已成功重置！');
-      onVerify();
-      onClose();
+      setError(false);
+      setErrorMsg('');
+      setInfoMsg('');
+      setViewMode('setup_sec');
+      return;
+    }
+
+    // ─── 模式 B：正常 6 位 PIN 验证 ───
+    if (WEAK_PINS.has(nextPin)) {
+      setError(true);
+      setErrorMsg('系统已禁用 888888 / 000000 / 123456 等默认弱口令');
+      setTimeout(() => { setPin(''); setError(false); }, 700);
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const hash = await sha256(nextPin);
+      const verifyUrl = isAdminScope ? '/api/admin/verify-pin' : '/api/family/verify-pin';
+      const verifyPayload = isAdminScope
+        ? { pin_hash: hash }
+        : { pin_hash: hash, profile_id: profileId || 'default' };
+
+      const res = await authFetch(verifyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(verifyPayload)
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.valid) {
+        finishVerificationSuccess(hash, data.session_token || null);
+        return;
+      }
+
+      if (data?.unconfigured) {
+        setIsVerifying(false);
+        setPin('');
+        setFirstPin('');
+        setInfoMsg(data.error || '尚未设置安全密码，请直接完成首次设置');
+        setViewMode('setup_pin');
+        return;
+      }
+
+      applyServerLockoutIfNeeded(res.status, data);
+      setIsVerifying(false);
+      setError(true);
+      setErrorMsg(data?.error || '密码不正确，请重新输入');
+      setTimeout(() => { setPin(''); setError(false); }, 700);
     } catch (err) {
-      setResetError('重置密码遇到异常，请重试');
+      // 纯断网离线场景仅允许比对本地非弱口令哈希
+      const hash = await sha256(nextPin);
+      if (savedPinHash && savedPinHash !== MASTER_PIN_HASH && hash === savedPinHash) {
+        finishVerificationSuccess(hash, null);
+        return;
+      }
+      setIsVerifying(false);
+      setError(true);
+      setErrorMsg('网络连接异常，请检查网络或确认服务端已放行');
+      setTimeout(() => { setPin(''); setError(false); }, 700);
     }
   };
 
-  const isLockedOut = lockedUntil > Date.now();
+  // 完成「第 2/2 步：保存 PIN + 密保」
+  const handleCompleteSetup = async () => {
+    const cleanAns = securityAnswer.trim().toLowerCase();
+    if (cleanAns.length < 1) {
+      setErrorMsg('请填写密保答案（必填，用于遗忘密码时安全找回）');
+      return;
+    }
+    if (isAdminScope && requiresSetupSecret && !setupSecret.trim()) {
+      setErrorMsg('请先填写站长初始化密钥');
+      return;
+    }
 
-  return (
-    <div className="parent-gate-overlay">
-      <div className="parent-gate-card glass-panel animate-scale-in">
-        <button className="gate-close-btn" onClick={onClose} title="取消验证" aria-label="取消家长锁验证">✕</button>
+    setIsVerifying(true);
+    setErrorMsg('');
+    try {
+      const pinHash = await sha256(confirmedPin);
+      const ansHash = await sha256(cleanAns);
+      const combinedSec = `${selectedQuestion}:${ansHash}`;
 
-        {isTampered ? (
-          <>
-            <div className="gate-header">
-              <span className="gate-shield-icon" style={{ color: '#ef4444' }}>⚠️</span>
-              <h3>安全配置异常</h3>
-              <p className="reason-text" style={{ color: '#ef4444', fontWeight: 'bold' }}>检测到安全锁配置异常（已被清除或篡改）</p>
-              <p className="sub-text">
-                为了系统安全，已自动锁止。请输入当前的 **系统访问令牌 (API Token)** 进行身份核对并重置密码。
+      const endpoint = isAdminScope ? '/api/admin/pin' : '/api/family/pin';
+      const headers = { 'Content-Type': 'application/json' };
+      if (isAdminScope && setupSecret.trim()) {
+        headers['x-setup-secret'] = setupSecret.trim();
+      }
+
+      const payload = isAdminScope
+        ? {
+            pin_hash: pinHash,
+            security_answer_hash: combinedSec,
+            setup_secret: setupSecret.trim() || undefined
+          }
+        : {
+            profile_id: profileId || 'default',
+            pin_hash: pinHash,
+            security_answer_hash: combinedSec,
+            current_pin_hash: savedPinHash || undefined
+          };
+
+      const res = await authFetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setIsVerifying(false);
+        setErrorMsg(data.error || '服务端保存安全密码失败，请核对输入');
+        return;
+      }
+
+      // 管理员作用域设置完成后立即换取短期 session_token
+      let sessionToken = null;
+      if (isAdminScope) {
+        try {
+          const vRes = await authFetch('/api/admin/verify-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin_hash: pinHash })
+          });
+          const vData = await vRes.json().catch(() => ({}));
+          if (vRes.ok && vData?.session_token) {
+            sessionToken = vData.session_token;
+          }
+        } catch {}
+      }
+
+      localStorage.setItem(storageSecKey, encryptData(combinedSec));
+      setBackendHasPin(true);
+      setBackendHasSec(true);
+      setRequiresSetupSecret(false);
+      finishVerificationSuccess(pinHash, sessionToken);
+    } catch (err) {
+      setIsVerifying(false);
+      setErrorMsg('网络连接失败，无法保存安全密码，请稍后重试');
+    }
+  };
+
+  // 严格重置密码（绝不吞错！必须后端校验密保或站长密钥通过才放行）
+  const handleSubmitReset = async () => {
+    setErrorMsg('');
+    if (resetNewPin.length !== PIN_LENGTH || !/^\d{6}$/.test(resetNewPin)) {
+      setErrorMsg(`新密码必须为 ${PIN_LENGTH} 位数字`);
+      return;
+    }
+    if (WEAK_PINS.has(resetNewPin)) {
+      setErrorMsg('禁止重置为 888888 / 000000 / 123456 等弱口令');
+      return;
+    }
+    if (resetNewPin !== resetNewPinConfirm) {
+      setErrorMsg('两次输入的新密码不一致');
+      return;
+    }
+    if (isAdminScope && resetUseSecret) {
+      if (!resetSecretInput.trim()) {
+        setErrorMsg('请输入站长管理密钥 (ADMIN_SETUP_SECRET 或 API_TOKEN)');
+        return;
+      }
+    } else if (!securityAnswer.trim()) {
+      setErrorMsg('请填写您设置的密保答案');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const newPinHash = await sha256(resetNewPin);
+      const ansHash = securityAnswer.trim() ? await sha256(securityAnswer.trim().toLowerCase()) : '';
+      const endpoint = isAdminScope ? '/api/admin/reset-pin' : '/api/family/reset-pin';
+      const body = isAdminScope
+        ? (resetUseSecret
+            ? {
+                setup_secret: resetSecretInput.trim(),
+                new_pin_hash: newPinHash,
+                security_answer_hash: ansHash ? `${selectedQuestion}:${ansHash}` : undefined
+              }
+            : {
+                question_id: selectedQuestion,
+                answer_hash: ansHash,
+                new_pin_hash: newPinHash
+              })
+        : {
+            profile_id: profileId || 'default',
+            question_id: selectedQuestion,
+            answer_hash: ansHash,
+            new_pin_hash: newPinHash
+          };
+
+      const res = await authFetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        applyServerLockoutIfNeeded(res.status, data);
+        setIsVerifying(false);
+        setErrorMsg(data.error || '重置失败：密保答案或站长密钥未通过服务端校验');
+        return;
+      }
+
+      if (ansHash) {
+        localStorage.setItem(storageSecKey, encryptData(`${selectedQuestion}:${ansHash}`));
+      }
+      setBackendHasPin(true);
+      finishVerificationSuccess(newPinHash, data.session_token || null);
+    } catch (err) {
+      setIsVerifying(false);
+      setErrorMsg('网络请求失败，无法完成密码重置');
+    }
+  };
+
+  // 站长密钥一键直登（手机端最高效无痛方案）
+  const handleAdminSecretLogin = async () => {
+    const secret = adminSecretInput.trim();
+    if (!secret) {
+      setErrorMsg('请输入站长管理密钥');
+      return;
+    }
+    setIsVerifying(true);
+    setErrorMsg('');
+    try {
+      const res = await authFetch('/api/admin/secret-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.valid) {
+        applyServerLockoutIfNeeded(res.status, data);
+        setIsVerifying(false);
+        setErrorMsg(data.error || '站长密钥校验未通过，请检查是否有多余空格');
+        return;
+      }
+      finishVerificationSuccess(null, data.session_token || null);
+    } catch (err) {
+      setIsVerifying(false);
+      setErrorMsg('网络请求失败，请检查服务端连接状态');
+    }
+  };
+
+  const titleText = isAdminScope ? '管理员安全锁' : '家长安全锁';
+  const inputStyle = {
+    width: '100%',
+    padding: '11px 14px',
+    borderRadius: '10px',
+    border: '1px solid rgba(148, 163, 184, 0.35)',
+    background: '#0f172a',
+    color: '#f8fafc',
+    fontSize: '0.92rem',
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+  const secondaryBtnStyle = {
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: '1px solid rgba(148, 163, 184, 0.35)',
+    background: '#1e293b',
+    color: '#e2e8f0',
+    cursor: 'pointer',
+    fontWeight: 600,
+    fontSize: '0.88rem'
+  };
+
+  const modalContent = (
+    <div
+      className="parent-gate-overlay"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2500,
+        background: 'rgba(2, 6, 23, 0.82)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}
+    >
+      <div
+        className="parent-gate-card animate-scale-in"
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: '400px',
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 100%)',
+          color: '#f8fafc',
+          border: '1px solid rgba(148, 163, 184, 0.25)',
+          borderRadius: '22px',
+          padding: '24px 22px',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.65)'
+        }}
+      >
+        <button
+          type="button"
+          className="gate-close-btn"
+          onClick={onClose}
+          title="取消验证"
+          aria-label="取消家长锁验证"
+          style={{
+            position: 'absolute',
+            top: '14px',
+            right: '14px',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: '#e2e8f0',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          ✕
+        </button>
+
+        {/* 1. 站长密钥一键直登视图 */}
+        {viewMode === 'admin_secret' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="gate-header" style={{ textAlign: 'center' }}>
+              <span className="gate-shield-icon" style={{ fontSize: '2.2rem' }}>🔑</span>
+              <h3 style={{ margin: '6px 0 4px', color: '#f8fafc' }}>站长密钥直登</h3>
+              <p style={{ margin: 0, fontSize: '0.84rem', color: '#94a3b8' }}>
+                支持粘贴服务端初始化密钥 (ADMIN_SETUP_SECRET) 或主令牌直登管理控制台
               </p>
             </div>
-
-            {tamperedError && (
-              <div style={{ color: '#ef4444', fontSize: '0.9rem', textAlign: 'center', marginBottom: '12px', padding: '0 10px' }}>
-                {tamperedError}
+            {errorMsg && (
+              <div style={{ background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', padding: '8px 12px', borderRadius: '10px', fontSize: '0.84rem', textAlign: 'center' }}>
+                ⚠️ {errorMsg}
               </div>
             )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px 20px' }}>
+            <div style={{ position: 'relative' }}>
               <input
-                type="password"
-                placeholder="请输入系统 API Token..."
-                value={tamperedToken}
-                onChange={e => setTamperedToken(e.target.value)}
-                style={{
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  background: 'rgba(0,0,0,0.4)',
-                  color: 'white',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  textAlign: 'center'
-                }}
+                type={showSecretPlain ? 'text' : 'password'}
+                value={adminSecretInput}
+                onChange={e => { setAdminSecretInput(e.target.value); setErrorMsg(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleAdminSecretLogin()}
+                placeholder="请粘贴站长管理密钥..."
+                aria-label="站长管理密钥"
+                style={{ ...inputStyle, paddingRight: '52px' }}
+                autoFocus
               />
               <button
                 type="button"
-                onClick={handleVerifyTamperedToken}
+                onClick={() => setShowSecretPlain(v => !v)}
                 style={{
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: '0.95rem'
+                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'transparent', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: '0.78rem'
                 }}
               >
-                验证并重置密码
+                {showSecretPlain ? '隐藏' : '显示'}
               </button>
             </div>
-            <div className="gate-footer">
-              <p className="tip-text" style={{ textAlign: 'center' }}>
-                💡 提示：系统 API Token 存储在服务器配置文件 `.env` 中，未被授权的用户无法查看。
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button type="button" onClick={() => { setViewMode('verify'); setErrorMsg(''); }} style={{ ...secondaryBtnStyle, flex: 1 }}>
+                ← 返回 PIN
+              </button>
+              <button
+                type="button"
+                disabled={isVerifying || isLockedOut}
+                onClick={handleAdminSecretLogin}
+                style={{
+                  flex: 2, padding: '11px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #2563eb, #4f46e5)', color: '#fff',
+                  fontWeight: 700, cursor: isVerifying ? 'wait' : 'pointer', fontSize: '0.92rem'
+                }}
+              >
+                {isVerifying ? '验证中...' : '🔓 立即验证进入'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. 设置第 2/2 步：必填密保问题与答案 */}
+        {viewMode === 'setup_sec' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="gate-header" style={{ textAlign: 'center' }}>
+              <span className="gate-shield-icon" style={{ fontSize: '2.2rem' }}>🔐</span>
+              <h3 style={{ margin: '6px 0 4px', color: '#f8fafc' }}>第 2/2 步：设置安全密保</h3>
+              <p style={{ margin: 0, fontSize: '0.84rem', color: '#94a3b8' }}>
+                请务必设置密保答案，后续遗忘密码时仅凭正确密保方可安全重置
               </p>
             </div>
-          </>
-        ) : !showResetFlow ? (
-          isSettingUp && setupStep === 'security_question' ? (
-            <>
-              <div className="gate-header">
-                <span className="gate-shield-icon">🔐</span>
-                <h3>设置安全密保</h3>
-                <p className="reason-text">第 2/2 步：密保问题设置</p>
-                <p className="sub-text">请设置密保问题，以便日后遗忘密码时进行安全重置</p>
-              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px 0' }}>
-                <label style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>选择安全问题：</label>
+            <label style={{ color: '#cbd5e1', fontSize: '0.84rem', fontWeight: 600 }}>选择安全问题：</label>
+            <select
+              value={selectedQuestion}
+              onChange={e => setSelectedQuestion(e.target.value)}
+              style={inputStyle}
+            >
+              {SECURITY_QUESTIONS.map(q => (
+                <option key={q.id} value={q.id} style={{ background: '#0f172a', color: '#f8fafc' }}>
+                  {q.text}
+                </option>
+              ))}
+            </select>
+
+            <label style={{ color: '#cbd5e1', fontSize: '0.84rem', fontWeight: 600 }}>安全密保答案：</label>
+            <input
+              type="text"
+              placeholder="请输入便于您记住的答案..."
+              value={securityAnswer}
+              onChange={e => { setSecurityAnswer(e.target.value); setErrorMsg(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleCompleteSetup()}
+              style={inputStyle}
+              autoFocus
+            />
+
+            {errorMsg && (
+              <div style={{ background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', padding: '8px 12px', borderRadius: '10px', fontSize: '0.84rem', textAlign: 'center' }}>
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => { setViewMode('setup_pin'); setFirstPin(''); setPin(''); setErrorMsg(''); }}
+                style={{ ...secondaryBtnStyle, flex: 1 }}
+              >
+                上一步
+              </button>
+              <button
+                type="button"
+                disabled={isVerifying}
+                onClick={handleCompleteSetup}
+                style={{
+                  flex: 2, padding: '11px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff',
+                  fontWeight: 700, cursor: isVerifying ? 'wait' : 'pointer', fontSize: '0.92rem'
+                }}
+              >
+                {isVerifying ? '保存中...' : '✅ 完成设置并进入'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3. 密保 / 站长密钥严格重置密码视图 */}
+        {viewMode === 'reset' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="gate-header" style={{ textAlign: 'center' }}>
+              <span className="gate-shield-icon" style={{ fontSize: '2.1rem' }}>🔄</span>
+              <h3 style={{ margin: '6px 0 4px', color: '#f8fafc' }}>重置{isAdminScope ? '管理员' : '家长'}密码</h3>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8' }}>
+                必须通过服务端身份核验后方可重置，拒绝未授权绕过
+              </p>
+            </div>
+
+            {isAdminScope && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => { setResetUseSecret(false); setErrorMsg(''); }}
+                  style={{
+                    ...secondaryBtnStyle,
+                    flex: 1,
+                    background: !resetUseSecret ? '#2563eb' : '#1e293b',
+                    color: '#fff',
+                    borderColor: !resetUseSecret ? '#3b82f6' : 'rgba(148,163,184,0.3)'
+                  }}
+                >
+                  密保验证重置
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setResetUseSecret(true); setErrorMsg(''); }}
+                  style={{
+                    ...secondaryBtnStyle,
+                    flex: 1,
+                    background: resetUseSecret ? '#2563eb' : '#1e293b',
+                    color: '#fff',
+                    borderColor: resetUseSecret ? '#3b82f6' : 'rgba(148,163,184,0.3)'
+                  }}
+                >
+                  站长密钥重置
+                </button>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div style={{ background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', padding: '8px 12px', borderRadius: '10px', fontSize: '0.84rem', textAlign: 'center' }}>
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
+            {isAdminScope && resetUseSecret ? (
+              <input
+                type="password"
+                placeholder="请输入站长密钥 (ADMIN_SETUP_SECRET 或 API_TOKEN)"
+                aria-label="站长重置密钥"
+                value={resetSecretInput}
+                onChange={e => { setResetSecretInput(e.target.value); setErrorMsg(''); }}
+                style={inputStyle}
+              />
+            ) : (
+              <>
+                {!backendHasSec && (
+                  <div style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d', padding: '8px 10px', borderRadius: '8px', fontSize: '0.8rem' }}>
+                    ℹ️ 若此前未设置密保问题，{isAdminScope ? '请点击上方“站长密钥重置”' : '需联系家长确认原密码'}。
+                  </div>
+                )}
                 <select
                   value={selectedQuestion}
                   onChange={e => setSelectedQuestion(e.target.value)}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    background: 'rgba(0,0,0,0.5)',
-                    color: 'white',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    fontSize: '0.9rem'
-                  }}
+                  style={inputStyle}
                 >
                   {SECURITY_QUESTIONS.map(q => (
-                    <option key={q.id} value={q.id} style={{ background: '#1e293b', color: 'white' }}>
+                    <option key={q.id} value={q.id} style={{ background: '#0f172a', color: '#f8fafc' }}>
                       {q.text}
                     </option>
                   ))}
                 </select>
-
-                <label style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>安全答案（全小写拼音或文字）：</label>
                 <input
                   type="text"
-                  placeholder="请输入答案..."
+                  aria-label="安全问题答案"
+                  placeholder="请输入原密保答案..."
                   value={securityAnswer}
-                  onChange={e => setSecurityAnswer(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCompleteSetup()}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    background: 'rgba(0,0,0,0.3)',
-                    color: 'white',
-                    outline: 'none',
-                    fontSize: '0.95rem'
-                  }}
-                  autoFocus
+                  onChange={e => { setSecurityAnswer(e.target.value); setErrorMsg(''); }}
+                  style={inputStyle}
                 />
+              </>
+            )}
 
-                {setupError && (
-                  <div style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center' }}>
-                    {setupError}
-                  </div>
-                )}
+            <input
+              type="password"
+              aria-label="输入新密码"
+              inputMode="numeric"
+              placeholder={`输入新 ${PIN_LENGTH} 位数字密码`}
+              value={resetNewPin}
+              onChange={e => setResetNewPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
+              maxLength={PIN_LENGTH}
+              style={inputStyle}
+            />
+            <input
+              type="password"
+              aria-label="确认新密码"
+              inputMode="numeric"
+              placeholder="再次输入新密码确认"
+              value={resetNewPinConfirm}
+              onChange={e => setResetNewPinConfirm(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
+              maxLength={PIN_LENGTH}
+              style={inputStyle}
+            />
 
-                <button
-                  type="button"
-                  onClick={handleCompleteSetup}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: '#10b981',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    fontSize: '0.95rem',
-                    marginTop: '6px'
-                  }}
-                >
-                  ✅ 完成设置并进入
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="gate-header">
-                <span className="gate-shield-icon">🛡️</span>
-                <h3>家长安全锁</h3>
-                <p className="reason-text">正在进行：{reason}</p>
-                {isLockedOut ? (
-                  <p className="sub-text" style={{ color: '#ef4444' }}>
-                    ⏱️ 密码错误次数过多，请在 {remainingTime} 秒后重试
-                  </p>
-                ) : (
-                  <p className="sub-text">
-                    {success ? (
-                      <span style={{ color: '#10b981', fontWeight: 'bold' }}>✅ 密码验证通过，正在进入...</span>
-                    ) : isSettingUp ? (
-                      !firstPin ? '请设置 6 位家长安全密码' : '请再次输入同一密码以确认'
-                    ) : (
-                      hasConfiguredPin ? '请输入 6 位家长安全密码' : '首次使用请点击下方“首次设置家长密码”创建专属 6 位密码'
-                    )}
-                  </p>
-                )}
-              </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => { setViewMode('verify'); setErrorMsg(''); }}
+                style={{ ...secondaryBtnStyle, flex: 1 }}
+              >
+                返回
+              </button>
+              <button
+                type="button"
+                disabled={isVerifying || isLockedOut}
+                onClick={handleSubmitReset}
+                style={{
+                  flex: 2, padding: '11px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff',
+                  fontWeight: 700, cursor: isVerifying ? 'wait' : 'pointer', fontSize: '0.92rem'
+                }}
+              >
+                {isVerifying ? '校验并重置中...' : '✅ 校验并重置密码'}
+              </button>
+            </div>
+          </div>
+        )}
 
-              <div className="pin-display-container" style={{ height: 'auto', minHeight: '48px' }}>
-                {isSettingUp && requiresSetupSecret && (
-                  <div style={{ width: '100%', marginBottom: '12px' }}>
-                    <input
-                      type="password"
-                      value={setupSecret}
-                      onChange={e => { setSetupSecret(e.target.value); setSetupError(''); }}
-                      placeholder="🔑 请输入服务端初始化密钥 (ADMIN_SETUP_SECRET)"
-                      aria-label="服务端初始化密钥"
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(59, 130, 246, 0.45)',
-                        background: 'rgba(15, 23, 42, 0.65)',
-                        color: '#f8fafc',
-                        fontSize: '0.84rem',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        textAlign: 'center'
-                      }}
-                    />
-                  </div>
-                )}
-                <div className={`pin-dots ${error ? 'shake-error' : ''}`}>
-                  {Array.from({ length: PIN_LENGTH }, (_, idx) => (
-                    <span
-                      key={idx}
-                      className={`pin-dot ${pin.length > idx ? 'filled' : ''} ${error ? 'error' : ''} ${success ? 'success' : ''}`}
-                    />
-                  ))}
+        {/* 4. 主数字键盘视图（验证 / 首次设置第 1 步） */}
+        {(viewMode === 'verify' || viewMode === 'setup_pin') && (
+          <>
+            <div className="gate-header" style={{ textAlign: 'center' }}>
+              <span className="gate-shield-icon" style={{ fontSize: '2.2rem' }}>{isAdminScope ? '🔐' : '🛡️'}</span>
+              <h3 style={{ margin: '6px 0 4px', color: '#f8fafc' }}>{titleText}</h3>
+              <p className="reason-text" style={{ margin: '0 0 6px', color: '#fbbf24', fontSize: '0.88rem' }}>
+                正在进行：{reason}
+              </p>
+              {isLockedOut ? (
+                <p className="sub-text" style={{ color: '#f87171', margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>
+                  ⏱️ 密码错误次数过多，请在 {remainingTime} 秒后重试
+                </p>
+              ) : (
+                <p className="sub-text" style={{ color: '#cbd5e1', margin: 0, fontSize: '0.85rem' }}>
+                  {success ? (
+                    <span style={{ color: '#34d399', fontWeight: 700 }}>✅ 验证通过，正在进入...</span>
+                  ) : viewMode === 'setup_pin' ? (
+                    !firstPin ? '第 1/2 步：请设置 6 位自定义数字密码' : '第 1/2 步：请再次输入同一 6 位密码确认'
+                  ) : (
+                    hasConfiguredPin
+                      ? `请输入 6 位${isAdminScope ? '管理员' : '家长'}安全密码`
+                      : `首次使用请先设置专属 6 位${isAdminScope ? '管理员' : '家长'}密码`
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div className="pin-display-container" style={{ height: 'auto', minHeight: '52px', margin: '14px 0 10px' }}>
+              {viewMode === 'setup_pin' && isAdminScope && requiresSetupSecret && (
+                <div style={{ width: '100%', marginBottom: '12px' }}>
+                  <input
+                    type="password"
+                    value={setupSecret}
+                    onChange={e => { setSetupSecret(e.target.value); setErrorMsg(''); }}
+                    placeholder="🔑 站长初始化密钥 (ADMIN_SETUP_SECRET)"
+                    aria-label="服务端初始化密钥"
+                    style={{ ...inputStyle, textAlign: 'center', fontSize: '0.84rem' }}
+                  />
                 </div>
-                {setupError && (
-                  <span className="error-message-text" style={{ color: '#f59e0b', marginTop: '6px' }}>
-                    {setupError}
-                  </span>
-                )}
-                {error && (
-                  <span className="error-message-text" style={{ color: '#ef4444', marginTop: '6px' }}>
-                    {isSettingUp ? '⚠️ 两次输入的密码不一致，请重新输入' : '⚠️ 密码不正确，请重新输入'}
-                  </span>
-                )}
+              )}
+
+              <div className={`pin-dots ${error ? 'shake-error' : ''}`}>
+                {Array.from({ length: PIN_LENGTH }, (_, idx) => (
+                  <span
+                    key={idx}
+                    className={`pin-dot ${pin.length > idx ? 'filled' : ''} ${error ? 'error' : ''} ${success ? 'success' : ''}`}
+                  />
+                ))}
               </div>
 
-              <div className="numpad-grid">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    className="numpad-btn"
-                    aria-label={`数字 ${num}`}
-                    onClick={() => handleKeyPress(String(num))}
-                    disabled={isLockedOut || isVerifying || success}
-                  >
-                    {num}
-                  </button>
-                ))}
+              {infoMsg && !errorMsg && (
+                <span className="error-message-text" style={{ color: '#60a5fa', marginTop: '8px', fontSize: '0.82rem', textAlign: 'center' }}>
+                  {infoMsg}
+                </span>
+              )}
+              {errorMsg && (
+                <span className="error-message-text" style={{ color: '#f87171', marginTop: '8px', fontSize: '0.82rem', textAlign: 'center' }}>
+                  ⚠️ {errorMsg}
+                </span>
+              )}
+            </div>
+
+            <div className="numpad-grid">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                 <button
-                  type="button"
-                  className="numpad-btn control-btn"
-                  aria-label="清空输入"
-                  onClick={() => { setPin(''); setError(false); }}
-                  title="清空"
-                  disabled={isLockedOut || isVerifying || success}
-                >
-                  C
-                </button>
-                <button
+                  key={num}
                   type="button"
                   className="numpad-btn"
-                  aria-label="数字 0"
-                  onClick={() => handleKeyPress('0')}
+                  aria-label={`数字 ${num}`}
+                  onClick={() => handleKeyPress(String(num))}
                   disabled={isLockedOut || isVerifying || success}
                 >
-                  0
+                  {num}
                 </button>
-                <button
-                  type="button"
-                  className="numpad-btn control-btn"
-                  aria-label="退格"
-                  onClick={handleBackspace}
-                  title="退格"
-                  disabled={isLockedOut || isVerifying || success}
-                >
-                  ⌫
-                </button>
-              </div>
+              ))}
+              <button
+                type="button"
+                className="numpad-btn control-btn"
+                aria-label="清空输入"
+                onClick={() => { setPin(''); setError(false); setErrorMsg(''); }}
+                disabled={isLockedOut || isVerifying || success}
+              >
+                C
+              </button>
+              <button
+                type="button"
+                className="numpad-btn"
+                aria-label="数字 0"
+                onClick={() => handleKeyPress('0')}
+                disabled={isLockedOut || isVerifying || success}
+              >
+                0
+              </button>
+              <button
+                type="button"
+                className="numpad-btn control-btn"
+                aria-label="退格"
+                onClick={() => { setPin(prev => prev.slice(0, -1)); setError(false); }}
+                disabled={isLockedOut || isVerifying || success}
+              >
+                ⌫
+              </button>
+            </div>
 
-              <div className="gate-footer">
-                {!isSettingUp ? (
-                  <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <div className="gate-footer" style={{ marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {viewMode === 'verify' ? (
+                  <>
                     {!hasConfiguredPin && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsSettingUp(true);
-                          setPin('');
-                          setFirstPin('');
-                          setSetupError('');
-                          setError(false);
-                        }}
+                        onClick={() => { setViewMode('setup_pin'); setPin(''); setFirstPin(''); setErrorMsg(''); setInfoMsg(''); }}
                         style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}
                       >
-                        ⚙️ 首次设置家长密码
+                        ⚙️ 首次设置{isAdminScope ? '管理员' : '家长'}密码
+                      </button>
+                    )}
+                    {isAdminScope && (
+                      <button
+                        type="button"
+                        onClick={() => { setViewMode('admin_secret'); setErrorMsg(''); }}
+                        style={{ background: 'transparent', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline', fontWeight: 600 }}
+                      >
+                        🔑 站长密钥直登
                       </button>
                     )}
                     <button
                       type="button"
-                      onClick={() => setShowResetFlow(true)}
+                      onClick={() => { setViewMode('reset'); setErrorMsg(''); }}
                       style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}
                     >
-                      忘记密码？密保重置
+                      忘记密码？安全重置
                     </button>
-                  </div>
+                  </>
                 ) : (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                  <>
+                    {isAdminScope && (
+                      <button
+                        type="button"
+                        onClick={() => { setViewMode('admin_secret'); setErrorMsg(''); }}
+                        style={{ background: 'transparent', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline', fontWeight: 600 }}
+                      >
+                        🔑 站长密钥直登
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsSettingUp(false);
-                        setPin('');
-                        setFirstPin('');
-                        setSetupError('');
-                        setError(false);
-                      }}
+                      onClick={() => { setViewMode('verify'); setPin(''); setFirstPin(''); setErrorMsg(''); setInfoMsg(''); }}
                       style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.82rem' }}
                     >
                       ← 返回密码验证
                     </button>
-                  </div>
+                  </>
                 )}
               </div>
-            </>
-          )
-        ) : (
-          <>
-            <div className="gate-header">
-              <span className="gate-shield-icon">🔄</span>
-              <h3>重置家长密码</h3>
-              <p className="reason-text">
-                {resetStep === 0 ? '选择您的安全问题' :
-                 resetStep === 1 ? '回答安全问题' :
-                 '设置新密码'}
-              </p>
             </div>
-
-            {resetError && (
-              <div style={{ color: '#ef4444', fontSize: '0.9rem', textAlign: 'center', marginBottom: '12px' }}>
-                {resetError}
-              </div>
-            )}
-
-            {resetStep === 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px 0' }}>
-                {SECURITY_QUESTIONS.map(q => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={() => handleSelectQuestion(q.id)}
-                    style={{
-                      padding: '12px', borderRadius: '10px',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      background: 'rgba(255,255,255,0.05)', color: 'white',
-                      cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem'
-                    }}
-                  >
-                    {q.text}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => { setShowResetFlow(false); setResetError(''); }}
-                  style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer' }}
-                >
-                  取消
-                </button>
-              </div>
-            )}
-
-            {resetStep === 1 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px 0' }}>
-                <p style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>
-                  {SECURITY_QUESTIONS.find(q => q.id === selectedQuestion)?.text}
-                </p>
-                <input
-                  aria-label="安全问题答案"
-                  type="text"
-                  placeholder="请输入答案（拼音小写）"
-                  value={securityAnswer}
-                  onChange={e => setSecurityAnswer(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSubmitAnswer()}
-                  style={{
-                    padding: '10px 14px', borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    background: 'rgba(0,0,0,0.3)', color: 'white',
-                    outline: 'none', fontSize: '0.95rem'
-                  }}
-                  autoFocus
-                />
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setResetStep(0)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer' }}>返回</button>
-                  <button onClick={handleSubmitAnswer} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>验证</button>
-                </div>
-              </div>
-            )}
-
-            {resetStep === 2 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '10px 0' }}>
-                <p style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>设置新的 {PIN_LENGTH} 位数字密码</p>
-                <input
-                  aria-label="输入新密码"
-                  type="password"
-                  placeholder={`输入新密码（${PIN_LENGTH}位数字）`}
-                  value={newPin}
-                  onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
-                  maxLength={PIN_LENGTH}
-                  style={{
-                    padding: '10px 14px', borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    background: 'rgba(0,0,0,0.3)', color: 'white',
-                    outline: 'none', fontSize: '0.95rem'
-                  }}
-                />
-                <input
-                  aria-label="确认新密码"
-                  type="password"
-                  placeholder="再次输入新密码确认"
-                  value={newPinConfirm}
-                  onChange={e => setNewPinConfirm(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH))}
-                  maxLength={PIN_LENGTH}
-                  style={{
-                    padding: '10px 14px', borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    background: 'rgba(0,0,0,0.3)', color: 'white',
-                    outline: 'none', fontSize: '0.95rem'
-                  }}
-                />
-                <button onClick={handleSetNewPin} style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#10b981', color: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}>
-                  ✅ 确认重置密码
-                </button>
-              </div>
-            )}
           </>
         )}
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
