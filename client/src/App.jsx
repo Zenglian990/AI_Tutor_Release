@@ -497,10 +497,10 @@ function AppInner() {
     if (result === 'ADD_NEW') setShowAddProfile(true);
   }, [handleProfileChange]);
 
-  // Admin console gate handler (管理员控制台安全锁 — 与家庭家长锁彻底解耦)
+  // Admin console gate handler (管理员控制台安全锁 — 严格校验服务端签发的 admin session_token，绝不与家庭锁/旧缓存混用)
   const handleOpenAdminConsole = useCallback(() => {
-    const isVerified = sessionStorage.getItem('parent_session_token') || sessionStorage.getItem('parent_gate_verified_pin_hash');
-    if (isVerified) {
+    const adminSessionToken = sessionStorage.getItem('parent_session_token');
+    if (adminSessionToken) {
       setShowAdminConsole(true);
     } else {
       setGateScope('admin');

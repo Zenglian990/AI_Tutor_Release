@@ -55,9 +55,9 @@ export function isFeatureVisible(feature, grade, subject = '') {
     case 'manipulatives':
       return gradeNum <= 6 && (subj === '' || subj === '数学');
 
-    // 趣味口算天天练：仅限 1-6 年级 (7年级初一可作为巩固基础选修)，科目为数学或全部
+    // 60秒趣味口算/速算天天练：覆盖 1-12 年级数学全学段（小学口算、初中有理数平方、高中指对数/向量/组合/导数速算）
     case 'mentalMath':
-      return gradeNum <= 7 && (subj === '' || subj === '数学');
+      return subj === '' || subj === '数学';
 
     // 实时代数演算纸 (CAS 移项变号验证)：7-12 年级，且科目为数学、物理或全部
     case 'stepScratchpad':

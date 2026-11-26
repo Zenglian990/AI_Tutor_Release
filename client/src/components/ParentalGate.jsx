@@ -512,8 +512,8 @@ export default function ParentalGate({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 2500,
-        background: 'rgba(2, 6, 23, 0.82)',
+        zIndex: 100500,
+        background: 'rgba(2, 6, 23, 0.84)',
         backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
@@ -531,7 +531,7 @@ export default function ParentalGate({
           overflowY: 'auto',
           background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 100%)',
           color: '#f8fafc',
-          border: '1px solid rgba(148, 163, 184, 0.25)',
+          border: '1px solid rgba(148, 163, 184, 0.28)',
           borderRadius: '22px',
           padding: '24px 22px',
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.65)'
@@ -547,16 +547,19 @@ export default function ParentalGate({
             position: 'absolute',
             top: '14px',
             right: '14px',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: '#e2e8f0',
-            width: '32px',
-            height: '32px',
+            zIndex: 30,
+            background: 'rgba(255,255,255,0.14)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            color: '#f8fafc',
+            width: '34px',
+            height: '34px',
             borderRadius: '50%',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            fontSize: '1rem',
+            fontWeight: 700
           }}
         >
           ✕
@@ -887,6 +890,11 @@ export default function ParentalGate({
                   aria-label={`数字 ${num}`}
                   onClick={() => handleKeyPress(String(num))}
                   disabled={isLockedOut || isVerifying || success}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: '#f8fafc',
+                    border: '1px solid rgba(148, 163, 184, 0.28)'
+                  }}
                 >
                   {num}
                 </button>
@@ -897,6 +905,11 @@ export default function ParentalGate({
                 aria-label="清空输入"
                 onClick={() => { setPin(''); setError(false); setErrorMsg(''); }}
                 disabled={isLockedOut || isVerifying || success}
+                style={{
+                  background: 'rgba(148, 163, 184, 0.16)',
+                  color: '#e2e8f0',
+                  border: '1px solid rgba(148, 163, 184, 0.25)'
+                }}
               >
                 C
               </button>
@@ -906,6 +919,11 @@ export default function ParentalGate({
                 aria-label="数字 0"
                 onClick={() => handleKeyPress('0')}
                 disabled={isLockedOut || isVerifying || success}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#f8fafc',
+                  border: '1px solid rgba(148, 163, 184, 0.28)'
+                }}
               >
                 0
               </button>
@@ -915,6 +933,11 @@ export default function ParentalGate({
                 aria-label="退格"
                 onClick={() => { setPin(prev => prev.slice(0, -1)); setError(false); }}
                 disabled={isLockedOut || isVerifying || success}
+                style={{
+                  background: 'rgba(148, 163, 184, 0.16)',
+                  color: '#e2e8f0',
+                  border: '1px solid rgba(148, 163, 184, 0.25)'
+                }}
               >
                 ⌫
               </button>

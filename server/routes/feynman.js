@@ -187,7 +187,7 @@ router.post('/feynman/evaluate', requireQuotaOrVip('feynman'), async (req, res) 
             thinkingConfig: { thinkingBudget: 0 }
           }
         })
-      }, 2, 12000);
+      }, 2, 16000);
 
       if (!response.ok) throw new Error(`Upstream status ${response.status}`);
       const rawJson = await response.json();
