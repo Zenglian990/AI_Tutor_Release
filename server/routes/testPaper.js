@@ -932,7 +932,7 @@ router.post('/test-paper/generate', requireQuotaOrVip('test_paper_generate'), as
         let normalizedType = q.type || 'choice';
         if (
           normalizedType === 'choice' &&
-          (/^[A-D]{2,}$/i.test(rawAns) || /多项选择|多选题|有多项符合/.test(rawQuestion))
+          (/^[A-D]{2,}$/i.test(rawAns) || /[（(]\s*多选\s*[）)]|多选[：:]|多项选择|多选题|有多项符合/.test(rawQuestion))
         ) {
           normalizedType = 'multi_choice';
         }

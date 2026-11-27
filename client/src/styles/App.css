@@ -1469,6 +1469,19 @@ body.light-mode .formula-modal-card h3 {
   color: #0f172a !important;
 }
 
+body.light-mode .settings-modal input:not([type="radio"]):not([type="checkbox"]),
+body.light-mode .settings-modal select,
+body.light-mode .settings-modal textarea {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-mode .settings-modal option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
 body.light-mode .formula-katex-box,
 body.light-mode .formula-plain-box {
   background: #f8fafc !important;
@@ -1486,6 +1499,54 @@ body.light-mode .symbol-pill-chip {
   background: #ffffff !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
+}
+
+/* ☀️ 浅色模式下 RAG 本地教材引用卡片高对比度适配 */
+body.light-mode .sources-label {
+  color: #475569 !important;
+}
+
+body.light-mode .source-pill-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-mode .source-pill-card[open] {
+  background: #ffffff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.light-mode .source-pill-header {
+  color: #1d4ed8 !important;
+}
+
+body.light-mode .source-pill-expand-hint {
+  color: #64748b !important;
+}
+
+body.light-mode .source-pill-card[open] .source-pill-expand-hint {
+  color: #2563eb !important;
+}
+
+body.light-mode .source-pill-body {
+  background: #f1f5f9 !important;
+  border-top-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light-mode .source-pill-body .source-text,
+body.light-mode .source-pill-body p,
+body.light-mode .source-pill-body span {
+  color: #0f172a !important;
+}
+
+body.eink-mode .source-pill-card,
+body.eink-mode .source-pill-card[open],
+body.eink-mode .source-pill-body {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
 }
 
 body.eink-mode .grade-selector,

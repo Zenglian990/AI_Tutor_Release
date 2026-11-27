@@ -530,15 +530,25 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     return Number.isFinite(n) && n > 0 ? n : 0;
   };
 
+  const isMultiChoiceQuestion = (q) => {
+    if (!q) return false;
+    if (q.type === 'multi_choice') return true;
+    if (q.type === 'choice') {
+      const ans = String(q.answer || '').trim();
+      const qText = String(q.question || '');
+      if (/^[A-D]{2,}$/i.test(ans)) return true;
+      if (/[（(]\s*多选\s*[）)]|多选[：:]|多项选择|多选题|有多项符合/.test(qText)) return true;
+    }
+    return false;
+  };
+
   const getQuestionBlocks = () => {
     if (!paper || !paper.questions) return [];
     let blocks = [];
     let currentBlock = null;
 
     paper.questions.forEach((q, idx) => {
-      const effType = (q.type === 'choice' && q.answer && /^[A-D]{2,}$/i.test(String(q.answer).trim()))
-        ? 'multi_choice'
-        : q.type;
+      const effType = isMultiChoiceQuestion(q) ? 'multi_choice' : q.type;
       if (!currentBlock || currentBlock.type !== effType) {
         currentBlock = {
           type: effType,
@@ -944,7 +954,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
                       {block.questions.map((q) => {
-                        const isMulti = q.type === 'multi_choice' || (q.answer && /^[A-D]{2,}$/i.test(String(q.answer).trim()));
+                        const isMulti = isMultiChoiceQuestion(q);
                         return (
                         <div key={q.id} style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', minWidth: 0, overflow: 'hidden' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px' }}>

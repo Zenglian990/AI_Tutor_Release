@@ -525,8 +525,8 @@ export default function SettingsModal({
               fontWeight: 600,
               fontSize: '0.9rem',
               cursor: 'pointer',
-              color: activeTab === 'preferences' ? '#38bdf8' : '#94a3b8',
-              borderBottom: activeTab === 'preferences' ? '2.5px solid #38bdf8' : '2.5px solid transparent',
+              color: activeTab === 'preferences' ? 'var(--accent-color, #0284c7)' : 'var(--text-secondary, #64748b)',
+              borderBottom: activeTab === 'preferences' ? '2.5px solid #0284c7' : '2.5px solid transparent',
               transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
@@ -545,7 +545,7 @@ export default function SettingsModal({
               fontWeight: 600,
               fontSize: '0.9rem',
               cursor: 'pointer',
-              color: activeTab === 'ai_keys' ? '#c084fc' : '#94a3b8',
+              color: activeTab === 'ai_keys' ? '#9333ea' : 'var(--text-secondary, #64748b)',
               borderBottom: activeTab === 'ai_keys' ? '2.5px solid #a855f7' : '2.5px solid transparent',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -557,8 +557,8 @@ export default function SettingsModal({
             <span
               style={{
                 fontSize: '0.7rem',
-                background: 'rgba(168, 85, 247, 0.2)',
-                color: '#c084fc',
+                background: 'rgba(168, 85, 247, 0.16)',
+                color: '#9333ea',
                 padding: '1px 6px',
                 borderRadius: '8px',
                 fontWeight: 600
@@ -674,16 +674,16 @@ export default function SettingsModal({
               </div>
 
               {/* Section 2: AI 问答对话大模型引擎 */}
-              <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+              <div style={{ background: 'var(--card-bg, rgba(255, 255, 255, 0.03))', padding: '16px', borderRadius: '14px', border: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#38bdf8' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--accent-color, #0284c7)' }}>
                     🚀 AI 问答对话大模型引擎
                   </label>
-                  <span style={{ fontSize: '0.72rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(2, 132, 199, 0.14)', color: 'var(--accent-color, #0284c7)', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                     自主切换 · 严格执行
                   </span>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '0 0 12px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary, #64748b)', margin: '0 0 12px' }}>
                   根据网络环境与辅导偏好自由切换驱动大模型，系统将严格调用所选引擎：
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -696,8 +696,8 @@ export default function SettingsModal({
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? '1.5px solid #10b981' : '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                      background: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-tertiary, rgba(255, 255, 255, 0.02))',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -710,15 +710,15 @@ export default function SettingsModal({
                       style={{ marginTop: '4px', accentColor: '#10b981' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? '#34d399' : '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'Qwen/Qwen2.5-VL-72B-Instruct') ? '#059669' : 'var(--text-primary, #f8fafc)' }}>
                           🎯 通义千问 Qwen2.5-VL-72B（视觉旗舰 · 拍照解题顶级推荐）
                         </strong>
                         <span style={{ fontSize: '0.7rem', background: '#059669', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
                           多模态SOTA
                         </span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.4 }}>
                         开源顶级视觉多模态大模型（硅基流动直连），中小学数理几何图形解析、草稿纸手写体与排版 OCR 识别率极佳，国内免翻墙首选！
                       </p>
                     </div>
@@ -733,8 +733,8 @@ export default function SettingsModal({
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? '1.5px solid #06b6d4' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? '1.5px solid #06b6d4' : '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                      background: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? 'rgba(6, 182, 212, 0.12)' : 'var(--bg-tertiary, rgba(255, 255, 255, 0.02))',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -747,15 +747,15 @@ export default function SettingsModal({
                       style={{ marginTop: '4px', accentColor: '#06b6d4' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? '#22d3ee' : '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'Qwen/Qwen2.5-VL-7B-Instruct') ? '#0891b2' : 'var(--text-primary, #f8fafc)' }}>
                           ⚡ 通义千问 Qwen2.5-VL-7B（视觉轻量 · 极速出字）
                         </strong>
                         <span style={{ fontSize: '0.7rem', background: '#0891b2', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
                           毫秒响应
                         </span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.4 }}>
                         轻量级视觉大模型，响应速度极快，适合日常作业批改与基础题目快速辅导。
                       </p>
                     </div>
@@ -770,8 +770,8 @@ export default function SettingsModal({
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: (chatModel === 'qwen2.5-vl-72b-instruct') ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: (chatModel === 'qwen2.5-vl-72b-instruct') ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: (chatModel === 'qwen2.5-vl-72b-instruct') ? '1.5px solid #f59e0b' : '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                      background: (chatModel === 'qwen2.5-vl-72b-instruct') ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-tertiary, rgba(255, 255, 255, 0.02))',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -784,12 +784,12 @@ export default function SettingsModal({
                       style={{ marginTop: '4px', accentColor: '#f59e0b' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'qwen2.5-vl-72b-instruct') ? '#fbbf24' : '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'qwen2.5-vl-72b-instruct') ? '#d97706' : 'var(--text-primary, #f8fafc)' }}>
                           🏢 阿里百炼通义千问 Qwen2.5-VL（官方通道 · 深度适配教材）
                         </strong>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.4 }}>
                         阿里巴巴百炼官方大模型，专为中小学教材与考题深度调优，语境理解更地道。
                       </p>
                     </div>
@@ -804,8 +804,8 @@ export default function SettingsModal({
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: (chatModel === 'glm-4v-flash') ? '1.5px solid #ec4899' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: (chatModel === 'glm-4v-flash') ? 'rgba(236, 72, 153, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: (chatModel === 'glm-4v-flash') ? '1.5px solid #ec4899' : '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                      background: (chatModel === 'glm-4v-flash') ? 'rgba(236, 72, 153, 0.12)' : 'var(--bg-tertiary, rgba(255, 255, 255, 0.02))',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -818,15 +818,15 @@ export default function SettingsModal({
                       style={{ marginTop: '4px', accentColor: '#ec4899' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'glm-4v-flash') ? '#f472b6' : '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'glm-4v-flash') ? '#db2777' : 'var(--text-primary, #f8fafc)' }}>
                           🌸 智谱 GLM-4V-Flash（免费极速 · 中文多模态）
                         </strong>
                         <span style={{ fontSize: '0.7rem', background: '#db2777', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
                           完全免费
                         </span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.4 }}>
                         智谱 AI 开放平台面向开发者的永久免费多模态视觉模型，图文理解迅速。
                       </p>
                     </div>
@@ -841,8 +841,8 @@ export default function SettingsModal({
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: (chatModel === 'deepseek-chat') ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: (chatModel === 'deepseek-chat') ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: (chatModel === 'deepseek-chat') ? '1.5px solid #0284c7' : '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                      background: (chatModel === 'deepseek-chat') ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-tertiary, rgba(255, 255, 255, 0.02))',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -852,18 +852,18 @@ export default function SettingsModal({
                       name="chatModelOption"
                       checked={chatModel === 'deepseek-chat'}
                       onChange={() => setChatModel('deepseek-chat')}
-                      style={{ marginTop: '4px', accentColor: '#38bdf8' }}
+                      style={{ marginTop: '4px', accentColor: '#0284c7' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'deepseek-chat') ? '#38bdf8' : '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem', color: (chatModel === 'deepseek-chat') ? '#0284c7' : 'var(--text-primary, #f8fafc)' }}>
                           ⚡ DeepSeek-V3（纯文本模式 · 深度推理解答）
                         </strong>
                         <span style={{ fontSize: '0.7rem', background: '#0284c7', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
                           文字极速
                         </span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.4 }}>
                         国内毫秒级首字吐出，超强数理思维链！注：若拍题，系统将智能无缝调用您配置的视觉大模型。
                       </p>
                     </div>
@@ -878,8 +878,8 @@ export default function SettingsModal({
                       gap: '12px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      border: chatModel.includes('gemini') ? '1.5px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: chatModel.includes('gemini') ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: chatModel.includes('gemini') ? '1.5px solid #9333ea' : '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                      background: chatModel.includes('gemini') ? 'rgba(147, 51, 234, 0.12)' : 'var(--bg-tertiary, rgba(255, 255, 255, 0.02))',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -889,15 +889,15 @@ export default function SettingsModal({
                       name="chatModelOption"
                       checked={chatModel.includes('gemini')}
                       onChange={() => setChatModel('gemini-3-flash-preview')}
-                      style={{ marginTop: '4px', accentColor: '#a855f7' }}
+                      style={{ marginTop: '4px', accentColor: '#9333ea' }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <strong style={{ fontSize: '0.95rem', color: chatModel.includes('gemini') ? '#c084fc' : '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem', color: chatModel.includes('gemini') ? '#9333ea' : 'var(--text-primary, #f8fafc)' }}>
                           🧠 Google Gemini 3 Flash（官方云端默认 · 多模态图文）
                         </strong>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.4 }}>
                         谷歌新一代旗舰推理模型，原生支持高难度数理推导、识图批改与全学段教材融合检索。
                       </p>
                     </div>

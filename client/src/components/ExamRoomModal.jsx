@@ -280,7 +280,11 @@ export default function ExamRoomModal({
                   </span>
                   <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
                     {(() => {
-                      const isMultiLabel = currentQ.type === 'multi_choice' || (currentQ.type === 'choice' && currentQ.answer && /^[A-D]{2,}$/i.test(String(currentQ.answer).trim()));
+                      const isMultiLabel = currentQ.type === 'multi_choice' ||
+                        (currentQ.type === 'choice' && (
+                          (currentQ.answer && /^[A-D]{2,}$/i.test(String(currentQ.answer).trim())) ||
+                          /[（(]\s*多选\s*[）)]|多选[：:]|多项选择|多选题|有多项符合/.test(String(currentQ.question || ''))
+                        ));
                       const typeLabel = isMultiLabel
                         ? '多项选择题（漏选得一半）'
                         : currentQ.type === 'choice'
@@ -320,7 +324,11 @@ export default function ExamRoomModal({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                   {currentQ.options.map((opt, oIdx) => {
                     const optLetter = opt.trim().charAt(0).toUpperCase();
-                    const isMulti = currentQ.type === 'multi_choice' || (currentQ.answer && /^[A-D]{2,}$/i.test(String(currentQ.answer).trim()));
+                    const isMulti = currentQ.type === 'multi_choice' ||
+                      (currentQ.type === 'choice' && (
+                        (currentQ.answer && /^[A-D]{2,}$/i.test(String(currentQ.answer).trim())) ||
+                        /[（(]\s*多选\s*[）)]|多选[：:]|多项选择|多选题|有多项符合/.test(String(currentQ.question || ''))
+                      ));
                     const curStr = String(answers[currentQ.id] || '').toUpperCase();
                     const isSelected = isMulti ? curStr.includes(optLetter) : curStr === optLetter;
                     const pickOption = () => {

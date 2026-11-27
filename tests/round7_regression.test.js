@@ -133,3 +133,20 @@ test('Round7 Hotfix-2: 周报无未定义 settings 引用、模考杜绝 NaN 分
   assert.match(ktCode, /parseQuestionScore/, 'KnowledgeTest.jsx 应使用安全数值解析防 NaN 分');
   assert.match(chatCode, /safeTruncateLatexSnippet/, 'chat.js 应使用安全 LaTeX 截断杜绝奇数 $ 泄露');
 });
+
+test('Round7 Polish: 浅色模型卡与RAG引用卡高对比适配 + 多选题题干正则兜底', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const settingsCode = fs.readFileSync(path.join(__dirname, '../client/src/components/SettingsModal.jsx'), 'utf8');
+  const cssCode = fs.readFileSync(path.join(__dirname, '../client/src/styles/App.css'), 'utf8');
+  const examCode = fs.readFileSync(path.join(__dirname, '../client/src/components/ExamRoomModal.jsx'), 'utf8');
+  const ktCode = fs.readFileSync(path.join(__dirname, '../client/src/components/KnowledgeTest.jsx'), 'utf8');
+  const tpCode = fs.readFileSync(path.join(__dirname, '../server/routes/testPaper.js'), 'utf8');
+
+  assert.equal(settingsCode.includes("? '#34d399' : '#f8fafc'"), false, 'SettingsModal 视觉模型标题不应硬编码浅白字');
+  assert.equal(settingsCode.includes("? '#22d3ee' : '#f8fafc'"), false, 'SettingsModal 轻量模型标题不应硬编码浅白字');
+  assert.match(cssCode, /body\.light-mode \.source-pill-body/, 'App.css 应定义浅色模式下 RAG 引用卡高对比度样式');
+  assert.match(examCode, /\[（\(]\\s\*多选\\s\*\[）\)\]/, 'ExamRoomModal 应通过题干（多选）兜底识别多选题');
+  assert.match(ktCode, /isMultiChoiceQuestion/, 'KnowledgeTest 应统一通过 isMultiChoiceQuestion 识别多选题');
+  assert.match(tpCode, /\[（\(]\\s\*多选\\s\*\[）\)\]/, 'testPaper.js 应在后端出厂时通过题干（多选）归一化多选题');
+});
