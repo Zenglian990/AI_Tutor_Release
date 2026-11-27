@@ -926,6 +926,27 @@ router.post('/test-paper/generate', requireQuotaOrVip('test_paper_generate'), as
     } else {
       paperObj.duration = paperObj.duration || getExamDuration(grade);
       paperObj.grade = grade;
+      paperObj.questions = paperObj.questions.map((q, idx) => {
+        const rawAns = String(q.answer || '').trim();
+        const rawQuestion = String(q.question || '');
+        let normalizedType = q.type || 'choice';
+        if (
+          normalizedType === 'choice' &&
+          (/^[A-D]{2,}$/i.test(rawAns) || /多项选择|多选题|有多项符合/.test(rawQuestion))
+        ) {
+          normalizedType = 'multi_choice';
+        }
+        const parsedScore = Number(String(q.score ?? q.points ?? '').replace(/[^\d.]/g, ''));
+        const defaultScore = normalizedType === 'essay' ? 15 : (normalizedType === 'multi_choice' ? 6 : 5);
+        return {
+          ...q,
+          id: q.id ?? (idx + 1),
+          type: normalizedType,
+          score: Number.isFinite(parsedScore) && parsedScore > 0 ? parsedScore : defaultScore
+        };
+      });
+      const sumScore = paperObj.questions.reduce((acc, q) => acc + (Number(q.score) || 0), 0);
+      paperObj.totalScore = Number(paperObj.totalScore) > 0 ? Number(paperObj.totalScore) : sumScore;
     }
 
     res.json({ paper: paperObj });

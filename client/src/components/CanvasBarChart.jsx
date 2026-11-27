@@ -22,6 +22,15 @@ export default function CanvasBarChart({ data, height = 200, horizontal = false 
 
     const maxVal = Math.max(...data.map(d => d.value), 1);
     const COLORS = ['#3b82f6', '#a78bfa', '#38bdf8', '#34d399', '#f59e0b', '#f87171', '#fb923c', '#e879f9', '#4ade80'];
+    const isLightOrEink = typeof document !== 'undefined' && (
+      document.body.classList.contains('light-mode') ||
+      document.body.classList.contains('eink-mode') ||
+      document.documentElement.getAttribute('data-theme') === 'light'
+    );
+    const primaryTextColor = isLightOrEink ? '#0f172a' : '#f8fafc';
+    const secondaryTextColor = isLightOrEink ? '#475569' : '#94a3b8';
+    const barLabelColor = isLightOrEink ? '#1e293b' : '#cbd5e1';
+    const gridStrokeColor = isLightOrEink ? 'rgba(15,23,42,0.12)' : 'rgba(255,255,255,0.06)';
 
     if (!horizontal) {
       const padTop = 28, padBottom = 36, padLeft = 12, padRight = 12;
@@ -30,7 +39,7 @@ export default function CanvasBarChart({ data, height = 200, horizontal = false 
       const barW = Math.min((chartW / data.length) * 0.55, 48);
       const step = chartW / data.length;
 
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.strokeStyle = gridStrokeColor;
       ctx.lineWidth = 1;
       [0.25, 0.5, 0.75, 1].forEach(t => {
         const y = padTop + chartH * (1 - t);
@@ -53,13 +62,13 @@ export default function CanvasBarChart({ data, height = 200, horizontal = false 
         ctx.fill();
 
         if (d.value > 0) {
-          ctx.fillStyle = '#f8fafc';
+          ctx.fillStyle = primaryTextColor;
           ctx.font = `bold 12px system-ui, sans-serif`;
           ctx.textAlign = 'center';
           ctx.fillText(d.value, x + barW / 2, y - 6);
         }
 
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = secondaryTextColor;
         ctx.font = `11px system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText(d.label, x + barW / 2, H - padBottom + 16);
@@ -85,7 +94,7 @@ export default function CanvasBarChart({ data, height = 200, horizontal = false 
         else ctx.rect(padLeft, y, barW, barH);
         ctx.fill();
 
-        ctx.fillStyle = '#cbd5e1';
+        ctx.fillStyle = barLabelColor;
         ctx.font = `12px system-ui, sans-serif`;
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
@@ -98,7 +107,7 @@ export default function CanvasBarChart({ data, height = 200, horizontal = false 
         }
         ctx.fillText(labelText, padLeft - 8, y + barH / 2);
 
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = primaryTextColor;
         ctx.font = `bold 12px system-ui, sans-serif`;
         ctx.textAlign = 'left';
         ctx.fillText(`${d.value}题`, padLeft + barW + 6, y + barH / 2);

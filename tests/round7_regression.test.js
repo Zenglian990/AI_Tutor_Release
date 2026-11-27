@@ -106,3 +106,30 @@ test('Round7 P1-12: 高中知识图谱补齐语文/政治/化学/生物/历史/�
   assert.ok(countHighBySubj('历史') >= 3, '高中历史图谱节点不足');
   assert.ok(countHighBySubj('地理') >= 3, '高中地理图谱节点不足');
 });
+
+test('Round7 Hotfix: 单 Gemini Key 偶发超时不得全局冷却毒化并盲跳未配置的 DeepSeek', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const embCode = fs.readFileSync(path.join(__dirname, '../server/services/embedding.js'), 'utf8');
+  const chapCode = fs.readFileSync(path.join(__dirname, '../server/routes/chapters.js'), 'utf8');
+
+  assert.match(embCode, /hasAnyServerDomesticKey/, 'embedding.js 应统一检测服务端是否配置国内密钥');
+  assert.match(embCode, /!isIsolatedClient && hasAnyServerDomesticKey/, '冷却分支与兜底分支在未配国内密钥时不得盲跳 fetchDeepSeek');
+  assert.match(embCode, /validKeys\.length > 1[\s\S]{0,80}keyCooldown\.set/, '仅多 Key 池模式才应设置全局 keyCooldown');
+  assert.match(chapCode, /fetchWithKeyRotation\([\s\S]+?2,\s*25000\)/, 'chapters/quiz 超时应放宽至 25000ms');
+});
+
+test('Round7 Hotfix-2: 周报无未定义 settings 引用、模考杜绝 NaN 分、设置底栏版本 v1.7.7 且 RAG 安全截断 LaTeX', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const appCode = fs.readFileSync(path.join(__dirname, '../client/src/App.jsx'), 'utf8');
+  const settingsCode = fs.readFileSync(path.join(__dirname, '../client/src/components/SettingsModal.jsx'), 'utf8');
+  const ktCode = fs.readFileSync(path.join(__dirname, '../client/src/components/KnowledgeTest.jsx'), 'utf8');
+  const chatCode = fs.readFileSync(path.join(__dirname, '../server/routes/chat.js'), 'utf8');
+
+  assert.equal(appCode.includes('settings?.parentName') && !appCode.includes('store?.settings?.parentName'), false, 'App.jsx 不得引用未定义的 settings');
+  assert.equal(settingsCode.includes('v1.7.6'), false, 'SettingsModal.jsx 不得残留旧版本号 v1.7.6');
+  assert.equal(settingsCode.includes('v1.7.7'), true, 'SettingsModal.jsx 应展示 v1.7.7');
+  assert.match(ktCode, /parseQuestionScore/, 'KnowledgeTest.jsx 应使用安全数值解析防 NaN 分');
+  assert.match(chatCode, /safeTruncateLatexSnippet/, 'chat.js 应使用安全 LaTeX 截断杜绝奇数 $ 泄露');
+});

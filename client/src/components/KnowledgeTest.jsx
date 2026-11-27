@@ -525,15 +525,23 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
 
   // 按真题类型分类
   
+  const parseQuestionScore = (q) => {
+    const n = Number(String(q?.score ?? q?.points ?? '').replace(/[^\d.]/g, ''));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
   const getQuestionBlocks = () => {
     if (!paper || !paper.questions) return [];
     let blocks = [];
     let currentBlock = null;
 
     paper.questions.forEach((q, idx) => {
-      if (!currentBlock || currentBlock.type !== q.type) {
+      const effType = (q.type === 'choice' && q.answer && /^[A-D]{2,}$/i.test(String(q.answer).trim()))
+        ? 'multi_choice'
+        : q.type;
+      if (!currentBlock || currentBlock.type !== effType) {
         currentBlock = {
-          type: q.type,
+          type: effType,
           questions: [],
           score: 0,
           id: `block_${idx}`
@@ -541,7 +549,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         blocks.push(currentBlock);
       }
       currentBlock.questions.push(q);
-      currentBlock.score += q.score;
+      currentBlock.score += parseQuestionScore(q);
     });
 
     return blocks;
@@ -944,7 +952,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
                               题 {q.id}.{isMulti ? '（多选）' : ''}
                             </span>
                             <span style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
-                              {q.score} 分
+                              {parseQuestionScore(q) || 5} 分
                             </span>
                           </div>
                           <div style={{ fontSize: '13px', color: '#f3f4f6', lineHeight: '1.6', marginBottom: '12px', minWidth: 0 }}>

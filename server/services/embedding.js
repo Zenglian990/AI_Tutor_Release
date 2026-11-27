@@ -657,6 +657,15 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     ? (clientGeminiKey ? [clientGeminiKey] : [])
     : API_KEYS.filter(k => !invalidKeys.has(k));
 
+  const hasAnyServerDomesticKey = Boolean(
+    process.env.SILICONFLOW_API_KEY ||
+    process.env.DASHSCOPE_API_KEY ||
+    process.env.ZHIPU_API_KEY ||
+    process.env.DEEPSEEK_API_KEY ||
+    DEEPSEEK_API_KEY ||
+    process.env.OPENAI_API_KEY
+  );
+
   const isOpenAiCompatible = currentModel.toLowerCase().includes('deepseek') ||
                              currentModel.toLowerCase().includes('qwen') ||
                              currentModel.toLowerCase().includes('glm') ||
@@ -692,7 +701,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     if (canTryDomestic) {
       const hasAnyDomesticConfig = isIsolatedClient
         ? (hasClientDomesticKey || hasClientUrl)
-        : Boolean(process.env.SILICONFLOW_API_KEY || process.env.DASHSCOPE_API_KEY || process.env.ZHIPU_API_KEY || process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY);
+        : hasAnyServerDomesticKey;
 
       if (hasAnyDomesticConfig) {
         return await fetchDeepSeek(urlType, options, currentModel, timeoutMs);
@@ -742,7 +751,7 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     }
 
     if (!key) {
-      if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek && !isIsolatedClient) {
+      if ((urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek && !isIsolatedClient && hasAnyServerDomesticKey) {
         return await fetchDeepSeek(urlType, options, null, timeoutMs);
       }
       const activeCooldowns = [...keyCooldown.entries()]
@@ -751,8 +760,8 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
 
       if (activeCooldowns.length > 0) {
         const earliestExpiry = Math.min(...activeCooldowns);
-        const waitMs = earliestExpiry - Date.now();
-        if (waitMs > 0 && waitMs < 30000) {
+        const waitMs = Math.min(earliestExpiry - Date.now(), 3000);
+        if (waitMs > 0) {
           await new Promise(r => setTimeout(r, waitMs));
         }
       }
@@ -866,12 +875,12 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
           const alternateModel = currentModel === primaryGeminiModel ? liteGeminiModel : primaryGeminiModel;
           currentModel = alternateModel;
           url = buildURL(currentModel);
-          if (!hasClientGeminiKey) keyCooldown.set(key, Date.now() + 5000);
+          if (!hasClientGeminiKey && validKeys.length > 1) keyCooldown.set(key, Date.now() + 5000);
           await new Promise(resolve => setTimeout(resolve, 800));
           continue;
         }
 
-        if (!hasClientGeminiKey) keyCooldown.set(key, Date.now() + 5000);
+        if (!hasClientGeminiKey && validKeys.length > 1) keyCooldown.set(key, Date.now() + 5000);
         await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
         const isKeyAuthError = response.status === 401 ||
@@ -894,19 +903,21 @@ async function fetchWithKeyRotation(buildURL, options, maxRetries = 8, timeoutMs
     } catch (e) {
       cleanup();
       if (e?.code === 'ERR_INVALID_CLIENT_KEY') throw e;
+      if (options.signal?.aborted) throw e;
       lastError = e;
       consecutiveErrors++;
       logger.warn(`Network error on key ${maskKey(key)}: ${e.message}, retrying... (Attempt ${attempt + 1}/${loopLimit}).`);
-      if (!hasClientGeminiKey) {
+      // 仅在多 Key 池模式下对单把异常 Key 施加全局冷却，避免单 Key 生产环境因个别慢请求超时导致全站 10s 雪崩降级
+      if (!hasClientGeminiKey && validKeys.length > 1) {
         keyCooldown.set(key, Date.now() + 10_000);
       }
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1200));
     }
   }
 
-  // 严禁在客户端 Key 隔离模式下回退消耗服务端 DeepSeek 密钥池
+  // 严禁在客户端 Key 隔离模式下回退消耗服务端 DeepSeek 密钥池，且未配置国内密钥时不盲跳 fetchDeepSeek
   const canFallbackDomestic = (urlType === 'chat' || urlType === 'stream') && !effectiveSkipDeepSeek &&
-    (!isIsolatedClient || hasClientDomesticKey || hasClientUrl);
+    ((!isIsolatedClient && hasAnyServerDomesticKey) || hasClientDomesticKey || hasClientUrl);
 
   if (canFallbackDomestic) {
     try {

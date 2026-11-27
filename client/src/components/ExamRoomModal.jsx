@@ -279,15 +279,20 @@ export default function ExamRoomModal({
                     第 {currentIdx + 1} 题
                   </span>
                   <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                    [{currentQ.type === 'choice'
-                      ? '单项选择题'
-                      : currentQ.type === 'multi_choice'
+                    {(() => {
+                      const isMultiLabel = currentQ.type === 'multi_choice' || (currentQ.type === 'choice' && currentQ.answer && /^[A-D]{2,}$/i.test(String(currentQ.answer).trim()));
+                      const typeLabel = isMultiLabel
                         ? '多项选择题（漏选得一半）'
-                        : currentQ.type === 'judgment'
-                          ? '判断题'
-                          : currentQ.type === 'blank'
-                            ? '填空题'
-                            : '解答证明题'}] · 满分 {currentQ.score || 10} 分
+                        : currentQ.type === 'choice'
+                          ? '单项选择题'
+                          : currentQ.type === 'judgment'
+                            ? '判断题'
+                            : currentQ.type === 'blank'
+                              ? '填空题'
+                              : '解答证明题';
+                      const qScore = Number(String(currentQ.score ?? currentQ.points ?? '').replace(/[^\d.]/g, '')) || 10;
+                      return `[${typeLabel}] · 满分 ${qScore} 分`;
+                    })()}
                   </span>
                 </div>
                 <button

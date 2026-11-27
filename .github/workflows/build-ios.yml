@@ -14,7 +14,7 @@ permissions:
 jobs:
   build-ios:
     runs-on: macos-15
-    name: Build AI Tutor iOS App (v1.7.6)
+    name: Build AI Tutor iOS App (v1.7.7)
 
     steps:
       - name: Checkout repository
@@ -44,32 +44,32 @@ jobs:
           xcodebuild -project App.xcodeproj -scheme App -configuration Release -derivedDataPath build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO build
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
-          zip -qr ../../../AI_Tutor_v1.7.6.ipa Payload
-          ls -lh ../../../AI_Tutor_v1.7.6.ipa
+          zip -qr ../../../AI_Tutor_v1.7.7.ipa Payload
+          ls -lh ../../../AI_Tutor_v1.7.7.ipa
 
       - name: Compress iOS Xcode Project Bundle
         run: |
           cd client/ios
-          zip -qr ../../AI_Tutor_v1.7.6_iOS_Project.zip App -x "App/build/*" "App/Payload/*"
+          zip -qr ../../AI_Tutor_v1.7.7_iOS_Project.zip App -x "App/build/*" "App/Payload/*"
 
       - name: Upload Artifacts to Workflow
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.7.6_iOS_Package
+          name: AI_Tutor_v1.7.7_iOS_Package
           path: |
-            ./AI_Tutor_v1.7.6.ipa
-            ./AI_Tutor_v1.7.6_iOS_Project.zip
+            ./AI_Tutor_v1.7.7.ipa
+            ./AI_Tutor_v1.7.7_iOS_Project.zip
           retention-days: 30
 
-      - name: Attach iOS Assets to v1.7.6 Release
+      - name: Attach iOS Assets to v1.7.7 Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.7.6
+          tag_name: v1.7.7
           draft: false
           prerelease: false
           files: |
-            ./AI_Tutor_v1.7.6.ipa
-            ./AI_Tutor_v1.7.6_iOS_Project.zip
+            ./AI_Tutor_v1.7.7.ipa
+            ./AI_Tutor_v1.7.7_iOS_Project.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

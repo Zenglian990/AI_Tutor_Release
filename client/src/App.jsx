@@ -264,7 +264,7 @@ function AppInner() {
         body: JSON.stringify({
           profile_id: currentProfileId || 'default',
           student_name: currentProfile?.name || '同学',
-          parent_name: settings?.parentName || '家长',
+          parent_name: store?.settings?.parentName || '家长',
           grade: currentProfile?.grade || '7_up',
           subject: selectedSubject || '数学'
         })
@@ -280,7 +280,7 @@ function AppInner() {
     } finally {
       setReportLoading(false);
     }
-  }, [currentProfileId, currentProfile, selectedSubject]);
+  }, [currentProfileId, currentProfile, selectedSubject, store?.settings?.parentName]);
 
   const handleSocraticModeChange = useCallback((level) => {
     const isAntiCheatLocked = localStorage.getItem('parent_anti_cheat_locked') !== 'false';

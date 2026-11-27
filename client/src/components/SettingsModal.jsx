@@ -614,9 +614,9 @@ export default function SettingsModal({
                           gap: '6px',
                           padding: '6px 10px',
                           borderRadius: '10px',
-                          border: isActive ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.14)',
-                          background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(15, 23, 42, 0.45)',
-                          color: isActive ? '#f8fafc' : '#cbd5e1',
+                          border: isActive ? '1.5px solid #0284c7' : '1px solid var(--border-color, rgba(255,255,255,0.14))',
+                          background: isActive ? 'rgba(2, 132, 199, 0.16)' : 'var(--bg-tertiary, rgba(15, 23, 42, 0.45))',
+                          color: isActive ? 'var(--accent-color, #38bdf8)' : 'var(--text-primary, #cbd5e1)',
                           fontSize: '0.84rem'
                         }}
                       >
@@ -1876,24 +1876,24 @@ export default function SettingsModal({
         <div
           style={{
             padding: '12px 18px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            borderTop: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'rgba(15, 23, 42, 0.95)',
+            background: 'var(--bg-secondary, rgba(15, 23, 42, 0.95))',
             flexShrink: 0,
             gap: '10px',
             flexWrap: 'wrap'
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span>AI 智慧私教 v1.7.6</span>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #94a3b8)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>AI 智慧私教 v1.7.7</span>
             <span style={{ opacity: 0.75 }}>· 1-12年级全科全版本</span>
             {onOpenMembership && (
               <button
                 type="button"
                 onClick={() => { onClose && onClose(); onOpenMembership(); }}
-                style={{ background: 'rgba(139,92,246,0.16)', border: '1px solid rgba(139,92,246,0.35)', color: '#c4b5fd', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: 'rgba(139,92,246,0.14)', border: '1px solid rgba(139,92,246,0.38)', color: 'var(--accent-color, #a78bfa)', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
               >
                 💎 权益与激活码
               </button>
@@ -1902,7 +1902,7 @@ export default function SettingsModal({
               <button
                 type="button"
                 onClick={() => { onClose && onClose(); onOpenStats(); }}
-                style={{ background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.35)', color: '#7dd3fc', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: 'rgba(14,165,233,0.14)', border: '1px solid rgba(14,165,233,0.38)', color: '#0284c7', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
               >
                 📊 学情统计
               </button>
@@ -1911,7 +1911,7 @@ export default function SettingsModal({
               <button
                 type="button"
                 onClick={() => { onClose && onClose(); onOpenWeeklyReport(); }}
-                style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', color: '#6ee7b7', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: 'rgba(16,185,129,0.14)', border: '1px solid rgba(16,185,129,0.38)', color: '#059669', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
               >
                 📑 学习周报
               </button>
@@ -1920,7 +1920,7 @@ export default function SettingsModal({
               <button
                 type="button"
                 onClick={() => { onClose && onClose(); onOpenAdminConsole(); }}
-                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.38)', color: '#d97706', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
               >
                 🛡️ 管理员控制台
               </button>

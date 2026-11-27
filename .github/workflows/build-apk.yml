@@ -11,7 +11,7 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    name: Build AI Tutor Android APK (v1.7.6)
+    name: Build AI Tutor Android APK (v1.7.7)
 
     steps:
       - name: Checkout repository
@@ -113,50 +113,51 @@ jobs:
 
       - name: Prepare APK release artifact
         run: |
-          cp client/android/app/build/outputs/apk/release/app-release.apk ./AI_Tutor_v1.7.6.apk
-          ls -lh ./AI_Tutor_v1.7.6.apk
+          cp client/android/app/build/outputs/apk/release/app-release.apk ./AI_Tutor_v1.7.7.apk
+          ls -lh ./AI_Tutor_v1.7.7.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AI_Tutor_v1.7.6
-          path: ./AI_Tutor_v1.7.6.apk
+          name: AI_Tutor_v1.7.7
+          path: ./AI_Tutor_v1.7.7.apk
           retention-days: 30
 
-      - name: Create or Update v1.7.6 Latest Release
+      - name: Create or Update v1.7.7 Latest Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v1.7.6
-          name: "AI 智慧私教 (1-12年级) v1.7.6 - Android全站放通 · 双锁彻底解耦 · 理科科学纠偏与全学段精修"
+          tag_name: v1.7.7
+          name: "AI 智慧私教 (1-12年级) v1.7.7 - 理科验证引擎重构 · 新高考多选与圆锥曲线 · 家长10秒闭环与配额变现体系"
           draft: false
           prerelease: false
           make_latest: true
           body: |
-            ## 🚀 AI 智慧私教（1-12年级全学段）v1.7.6 正式版
+            ## 🚀 AI 智慧私教（1-12年级全学段）v1.7.7 正式版
 
-            - 📱 **彻底打通 Android APK 手机真机通信 & 双锁安全架构重构**：
-              - 服务端生产 CORS 白名单正式放通 Android Capacitor WebView 源（`https://localhost` / `http://localhost`），彻底解决手机 APK 访问云端接口 403 报错；
-              - **家庭家长安全锁**与**站长超管控制台**彻底解耦：普通家庭按档案独立设置 6 位 PIN + 必填密保（绝不再索要站长密钥），严堵“忘记密码吞错绕过”与“设置页直答绕过”高危漏洞；
-              - 新增**站长密钥一键直登**与设置页底部快捷入口，手机端粘贴密钥 1 秒直进管理控制台，彻底告别死锁。
-            - 🔥 **核心业务与获客/变现阻断全量根治**：
-              - 每台匿名新设备自动签发独立 `stu_*` 档案，彻底根治全站新访客共享 `default` 每日 30 次额度互相挤爆；
-              - 放通普通用户「诊断个人 API Key」（不回退消耗服务端密钥），正式挂载会员权益与特权激活中心；
-              - 修复 FSRS 3 分钟闪卡冲刺死循环与多档案 404、多档案学习地图串号、错题根因溯源空白页；
-              - 费曼以教代学升级为全屏 Portal + 真实 Gemini 轻量追问引擎；高三英语情景对练关闭重思考链提速至 2–4 秒级；
-              - 375px 手机端保留顶栏模式切换入口，重构 `📍 当前探索` 横幅彻底告别遮挡与关不掉。
-            - 🔬 **四大理科科学性纠偏与真实学情口径统一**：
-              - 修复小学等式天平倾斜画反、高中物理洛伦兹力周期量纲 10 倍偏差与凸透镜虚像光路/变阻器悬空、初中化学高锰酸钾制氧试管口画反与定时器泄漏、以及单元通关测评动态按年级出题；
-              - 家长远程视图修复 `?? 0` 与北京时间统计、今日战报支持高清 PNG 图片导出且过滤内部标签、恢复学情统计看板与 AI 周报全站入口、护眼番茄钟升级顶层全局后台计时、RAG 检索强锁同学科防跨学科串台。
+            - 🧮 **核心 AI 链路与理科引擎全面根治（10 项 P0 缺陷清零）**：
+              - 修复单 Gemini Key 偶发超时引发全站 10 秒冷却并盲跳未配置 DeepSeek 的雪崩降级，全量关闭作文/模考/周报/通关测评重思考链并支持顶层 JSON 数组与 `thought` 块剥离；
+              - 彻底修复 `ExactFraction` 负数 `NaN`、完全平方因式分解冗余 `/1` 与草稿纸高三导数/极值验算误判，分步草稿纸按当前题目动态初始化；
+              - 模考考场消灭多选题双控件冲突、补齐判断题与新高考数学多选题、补全生物/历史/地理/政治独立真学科题库，主观题 AI 异常改标待复核；
+              - 修复闭区间 Mermaid 语法报错、错题本 Mermaid 渲染、断层溯源「AI 专项补强」直通聊天与首页「生成 A4 错题卷」自动拉取云端错题；
+              - 统一全站连胜、周历、学情统计、AI 周报与家长远程视图至北京时间（UTC+8）。
+            - 🎨 **全学段功能深度精修（24 项 P1 升级）**：
+              - 动态几何升级高中**椭圆 / 双曲线 / 抛物线**三合一圆锥曲线沙盒；公式手册清除化学卡片裸 `\text{}` 并补全高中与小学核心公式；
+              - 作文诊所新增命题要求与 1–3 年级看图写话传图、五维分与总分严格算术对齐；
+              - 手机端 375px 保留快捷学科选择器、修复 A4 预览与长按钮遮挡，深色/浅色/墨水屏三主题全局适配；
+              - 站长后台修复鉴权/保存/测连/免二次密钥改 PIN，新增全站运营统计与 JSON 导出；补齐高中语文/政治/化学/生物/历史/地理 18 个知识图谱主干节点。
+            - 💼 **Phase 3 家长留存与商业转化闭环**：
+              - 首页新增免费额度可视化进度条与满额 VIP/自带 Key 平滑转化入口；
+              - 新增家长 10 秒闭环一键「周末错题清零卷」，连胜勋章真实绑定数据库已消灭错题数并防连点白嫖护盾。
             - 💯 **全栈自动化测试 100% 绿灯**：
-              - 后端 244 项测试（18 套）+ 前端全量 Vitest 单测 100% PASS。
+              - 后端 252 项测试（18 套）+ 前端 114 项 Vitest 单测（28 套）100% PASS。
 
             ---
             ### 📥 安装与使用
-            - **Android 端**：下载下方 **`AI_Tutor_v1.7.6.apk`**（`versionCode 32`，正式密钥签名）覆盖安装即可；
-            - **iOS 端**：使用 Safari 打开 [线上云端版](https://ai-tutor-79709693345.asia-east1.run.app) 添加到主屏幕，或下载下方 `AI_Tutor_v1.7.6.ipa`；
+            - **Android 端**：下载下方 **`AI_Tutor_v1.7.7.apk`**（`versionCode 33`，正式密钥签名）覆盖安装即可；
+            - **iOS 端**：使用 Safari 打开 [线上云端版](https://ai-tutor-79709693345.asia-east1.run.app) 添加到主屏幕，或下载下方 `AI_Tutor_v1.7.7.ipa`；
             - **Web / PC 端**：直达 [https://ai-tutor-79709693345.asia-east1.run.app](https://ai-tutor-79709693345.asia-east1.run.app)。
           files: |
-            ./AI_Tutor_v1.7.6.apk
+            ./AI_Tutor_v1.7.7.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

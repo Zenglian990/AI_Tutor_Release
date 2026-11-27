@@ -109,25 +109,34 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
 
     const cleanSubj = subject ? subject.replace(/[\s\-_]/g, '') : '数学';
 
-    // 高优先级提取核心学科概念词，避免“函数/区间/最大值/求”这种泛词落空后盲目拉取毫不相干的集合题
-    const coreConceptMatches = (query || '').match(/导数|极值|最值|单调|切线|椭圆|双曲线|抛物线|圆锥曲线|离心率|数列|等差|等比|向量|三角|正弦|余弦|概率|二项式|排列组合|立体几何|空间向量|不等式|对数|指数|复数|集合|一元二次|因式分解|勾股|相似|全等|一次函数|反比例|鸡兔同笼|周长|面积|分数|小数|牛顿|欧姆|洛伦兹|电场|磁场|功和能|原电池|电解池|化学平衡|勒夏特列|守恒|物质的量|光合作用|呼吸作用|减数分裂|基因|文言|古诗|修辞|议论文/g) || [];
+    // 高优先级提取核心学科概念词，避免“函数/区间/求”这种泛词落空或用单字“函数”拉出无关的逻辑命题/集合题
+    const coreConceptMatches = (query || '').match(/导数|导函数|极值|最值|最大值|最小值|单调递增|单调递减|单调|切线|零点|对称轴|周期性|椭圆|双曲线|抛物线|圆锥曲线|离心率|数列|等差|等比|向量|三角|正弦|余弦|概率|二项式|排列组合|立体几何|空间向量|不等式|对数|指数|复数|集合|一元二次|因式分解|勾股|相似|全等|一次函数|反比例|鸡兔同笼|周长|面积|分数|小数|牛顿|欧姆|洛伦兹|电场|磁场|功和能|原电池|电解池|化学平衡|勒夏特列|守恒|物质的量|光合作用|呼吸作用|减数分裂|基因|文言|古诗|修辞|议论文/g) || [];
+    const genericTerms = new Set(['函数', '区间', '方程', '题目', '问题', '计算', '图形', '已知', '解答']);
     const fallbackKeywords = (query || '')
       .replace(/老师|请问|帮我|针对|考考我|分步|启发|出题|一道|经典|最新|关于|我想|挑战|母题|模型|题眼|难题|在区间|上的|和|求|怎么|为什么/g, ' ')
       .match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z0-9]{2,}/g) || [];
-    const keywords = Array.from(new Set([...coreConceptMatches, ...fallbackKeywords]));
+    const specificFallback = fallbackKeywords.filter(w => !genericTerms.has(w));
+    const keywords = Array.from(new Set(
+      coreConceptMatches.length > 0
+        ? [...coreConceptMatches, ...specificFallback]
+        : (specificFallback.length > 0 ? specificFallback : fallbackKeywords)
+    ));
 
     let rows = [];
     if (keywords.length > 0) {
       const topKw = keywords.slice(0, 4);
-      let sql = `SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE ${gradeCondition} AND subject LIKE ?`;
-      const params = [...gradeParams, `%${cleanSubj}%`];
-      
+      const scoreExprs = topKw.map(() => '(CASE WHEN question LIKE ? OR chapter LIKE ? OR key_insight LIKE ? THEN 1 ELSE 0 END)');
+      let sql = `SELECT id, question, analysis, key_insight, chapter, source, standard_answer, (${scoreExprs.join(' + ')}) AS match_score FROM canonical_questions WHERE ${gradeCondition} AND subject LIKE ?`;
+      const params = [];
+      topKw.forEach(k => params.push(`%${k}%`, `%${k}%`, `%${k}%`));
+      params.push(...gradeParams, `%${cleanSubj}%`);
+
       const likeClauses = topKw.map(() => '(question LIKE ? OR chapter LIKE ? OR key_insight LIKE ?)').join(' OR ');
       if (likeClauses) {
         sql += ` AND (${likeClauses})`;
         topKw.forEach(k => params.push(`%${k}%`, `%${k}%`, `%${k}%`));
       }
-      sql += ' ORDER BY id ASC LIMIT ?';
+      sql += ' ORDER BY match_score DESC, id ASC LIMIT ?';
       params.push(limit);
       rows = await db.all(sql, params);
     }

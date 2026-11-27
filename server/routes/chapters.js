@@ -125,7 +125,7 @@ router.post('/chapters/quiz', async (req, res) => {
             thinkingConfig: { thinkingBudget: 0 }
           }
         })
-      }, 2, 12000);
+      }, 2, 25000);
 
       if (!response.ok) throw new Error(`Upstream status ${response.status}`);
       const data = await response.json();

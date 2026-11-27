@@ -221,11 +221,32 @@ router.post('/chat', requireQuotaOrVip('chat'), async (req, res) => {
       };
     });
 
+    // 安全截断含 LaTeX 公式的教材原文，杜绝在 $...$ 中间拦腰截断导致前端泄露裸 LaTeX 源码
+    const safeTruncateLatexSnippet = (raw, maxLen = 175) => {
+      const str = String(raw || '').trim();
+      if (!str) return '无文本';
+      if (str.length <= maxLen) return str;
+      let cut = str.substring(0, maxLen);
+      // 统计未转义 $ 数量，奇数表示在行内公式内部被截断，回退到最后一个 $ 之前
+      const unescapedDollarMatches = [...cut.matchAll(/(?<!\\)\$/g)];
+      if (unescapedDollarMatches.length % 2 === 1) {
+        const lastDollarIdx = unescapedDollarMatches[unescapedDollarMatches.length - 1].index;
+        if (lastDollarIdx > 20) {
+          cut = cut.substring(0, lastDollarIdx);
+        } else {
+          cut = cut.replace(/(?<!\\)\$/g, '');
+        }
+      }
+      // 去掉末尾被截碎的反斜杠命令或孤立标点
+      cut = cut.replace(/\\[a-zA-Z]*$/, '').replace(/[,，;；:：(\[\s]+$/, '');
+      return `${cut}...`;
+    };
+
     // 去重并规范化出处元数据（区分纯数字页码与章节/题库标签，避免前端傻拼“第 高考数学真题 页”）
     const seenSourceKeys = new Set();
     const sources = [];
     for (const r of correctedResults) {
-      const rawSnippet = r.text ? (r.text.length > 160 ? r.text.substring(0, 160) + '...' : r.text) : '无文本';
+      const rawSnippet = safeTruncateLatexSnippet(r.text, 175);
       const dedupeKey = `${r.source || ''}|${r.page || ''}|${rawSnippet.slice(0, 40)}`;
       if (seenSourceKeys.has(dedupeKey)) continue;
       seenSourceKeys.add(dedupeKey);
