@@ -109,14 +109,16 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
 
     const cleanSubj = subject ? subject.replace(/[\s\-_]/g, '') : '数学';
 
-    // Extract core educational keywords from query
-    const keywords = (query || '')
-      .replace(/老师|请问|帮我|针对|考考我|分步|启发|出题|一道|经典|最新|关于|我想|挑战|母题|模型|题眼|难题/g, ' ')
-      .match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z0-9]+/g) || [];
+    // 高优先级提取核心学科概念词，避免“函数/区间/最大值/求”这种泛词落空后盲目拉取毫不相干的集合题
+    const coreConceptMatches = (query || '').match(/导数|极值|最值|单调|切线|椭圆|双曲线|抛物线|圆锥曲线|离心率|数列|等差|等比|向量|三角|正弦|余弦|概率|二项式|排列组合|立体几何|空间向量|不等式|对数|指数|复数|集合|一元二次|因式分解|勾股|相似|全等|一次函数|反比例|鸡兔同笼|周长|面积|分数|小数|牛顿|欧姆|洛伦兹|电场|磁场|功和能|原电池|电解池|化学平衡|勒夏特列|守恒|物质的量|光合作用|呼吸作用|减数分裂|基因|文言|古诗|修辞|议论文/g) || [];
+    const fallbackKeywords = (query || '')
+      .replace(/老师|请问|帮我|针对|考考我|分步|启发|出题|一道|经典|最新|关于|我想|挑战|母题|模型|题眼|难题|在区间|上的|和|求|怎么|为什么/g, ' ')
+      .match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z0-9]{2,}/g) || [];
+    const keywords = Array.from(new Set([...coreConceptMatches, ...fallbackKeywords]));
 
     let rows = [];
     if (keywords.length > 0) {
-      const topKw = keywords.slice(0, 3);
+      const topKw = keywords.slice(0, 4);
       let sql = `SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE ${gradeCondition} AND subject LIKE ?`;
       const params = [...gradeParams, `%${cleanSubj}%`];
       
@@ -130,8 +132,8 @@ async function searchCanonicalQuestions(query, grade, subject, limit = 2) {
       rows = await db.all(sql, params);
     }
 
-    if (rows.length === 0) {
-      // Return curated benchmark questions for this grade and subject
+    // 仅在无具体关键词的泛问场景才回落精选典例；有明确知识点关键词却未命中时绝不硬塞不相关的集合题张冠李戴
+    if (rows.length === 0 && keywords.length === 0) {
       rows = await db.all(
         `SELECT id, question, analysis, key_insight, chapter, source, standard_answer FROM canonical_questions WHERE ${gradeCondition} AND subject LIKE ? ORDER BY id ASC LIMIT ?`,
         [...gradeParams, `%${cleanSubj}%`, limit]

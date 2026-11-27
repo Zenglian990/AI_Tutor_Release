@@ -80,21 +80,32 @@ class ExactFraction {
   static from(val) {
     if (val instanceof ExactFraction) return val;
     if (typeof val === 'number') {
+      if (!Number.isFinite(val)) throw new Error(`Cannot convert non-finite ${val} to ExactFraction`);
+      if (val === 0) return new ExactFraction(0, 1);
       if (Number.isInteger(val)) return new ExactFraction(val, 1);
+      // 严格分离正负号并对绝对值执行连分数逼近，防止负数触发 val * tolerance < 0 死循环产出 NaN/NaN
+      const sign = val < 0 ? -1 : 1;
+      const absVal = Math.abs(val);
       const tolerance = 1.0e-7;
       let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
-      let b = val;
-      do {
+      let b = absVal;
+      let iter = 0;
+      const MAX_ITER = 64;
+      while (iter < MAX_ITER) {
+        iter++;
         const a = Math.floor(b);
-        let aux = h1;
+        const auxH = h1;
         h1 = a * h1 + h2;
-        h2 = aux;
-        aux = k1;
+        h2 = auxH;
+        const auxK = k1;
         k1 = a * k1 + k2;
-        k2 = aux;
-        b = 1 / (b - a);
-      } while (Math.abs(val - h1 / k1) > val * tolerance);
-      return new ExactFraction(h1, k1);
+        k2 = auxK;
+        if (Math.abs(absVal - h1 / k1) <= absVal * tolerance) break;
+        const frac = b - a;
+        if (Math.abs(frac) < 1e-12) break;
+        b = 1 / frac;
+      }
+      return new ExactFraction(sign * h1, k1);
     }
     if (typeof val === 'string') {
       const parts = val.trim().split('/');
@@ -237,7 +248,8 @@ function factorizeQuadratic(a, b, c) {
 
   if (sol.type === 'two_equal_real_roots') {
     const root = sol.roots[0].exact;
-    const factorPart = root.n === 0 ? 'x' : (root.n > 0 ? `(x - ${root.toLaTeX()})` : `(x + ${Math.abs(root.n)}/${root.d})`);
+    const absRootLatex = new ExactFraction(Math.abs(root.n), root.d).toLaTeX();
+    const factorPart = root.n === 0 ? 'x' : (root.n > 0 ? `(x - ${root.toLaTeX()})` : `(x + ${absRootLatex})`);
     return {
       factorableInQ: true,
       factoredLatex: a === 1 ? `${factorPart}^2` : `${a}${factorPart}^2`,
@@ -335,14 +347,17 @@ function tokenizeMathExpr(expr) {
     throw new SyntaxError(`Expression contains untrusted or unsupported token: ${ch}`);
   }
 
-  // 在 Token 边界安全注入隐式乘法 '*'（绝不拆断 1e5 数字 Token）
+  // 在 Token 边界安全注入隐式乘法 '*'（绝不拆断 1e5 数字 Token，且不在函数名与 '(' 间误插 '*'）
+  const KNOWN_FUNCS = new Set(['sin', 'cos', 'tan', 'sqrt', 'abs', 'ln', 'log', 'exp']);
   const tokens = [];
   const isValueEnd = (t) => t.type === 'num' || t.type === 'ident' || (t.type === 'paren' && t.value === ')');
   const isValueStart = (t) => t.type === 'num' || t.type === 'ident' || (t.type === 'paren' && t.value === '(');
 
   for (let idx = 0; idx < rawTokens.length; idx++) {
     const curr = rawTokens[idx];
-    if (tokens.length > 0 && isValueEnd(tokens[tokens.length - 1]) && isValueStart(curr)) {
+    const prev = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+    const isFuncCall = prev && prev.type === 'ident' && KNOWN_FUNCS.has(prev.value.toLowerCase()) && curr.type === 'paren' && curr.value === '(';
+    if (prev && isValueEnd(prev) && isValueStart(curr) && !isFuncCall) {
       tokens.push({ type: 'op', value: '*' });
     }
     tokens.push(curr);
@@ -427,6 +442,31 @@ function evalMathTokens(tokens, varMap = {}) {
 
     if (tok.type === 'ident') {
       consume();
+      const lowerName = tok.value.toLowerCase();
+      // 支持常见初高中单参函数（sin/cos/tan/sqrt/abs/ln/log/exp）及数学常量 pi/e
+      const UNARY_FUNCS = {
+        sin: Math.sin,
+        cos: Math.cos,
+        tan: Math.tan,
+        sqrt: Math.sqrt,
+        abs: Math.abs,
+        ln: Math.log,
+        log: Math.log10,
+        exp: Math.exp
+      };
+      if (Object.prototype.hasOwnProperty.call(UNARY_FUNCS, lowerName) && peek() && peek().type === 'paren' && peek().value === '(') {
+        consume();
+        const argVal = parseExpr(depth + 1);
+        const closing = peek();
+        if (!closing || closing.type !== 'paren' || closing.value !== ')') {
+          throw new SyntaxError('Mismatched parentheses in function call');
+        }
+        consume();
+        return UNARY_FUNCS[lowerName](argVal);
+      }
+      if (lowerName === 'pi') return Math.PI;
+      if (lowerName === 'e' && !Object.prototype.hasOwnProperty.call(varMap, 'e')) return Math.E;
+
       if (Object.prototype.hasOwnProperty.call(varMap, tok.value)) {
         const val = Number(varMap[tok.value]);
         if (!Number.isFinite(val)) throw new SyntaxError(`Invalid variable value for ${tok.value}`);
@@ -467,6 +507,13 @@ function evalMathTokens(tokens, varMap = {}) {
   return result;
 }
 
+function stripFunctionPrefix(expr) {
+  return String(expr || '')
+    .trim()
+    .replace(/^[a-zA-Z]\s*\(\s*[a-zA-Z]\s*\)\s*=\s*/, '')
+    .replace(/^y\s*=\s*/i, '');
+}
+
 /**
  * 安全纯 JS 数学表达式求值器（用于 Schwartz-Zippel 代数等价校验）
  */
@@ -474,7 +521,7 @@ function evaluateExpressionAt(expr, varMap = {}) {
   if (typeof expr !== 'string' || !expr.trim()) {
     throw new SyntaxError('Expression must be a non-empty string');
   }
-  const tokens = tokenizeMathExpr(expr);
+  const tokens = tokenizeMathExpr(stripFunctionPrefix(expr));
   return evalMathTokens(tokens, varMap);
 }
 
@@ -483,8 +530,8 @@ function evaluateExpressionAt(expr, varMap = {}) {
  */
 function areAlgebraicallyEquivalent(exprA, exprB, varName = 'x') {
   if (!exprA || !exprB) return false;
-  const cleanA = String(exprA).trim();
-  const cleanB = String(exprB).trim();
+  const cleanA = stripFunctionPrefix(exprA);
+  const cleanB = stripFunctionPrefix(exprB);
   if (cleanA === cleanB) return true;
 
   const testPoints = [2.718, -3.141, 5.25, -7.8, 11.3];

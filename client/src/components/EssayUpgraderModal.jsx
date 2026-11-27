@@ -40,11 +40,21 @@ export default function EssayUpgraderModal({
   onApplyToChat
 }) {
   const [title, setTitle] = useState('');
+  const [promptTheme, setPromptTheme] = useState('');
+  const [pictureDataUrl, setPictureDataUrl] = useState('');
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState(null);
   const [fallbackNotice, setFallbackNotice] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // 切换年级时自动清空旧学段批改报告与示例，杜绝跨学段穿帮
+  React.useEffect(() => {
+    setReport(null);
+    setFallbackNotice('');
+    setErrorMsg('');
+    setPictureDataUrl('');
+  }, [currentGrade]);
 
   const rawGrade = parseGradeNumber(currentGrade);
   const isPrimaryLower = rawGrade <= 3;
@@ -52,6 +62,23 @@ export default function EssayUpgraderModal({
   const isHighSchool = rawGrade >= 10;
 
   if (!isOpen) return null;
+
+  const handlePictureUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('请上传常见图片格式（JPG/PNG/WebP）');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setPictureDataUrl(reader.result);
+        setErrorMsg('');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleLoadSample = () => {
     if (isPrimaryLower) {
@@ -87,6 +114,8 @@ export default function EssayUpgraderModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim() || '未命题',
+          prompt_theme: promptTheme.trim() || undefined,
+          image_base64: isPrimaryLower && pictureDataUrl ? pictureDataUrl : undefined,
           content: content.trim(),
           grade: currentGrade
         })
@@ -134,7 +163,7 @@ export default function EssayUpgraderModal({
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
       padding: '16px'
     }}>
-      <div style={{
+      <div className="essay-modal-card" style={{
         background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '780px',
         maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
         display: 'flex', flexDirection: 'column'
@@ -190,7 +219,15 @@ export default function EssayUpgraderModal({
 
               <input
                 type="text"
-                placeholder="作文题目（例如：《那一刻，我长大了》《阳光总在风雨后》）"
+                placeholder={
+                  isPrimaryLower
+                    ? '写话题目（例如：《可爱的小花猫》《放风筝的一天》）'
+                    : isPrimaryUpper
+                      ? '习作题目（例如：《一次难忘的劳动》《我的课余生活》）'
+                      : isHighSchool
+                        ? '高考作文题目（例如：《于变局中开新局》《工具理性与人文温度》）'
+                        : '作文题目（例如：《那一刻，我长大了》《阳光总在风雨后》）'
+                }
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 style={{
@@ -198,6 +235,38 @@ export default function EssayUpgraderModal({
                   fontSize: '0.95rem', fontWeight: 600, color: '#1e293b'
                 }}
               />
+
+              <input
+                type="text"
+                placeholder={
+                  isPrimaryLower
+                    ? '写作要求 / 题目提示（选填，例如：观察图片里的动物在做什么，用上表示顺序的词）'
+                    : isHighSchool
+                      ? '命题材料 / 审题要求（选填，贴入真题材料要点以便名师精准判别是否跑题）'
+                      : '命题要求 / 写作提示（选填，便于名师判断是否紧扣题意）'
+                }
+                value={promptTheme}
+                onChange={e => setPromptTheme(e.target.value)}
+                style={{
+                  padding: '8px 14px', borderRadius: '10px', border: '1px solid #e2e8f0',
+                  fontSize: '0.86rem', color: '#334155', background: '#f8fafc'
+                }}
+              />
+
+              {isPrimaryLower && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', background: '#fffbeb', border: '1px dashed #f59e0b', borderRadius: '10px', padding: '8px 12px' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#b45309', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🖼️ 上传看图写话原图（选填）</span>
+                    <input type="file" accept="image/*" onChange={handlePictureUpload} style={{ display: 'none' }} />
+                  </label>
+                  {pictureDataUrl && (
+                    <>
+                      <img src={pictureDataUrl} alt="看图写话原图" style={{ height: '42px', borderRadius: '6px', border: '1px solid #fcd34d' }} />
+                      <button type="button" onClick={() => setPictureDataUrl('')} style={{ background: 'transparent', border: 'none', color: '#dc2626', fontSize: '0.78rem', cursor: 'pointer' }}>移除图片</button>
+                    </>
+                  )}
+                </div>
+              )}
 
               <div style={{ position: 'relative' }}>
                 <textarea
@@ -304,7 +373,7 @@ export default function EssayUpgraderModal({
               {/* 5 Dimensions Grid */}
               <div>
                 <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', marginBottom: '10px' }}>
-                  📊 中高考五维阅卷雷达诊断：
+                  📊 {isPrimaryLower ? '小学低段写话五维能力诊断：' : (isPrimaryUpper ? '小学中高段习作五维雷达诊断：' : (isHighSchool ? '新高考作文五维阅卷雷达诊断：' : '中考作文五维阅卷雷达诊断：'))}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   {Object.entries(report.dimensions || {}).map(([k, dim]) => (

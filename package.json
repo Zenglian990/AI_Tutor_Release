@@ -1,6 +1,6 @@
 {
   "name": "ai_tutor_release",
-  "version": "1.7.6",
+  "version": "1.7.7",
   "description": "AI 智慧私教 (1-12年级全学段) - 开源 RAG AI 智能私教系统 (Gemini 3 Flash · 39,335道真题 · FSRS科学记忆 · 交互数学画板 · 中高考闭环提分)",
   "main": "server/index.js",
   "scripts": {

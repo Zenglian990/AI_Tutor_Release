@@ -8,9 +8,18 @@ import katex from 'katex';
  */
 
 function FormulaDisplay({ formula }) {
+  const normalizedPlain = useMemo(() => {
+    if (!formula) return '';
+    return String(formula)
+      .replace(/\\n/g, '\n')
+      .replace(/^\\text\{([\s\S]*)\}$/, '$1')
+      .replace(/\\text\{([^}]*)\}/g, '$1')
+      .trim();
+  }, [formula]);
+
   const renderedHtml = useMemo(() => {
     if (!formula) return null;
-    if (formula.includes('\n')) return null;
+    if (formula.includes('\n') || formula.includes('\\n')) return null;
     const chineseChars = (formula.match(/[\u4e00-\u9fa5]/g) || []).length;
     if (chineseChars > 0 && chineseChars / formula.length > 0.35) {
       return null;
@@ -35,8 +44,8 @@ function FormulaDisplay({ formula }) {
         dangerouslySetInnerHTML={{ __html: renderedHtml }}
         style={{
           fontSize: '1.05rem',
-          color: '#f8fafc',
-          background: 'rgba(0, 0, 0, 0.4)',
+          color: 'var(--text-primary, #f8fafc)',
+          background: 'rgba(15, 23, 42, 0.35)',
           padding: '8px 14px',
           borderRadius: '10px',
           margin: '4px 0',
@@ -54,19 +63,20 @@ function FormulaDisplay({ formula }) {
 
   return (
     <div
+      className="formula-plain-box"
       style={{
         fontSize: '0.92rem',
         color: '#fde047',
-        background: 'rgba(0, 0, 0, 0.35)',
+        background: 'rgba(15, 23, 42, 0.35)',
         padding: '8px 12px',
         borderRadius: '10px',
         margin: '4px 0',
         whiteSpace: 'pre-wrap',
-        lineHeight: 1.6,
-        fontWeight: 500
+        lineHeight: 1.65,
+        fontWeight: 600
       }}
     >
-      {formula}
+      {normalizedPlain}
     </div>
   );
 }
@@ -131,8 +141,8 @@ const FORMULA_DATABASE = {
       category: '📐 高中立体几何与空间向量',
       items: [
         { name: '空间向量数量积与夹角', formula: '\\cos \\theta = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}||\\vec{b}|}', desc: '空间向量求解夹角与垂直的核心判定公式' },
-        { name: '平面法向量求解方程组', formula: '\\vec{n} \\cdot \\vec{AB} = 0, \\quad \\vec{n} \\cdot \\vec{AC} = 0', desc: '设法向量坐标 (x,y,z)，联立两不共线基底向量解方程' },
-        { name: '点到平面距离公式', formula: 'd = \\frac{|\\vec{AB} \\cdot \\vec{n}|}{|\\vec{n}|}', desc: 'AB为平面外一点到平面内任意点的向量，n为法向量' },
+        { name: '平面法向量求解方程组', formula: '\\vec{n} \\cdot \\overrightarrow{AB} = 0, \\quad \\vec{n} \\cdot \\overrightarrow{AC} = 0', desc: '设法向量坐标 (x,y,z)，联立两不共线基底向量解方程' },
+        { name: '点到平面距离公式', formula: 'd = \\frac{|\\overrightarrow{AB} \\cdot \\vec{n}|}{|\\vec{n}|}', desc: 'AB为平面外一点到平面内任意点的向量，n为法向量' },
         { name: '二面角向量求解公式', formula: '|\\cos \\theta| = \\frac{|\\vec{n}_1 \\cdot \\vec{n}_2|}{|\\vec{n}_1||\\vec{n}_2|}', desc: '两半平面法向量夹角对应二面角大小（注意观察锐钝）' }
       ]
     },
@@ -148,10 +158,19 @@ const FORMULA_DATABASE = {
     },
     {
       stage: 'high',
+      category: '📐 高中解三角形与基本不等式',
+      items: [
+        { name: '正弦定理与外接圆半径', formula: '\\frac{a}{\\sin A} = \\frac{b}{\\sin B} = \\frac{c}{\\sin C} = 2R', desc: '边角互化利器，S = (1/2)ab·sinC' },
+        { name: '余弦定理', formula: 'a^2 = b^2 + c^2 - 2bc\\cos A, \\quad \\cos A = \\frac{b^2 + c^2 - a^2}{2bc}', desc: '已知两边夹角求第三边，或三边求夹角' },
+        { name: '基本不等式（均值不等式链）', formula: '\\frac{2}{\\frac{1}{a}+\\frac{1}{b}} \\le \\sqrt{ab} \\le \\frac{a+b}{2} \\le \\sqrt{\\frac{a^2+b^2}{2}} \\quad (a>0,b>0)', desc: '一正、二定、三相等（a=b 时取等号）' }
+      ]
+    },
+    {
+      stage: 'high',
       category: '⭕ 高中解析几何圆锥曲线',
       items: [
-        { name: '椭圆标准方程与性质', formula: '\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1, \\quad c^2 = a^2 - b^2, \\quad e = \\frac{c}{a}', desc: '焦点在x轴，离心率 0 < e < 1，通径为 2b²/a' },
-        { name: '双曲线标准方程与渐近线', formula: '\\frac{x^2}{a^2} - \\frac{y^2}{b^2} = 1, \\quad c^2 = a^2 + b^2, \\quad y = \\pm \\frac{b}{a}x', desc: '渐近线方程 y = ±(b/a)x，离心率 e > 1' },
+        { name: '椭圆标准方程与性质', formula: '\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1 \\; (a > b > 0), \\quad c^2 = a^2 - b^2, \\quad e = \\frac{c}{a}', desc: '焦点在x轴，离心率 0 < e < 1，通径为 2b²/a' },
+        { name: '双曲线标准方程与渐近线', formula: '\\frac{x^2}{a^2} - \\frac{y^2}{b^2} = 1 \\; (a > 0, b > 0), \\quad c^2 = a^2 + b^2, \\quad y = \\pm \\frac{b}{a}x', desc: '渐近线方程 y = ±(b/a)x，离心率 e > 1' },
         { name: '抛物线标准方程与准线', formula: 'y^2 = 2px \\quad (p > 0), \\quad \\text{准线 } x = -\\frac{p}{2}', desc: '焦点 (p/2, 0)，焦半径公式 |PF| = x + p/2' },
         { name: '弦长通用斜率公式', formula: 'L = \\sqrt{1 + k^2}|x_1 - x_2| = \\sqrt{1 + k^2}\\sqrt{(x_1+x_2)^2 - 4x_1x_2}', desc: '直线与圆锥曲线联立韦达定理直接代入' }
       ]
@@ -161,8 +180,17 @@ const FORMULA_DATABASE = {
       category: '🔢 高中数列与二项式定理',
       items: [
         { name: '等差数列通项与求和', formula: 'a_n = a_1 + (n - 1)d, \\quad S_n = \\frac{n(a_1 + a_n)}{2} = na_1 + \\frac{n(n - 1)}{2}d', desc: '等差中项 2an = an-1 + an+1' },
-        { name: '等比数列通项与求和', formula: 'a_n = a_1 q^{n - 1}, \\quad S_n = \\frac{a_1(1 - q^n)}{1 - q} \\quad (q \\ne 1)', desc: '错位相减法求差比数列前n项和' },
+        { name: '等比数列通项与求和（分 q=1 与 q≠1）', formula: 'S_n = \\begin{cases} na_1 & (q = 1) \\\\ \\frac{a_1(1 - q^n)}{1 - q} & (q \\ne 1) \\end{cases}', desc: '讨论公比 q 千万不要漏掉 q = 1 的特殊情况！' },
         { name: '二项式展开通项公式', formula: 'T_{r+1} = C_n^r a^{n - r} b^r', desc: '(a+b)^n 的第 r+1 项，快速求特定幂次系数与常数项' }
+      ]
+    },
+    {
+      stage: 'primary',
+      category: '🎒 小学 1-6 年级周长、面积与经典应用题',
+      items: [
+        { name: '长方形与正方形周长面积', formula: 'C_{\\text{长}} = 2(a+b), \\; S_{\\text{长}} = ab, \\quad C_{\\text{正}} = 4a, \\; S_{\\text{正}} = a^2', desc: '先统一长度单位再代公式计算' },
+        { name: '三角形、梯形与圆面积', formula: 'S_{\\triangle} = \\frac{1}{2}ah, \\quad S_{\\text{梯}} = \\frac{(a+b)h}{2}, \\quad S_{\\text{圆}} = \\pi r^2', desc: '三角形和梯形面积切记要除以 2！' },
+        { name: '行程相遇与追及公式', formula: 's_{\\text{相遇}} = (v_1 + v_2)t, \\quad s_{\\text{追及}} = (v_{\\text{快}} - v_{\\text{慢}})t', desc: '路程 = 速度 × 时间；相遇用速度和，追及用速度差' }
       ]
     }
   ],
@@ -223,10 +251,12 @@ const FORMULA_DATABASE = {
     },
     {
       stage: 'high',
-      category: '🧲 高中电场偏转与电磁感应微元',
+      category: '🧲 高中洛伦兹力、电场偏转与电磁感应',
       items: [
+        { name: '洛伦兹力与带电粒子圆周运动', formula: 'f_{\\text{洛}} = qvB\\sin\\theta, \\quad R = \\frac{mv}{qB}, \\quad T = \\frac{2\\pi m}{qB}', desc: '左手定则判方向（四指指向正电荷运动方向）；洛伦兹力永不做功，周期 T 与速度无关' },
+        { name: '安培力与磁场磁感应强度', formula: 'F_{\\text{安}} = BIL\\sin\\theta, \\quad B = \\frac{F}{IL}', desc: '通电导线在磁场中受力，垂直磁场时 F = BIL' },
         { name: '带电粒子在电场偏转位移', formula: 'y = \\frac{1}{2}at^2 = \\frac{qUL^2}{2mdv_0^2}', desc: '垂直电场匀速运动，沿电场做初速度为零的匀加速运动' },
-        { name: '法拉第电磁感应定律', formula: 'E = n\\frac{\\Delta \\Phi}{\\Delta t}, \\quad E = BLv', desc: '穿过闭合回路磁通量变化产生感应电动势，棒切割' },
+        { name: '法拉第电磁感应定律', formula: 'E = n\\frac{\\Delta \\Phi}{\\Delta t}, \\quad E = BLv', desc: '穿过闭合回路磁通量变化产生感应电动势，导体棒切割磁感线' },
         { name: '安培力冲量与电量微元法', formula: 'I_A = B\\bar{I}L\\Delta t = BqL = \\Delta p', desc: '双导轨电磁感应综合大题求位移与电荷量的核心公式' },
         { name: '理想变压器变压变流比', formula: '\\frac{U_1}{U_2} = \\frac{n_1}{n_2}, \\quad \\frac{I_1}{I_2} = \\frac{n_2}{n_1}, \\quad P_1 = P_2', desc: '输入功率决定输出功率，副线圈负载决定原线圈电流' }
       ]
@@ -246,41 +276,42 @@ const FORMULA_DATABASE = {
       category: '🧲 金属活动性顺序表',
       items: [
         { name: '金属活动性由强到弱', formula: 'K \\; Ca \\; Na \\; Mg \\; Al \\quad Zn \\; Fe \\; Sn \\; Pb \\; (H) \\quad Cu \\; Hg \\; Ag \\; Pt \\; Au', desc: '谐音记忆：钾钙钠镁铝，锌铁锡铅氢，铜汞银铂金' },
-        { name: '两大置换规律', formula: '1. 排在氢前面的金属能置换酸中的氢气\\n2. 排在前面的金属能把后面的金属从其盐溶液中置换出来 (K,Ca,Na除外)', desc: '判断金属与酸、金属与盐溶液反应的唯一法则' }
+        { name: '两大置换规律', formula: '1. 排在氢前面的金属能置换酸中的氢气\n2. 排在前面的金属能把后面的金属从其盐溶液中置换出来（K、Ca、Na 除外）', desc: '判断金属与酸、金属与盐溶液反应的唯一法则' }
       ]
     },
     {
       stage: 'middle',
       category: '🧪 初中常见沉淀与气体标志',
       items: [
-        { name: '五大白色沉淀', formula: 'BaSO_4 \\downarrow, \\; AgCl \\downarrow, \\; CaCO_3 \\downarrow, \\; BaCO_3 \\downarrow, \\; Mg(OH)_2 \\downarrow', desc: '注：BaSO₄与AgCl不溶于稀硝酸！' },
-        { name: '蓝色沉淀与红褐色沉淀', formula: 'Cu(OH)_2 \\downarrow \\text{ (蓝色)}, \\quad Fe(OH)_3 \\downarrow \\text{ (红褐色)}', desc: '离子检验的核心特征沉淀' },
-        { name: '常见气体生成标志', formula: 'CO_2 \\uparrow \\text{ (通入澄清石灰水变浑浊)}, \\quad H_2 \\uparrow, \\quad O_2 \\uparrow \\text{ (带火星木条复燃)}', desc: '方程式中反应物无气体时，生成气体须标注气体箭头 ↑' }
+        { name: '五大白色沉淀', formula: '\\text{BaSO}_4 \\downarrow, \\; \\text{AgCl} \\downarrow, \\; \\text{CaCO}_3 \\downarrow, \\; \\text{BaCO}_3 \\downarrow, \\; \\text{Mg(OH)}_2 \\downarrow', desc: '注：BaSO₄与AgCl不溶于稀硝酸！' },
+        { name: '蓝色沉淀与红褐色沉淀', formula: '\\text{Cu(OH)}_2 \\downarrow \\;(\\text{蓝色}), \\quad \\text{Fe(OH)}_3 \\downarrow \\;(\\text{红褐色})', desc: '离子检验的核心特征沉淀' },
+        { name: '常见气体生成标志', formula: '\\text{CO}_2 \\uparrow, \\quad \\text{H}_2 \\uparrow, \\quad \\text{O}_2 \\uparrow', desc: 'CO₂ 使澄清石灰水变浑浊；O₂ 使带火星木条复燃；反应物无气体时须标 ↑' }
       ]
     },
     {
       stage: 'high',
-      category: '⚖️ 高中化学反应速率与平衡常数 Kp',
+      category: '⚖️ 高中化学计量（物质的量）与平衡常数 Kp',
       items: [
-        { name: '平衡常数 K 与 Kp', formula: 'K = \\frac{[C]^c [D]^d}{[A]^a [B]^b}, \\quad K_p = \\frac{p(C)^c p(D)^d}{p(A)^a p(B)^b}', desc: 'K只受温度影响；吸热反应升温K增大，放热反应升温K减小' },
-        { name: '勒夏特列平衡移动原理', formula: '\\text{改变外界条件，平衡向减弱该改变的方向移动}', desc: '加压向气体分子数减小的方向移动，催化剂不影响平衡' }
+        { name: '物质的量核心枢纽公式', formula: 'n = \\frac{m}{M} = \\frac{N}{N_A} = \\frac{V}{V_m}\\;(\\text{标况气体}) = c \\cdot V', desc: '标况 Vm ≈ 22.4 L/mol（仅限气体，水/乙醇/SO₃ 非气体不可套用）' },
+        { name: '平衡常数 K 与 Kp', formula: 'K = \\frac{c^c(\\text{C}) \\cdot c^d(\\text{D})}{c^a(\\text{A}) \\cdot c^b(\\text{B})}, \\quad K_p = \\frac{p^c(\\text{C}) \\cdot p^d(\\text{D})}{p^a(\\text{A}) \\cdot p^b(\\text{B})}', desc: 'K 只受温度影响；吸热反应升温 K 增大，放热反应升温 K 减小' },
+        { name: '勒夏特列平衡移动原理', formula: '改变影响平衡的一个外界条件（浓度、压强、温度），化学平衡就向能够减弱这种改变的方向移动。', desc: '加压向气体分子数减小的方向移动，催化剂只加快反应速率、不改变平衡' }
       ]
     },
     {
       stage: 'high',
       category: '💧 高中溶液三大守恒与沉淀溶解 Ksp',
       items: [
-        { name: '水的离子积常数', formula: 'K_w = c(H^+) \\cdot c(OH^-) = 1.0 \\times 10^{-14} \\text{ (25℃)}', desc: '水是弱电解质，25℃纯水 c(H+)=c(OH-)=10⁻⁷ mol/L' },
-        { name: '溶液三大守恒定律', formula: '\\text{电荷守恒 / 物料守恒 / 质子守恒}', desc: '比较溶液中微粒浓度大小与配平离子反应的王牌工具' },
-        { name: '溶度积常数 Ksp 与沉淀转化', formula: 'K_{sp} = [M^{n+}]^m [A^{m-}]^n', desc: 'Q > Ksp 有沉淀析出；沉淀转化向更难溶(Ksp更小)方向进行' }
+        { name: '水的离子积常数', formula: 'K_w = c(\\text{H}^+) \\cdot c(\\text{OH}^-) = 1.0 \\times 10^{-14} \\; (25^\\circ\\text{C})', desc: '水是弱电解质，25℃纯水 c(H⁺)=c(OH⁻)=10⁻⁷ mol/L' },
+        { name: '溶液三大守恒定律', formula: '1. 电荷守恒：阳离子正电荷总数 = 阴离子负电荷总数\n2. 物料守恒：某元素原始总量 = 溶液中各微粒形态之和\n3. 质子守恒：水电离出的 H⁺ 与 OH⁻ 在各微粒中得失平衡', desc: '比较溶液中微粒浓度大小与配平离子反应的王牌工具' },
+        { name: '溶度积常数 Ksp 与沉淀转化', formula: 'K_{sp} = c^m(\\text{M}^{n+}) \\cdot c^n(\\text{A}^{m-})', desc: 'Q > Ksp 有沉淀析出；沉淀转化向更难溶（Ksp 更小）方向进行' }
       ]
     },
     {
       stage: 'high',
       category: '🔋 高中电化学原电池与电解池',
       items: [
-        { name: '原电池与电解池电极规律', formula: '\\text{负极失电子氧化，正极得电子还原；阳极氧化，阴极还原}', desc: '原电池电子从负极流向正极；电解池阳极连电源正极' },
-        { name: '离子交换膜应用', formula: '\\text{阳离子膜仅允许阳离子通过，阴离子膜仅允许阴离子通过}', desc: '工业氯碱制烧碱与浓缩回收酸碱的现代电化学模型' }
+        { name: '原电池与电解池电极规律', formula: '原电池：负极失电子氧化，正极得电子还原（电子外电路由负→正）\n电解池：阳极连电源正极失电子氧化，阴极连电源负极得电子还原', desc: '电解质溶液中仅靠阴阳离子定向迁移导电，电子绝不进入溶液' },
+        { name: '离子交换膜应用', formula: '阳离子交换膜仅允许阳离子通过（移向正极/阴极）；\n阴离子交换膜仅允许阴离子通过（移向负极/阳极）。', desc: '工业氯碱制烧碱与浓缩回收酸碱的高频大题模型' }
       ]
     }
   ]
@@ -288,8 +319,10 @@ const FORMULA_DATABASE = {
 
 export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject = '数学', currentGrade = '7_up', onApplyFormula, onInsertFormula }) {
   const handleApply = onApplyFormula || onInsertFormula;
-  const isHighSchoolGrade = ['10', '11', '12'].some(n => String(currentGrade || '').startsWith(n));
-  const [stageFilter, setStageFilter] = useState(isHighSchoolGrade ? 'high' : 'middle'); // 'all' | 'middle' | 'high'
+  const gNum = parseInt(String(currentGrade || '7').replace(/\D/g, ''), 10) || 7;
+  const isHighSchoolGrade = gNum >= 10;
+  const isPrimaryGrade = gNum <= 6;
+  const [stageFilter, setStageFilter] = useState(isHighSchoolGrade ? 'high' : (isPrimaryGrade ? 'primary' : 'middle'));
   const [activeTab, setActiveTab] = useState(() => {
     if (defaultSubject.includes('物')) return 'physics';
     if (defaultSubject.includes('化')) return 'chemistry';
@@ -300,9 +333,22 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
 
   React.useEffect(() => {
     if (isOpen) {
-      setStageFilter(isHighSchoolGrade ? 'high' : 'middle');
+      setStageFilter(isHighSchoolGrade ? 'high' : (isPrimaryGrade ? 'primary' : 'middle'));
+      if (defaultSubject.includes('物')) setActiveTab('physics');
+      else if (defaultSubject.includes('化')) setActiveTab('chemistry');
+      else setActiveTab('math');
     }
-  }, [isOpen, isHighSchoolGrade]);
+  }, [isOpen, isHighSchoolGrade, isPrimaryGrade, defaultSubject]);
+
+  // 支持 ESC 快捷关闭（与页脚提示一致）
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose && onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   const currentCategories = useMemo(() => {
     const raw = FORMULA_DATABASE[activeTab] || FORMULA_DATABASE.math;
@@ -356,7 +402,7 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
         boxSizing: 'border-box'
       }}
     >
-      <div style={{
+      <div className="formula-modal-card" style={{
         background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.96))',
         border: '1px solid rgba(59, 130, 246, 0.35)',
         borderRadius: '20px',
@@ -592,7 +638,8 @@ export default function FormulaHandbookModal({ isOpen, onClose, defaultSubject =
                             <button
                               type="button"
                               onClick={() => {
-                                handleApply(item.formula);
+                                const isMathFormula = /[\\^_=<>]/.test(item.formula) && !item.formula.includes('\n');
+                                handleApply(isMathFormula ? `$${item.formula}$` : item.formula);
                                 onClose();
                               }}
                               style={{

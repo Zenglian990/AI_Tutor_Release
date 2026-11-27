@@ -114,7 +114,17 @@ export default function ParentalGate({
         const hasPin = Boolean(data.has_pin && !data.needs_setup);
         setBackendHasPin(hasPin);
         setBackendHasSec(Boolean(data.has_security_question));
-        setRequiresSetupSecret(Boolean(isAdminScope && data.requires_setup_secret));
+        const hasActiveAdminSession = (() => {
+          try {
+            const raw = sessionStorage.getItem('ai_tutor_parent_session');
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            return Boolean(parsed?.token && (!parsed.expiresAt || parsed.expiresAt > Date.now()));
+          } catch {
+            return false;
+          }
+        })();
+        setRequiresSetupSecret(Boolean(isAdminScope && data.requires_setup_secret && !(forceSetup && hasActiveAdminSession)));
         if (data.question_id && SECURITY_QUESTIONS.some(q => q.id === data.question_id)) {
           setSelectedQuestion(data.question_id);
         }
@@ -324,8 +334,17 @@ export default function ParentalGate({
 
       const endpoint = isAdminScope ? '/api/admin/pin' : '/api/family/pin';
       const headers = { 'Content-Type': 'application/json' };
-      if (isAdminScope && setupSecret.trim()) {
-        headers['x-setup-secret'] = setupSecret.trim();
+      if (isAdminScope) {
+        if (setupSecret.trim()) {
+          headers['x-setup-secret'] = setupSecret.trim();
+        }
+        try {
+          const rawSess = sessionStorage.getItem('ai_tutor_parent_session');
+          const parsedSess = rawSess ? JSON.parse(rawSess) : null;
+          if (parsedSess?.token) {
+            headers['X-Parent-Session-Token'] = parsedSess.token;
+          }
+        } catch {}
       }
 
       const payload = isAdminScope

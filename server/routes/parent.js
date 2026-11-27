@@ -197,7 +197,8 @@ router.get('/parent/remote-view', async (req, res) => {
         return {
           id: m.id,
           subject: m.subject || '数学',
-          grade: m.grade || '初一',
+          grade: formatGradeName(m.grade || '7_up'),
+          rawGrade: m.grade || '7_up',
           snippet: queryText.length > 80 ? queryText.slice(0, 80) + '...' : queryText,
           reason: reasonText || '概念理解或审题失误',
           reviewCount: m.review_count || 0,
@@ -207,6 +208,33 @@ router.get('/parent/remote-view', async (req, res) => {
       });
     } catch (e) {
       logger.warn('[ParentRemote] Recent mistakes query error:', e.message);
+    }
+
+    // 6.5 7日窗口统一统计口径（与 AI 学习周报 / 学情统计看板 100% 对齐）
+    let weekStats = { chatTurns: todayChatCount, newMistakes: 0, reviewedMistakes: 0, masteredMistakes: masteredMistakes };
+    try {
+      const [wChat, wNewMistakes, wRev] = await Promise.all([
+        db.get(
+          `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND role = 'user' AND datetime(timestamp, '+8 hours') >= datetime('now', '+8 hours', '-7 days')`,
+          [activeProfileId]
+        ),
+        db.get(
+          `SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ? AND datetime(timestamp, '+8 hours') >= datetime('now', '+8 hours', '-7 days')`,
+          [activeProfileId]
+        ),
+        db.get(
+          `SELECT SUM(CASE WHEN COALESCE(review_count, 0) >= 1 THEN 1 ELSE 0 END) as reviewed FROM mistakes WHERE profile_id = ?`,
+          [activeProfileId]
+        )
+      ]);
+      weekStats = {
+        chatTurns: wChat?.c || 0,
+        newMistakes: wNewMistakes?.c || 0,
+        reviewedMistakes: wRev?.reviewed || 0,
+        masteredMistakes
+      };
+    } catch (e) {
+      logger.warn('[ParentRemote] Week stats query warning:', e.message);
     }
 
     // 7. Strict profile isolation: NEVER expose other users' profile_ids from database
@@ -257,6 +285,7 @@ router.get('/parent/remote-view', async (req, res) => {
         chatCount: todayChatCount,
         mistakesSolved: todayMistakesSolved
       },
+      weekStats,
       overallStats: {
         totalMistakes,
         masteredMistakes,
@@ -295,20 +324,35 @@ router.get('/parent/daily-memo', async (req, res) => {
 
     let todayChatCount = 0;
     let todayMistakesSolved = 0;
+    let weekChatCount = 0;
+    let totalMistakes = 0;
+    let masteredMistakes = 0;
 
     if (db) {
       try {
-        const chatRow = await db.get(
-          `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND date(timestamp) = date('now')`,
-          [targetPid]
-        );
+        const [chatRow, mistakeRow, weekChatRow, overallMistakeRow] = await Promise.all([
+          db.get(
+            `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND date(timestamp, '+8 hours') = date('now', '+8 hours')`,
+            [targetPid]
+          ),
+          db.get(
+            `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(COALESCE(last_reviewed_at, timestamp), '+8 hours') = date('now', '+8 hours')`,
+            [targetPid]
+          ),
+          db.get(
+            `SELECT COUNT(*) as count FROM chat_history WHERE profile_id = ? AND role = 'user' AND datetime(timestamp, '+8 hours') >= datetime('now', '+8 hours', '-7 days')`,
+            [targetPid]
+          ),
+          db.get(
+            `SELECT COUNT(*) as total, SUM(CASE WHEN COALESCE(review_count, 0) >= 3 THEN 1 ELSE 0 END) as mastered FROM mistakes WHERE profile_id = ?`,
+            [targetPid]
+          )
+        ]);
         todayChatCount = chatRow ? chatRow.count : 0;
-
-        const mistakeRow = await db.get(
-          `SELECT COUNT(*) as count FROM mistakes WHERE profile_id = ? AND review_count > 0 AND date(COALESCE(last_reviewed_at, timestamp)) = date('now')`,
-          [targetPid]
-        );
         todayMistakesSolved = mistakeRow ? mistakeRow.count : 0;
+        weekChatCount = weekChatRow ? weekChatRow.count : 0;
+        totalMistakes = overallMistakeRow?.total || 0;
+        masteredMistakes = overallMistakeRow?.mastered || 0;
       } catch (e) {
         logger.warn('[ParentMemo] Failed counting daily activity:', e.message);
       }
@@ -316,30 +360,33 @@ router.get('/parent/daily-memo', async (req, res) => {
 
     const activeMinutes = todayChatCount > 0 ? Math.max(Math.round(todayChatCount * 3), 3) : 0;
     const comfortScore = (todayChatCount > 0 || todayMistakesSolved > 0)
-      ? `${Math.min(99, 70 + Math.min(todayChatCount * 4 + todayMistakesSolved * 5, 29))} (真实活跃)`
+      ? `${Math.min(99, 70 + Math.min(todayChatCount * 4 + todayMistakesSolved * 5, 29))} (今日已真实伴学)`
       : '暂无学习记录';
 
     const memoTitle = `家长您好，这是【${resolvedName}】今日专属学情家访便签 💌`;
     const memoContent = todayChatCount > 0 || todayMistakesSolved > 0
       ? [
-          `🌟 今日伴学概况：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】真实互动探讨 ${todayChatCount} 轮，专注学习约 ${activeMinutes} 分钟。`,
+          `🌟 今日伴学概况：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】真实互动探讨 ${todayChatCount} 轮（近7天累计 ${weekChatCount} 轮），专注学习约 ${activeMinutes} 分钟。`,
           `🎯 能力与考点追踪：${memory.topWeakTags?.length ? `今日重点聚焦【${memory.topWeakTags.join('、')}】薄弱考点。` : '今日推导过程平稳，暂无新增高频薄弱标签。'}`,
-          `💡 督学跟进建议：${todayMistakesSolved > 0 ? `今天顺利复盘了 ${todayMistakesSolved} 道错题，抗遗忘巩固效果良好！` : '目前学习状态积极，建议晚间安排适度眼部放松与体育活动，避免过度刷题。'}`
+          `💡 督学跟进建议：${todayMistakesSolved > 0 ? `今天顺利复盘了 ${todayMistakesSolved} 道错题（累计彻底消灭 ${masteredMistakes}/${totalMistakes} 题），抗遗忘巩固效果良好！` : `当前累计收录 ${totalMistakes} 道错题（已消灭 ${masteredMistakes} 题），建议晚间安排 10 分钟错题复盘后适度放松。`}`
         ]
       : [
-          `🌟 今日伴学概况：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】尚无有效对话或错题复盘记录。`,
+          `🌟 今日伴学概况：${resolvedName} 同学今天在【${gradeLabel} · ${subject}】尚无有效对话或错题复盘记录（近7天累计互动 ${weekChatCount} 轮）。`,
           `🎯 能力与考点追踪：待孩子开始答疑、拍题批改或闪卡复习后，系统将基于真实作答生成薄弱点分析。`,
-          `💡 督学跟进建议：建议晚间陪孩子一起打开 10 分钟趣味答疑、口算天天练或知识点闯关，轻松开启今日节奏。`
+          `💡 督学跟进建议：建议晚间陪孩子一起打开 10 分钟趣味答疑、口算天天练或周末错题清零卷，轻松开启今日节奏。`
         ];
 
     res.json({
       success: true,
       studentName: resolvedName,
-      date: new Date().toLocaleDateString('zh-CN'),
+      date: new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' }),
       memoTitle,
       activeMinutes,
       todayChatCount,
       todayMistakesSolved,
+      weekChatCount,
+      totalMistakes,
+      masteredMistakes,
       memoContent,
       comfortScore,
       hasRealActivity: todayChatCount > 0 || todayMistakesSolved > 0

@@ -60,34 +60,80 @@ export const sanitizeMermaid = (code) => {
     .replace(/\\ne/g, '≠')
     .replace(/\\angle/g, '∠');
 
-  // Helper to clean remaining quotes/backslashes inside labels
+  // Helper to clean remaining quotes/backslashes/nested brackets inside labels
   const cleanLabel = (label, fallback) => {
-    const cleaned = label
-      .replace(/\\/g, '') // strip remaining backslashes
-      .replace(/"/g, '')  // strip double quotes entirely to prevent inner nesting conflict
+    const cleaned = String(label || '')
+      .replace(/\\/g, '')
+      .replace(/"/g, "'")
+      .replace(/\[/g, '［')
+      .replace(/\]/g, '］')
+      .replace(/\{/g, '｛')
+      .replace(/\}/g, '｝')
       .trim();
-    // If the label becomes empty after cleaning, use the node ID as fallback
-    // In Mermaid, an empty label like A("") or A[""] crashes the parser.
     return cleaned === '' ? fallback : cleaned;
   };
 
-  // Match node definitions:
-  // 1. Match ID((...)) and safely downgrade to ID("...") to prevent lexical/parse errors in Mermaid
-  let sanitized = cleanedCode.replace(/([a-zA-Z0-9_\-\u4e00-\u9fa5]+)\s*\(\(([^)\r\n]*)\)\)/g, (match, id, label) => {
-    return `${id}("${cleanLabel(label, id)}")`;
-  });
+  // 按行安全包裹 flowchart / graph 节点标签（支持含闭区间 [-2, 2] 与 f(x) 的复杂数学表达式，彻底消灭 Parse error）
+  const wrapNodeBracketsOnLine = (line) => {
+    // 跳过连接词、样式声明、注释、direction、subgraph
+    if (/^\s*(?:%%|style\b|classDef\b|class\b|click\b|linkStyle\b|subgraph\b|end\b|direction\b|graph\b|flowchart\b)/i.test(line)) {
+      return line;
+    }
+    let out = '';
+    let i = 0;
+    while (i < line.length) {
+      // 检测节点 ID 后紧跟 [ / { / (( / (
+      const rest = line.slice(i);
+      const nodeMatch = rest.match(/^([A-Za-z0-9_\u4e00-\u9fa5]+)\s*(\(\(|\[|\{|\()/);
+      if (nodeMatch) {
+        const id = nodeMatch[1];
+        const openTok = nodeMatch[2];
+        const openEnd = i + nodeMatch[0].length;
+        // 避免把箭头后的独立普通词误判（如 f(x) 已在外层标签内部会在外层消耗掉）
+        const closeChar = openTok === '[' ? ']' : (openTok === '{' ? '}' : ')');
+        if (openTok === '((') {
+          const closeIdx = line.indexOf('))', openEnd);
+          if (closeIdx !== -1) {
+            const inner = line.slice(openEnd, closeIdx);
+            out += `${id}("${cleanLabel(inner, id)}")`;
+            i = closeIdx + 2;
+            continue;
+          }
+        } else {
+          // 寻找平衡的最外层闭合括号（允许内部出现闭区间 [-2, 2] 或函数 f(x)）
+          let depth = 1;
+          let j = openEnd;
+          while (j < line.length && depth > 0) {
+            const ch = line[j];
+            if (ch === openTok) depth++;
+            else if (ch === closeChar) depth--;
+            j++;
+          }
+          if (depth === 0) {
+            const inner = line.slice(openEnd, j - 1);
+            const stripped = inner.trim();
+            const unwrapped = (stripped.startsWith('"') && stripped.endsWith('"') && stripped.length >= 2)
+              ? stripped.slice(1, -1)
+              : stripped;
+            if (openTok === '[') out += `${id}["${cleanLabel(unwrapped, id)}"]`;
+            else if (openTok === '{') out += `${id}{"${cleanLabel(unwrapped, id)}"}`;
+            else out += `${id}("${cleanLabel(unwrapped, id)}")`;
+            i = j;
+            continue;
+          }
+        }
+      }
+      out += line[i];
+      i++;
+    }
+    // 清洗连线标签里的嵌套双引号 |"... "|
+    out = out.replace(/\|([^|\r\n]+)\|/g, (m, lbl) => `|${lbl.replace(/"/g, "'").trim()}|`);
+    return out;
+  };
 
-  // 2. Match ID(...)
-  sanitized = sanitized.replace(/([a-zA-Z0-9_\-\u4e00-\u9fa5]+)\s*\(([^)\r\n]*)\)/g, (match, id, label) => {
-    if (label.startsWith('"') && label.endsWith('"')) return match;
-    if (label.startsWith('(') && label.endsWith(')')) return match;
-    return `${id}("${cleanLabel(label, id)}")`;
-  });
-
-  // 3. Match ID[...]
-  sanitized = sanitized.replace(/([a-zA-Z0-9_\-\u4e00-\u9fa5]+)\s*\[([^\]\r\n]*)\]/g, (match, id, label) => {
-    return `${id}["${cleanLabel(label, id)}"]`;
-  });
+  let sanitized = cleanedCode.includes('mindmap')
+    ? cleanedCode
+    : cleanedCode.split('\n').map(wrapNodeBracketsOnLine).join('\n');
 
   // Mindmap fix: wrap text containing special characters in quotes
   if (sanitized.includes('mindmap')) {

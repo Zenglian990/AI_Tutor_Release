@@ -187,27 +187,37 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.font = '14px sans-serif';
       ctx.fillText('纯离线端侧推理兜底 · 无需盯梢 · 培养终身自学习惯', width / 2, 635);
     } else {
-      // Junior High template
+      // Junior High / High School adaptive template
+      const isSeniorPoster = ['10', '11', '12'].some(n => String(grade || '').startsWith(n));
       ctx.fillStyle = '#38bdf8';
       ctx.font = 'bold 28px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('中考压轴动点几何微步破题', width / 2, 180);
+      ctx.fillText(isSeniorPoster ? '新高考核心压轴专题精研破题' : '中考压轴动点几何微步破题', width / 2, 180);
 
       ctx.fillStyle = '#a5b4fc';
       ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('全国 39,114+ 名校真题真卷实战', width / 2, 220);
+      ctx.fillText('全国 39,114+ 权威教材与真题实战', width / 2, 220);
 
       ctx.fillStyle = '#cbd5e1';
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'left';
-      const lines = [
-        `🎯 考生【${studentName}】中考全真模考演练`,
-        '📐 点P动点轨迹仿真，实时面积函数S(t)计算',
-        '📈 二次函数开口/顶点平移可视化交互沙盘',
-        '🦉 智多星博士四阶苏格拉底，拒绝死抄答案',
-        '🏛️ 北京海淀/湖北黄冈/江苏启东名校密卷直通',
-        '📊 中考级步骤分（审题/推导/结论）精细评阅'
-      ];
+      const lines = isSeniorPoster
+        ? [
+            `🎯 学员【${studentName}】新高考全真模考实战`,
+            '🪐 圆锥曲线（椭圆/双曲线/抛物线）交互推导沙盘',
+            '📈 导数极值与步骤级 CAS 实时验算纠偏',
+            '🦉 苏格拉底启发追问 + 费曼讲题深度内化',
+            '🏛️ 新高考全国卷与重点名校联考密卷直通',
+            '📊 高考级采分点（审题/推导/结论）精细评阅'
+          ]
+        : [
+            `🎯 考生【${studentName}】中考全真模考演练`,
+            '📐 点P动点轨迹仿真，实时面积函数S(t)计算',
+            '📈 二次函数开口/顶点平移可视化交互沙盘',
+            '🦉 智多星博士四阶苏格拉底，拒绝死抄答案',
+            '🏛️ 北京海淀/湖北黄冈/江苏启东名校密卷直通',
+            '📊 中考级步骤分（审题/推导/结论）精细评阅'
+          ];
       lines.forEach((line, idx) => {
         ctx.fillText(line, 66, 280 + idx * 45);
       });
@@ -221,7 +231,7 @@ export default function ParentSharePosterModal({ isOpen, onClose }) {
       ctx.fillStyle = '#38bdf8';
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🚀 突破压轴题瓶颈 · 冲刺重点高中', width / 2, 600);
+      ctx.fillText(isSeniorPoster ? '🚀 击穿高考压轴瓶颈 · 冲刺双一流名校' : '🚀 突破压轴题瓶颈 · 冲刺重点高中', width / 2, 600);
       ctx.fillStyle = '#94a3b8';
       ctx.font = '14px sans-serif';
       ctx.fillText('家庭打印机局域网秒级出卷 · 微信随身学情直连', width / 2, 635);

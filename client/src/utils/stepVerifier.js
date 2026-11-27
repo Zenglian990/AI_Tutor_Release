@@ -69,13 +69,16 @@ function tokenizeStepExpr(expr) {
     throw new Error('Unsupported tokens in expression');
   }
 
+  const KNOWN_FUNCS = new Set(['sin', 'cos', 'tan', 'sqrt', 'abs', 'ln', 'log', 'exp']);
   const tokens = [];
   const isValueEnd = (t) => t.type === 'num' || t.type === 'ident' || (t.type === 'paren' && t.value === ')');
   const isValueStart = (t) => t.type === 'num' || t.type === 'ident' || (t.type === 'paren' && t.value === '(');
 
   for (let idx = 0; idx < rawTokens.length; idx++) {
     const curr = rawTokens[idx];
-    if (tokens.length > 0 && isValueEnd(tokens[tokens.length - 1]) && isValueStart(curr)) {
+    const prev = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+    const isFuncCall = prev && prev.type === 'ident' && KNOWN_FUNCS.has(prev.value.toLowerCase()) && curr.type === 'paren' && curr.value === '(';
+    if (prev && isValueEnd(prev) && isValueStart(curr) && !isFuncCall) {
       tokens.push({ type: 'op', value: '*' });
     }
     tokens.push(curr);
@@ -143,6 +146,30 @@ function sanitizeForEval(expr, varMap = {}) {
     }
     if (tok.type === 'ident') {
       consume();
+      const lower = tok.value.toLowerCase();
+      const UNARY_FUNCS = {
+        sin: Math.sin,
+        cos: Math.cos,
+        tan: Math.tan,
+        sqrt: Math.sqrt,
+        abs: Math.abs,
+        ln: Math.log,
+        log: Math.log10,
+        exp: Math.exp
+      };
+      if (Object.prototype.hasOwnProperty.call(UNARY_FUNCS, lower) && peek() && peek().type === 'paren' && peek().value === '(') {
+        consume();
+        const argVal = parseExpr(depth + 1);
+        const close = peek();
+        if (!close || close.type !== 'paren' || close.value !== ')') {
+          throw new Error('Mismatched parentheses in function call');
+        }
+        consume();
+        return UNARY_FUNCS[lower](argVal);
+      }
+      if (lower === 'pi') return Math.PI;
+      if (lower === 'e' && !Object.prototype.hasOwnProperty.call(varMap, 'e')) return Math.E;
+
       if (Object.prototype.hasOwnProperty.call(varMap, tok.value)) {
         return Number(varMap[tok.value]);
       }
@@ -173,11 +200,35 @@ function sanitizeForEval(expr, varMap = {}) {
 }
 
 /**
+ * 检测是否为函数定义式 f(x) = ... 或导函数式 f'(x) = ...
+ */
+function parseFunctionDeclaration(str) {
+  const trimmed = String(str || '').trim();
+  const derivMatch = trimmed.match(/^([a-zA-Z])\s*['′]\s*\(\s*([a-zA-Z])\s*\)\s*=\s*(.+)$/);
+  if (derivMatch) {
+    return { kind: 'derivative', fnName: derivMatch[1], varName: derivMatch[2], body: derivMatch[3].trim() };
+  }
+  const fnMatch = trimmed.match(/^([a-zA-Z])\s*\(\s*([a-zA-Z])\s*\)\s*=\s*(.+)$/);
+  if (fnMatch) {
+    return { kind: 'function', fnName: fnMatch[1], varName: fnMatch[2], body: fnMatch[3].trim() };
+  }
+  const yDerivMatch = trimmed.match(/^y\s*['′]\s*=\s*(.+)$/i);
+  if (yDerivMatch) {
+    return { kind: 'derivative', fnName: 'y', varName: 'x', body: yDerivMatch[1].trim() };
+  }
+  return null;
+}
+
+/**
  * 将方程 A = B 转化为单侧表达式 A - (B)
  */
 export function parseEquationToExpression(eqStr) {
   if (!eqStr || typeof eqStr !== 'string') return '';
   const trimmed = eqStr.trim();
+  const fnDecl = parseFunctionDeclaration(trimmed);
+  if (fnDecl) {
+    return fnDecl.body;
+  }
   const parts = trimmed.split('=');
   if (parts.length === 2) {
     const lhs = parts[0].trim();
@@ -216,6 +267,121 @@ export function verifyStepTransition(prevStep, currStep, varName = 'x') {
     (cleanCurr.match(/\(/g) || []).length > (cleanCurr.match(/\)/g) || []).length
   ) {
     return { valid: false, status: 'typing', message: '正在输入...', tip: '' };
+  }
+
+  // 高中微积分专项：支持 f(x) -> f'(x) 求导验算，及 f'(x) = expr -> expr = 0 驻点方程推导
+  const prevFn = parseFunctionDeclaration(cleanPrev);
+  const currFn = parseFunctionDeclaration(cleanCurr);
+  if (prevFn && prevFn.kind === 'function' && currFn && currFn.kind === 'derivative') {
+    const vName = prevFn.varName || varName;
+    const pts = [-2.1, -0.7, 0.5, 1.3, 2.4];
+    const h = 1e-5;
+    let okCount = 0;
+    try {
+      for (const pt of pts) {
+        const fPlus = sanitizeForEval(prevFn.body, { [vName]: pt + h });
+        const fMinus = sanitizeForEval(prevFn.body, { [vName]: pt - h });
+        const numDeriv = (fPlus - fMinus) / (2 * h);
+        const userDeriv = sanitizeForEval(currFn.body, { [vName]: pt });
+        if (Number.isFinite(numDeriv) && Number.isFinite(userDeriv) && Math.abs(numDeriv - userDeriv) < 1e-3) {
+          okCount++;
+        }
+      }
+      if (okCount >= 4) {
+        return {
+          valid: true,
+          status: 'valid',
+          message: '✓ 求导推导完全正确！',
+          tip: 'CAS 数值微分多点核验通过，下一步可令导数等于 0 求驻点'
+        };
+      }
+      return {
+        valid: false,
+        status: 'invalid',
+        message: '⚠️ 求导结果与原函数不符',
+        tip: '请复核幂函数求导法则 (x^n)\' = n·x^(n-1) 与常数项系数'
+      };
+    } catch {
+      // Fall through to standard verifier
+    }
+  }
+  if (prevFn && prevFn.kind === 'derivative' && cleanCurr.includes('=') && !currFn) {
+    const eqExpr = parseEquationToExpression(cleanCurr);
+    const vName = prevFn.varName || varName;
+    const pts = [-2.1, 0.5, 1.3, 2.4, -0.9];
+    let ratio = null;
+    let ok = 0;
+    try {
+      for (const pt of pts) {
+        const dVal = sanitizeForEval(prevFn.body, { [vName]: pt });
+        const eVal = sanitizeForEval(eqExpr, { [vName]: pt });
+        if (Math.abs(dVal) > 1e-6 && Math.abs(eVal) > 1e-6) {
+          const r = eVal / dVal;
+          if (ratio === null) { ratio = r; ok++; }
+          else if (Math.abs(r - ratio) < 1e-4) ok++;
+        }
+      }
+      if (ok >= 4) {
+        return {
+          valid: true,
+          status: 'valid',
+          message: '✓ 令导数为 0 建立驻点方程正确！',
+          tip: '接下来可继续求解该方程的根，并检验两侧导数符号'
+        };
+      }
+    } catch {}
+  }
+
+  // 初高中因式分解降次分枝求解支持：如 (x - 2)(x - 3) = 0 -> x = 2 或 x = 2, x = 3 或 x - 2 = 0
+  if (cleanPrev.includes('=') && !prevFn && cleanCurr.includes('=')) {
+    const branchParts = cleanCurr.split(/\s*(?:或|or|,|，|;)\s*/i).filter(Boolean);
+    if (branchParts.length >= 1) {
+      const exprPrevAll = parseEquationToExpression(cleanPrev);
+      let allBranchesAreValidRoots = true;
+      let checkedBranches = 0;
+      for (const b of branchParts) {
+        const simpleRoot = b.match(/^([a-zA-Z])\s*=\s*([+-]?\d+(?:\.\d+)?(?:\/\d+)?)$/);
+        const linearFactor = b.match(/^([a-zA-Z])\s*([+-])\s*(\d+(?:\.\d+)?)\s*=\s*0$/);
+        let rootVal = null;
+        let rootVar = varName;
+        if (simpleRoot) {
+          rootVar = simpleRoot[1];
+          const numStr = simpleRoot[2];
+          rootVal = numStr.includes('/')
+            ? Number(numStr.split('/')[0]) / Number(numStr.split('/')[1])
+            : Number(numStr);
+        } else if (linearFactor) {
+          rootVar = linearFactor[1];
+          const num = Number(linearFactor[3]);
+          rootVal = linearFactor[2] === '+' ? -num : num;
+        }
+        if (rootVal !== null && Number.isFinite(rootVal)) {
+          try {
+            const checkVal = sanitizeForEval(exprPrevAll, { [rootVar]: rootVal });
+            if (Number.isFinite(checkVal) && Math.abs(checkVal) < 1e-5) {
+              checkedBranches++;
+            } else {
+              allBranchesAreValidRoots = false;
+              break;
+            }
+          } catch {
+            allBranchesAreValidRoots = false;
+            break;
+          }
+        } else {
+          allBranchesAreValidRoots = false;
+          break;
+        }
+      }
+      if (allBranchesAreValidRoots && checkedBranches > 0 && checkedBranches === branchParts.length) {
+        return {
+          valid: true,
+          status: 'valid',
+          message: checkedBranches > 1 ? '✓ 全部解均满足上一步方程！' : '✓ 分枝求根正确！',
+          tip: checkedBranches === 1 ? '该根代入原方程成立（若是二次/高次方程，别忘写出另一支根哦）' : '所有根经 CAS 代入核验完全成立'
+        };
+      }
+    }
   }
 
   const isUnsupportedNotation = (str) => {

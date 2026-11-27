@@ -400,7 +400,7 @@ export default function AdminConsoleModal({
     localStorage.setItem('ai_tutor_jev_enabled', jevEnabled ? 'true' : 'false');
 
     try {
-      await authFetch('/api/config/update-keys', {
+      const res = await authFetch('/api/config/update-keys', {
         method: 'POST',
         headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
@@ -412,9 +412,18 @@ export default function AdminConsoleModal({
           pin_hash: getAdminPinHash()
         })
       });
-      setSaveKeysMsg({ type: 'success', text: '✅ AI 密钥与服务器设置已保存并同步热重载！' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        if (data.clientOnly) {
+          setSaveKeysMsg({ type: 'success', text: '✅ 密钥已保存至当前浏览器（云端托管模式不落盘服务端 .env）' });
+        } else {
+          setSaveKeysMsg({ type: 'success', text: '✅ AI 密钥与服务器设置已保存并同步热重载！' });
+        }
+      } else {
+        setSaveKeysMsg({ type: 'warning', text: `⚠️ 本地已保存，但服务端同步被拒 (${res.status})：${data.error || '请确认管理员会话是否有效'}` });
+      }
     } catch (e) {
-      setSaveKeysMsg({ type: 'warning', text: '本地设置已保存，但服务端密钥同步提示：' + e.message });
+      setSaveKeysMsg({ type: 'warning', text: '⚠️ 本地已保存，但服务端密钥同步失败：' + e.message });
     }
     setTimeout(() => setSaveKeysMsg({ type: '', text: '' }), 4000);
   };
@@ -472,13 +481,15 @@ export default function AdminConsoleModal({
   const handleTestDeepSeek = async () => {
     setDeepseekTestStatus({ testing: true });
     try {
+      const trimmedDsUrl = deepseekUrl.trim().replace(/\/+$/, '');
+      const isDefaultDsUrl = !trimmedDsUrl || trimmedDsUrl === 'https://api.deepseek.com/v1';
       const res = await authFetch('/api/config/test-llm', {
         method: 'POST',
         headers: getAdminAuthHeaders(token),
         body: JSON.stringify({
           provider: 'deepseek',
           apiKey: deepseekKey.trim() || undefined,
-          apiUrl: deepseekUrl.trim() || undefined,
+          apiUrl: isDefaultDsUrl ? undefined : trimmedDsUrl,
           pin_hash: getAdminPinHash()
         })
       });
@@ -512,14 +523,20 @@ export default function AdminConsoleModal({
         return;
       }
 
-      const authCheckRes = await fetch(`${targetBase}/api/mistakes?profile_id=default`, {
+      // 改用严格管理员鉴权接口 /api/admin/stats 校验主令牌，彻底杜绝随便填假 Token 却返 200 的“假通过”
+      const authCheckRes = await fetch(`${targetBase}/api/admin/stats`, {
         headers: { 'Authorization': `Bearer ${currentToken}` }
       });
 
       if (authCheckRes.ok) {
-        setServerHealthStatus({ testing: false, success: true, message: `🟢 服务器在线，访问令牌校验通过！` });
+        const statsJson = await authCheckRes.json().catch(() => ({}));
+        setServerHealthStatus({
+          testing: false,
+          success: true,
+          message: `🟢 管理员主令牌验证通过！（活跃档案 ${statsJson.totalProfiles ?? 0} 个 · 今日活跃 ${statsJson.dailyActive ?? 0} · 累计调用 ${statsJson.tokenStats?.totalCalls ?? 0} 次）`
+        });
       } else if (authCheckRes.status === 403 || authCheckRes.status === 401) {
-        setServerHealthStatus({ testing: false, success: false, message: `🔴 服务器在线，但访问令牌无效 (403)` });
+        setServerHealthStatus({ testing: false, success: false, message: `🔴 服务器在线，但管理员访问令牌无效 (${authCheckRes.status})` });
       } else {
         setServerHealthStatus({ testing: false, success: false, message: `🟡 鉴权接口响应状态: ${authCheckRes.status}` });
       }
@@ -532,21 +549,76 @@ export default function AdminConsoleModal({
   // Tab 4: 安全防作弊与密码管理
   // -------------------------------------------------------------
   const [antiCheatLocked, setAntiCheatLocked] = useState(() => localStorage.getItem('parent_anti_cheat_locked') !== 'false');
+  const [antiCheatMsg, setAntiCheatMsg] = useState('');
   const [showPinSetupGate, setShowPinSetupGate] = useState(false);
   const [pinChangeMsg, setPinChangeMsg] = useState('');
+  const [adminStatsData, setAdminStatsData] = useState(null);
+  const [loadingAdminStats, setLoadingAdminStats] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+
+  const handleLoadAdminStats = async () => {
+    setLoadingAdminStats(true);
+    try {
+      const res = await authFetch('/api/admin/stats', { headers: getAdminAuthHeaders(token) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setAdminStatsData(data);
+      } else {
+        setPinChangeMsg(`⚠️ 获取运营统计失败 (${res.status})：${data.error || '请重新验证管理员身份'}`);
+      }
+    } catch (e) {
+      setPinChangeMsg(`⚠️ 网络错误：${e.message}`);
+    } finally {
+      setLoadingAdminStats(false);
+    }
+  };
+
+  const handleExportAllData = async () => {
+    setExportingData(true);
+    try {
+      const res = await authFetch('/api/export/data?profile_id=default', { headers: getAdminAuthHeaders(token) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setPinChangeMsg(`⚠️ 数据导出失败 (${res.status})：${err.error || '需管理员权限'}`);
+        return;
+      }
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = `ai-tutor-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(dlUrl);
+      setPinChangeMsg('✅ 已导出完整学习与错题 JSON 备份文件！');
+    } catch (e) {
+      setPinChangeMsg(`⚠️ 数据导出异常：${e.message}`);
+    } finally {
+      setExportingData(false);
+    }
+  };
 
   const handleToggleAntiCheat = async () => {
     const nextVal = !antiCheatLocked;
-    setAntiCheatLocked(nextVal);
-    localStorage.setItem('parent_anti_cheat_locked', nextVal ? 'true' : 'false');
+    setAntiCheatMsg('');
     try {
-      await authFetch('/api/admin/anti-cheat', {
+      const res = await authFetch('/api/admin/anti-cheat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminAuthHeaders(token),
         body: JSON.stringify({ locked: nextVal })
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAntiCheatMsg(`⚠️ 服务端同步失败 (${res.status})：${data.error || '请重新通过管理员身份验证'}`);
+        return;
+      }
+      setAntiCheatLocked(nextVal);
+      localStorage.setItem('parent_anti_cheat_locked', nextVal ? 'true' : 'false');
+      setAntiCheatMsg(nextVal ? '✅ 防抄题监督锁已在服务端生效' : '✅ 防抄题监督锁已关闭');
     } catch (e) {
-      console.warn('Could not sync anti-cheat setting to backend:', e);
+      setAntiCheatMsg(`⚠️ 网络错误，未能同步防抄题状态：${e.message}`);
     }
   };
 
@@ -559,7 +631,7 @@ export default function AdminConsoleModal({
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200,
       padding: '16px'
     }}>
-      <div style={{
+      <div className="admin-modal-card" style={{
         width: '100%', maxWidth: '780px', maxHeight: '92vh', background: '#ffffff',
         borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)'
@@ -1182,20 +1254,62 @@ export default function AdminConsoleModal({
                   该 PIN 码用于保护本管理控制台及防抄题监督锁，防止学员未经授权进入修改密钥或生成卡密。
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowPinSetupGate(true)}
-                  style={{
-                    padding: '9px 18px', borderRadius: '8px', border: '1px solid #7c3aed',
-                    background: '#faf5ff', color: '#6d28d9', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
-                  }}
-                >
-                  🛠️ 重设管理员 6 位安全 PIN 码 / 密保问题
-                </button>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPinSetupGate(true)}
+                    style={{
+                      padding: '9px 16px', borderRadius: '8px', border: '1px solid #7c3aed',
+                      background: '#faf5ff', color: '#6d28d9', fontWeight: 600, fontSize: '0.84rem', cursor: 'pointer'
+                    }}
+                  >
+                    🛠️ 重设管理员 6 位安全 PIN 码 / 密保问题
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLoadAdminStats}
+                    disabled={loadingAdminStats}
+                    style={{
+                      padding: '9px 16px', borderRadius: '8px', border: '1px solid #2563eb',
+                      background: '#eff6ff', color: '#1d4ed8', fontWeight: 600, fontSize: '0.84rem', cursor: 'pointer'
+                    }}
+                  >
+                    {loadingAdminStats ? '⏳ 加载运营统计...' : '📊 查看全站运营与 Token 统计'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportAllData}
+                    disabled={exportingData}
+                    style={{
+                      padding: '9px 16px', borderRadius: '8px', border: '1px solid #059669',
+                      background: '#ecfdf5', color: '#047857', fontWeight: 600, fontSize: '0.84rem', cursor: 'pointer'
+                    }}
+                  >
+                    {exportingData ? '⏳ 正在导出...' : '📥 导出全量学习数据 (JSON)'}
+                  </button>
+                </div>
+
+                {antiCheatMsg && (
+                  <div style={{ marginTop: '10px', fontSize: '0.83rem', color: antiCheatMsg.startsWith('✅') ? '#15803d' : '#b45309', fontWeight: 600 }}>
+                    {antiCheatMsg}
+                  </div>
+                )}
 
                 {pinChangeMsg && (
-                  <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
+                  <div style={{ marginTop: '10px', fontSize: '0.85rem', color: pinChangeMsg.startsWith('⚠️') ? '#b45309' : '#15803d', fontWeight: 600 }}>
                     {pinChangeMsg}
+                  </div>
+                )}
+
+                {adminStatsData && (
+                  <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '0.82rem', color: '#334155' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '6px', color: '#0f172a' }}>📈 实时站长运营概览</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+                      <div>活跃学生档案：<strong>{adminStatsData.totalProfiles ?? 0}</strong></div>
+                      <div>今日活跃：<strong>{adminStatsData.dailyActive ?? 0}</strong></div>
+                      <div>全站收录错题：<strong>{adminStatsData.totalMistakes ?? 0}</strong></div>
+                      <div>累计 AI 调用：<strong>{adminStatsData.tokenStats?.totalCalls ?? 0}</strong></div>
+                    </div>
                   </div>
                 )}
               </div>

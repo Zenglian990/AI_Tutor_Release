@@ -173,6 +173,7 @@ function QuestionImageWithEraser({ imageUrl, eraseHandwriting }) {
 function A4PrintModalInner({
   isOpen,
   onClose,
+  profileId = 'default',
   studentName = '同学',
   grade = '7_up',
   subject = '数学',
@@ -180,6 +181,9 @@ function A4PrintModalInner({
   initialMode = 'blank_student',
   initialFilter = 'all'
 }) {
+  const [autoLoadedMistakes, setAutoLoadedMistakes] = useState([]);
+  const [loadingAutoMistakes, setLoadingAutoMistakes] = useState(false);
+  const [variantProgressText, setVariantProgressText] = useState('');
   const [printMode, setPrintMode] = useState(initialMode); // 'blank_student' | 'with_answers'
   const [filterType, setFilterType] = useState(initialFilter); // 'all' | 'wrong_only'
   const [eraseHandwriting, setEraseHandwriting] = useState(false); // handwriting eraser
@@ -254,10 +258,46 @@ function A4PrintModalInner({
     }
   ];
 
-  const hasRealQuestions = Array.isArray(questions) && questions.length > 0;
+  // 当从首页入口直接打开（未显式传入 questions）时，自动拉取当前孩子的真实错题本，彻底消除“有错题却空卷”
+  useEffect(() => {
+    if (!isOpen) return;
+    if (Array.isArray(questions) && questions.length > 0) return;
+    let active = true;
+    setLoadingAutoMistakes(true);
+    authFetch(`/api/mistakes?profile_id=${encodeURIComponent(profileId || 'default')}`)
+      .then(r => (r.ok ? r.json() : { mistakes: [] }))
+      .then(data => {
+        if (!active) return;
+        const list = Array.isArray(data?.mistakes) ? data.mistakes : (Array.isArray(data) ? data : []);
+        const sameSubj = subject ? list.filter(m => !m.subject || m.subject === subject) : list;
+        const chosen = (sameSubj.length > 0 ? sameSubj : list).slice(0, 12);
+        const mapped = chosen.map((m, idx) => ({
+          id: m.id || idx + 1,
+          questionNumber: idx + 1,
+          title: `错题重练 #${idx + 1}（${m.subject || subject || '学科'}）`,
+          body: m.query || '',
+          score: 10,
+          standardAnswer: m.answer || '',
+          keyInsight: m.tags ? `易错标签：${m.tags}` : '',
+          mistakeReason: m.reason || '',
+          status: 'wrong',
+          imageUrl: m.image_url || null
+        }));
+        setAutoLoadedMistakes(mapped);
+      })
+      .catch(() => {
+        if (active) setAutoLoadedMistakes([]);
+      })
+      .finally(() => {
+        if (active) setLoadingAutoMistakes(false);
+      });
+    return () => { active = false; };
+  }, [isOpen, questions, profileId, subject]);
+
+  const hasExternalQuestions = Array.isArray(questions) && questions.length > 0;
   const rawList = useMemo(
-    () => (hasRealQuestions ? questions : []),
-    [questions, hasRealQuestions]
+    () => (hasExternalQuestions ? questions : autoLoadedMistakes),
+    [questions, hasExternalQuestions, autoLoadedMistakes]
   );
 
   // Normalized question objects (memoized to prevent infinite variant-fetch loop)
@@ -306,8 +346,13 @@ function A4PrintModalInner({
       if (missingQuestions.length === 0) return;
 
       setFetchingVariants(true);
+      const targets = missingQuestions.slice(0, 6);
       const updates = {};
-      for (const q of missingQuestions.slice(0, 6)) {
+      for (let idx = 0; idx < targets.length; idx++) {
+        const q = targets[idx];
+        if (!isCancelled) {
+          setVariantProgressText(`正在智能生成衡水双栏同构变式题 (${idx + 1}/${targets.length})...`);
+        }
         attemptedVariantIdsRef.current.add(q.id);
         try {
           const res = await authFetch('/api/mistakes/generate-variants', {
@@ -335,6 +380,7 @@ function A4PrintModalInner({
       }
       if (!isCancelled) {
         setFetchingVariants(false);
+        setVariantProgressText('');
       }
     }
 
@@ -513,16 +559,12 @@ function A4PrintModalInner({
             size: A4 portrait;
             margin: 12mm 15mm 12mm 15mm;
           }
-          body * {
-            visibility: hidden !important;
-          }
-          .a4-print-overlay, .a4-print-overlay * {
-            visibility: visible !important;
+          body > #root > :not(.a4-print-overlay),
+          .a4-no-print {
+            display: none !important;
           }
           .a4-print-overlay {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
             width: 100% !important;
             height: auto !important;
             background: #fff !important;
@@ -591,20 +633,41 @@ function A4PrintModalInner({
           gap: '12px',
           flexShrink: 0
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.3rem' }}>📑</span>
-              <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.12rem', fontWeight: 700 }}>
-                纸屏融合：A4 靶向周清试卷排版
-              </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>📑</span>
+                <h3 style={{ margin: 0, color: '#0f172a', fontSize: 'clamp(0.95rem, 3.6vw, 1.12rem)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  纸屏融合：A4 靶向周清试卷排版（周末错题清零卷）
+                </h3>
+              </div>
+              <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                {loadingAutoMistakes ? '⏳ 正在同步当前孩子错题本...' : (variantProgressText || '保护孩子视力，脱离屏幕书写；做完后用手机拍一张即可一键秒批')}
+              </p>
             </div>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-              保护孩子视力，脱离屏幕书写；做完后使用手机拍一张即可一键秒批
-            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="关闭A4试卷打印"
+              style={{
+                background: '#e2e8f0',
+                color: '#0f172a',
+                border: '1px solid #cbd5e1',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              ✕ 关闭
+            </button>
           </div>
 
           {/* Mode & Filter Toggles */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', width: '100%' }}>
             {/* Mode Selector */}
             <div style={{ display: 'flex', background: '#e2e8f0', padding: '3px', borderRadius: '8px', gap: '2px' }}>
               <button
@@ -1488,6 +1551,8 @@ function A4PrintModalInner({
       {/* Parental Gate for Answer Key Anti-Cheat Lock */}
       <ParentalGate
         isOpen={showGate}
+        scope="family"
+        profileId={profileId || 'default'}
         reason="解锁查看标准答案与名师解析（防孩子偷看）"
         onVerify={() => {
           setShowGate(false);

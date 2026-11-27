@@ -445,7 +445,7 @@ export default function SettingsModal({
       }}
     >
       <div
-        className="modal-content"
+        className="modal-content settings-modal"
         style={{
           maxWidth: 'min(640px, calc(100vw - 16px))',
           width: '100%',

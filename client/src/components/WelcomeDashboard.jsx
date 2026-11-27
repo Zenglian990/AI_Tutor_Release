@@ -37,6 +37,19 @@ export default function WelcomeDashboard({
 }) {
   const [briefing, setBriefing] = useState(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
+  const [quotaInfo, setQuotaInfo] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    const pid = encodeURIComponent(currentProfile?.id || 'default');
+    authFetch(`${getApiUrl()}/api/quota/status?profile_id=${pid}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (active && data?.success) setQuotaInfo(data);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [currentProfile?.id]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -163,6 +176,99 @@ export default function WelcomeDashboard({
         <div className="stage-feature-pill" style={{ marginTop: '12px' }}>
           <span>{stageIcon}</span>
           <span>{stageName}：{stageDescription}</span>
+        </div>
+
+        {/* Phase 3: 免费试用配额余量温和提醒 + VIP 权益一键转化 + 家长周末清零卷闭环快捷入口 */}
+        <div style={{
+          marginTop: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px',
+          padding: '8px 12px',
+          borderRadius: '12px',
+          background: 'rgba(15, 23, 42, 0.06)',
+          border: '1px solid rgba(148, 163, 184, 0.25)',
+          fontSize: '0.82rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {quotaInfo?.isVip ? (
+              <span style={{ color: '#d97706', fontWeight: 700 }}>
+                👑 尊享 VIP 会员（剩余 {quotaInfo.vipDaysRemaining} 天 · 全功能不限次）
+              </span>
+            ) : quotaInfo?.hasByok ? (
+              <span style={{ color: '#059669', fontWeight: 700 }}>
+                🔑 已配置个人专属 AI 密钥（无每日额度限制）
+              </span>
+            ) : quotaInfo?.isAdmin ? (
+              <span style={{ color: '#2563eb', fontWeight: 700 }}>
+                🛡️ 管理员尊享通道（全学段不限次）
+              </span>
+            ) : quotaInfo ? (
+              <span style={{ color: (quotaInfo.remaining ?? 30) <= 5 ? '#dc2626' : '#475569', fontWeight: 600 }}>
+                ⚡ 今日免费 AI 伴学余量：<strong>{quotaInfo.remaining ?? 0}</strong> / {quotaInfo.dailyLimit ?? 30} 次
+              </span>
+            ) : (
+              <span style={{ color: '#64748b' }}>⚡ 1-12 年级全学段实时伴学就绪</span>
+            )}
+            {onOpenMembership && !quotaInfo?.isVip && !quotaInfo?.isAdmin && (
+              <button
+                type="button"
+                onClick={onOpenMembership}
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '999px',
+                  border: '1px solid rgba(245, 158, 11, 0.45)',
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(217, 119, 6, 0.12))',
+                  color: '#b45309',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                👑 解锁不限次 VIP
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            {onOpenPrint && (
+              <button
+                type="button"
+                onClick={onOpenPrint}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(37, 99, 235, 0.35)',
+                  background: 'rgba(37, 99, 235, 0.1)',
+                  color: '#2563eb',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🖨️ 周末错题清零 A4 卷
+              </button>
+            )}
+            {onOpenWeeklyReport && (
+              <button
+                type="button"
+                onClick={onOpenWeeklyReport}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  color: '#059669',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                📑 家长 10 秒伴读周报
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

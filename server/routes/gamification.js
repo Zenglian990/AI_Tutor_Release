@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSqliteDb } = require('../db/init');
-const { getStudentStreak, recordStudyActivity } = require('../services/streakService');
+const { getStudentStreak, recordStudyActivity, getTodayString } = require('../services/streakService');
 const { resolveAuthorizedProfileId } = require('../middleware/auth');
 const dbQueue = require('../services/dbQueue');
 const logger = require('../services/logger');
@@ -40,31 +40,68 @@ async function ensureGamificationRow(db, profileId) {
 }
 
 async function syncGamificationSnapshot(db, profileId, streakData, feynmanDelta = 0, scratchpadDelta = 0) {
-  if (!db) return { feynmanCount: 0, scratchpadCount: 0, basePoints: 0, rankTier: computeRankTier(0), badges: ['初露锋芒'] };
+  if (!db) {
+    return {
+      feynmanCount: 0,
+      scratchpadCount: 0,
+      reviewedMistakesCount: 0,
+      masteredMistakesCount: 0,
+      basePoints: 0,
+      rankTier: computeRankTier(0),
+      badges: ['初露锋芒']
+    };
+  }
   const row = await ensureGamificationRow(db, profileId);
   const feynmanCount = (row.feynman_count || 0) + feynmanDelta;
   const scratchpadCount = (row.scratchpad_count || 0) + scratchpadDelta;
-  const basePoints = (streakData?.peerIntimacy?.currentXp || 0) + (streakData?.totalSessions || 0) * 10;
+
+  // Phase 3：真实查询 mistakes 表已复盘 / 已消灭错题数，让“错题粉碎机”与真实学习结果绑定
+  let reviewedMistakesCount = 0;
+  let masteredMistakesCount = 0;
+  try {
+    const mStats = await db.get(
+      `SELECT
+         SUM(CASE WHEN COALESCE(review_count, 0) >= 1 THEN 1 ELSE 0 END) as reviewed,
+         SUM(CASE WHEN COALESCE(review_count, 0) >= 3 THEN 1 ELSE 0 END) as mastered
+       FROM mistakes WHERE profile_id = ?`,
+      [profileId]
+    );
+    reviewedMistakesCount = mStats?.reviewed || 0;
+    masteredMistakesCount = mStats?.mastered || 0;
+  } catch (e) {
+    logger.warn('[Gamification] Mistake stats query warning:', e.message);
+  }
+
+  const mistakeBonusPoints = reviewedMistakesCount * 15 + masteredMistakesCount * 35;
+  const basePoints = (streakData?.peerIntimacy?.currentXp || 0) + (streakData?.totalSessions || 0) * 10 + mistakeBonusPoints;
   const rankTier = computeRankTier(basePoints);
 
   const badges = ['初露锋芒'];
   if ((streakData?.currentStreak || 0) >= 3) badges.push('名师门徒');
   if (scratchpadCount >= 1 || (streakData?.totalSessions || 0) >= 5) badges.push('草稿大师');
   if (feynmanCount >= 1 || (streakData?.peerIntimacy?.level || 1) >= 2) badges.push('费曼小导师');
-  if (basePoints >= 300) badges.push('错题粉碎机');
+  if (reviewedMistakesCount >= 3 || masteredMistakesCount >= 1) badges.push('错题粉碎机');
+  if (masteredMistakesCount >= 5) badges.push('周末清零王');
   if (basePoints >= 600) badges.push('黄金学者');
 
-  if (feynmanDelta > 0 || scratchpadDelta > 0 || row.rank_points !== basePoints || row.streak_days !== (streakData?.currentStreak || 0)) {
+  if (
+    feynmanDelta > 0 ||
+    scratchpadDelta > 0 ||
+    row.rank_points !== basePoints ||
+    row.streak_days !== (streakData?.currentStreak || 0) ||
+    (row.solved_count || 0) !== masteredMistakesCount
+  ) {
     await dbQueue.enqueue(async () => {
       await db.run(
         `UPDATE user_gamification
-         SET rank_points = ?, rank_tier = ?, streak_days = ?, feynman_count = ?, scratchpad_count = ?,
+         SET rank_points = ?, rank_tier = ?, streak_days = ?, solved_count = ?, feynman_count = ?, scratchpad_count = ?,
              badges = ?, last_active_date = ?, updated_at = CURRENT_TIMESTAMP
          WHERE profile_id = ?`,
         [
           basePoints,
           rankTier.name,
           streakData?.currentStreak || 0,
+          masteredMistakesCount,
           feynmanCount,
           scratchpadCount,
           JSON.stringify(badges),
@@ -75,7 +112,15 @@ async function syncGamificationSnapshot(db, profileId, streakData, feynmanDelta 
     });
   }
 
-  return { feynmanCount, scratchpadCount, basePoints, rankTier, badges };
+  return {
+    feynmanCount,
+    scratchpadCount,
+    reviewedMistakesCount,
+    masteredMistakesCount,
+    basePoints,
+    rankTier,
+    badges
+  };
 }
 
 // POST /api/gamification/record-action
@@ -156,7 +201,9 @@ router.get('/gamification/profile', async (req, res) => {
       streak: streakData,
       streakDays: streakData?.currentStreak || 0,
       feynmanCount: snapshot.feynmanCount,
-      scratchpadCount: snapshot.scratchpadCount
+      scratchpadCount: snapshot.scratchpadCount,
+      reviewedMistakesCount: snapshot.reviewedMistakesCount,
+      masteredMistakesCount: snapshot.masteredMistakesCount
     });
   } catch (err) {
     logger.error('[Gamification] GET profile error:', err);
@@ -216,6 +263,7 @@ router.post('/gamification/heartbeat', async (req, res) => {
 });
 
 // POST /api/gamification/claim-freeze
+// 每日限领 1 张且需当前未满 5 张，防止连点无限白嫖
 router.post('/gamification/claim-freeze', async (req, res) => {
   try {
     const { profile_id = 'default' } = req.body;
@@ -227,21 +275,35 @@ router.post('/gamification/claim-freeze', async (req, res) => {
       return res.status(503).json({ error: '数据库尚未就绪' });
     }
 
-    // 先确保有记录行
     await getStudentStreak(db, targetPid);
-    // Award 1 streak freeze shield (capped at 5)
-    const current = await db.get('SELECT streak_freeze_count FROM student_streaks WHERE profile_id = ?', [targetPid]);
-    const currentCount = current ? (current.streak_freeze_count || 0) : 2;
-    const newCount = Math.min(5, currentCount + 1);
+    const today = getTodayString();
+    const claimKey = `freeze_claim_date:${targetPid}`;
 
+    const [current, lastClaimRow] = await Promise.all([
+      db.get('SELECT streak_freeze_count FROM student_streaks WHERE profile_id = ?', [targetPid]),
+      db.get('SELECT value FROM system_settings WHERE key = ?', [claimKey])
+    ]);
+    const currentCount = current ? (current.streak_freeze_count || 0) : 2;
+    if (currentCount >= 5) {
+      return res.status(400).json({ error: '连胜冰冻卡已达上限（5 张），无需重复领取', streakFreezeCount: currentCount });
+    }
+    if (lastClaimRow && lastClaimRow.value === today) {
+      return res.status(429).json({ error: '今日已领取过连胜冰冻卡，明天坚持学习后可再次领取', streakFreezeCount: currentCount });
+    }
+
+    const newCount = Math.min(5, currentCount + 1);
     await dbQueue.enqueue(async () => {
       await db.run(
         'UPDATE student_streaks SET streak_freeze_count = ?, updated_at = CURRENT_TIMESTAMP WHERE profile_id = ?',
         [newCount, targetPid]
       );
+      await db.run(
+        'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        [claimKey, today]
+      );
     });
 
-    res.json({ success: true, streakFreezeCount: newCount });
+    res.json({ success: true, streakFreezeCount: newCount, claimedDate: today });
   } catch (err) {
     logger.error('[Gamification] Claim freeze error:', err);
     res.status(500).json({ error: '领取连胜冰冻卡失败' });

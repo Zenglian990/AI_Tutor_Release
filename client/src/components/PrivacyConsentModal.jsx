@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export const CURRENT_PRIVACY_VERSION = '1.7.4';
+export const CURRENT_PRIVACY_VERSION = '1.7.7';
 
 export default function PrivacyConsentModal({ isOpen, onAccept }) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
@@ -43,7 +43,7 @@ export default function PrivacyConsentModal({ isOpen, onAccept }) {
           <span style={{ fontSize: '1.6rem' }}>🛡️</span>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-              儿童个人信息保护与监护人知情同意书 (v1.7.4)
+              儿童个人信息保护与监护人知情同意书 (v1.7.7)
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
               根据《中华人民共和国个人信息保护法》及《未成年人网络保护条例》制定

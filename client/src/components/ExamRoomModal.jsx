@@ -279,7 +279,15 @@ export default function ExamRoomModal({
                     第 {currentIdx + 1} 题
                   </span>
                   <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                    [{currentQ.type === 'choice' ? '单项选择题' : currentQ.type === 'blank' ? '填空题' : '解答证明题'}] · 满分 {currentQ.score || 10} 分
+                    [{currentQ.type === 'choice'
+                      ? '单项选择题'
+                      : currentQ.type === 'multi_choice'
+                        ? '多项选择题（漏选得一半）'
+                        : currentQ.type === 'judgment'
+                          ? '判断题'
+                          : currentQ.type === 'blank'
+                            ? '填空题'
+                            : '解答证明题'}] · 满分 {currentQ.score || 10} 分
                   </span>
                 </div>
                 <button
@@ -375,7 +383,38 @@ export default function ExamRoomModal({
                 </div>
               )}
 
-              {currentQ.type !== 'choice' && currentQ.type !== 'blank' && (
+              {currentQ.type === 'judgment' && (
+                <div style={{ display: 'flex', gap: '14px', marginBottom: '20px' }}>
+                  {[
+                    { value: '正确', label: '✓ 正确（对）', activeColor: '#10b981' },
+                    { value: '错误', label: '✕ 错误（错）', activeColor: '#ef4444' }
+                  ].map((opt) => {
+                    const isSelected = answers[currentQ.id] === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleAnswerChange(currentQ.id, opt.value)}
+                        style={{
+                          flex: 1,
+                          padding: '14px 18px',
+                          borderRadius: '10px',
+                          border: isSelected ? `2px solid ${opt.activeColor}` : '1px solid #475569',
+                          background: isSelected ? `${opt.activeColor}22` : '#0f172a',
+                          color: isSelected ? '#ffffff' : '#cbd5e1',
+                          fontSize: '1rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {currentQ.type !== 'choice' && currentQ.type !== 'multi_choice' && currentQ.type !== 'judgment' && currentQ.type !== 'blank' && (
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
@@ -395,7 +434,7 @@ export default function ExamRoomModal({
                     rows={6}
                     value={answers[currentQ.id] || ''}
                     onChange={e => handleAnswerChange(currentQ.id, e.target.value)}
-                    placeholder="请书写规范的解题推导步骤，中考阅卷将按步骤分给分（如：解、设未知数、根据定理列方程、计算过程、答）..."
+                    placeholder="请书写规范的解题推导步骤，阅卷将按步骤采分点给分（如：解、设未知数/定理依据、核心推导、结论）..."
                     style={{
                       width: '100%', padding: '12px 16px', background: '#0f172a',
                       border: '1px solid #475569', borderRadius: '8px', color: '#ffffff',

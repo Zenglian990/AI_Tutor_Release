@@ -128,12 +128,26 @@ export default function PrerequisiteTraceModal({
     }
   }, []);
 
-  // Initialize ONLY on open or initial props change (绝不依赖 subject，防止切换学科冲掉当前搜索词)
+  // Initialize ONLY on open or initial props change (按学科与学段匹配默认考点，杜绝物理/语文跨科查数学导数)
   useEffect(() => {
     if (!isOpen) return;
 
-    const rawGradeNum = parseInt(String(initialGrade || '').split('_')[0], 10);
-    let initKw = rawGradeNum >= 10 ? '导数的概念与函数单调性、极值' : '二次函数的概念';
+    const rawGradeNum = parseInt(String(initialGrade || '').split('_')[0], 10) || 7;
+    const isHigh = rawGradeNum >= 10;
+    const subjDefaults = {
+      '数学': isHigh ? '导数的概念与函数单调性、极值' : '二次函数的概念',
+      '物理': isHigh ? '万有引力' : '欧姆定律',
+      '化学': isHigh ? '化学平衡' : '化学方程式',
+      '语文': isHigh ? '文言文' : '修辞',
+      '生物': isHigh ? '光合作用' : '细胞',
+      '生物学': isHigh ? '光合作用' : '细胞',
+      '历史': isHigh ? '中央集权' : '秦朝',
+      '地理': isHigh ? '大气环流' : '地球自转',
+      '政治': isHigh ? '唯物辩证法' : '宪法',
+      '思想政治': isHigh ? '唯物辩证法' : '宪法',
+      '道德与法治': '宪法'
+    };
+    let initKw = subjDefaults[initialSubject] || (isHigh ? '导数的概念与函数单调性、极值' : '二次函数的概念');
     let initId = null;
 
     if (initialTopic) {
@@ -203,7 +217,7 @@ export default function PrerequisiteTraceModal({
       }}
     >
       <div
-        className="prereq-modal-content"
+        className="prereq-modal-content trace-modal-card"
         style={{
           width: '100%',
           maxWidth: '920px',

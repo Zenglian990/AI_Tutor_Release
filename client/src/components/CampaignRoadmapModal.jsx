@@ -53,7 +53,7 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
       alignItems: 'center',
       zIndex: 1000
     }}>
-      <div style={{
+      <div className="roadmap-modal-card" style={{
         background: '#0f172a',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         color: '#f8fafc',
@@ -61,7 +61,7 @@ export default function CampaignRoadmapModal({ isOpen, onClose, currentProfileId
         maxWidth: '840px',
         maxHeight: '90vh',
         borderRadius: '20px',
-        padding: '24px',
+        padding: 'clamp(14px, 3vw, 24px)',
         overflowY: 'auto',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
       }}>

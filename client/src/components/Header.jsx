@@ -157,7 +157,13 @@ export default function Header({
         </div>
         <div className="header-brand">
           <h1>{getTranslation(language, 'app.title')}</h1>
-          <span className="brand-badge">{['10', '11', '12'].includes(String(selectedGrade).split('_')[0]) ? '人教版 高中全科' : '人教版 1-12年级 (全学段)'}</span>
+          <span className="brand-badge">
+            {['10', '11', '12'].includes(String(selectedGrade).split('_')[0])
+              ? '人教版 高中全科'
+              : ['1', '2', '3', '4', '5', '6'].includes(String(selectedGrade).split('_')[0])
+                ? '人教版 小学全科'
+                : '人教版 初中全科'}
+          </span>
         </div>
       </div>
 
@@ -277,14 +283,14 @@ export default function Header({
 
         <div className="header-actions-divider" style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
 
-        {/* 主题明暗切换 */}
+        {/* 主题明暗切换（支持同步显示墨水屏护眼态） */}
         <button
           onClick={onThemeToggle}
           className="header-btn-icon header-btn-theme"
-          title={isLightMode ? '切换到深色模式' : '切换到浅色模式'}
+          title={isEinkMode ? '当前为墨水屏护眼模式，点击切换主题' : (isLightMode ? '切换到深色模式' : '切换到浅色模式')}
           aria-label="主题切换"
         >
-          {isLightMode ? '🌙' : '☀️'}
+          {isEinkMode ? '📄' : (isLightMode ? '🌙' : '☀️')}
         </button>
 
         {/* 视力守护、学情统计与日报 */}

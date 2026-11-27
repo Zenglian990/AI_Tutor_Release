@@ -221,11 +221,22 @@ router.post('/chat', requireQuotaOrVip('chat'), async (req, res) => {
       };
     });
 
-    const sources = correctedResults.map(r => ({
-      source: r.source,
-      page: r.page || '未知',
-      text_snippet: r.text ? (r.text.length > 100 ? r.text.substring(0, 100) + "..." : r.text) : "无文本"
-    }));
+    // 去重并规范化出处元数据（区分纯数字页码与章节/题库标签，避免前端傻拼“第 高考数学真题 页”）
+    const seenSourceKeys = new Set();
+    const sources = [];
+    for (const r of correctedResults) {
+      const rawSnippet = r.text ? (r.text.length > 160 ? r.text.substring(0, 160) + '...' : r.text) : '无文本';
+      const dedupeKey = `${r.source || ''}|${r.page || ''}|${rawSnippet.slice(0, 40)}`;
+      if (seenSourceKeys.has(dedupeKey)) continue;
+      seenSourceKeys.add(dedupeKey);
+      const isNumericPage = /^\d+$/.test(String(r.page || '').trim());
+      sources.push({
+        source: r.source,
+        page: isNumericPage ? Number(r.page) : (r.page || '教材参考'),
+        pageType: isNumericPage ? 'page' : 'section',
+        text_snippet: rawSnippet
+      });
+    }
 
     if (isQuotaExhausted) {
       sources.push({

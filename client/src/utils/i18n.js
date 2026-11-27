@@ -49,15 +49,15 @@ export const translations = {
       },
       {
         title: '📖 记录并巩固「我的错题本」',
-        content: '点击 AI 消息右下角的「加入错题本」或主菜单的「错题本」。系统会根据艾宾浩斯遗忘曲线（SM-2 算法）自动计算下一次复习时间，并主动发起「变式题复测」挑战！'
+        content: '点击 AI 消息右下角的「加入错题本」或主菜单的「错题本」。系统会根据新一代 FSRS 间隔重复算法自动计算最佳复习时间，并主动发起「变式题复测」与周末清零卷挑战！'
       },
       {
-        title: '📊 查看「学习报表」与「家长监工」',
-        content: '家长可以通过 Parental Gate 家长验证码安全进入「学习报表」和「运营分析」，查看本周学习统计；还能通过「家长监工」一键生成专业的 Markdown 微信周报。'
+        title: '📊 查看「学习报表」与「家长伴学」',
+        content: '家长可以通过家庭安全锁安心查看「学习报表」与薄弱点分布，还能一键生成专属微信伴读周报与家访便签，随时掌握孩子的真实成长节奏。'
       }
     ],
     // Theme
-    'theme.title': '🎨 主题切换 (Theme)',
+    'theme.title': '🎨 主题切换',
     'theme.light': '☀️ 浅色模式',
     'theme.dark': '🌙 深色模式',
     // Onboarding
@@ -71,7 +71,7 @@ export const translations = {
     'app.title': 'AI Smart Tutor',
     'app.subtitle': 'AI tutoring based on K-12 textbooks (Grades 1-12)',
     'btn.mistake': '🔔 Review Challenge',
-    'btn.parent': '📈 Parental Gate',
+    'btn.parent': '📈 Parent Lock',
     'btn.report': '📊 Stats Report',
     'btn.notebook': '📖 Mistake Book',
     'btn.map': '🗺️ Learning Map',
@@ -108,7 +108,7 @@ export const translations = {
     'onboarding.steps': [
       {
         title: '🎓 Welcome to AI Tutor!',
-        content: 'This is an interactive RAG tutoring system built on standard textbooks for grades 1-9. Let\'s take 1 minute to learn how to use it.'
+        content: 'This is an interactive RAG tutoring system built on standard textbooks for grades 1-12. Let\'s take 1 minute to learn how to use it.'
       },
       {
         title: '🗺️ Explore the "Learning Map"',
@@ -116,11 +116,11 @@ export const translations = {
       },
       {
         title: '📖 Consolidate with the "Mistake Book"',
-        content: 'Save errors to your "Mistake Book". The system uses the SM-2 algorithm to schedule memory intervals and generates challenge variations automatically!'
+        content: 'Save errors to your "Mistake Book". The system uses the FSRS spaced repetition algorithm to schedule review intervals and generates challenge variations automatically!'
       },
       {
-        title: '📊 "Stats Report" & Parental Gate',
-        content: 'Parents can securely enter "Stats Report" and "Ops Stats" via a PIN gate to view detailed graphs, or click "Parent Supervisor" to generate weekly text reports.'
+        title: '📊 "Stats Report" & Parent Lock',
+        content: 'Parents can securely view learning reports via Family Parent Lock and generate weekly study summaries with one click.'
       }
     ],
     // Theme

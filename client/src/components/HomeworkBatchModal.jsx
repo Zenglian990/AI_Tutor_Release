@@ -170,6 +170,19 @@ export default function HomeworkBatchModal({
   const [qualityInfo, setQualityInfo] = useState(null);
   const fileInputRef = useRef(null);
 
+  // 组件关闭或卸载时严格回收 ObjectURL，彻底杜绝 Blob 内存泄漏
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (cleanedPaperUrl) URL.revokeObjectURL(cleanedPaperUrl);
+    };
+  }, [cleanedPaperUrl]);
+
   if (!isOpen) return null;
 
   const handleFileChange = (e) => {

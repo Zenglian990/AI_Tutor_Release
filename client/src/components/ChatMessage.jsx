@@ -872,11 +872,23 @@ const ChatMessage = React.memo(function ChatMessage({
               <details key={i} className="source-pill-card">
                 <summary className="source-pill-header">
                   <span className="source-pill-icon">📖</span>
-                  <span className="source-pill-title">{src.source} · 第 {src.page} 页</span>
+                  <span className="source-pill-title">
+                    {src.source}
+                    {src.page && src.page !== 0 && src.page !== '未知'
+                      ? (/^\d+$/.test(String(src.page).trim()) ? ` · 第 ${src.page} 页` : ` · ${src.page}`)
+                      : ''}
+                  </span>
                   <span className="source-pill-expand-hint">查看教材原文 ▾</span>
                 </summary>
                 <div className="source-pill-body">
-                  <div className="source-text">{src.text_snippet}</div>
+                  <div className="source-text md-content">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+                    >
+                      {preprocessLatex(src.text_snippet || '')}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </details>
             ))}

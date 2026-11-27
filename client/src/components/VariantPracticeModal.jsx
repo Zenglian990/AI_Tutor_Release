@@ -722,17 +722,20 @@ export default function VariantPracticeModal({
           </span>
           <button
             onClick={onClose}
+            disabled={submitting}
+            title={submitting ? '正在验算作答，请稍候...' : '完成通关并关闭'}
             style={{
-              background: '#334155',
-              color: '#e2e8f0',
+              background: submitting ? '#1e293b' : '#334155',
+              color: submitting ? '#64748b' : '#e2e8f0',
               border: 'none',
               borderRadius: '8px',
               padding: '6px 16px',
               fontSize: '0.88rem',
-              cursor: 'pointer'
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              opacity: submitting ? 0.65 : 1
             }}
           >
-            完成通关
+            {submitting ? '验算中请稍候...' : '完成通关'}
           </button>
         </div>
       </div>

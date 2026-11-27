@@ -2,6 +2,19 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../store/useStore';
 import { isFeatureVisible } from '../utils/gradeFeatureGate';
 
+const PRIMARY_MATH_SYMBOLS = [
+  { label: '+', insert: '+' },
+  { label: '-', insert: '-' },
+  { label: '×', insert: '×' },
+  { label: '÷', insert: '÷' },
+  { label: '=', insert: '=' },
+  { label: '( )', insert: '()' },
+  { label: '>', insert: '>' },
+  { label: '<', insert: '<' },
+  { label: '%', insert: '%' },
+  { label: '°', insert: '°' },
+];
+
 const QUICK_MATH_SYMBOLS = [
   { label: '+', insert: '+' },
   { label: '-', insert: '-' },
@@ -68,6 +81,7 @@ const InputBar = React.memo(function InputBar({
   const activeSubject = selectedSubject || '';
   const activeGradeNum = parseInt(String(activeGrade).replace(/\D/g, ''), 10) || 7;
   const isLowerPrimary = activeGradeNum >= 1 && activeGradeNum <= 3;
+  const isPrimaryGrade = activeGradeNum >= 1 && activeGradeNum <= 6;
 
   const handleInsertSymbol = (sym) => {
     const ta = textareaRef.current;
@@ -444,7 +458,7 @@ const InputBar = React.memo(function InputBar({
           <span style={{ fontSize: '0.75rem', color: '#60a5fa', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 600 }}>
             ∑ 快捷符号:
           </span>
-          {QUICK_MATH_SYMBOLS.map((item, idx) => (
+          {(isPrimaryGrade ? PRIMARY_MATH_SYMBOLS : QUICK_MATH_SYMBOLS).map((item, idx) => (
             <button
               key={idx}
               type="button"
@@ -721,8 +735,8 @@ const InputBar = React.memo(function InputBar({
                 </button>
               )}
 
-              {/* 3. 常用数学理化符号开关 (仅在数理化学科开启) */}
-              {isFeatureVisible('mathSymbols', activeGrade, activeSubject) && (
+              {/* 3. 常用数学理化符号开关 (1-3年级低幼隐藏，4-6年级仅展示小学算术符号，7-12年级展示全量符号) */}
+              {!isLowerPrimary && isFeatureVisible('mathSymbols', activeGrade, activeSubject) && (
                 <button
                   type="button"
                   className="icon-btn symbols-btn"

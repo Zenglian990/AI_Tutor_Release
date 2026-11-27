@@ -37,11 +37,15 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
   const recentData = (() => {
     if (!stats) return [];
     const days = [];
+    // 严格按北京时间 (UTC+8) 构造近 7 天日期键，彻底消除凌晨 00:00-07:59 跨日错位与今日柱消失
+    const bjNowMs = Date.now() + 8 * 60 * 60 * 1000;
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+      const d = new Date(bjNowMs - i * 24 * 60 * 60 * 1000);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const key = `${y}-${m}-${day}`;
+      const label = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
       const found = stats.recent?.find(r => r.date === key);
       days.push({ label, value: found ? found.count : 0 });
     }
@@ -74,20 +78,20 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
           subjectData={subjectData}
         />
       </div>
-      <div className="mistake-modal" style={{ padding: '24px', background: '#1e293b', color: 'white', maxWidth: '640px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ color: '#60a5fa' }}>📊 {profileName} 的学习报表</h2>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <div className="mistake-modal theme-adaptive-modal" style={{ padding: 'clamp(14px, 3vw, 24px)', background: 'var(--bg-secondary, #1e293b)', color: 'var(--text-primary, #f8fafc)', maxWidth: '640px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', gap: '8px', flexWrap: 'wrap' }}>
+          <h2 style={{ color: 'var(--accent-color, #60a5fa)', margin: 0, fontSize: 'clamp(1.05rem, 3.8vw, 1.35rem)' }}>📊 {profileName} 的学习报表</h2>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
             {stats && !error && (
               <button
                 onClick={handleGenerateShareCard}
                 className="mistake-btn"
-                style={{ borderColor: '#f59e0b', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ borderColor: '#f59e0b', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', fontSize: '0.82rem', padding: '6px 10px' }}
               >
-                📢 生成微信伴读周报
+                📢 伴读周报图
               </button>
             )}
-            <button onClick={onClose} aria-label="关闭数据看板" style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '20px' }}>✕</button>
+            <button onClick={onClose} aria-label="关闭数据看板" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary, #94a3b8)', cursor: 'pointer', fontSize: '20px', padding: '4px 8px' }}>✕</button>
           </div>
         </div>
 
@@ -98,22 +102,32 @@ export default function StatsDashboard({ currentProfileId, profiles, onClose }) 
             <button onClick={() => setRetryCount(c => c + 1)} style={{ marginTop: '15px', padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>重试</button>
           </div>
         ) : !stats ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>加载中...</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary, #94a3b8)' }}>加载中...</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ background: 'rgba(59,130,246,0.1)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(59,130,246,0.2)', textAlign: 'center' }}>
-              <div style={{ fontSize: '42px', fontWeight: 'bold', color: '#60a5fa', lineHeight: 1.1 }}>{stats.total}</div>
-              <div style={{ color: '#94a3b8', fontSize: '14px', marginTop: '4px' }}>累计收录错题</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              <div style={{ background: 'rgba(59,130,246,0.12)', padding: '14px 8px', borderRadius: '12px', border: '1px solid rgba(59,130,246,0.25)', textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 'bold', color: '#3b82f6', lineHeight: 1.1 }}>{stats.total || 0}</div>
+                <div style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '12px', marginTop: '4px' }}>累计收录错题</div>
+              </div>
+              <div style={{ background: 'rgba(245,158,11,0.12)', padding: '14px 8px', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.25)', textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 'bold', color: '#f59e0b', lineHeight: 1.1 }}>{stats.reviewedCount || 0}</div>
+                <div style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '12px', marginTop: '4px' }}>已复盘巩固</div>
+              </div>
+              <div style={{ background: 'rgba(16,185,129,0.12)', padding: '14px 8px', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.25)', textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 'bold', color: '#10b981', lineHeight: 1.1 }}>{stats.masteredCount || 0}</div>
+                <div style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '12px', marginTop: '4px' }}>已彻底消灭</div>
+              </div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>各科薄弱点分布</h3>
+            <div style={{ background: 'var(--card-bg, rgba(255,255,255,0.04))', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color, rgba(255,255,255,0.08))' }}>
+              <h3 style={{ fontSize: '14px', color: 'var(--text-secondary, #94a3b8)', marginBottom: '16px', letterSpacing: '0.04em' }}>各科薄弱点分布</h3>
               {subjectData.length === 0
-                ? <div style={{ color: '#64748b', textAlign: 'center', padding: '20px 0' }}>暂无学科数据</div>
+                ? <div style={{ color: 'var(--text-secondary, #64748b)', textAlign: 'center', padding: '20px 0' }}>暂无学科数据</div>
                 : <CanvasBarChart data={subjectData} height={Math.max(subjectData.length * 46 + 16, 100)} horizontal={true} />
               }
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>近 7 天学习活跃度</h3>
+            <div style={{ background: 'var(--card-bg, rgba(255,255,255,0.04))', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color, rgba(255,255,255,0.08))' }}>
+              <h3 style={{ fontSize: '14px', color: 'var(--text-secondary, #94a3b8)', marginBottom: '16px', letterSpacing: '0.04em' }}>近 7 天错题攻坚趋势（北京时间）</h3>
               <CanvasBarChart data={recentData} height={180} horizontal={false} />
             </div>
           </div>

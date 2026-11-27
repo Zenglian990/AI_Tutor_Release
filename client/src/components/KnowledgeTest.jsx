@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -189,7 +189,12 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
   // UI 阶段状态: 'setup' | 'generating' | 'testing' | 'grading' | 'report'
   const [stage, setStage] = useState('setup'); 
   const [testType, setTestType] = useState('real_exam'); // 'custom' | 'unit' | 'midterm' | 'final' | 'real_exam'
-  const [selectedRegion, setSelectedRegion] = useState('北京海淀名校密卷');
+  const [selectedRegion, setSelectedRegion] = useState(() => (isHighSchool ? '新高考全国一卷示范' : '北京海淀名校密卷'));
+  const generateAbortRef = useRef(null);
+
+  useEffect(() => {
+    setSelectedRegion(isHighSchool ? '新高考全国一卷示范' : '北京海淀名校密卷');
+  }, [isHighSchool]);
   const [showExamRoom, setShowExamRoom] = useState(false);
   const [showExamScratchpad, setShowExamScratchpad] = useState(false);
   const [customKnowledgePoints, setCustomKnowledgePoints] = useState('');
@@ -356,10 +361,13 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     }
   }, [stage]);
 
-  // 开始生成试卷（带 AbortController 超时保护 + 传递 region）
+  // 开始生成试卷（带 AbortController 取消与超时保护 + 重置错题收录态）
   const handleGenerate = async () => {
     setStage('generating');
+    setMarkedMistakes({});
+    setReport(null);
     const controller = new AbortController();
+    generateAbortRef.current = controller;
     const timer = setTimeout(() => controller.abort(), 90000);
     try {
       const res = await authFetch('/api/test-paper/generate', {
@@ -377,6 +385,7 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
         })
       });
       clearTimeout(timer);
+      generateAbortRef.current = null;
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -397,10 +406,21 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
       setStage('testing');
     } catch (e) {
       clearTimeout(timer);
-      const msg = e.name === 'AbortError' ? '组卷请求超时，请重试' : e.message;
-      alert(`❌ 出卷失败：${msg}。请重试。`);
+      const wasUserCancel = generateAbortRef.current === null;
+      generateAbortRef.current = null;
+      if (!wasUserCancel) {
+        const msg = e.name === 'AbortError' ? '组卷请求超时，请重试' : e.message;
+        alert(`❌ 出卷失败：${msg}。请重试。`);
+      }
       setStage('setup');
     }
+  };
+
+  const handleCancelGenerate = () => {
+    const ctrl = generateAbortRef.current;
+    generateAbortRef.current = null;
+    if (ctrl) ctrl.abort();
+    setStage('setup');
   };
 
   // 交卷批改（严格防御误传 React SyntheticEvent 导致 Converting circular structure to JSON 崩溃）
@@ -490,18 +510,17 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
     }
   };
 
-  // 动态分值评级(根据学段与满分标准自适应)
-  const getScoreRating = (score) => {
+  // 动态分值评级(严格对齐实际试卷满分与全学段 100/150 分制，修复初中理化生政史地 100 分卷按 150 分误判不及格)
+  const getScoreRating = (score, explicitMaxTotal = null) => {
     const rawG = String(currentGrade).split('_')[0];
     const isElementary = ['1', '2', '3', '4', '5', '6'].includes(rawG);
-    const isHighSchool = ['10', '11', '12'].includes(rawG);
-    const is100Pts = isElementary || (isHighSchool && !['语文', '数学', '英语'].includes(selectedSubject));
-    const excellentLimit = is100Pts ? 90 : 135;
-    const passLimit = is100Pts ? 60 : 90;
+    const isCore150Subject = ['语文', '数学', '英语'].includes(selectedSubject);
+    const actualMax = Number(explicitMaxTotal || report?.totalMaxScore || paperActualTotal) || (isElementary || !isCore150Subject ? 100 : 150);
+    const ratio = actualMax > 0 ? (score / actualMax) : 0;
 
-    if (score >= excellentLimit) return { label: '👑 优秀 (特等奖)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
-    if (score >= passLimit) return { label: '⭐ 及格 (通过)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
-    return { label: '🔥 需努力', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
+    if (ratio >= 0.85) return { label: '👑 优秀 (特等奖)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' };
+    if (ratio >= 0.6) return { label: '⭐ 及格 (通过)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' };
+    return { label: '🔥 需努力', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' };
   };
 
   // 按真题类型分类
@@ -831,7 +850,23 @@ export default function KnowledgeTest({ onClose, currentProfileId, currentGrade,
             <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#fbbf24', textAlign: 'center', lineHeight: '1.4' }}>
               {generatingStatus}
             </div>
-            <div style={{ fontSize: '12px', color: '#9ca3af' }}>AI 组卷中，正在绘制严谨的辅助几何拓扑图，需 15-25 秒。</div>
+            <div style={{ fontSize: '12px', color: '#9ca3af' }}>AI 正在高速命制全真试卷与评分细则，通常需 10–30 秒...</div>
+            <button
+              type="button"
+              onClick={handleCancelGenerate}
+              style={{
+                marginTop: '6px',
+                padding: '7px 18px',
+                borderRadius: '8px',
+                border: '1px solid rgba(148,163,184,0.35)',
+                background: 'rgba(148,163,184,0.12)',
+                color: '#cbd5e1',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              取消并返回配置
+            </button>
           </div>
         )}
 

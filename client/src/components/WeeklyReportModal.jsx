@@ -15,35 +15,61 @@ export default function WeeklyReportModal({ isOpen, onClose, reportLoading, repo
   return (
     <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
       <div className="glass-panel" style={{ width: '90%', maxWidth: '640px', maxHeight: '85vh', overflowY: 'auto', padding: '28px', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'var(--card-bg)', boxShadow: '0 20px 25px -5px rgba(239, 68, 68, 0.2)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0, color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.15rem', flex: '1 1 auto' }}>
             📈 家长监工：本周深度学习报告
           </h2>
-          {!reportLoading && reportData && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {!reportLoading && reportData && (
+              <button
+                onClick={handlePrintNote}
+                className="no-print"
+                style={{
+                  padding: '6px 12px',
+                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)'
+                }}
+              >
+                🖨️ 打印家访便签
+              </button>
+            )}
             <button
-              onClick={handlePrintNote}
+              type="button"
+              onClick={onClose}
+              aria-label="关闭周报"
               className="no-print"
               style={{
-                padding: '6px 14px',
-                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                color: '#fff',
-                border: 'none',
+                background: 'rgba(148, 163, 184, 0.16)',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                color: 'var(--text-color, #94a3b8)',
+                width: '32px',
+                height: '32px',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem',
+                fontSize: '1rem',
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)'
+                justifyContent: 'center',
+                flexShrink: 0
               }}
             >
-              🖨️ 打印家访便签 (夹作业本)
+              ✕
             </button>
-          )}
+          </div>
         </div>
 
-        <div className="md-content" style={{ color: 'var(--text-color)', lineHeight: 1.6 }}>
+        <div className="md-content" style={{ color: 'var(--text-color)', lineHeight: 1.65, paddingLeft: '4px' }}>
           {reportLoading ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
               ⏳ 正在分析过去7天的数据并为您起草报告，请稍候...
@@ -68,10 +94,12 @@ export default function WeeklyReportModal({ isOpen, onClose, reportLoading, repo
                 </div>
               </div>
 
-              {/* On-Screen Report */}
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>
-                {preprocessLatex(reportData)}
-              </ReactMarkdown>
+              {/* On-Screen Report (marked no-print to prevent printing duplicate copy) */}
+              <div className="no-print">
+                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>
+                  {preprocessLatex(reportData)}
+                </ReactMarkdown>
+              </div>
             </>
           )}
         </div>

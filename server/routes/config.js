@@ -327,7 +327,9 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'dashscope') {
-      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const defaultDashUrl = (process.env.DASHSCOPE_API_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, '');
+      const normalizedUrl = (apiUrl || '').trim().replace(/\/+$/, '');
+      const isCustomUrl = Boolean(normalizedUrl && normalizedUrl !== defaultDashUrl);
       const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.DASHSCOPE_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({
@@ -402,7 +404,9 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'zhipu') {
-      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const defaultZhipuUrl = (process.env.ZHIPU_API_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
+      const normalizedUrl = (apiUrl || '').trim().replace(/\/+$/, '');
+      const isCustomUrl = Boolean(normalizedUrl && normalizedUrl !== defaultZhipuUrl);
       const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.ZHIPU_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({
@@ -477,7 +481,9 @@ router.post('/config/test-llm', async (req, res) => {
       });
 
     } else if (provider === 'deepseek') {
-      const isCustomUrl = Boolean(apiUrl && apiUrl.trim());
+      const defaultDsUrl = (process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+      const normalizedUrl = (apiUrl || '').trim().replace(/\/+$/, '');
+      const isCustomUrl = Boolean(normalizedUrl && normalizedUrl !== defaultDsUrl);
       const keyToUse = (userProvidedKey || (!isCustomUrl && allowServerFallback ? process.env.DEEPSEEK_API_KEY : '') || '').trim();
       if (!keyToUse) {
         return res.json({

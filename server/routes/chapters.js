@@ -7,7 +7,7 @@ const { resolveAuthorizedProfileId } = require('../middleware/auth');
 const logger = require('../services/logger');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
 const { extractClientAiHeaders } = require('../utils/aiHeaders');
-const { extractAndParseJson } = require('../utils/jsonParser');
+const { extractAndParseJson, extractLlmText } = require('../utils/jsonParser');
 const { formatGradeName } = require('../prompts/guidelines');
 
 // GET /api/chapters
@@ -129,7 +129,7 @@ router.post('/chapters/quiz', async (req, res) => {
 
       if (!response.ok) throw new Error(`Upstream status ${response.status}`);
       const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const rawText = extractLlmText(data);
       const parsed = extractAndParseJson(rawText);
       const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.questions) ? parsed.questions : null);
       if (list && list.length >= 2) {

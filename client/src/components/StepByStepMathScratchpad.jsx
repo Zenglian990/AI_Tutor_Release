@@ -9,26 +9,42 @@ import { verifyStepTransition, COMMON_MATH_SYMBOLS } from '../utils/stepVerifier
  * 2. 模式匹配识别“移项未变号”、“漏除常数”等学生易错陷阱
  * 3. 快捷数学符号软键盘与一键同步至私教对话
  */
+function getInitialSuggestedStep(equation) {
+  const norm = String(equation || '').replace(/\s+/g, '');
+  if (norm === '2x+4=10') return '2x = 10 - 4';
+  if (norm === '3x+5=20') return '3x = 20 - 5';
+  if (norm === 'x^2-5x+6=0') return '(x - 2)(x - 3) = 0';
+  if (norm === 'f(x)=x^3-3x') return "f'(x) = 3x^2 - 3";
+  return '';
+}
+
 export default function StepByStepMathScratchpad({
   isOpen,
   initialEquation = '2x + 4 = 10',
+  grade = '7_up',
   onClose,
   onApplyToChat
 }) {
   const [baseEquation, setBaseEquation] = useState(initialEquation);
-  const [steps, setSteps] = useState([
-    { text: '2x = 10 - 4', status: 'valid', message: '✓ 推导完全正确！', tip: '' }
-  ]);
+  const [steps, setSteps] = useState(() => {
+    const first = getInitialSuggestedStep(initialEquation);
+    return first
+      ? [{ text: first, ...verifyStepTransition(initialEquation || '2x + 4 = 10', first) }]
+      : [{ text: '', valid: false, status: 'empty', message: '等待输入推导...', tip: '' }];
+  });
   const [activeStepIdx, setActiveStepIdx] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
-      setBaseEquation(initialEquation || '2x + 4 = 10');
-      // Validate initial step
-      const firstCheck = verifyStepTransition(initialEquation || '2x + 4 = 10', '2x = 10 - 4');
-      setSteps([
-        { text: '2x = 10 - 4', ...firstCheck }
-      ]);
+      const targetEq = initialEquation || '2x + 4 = 10';
+      setBaseEquation(targetEq);
+      const suggestedFirst = getInitialSuggestedStep(targetEq);
+      if (suggestedFirst) {
+        const firstCheck = verifyStepTransition(targetEq, suggestedFirst);
+        setSteps([{ text: suggestedFirst, ...firstCheck }]);
+      } else {
+        setSteps([{ text: '', valid: false, status: 'empty', message: '等待输入推导...', tip: '写下你的第 1 步化简、因式分解或求导式，CAS 将实时验算' }]);
+      }
       setActiveStepIdx(0);
     }
   }, [isOpen, initialEquation]);
@@ -80,11 +96,13 @@ export default function StepByStepMathScratchpad({
   };
 
   const handleSendToChat = () => {
-    let summary = `老师，我在分步演算纸上推导了原方程【${baseEquation}】：\n`;
+    const gNum = parseInt(String(grade || '7').replace(/\D/g, ''), 10) || 7;
+    const examStdLabel = gNum >= 10 ? '高考阅卷标准' : (gNum <= 6 ? '小学数学规范书写要求' : '中考阅卷标准');
+    let summary = `老师，我在分步演算纸上推导了原式【${baseEquation}】：\n`;
     steps.forEach((s, i) => {
       summary += `第 ${i + 1} 步：${s.text} (${s.valid ? '正确' : '需修正: ' + s.message})\n`;
     });
-    summary += `请问老师，在书写规范的解答题过程时，我这种分步格式符合中考阅卷标准吗？`;
+    summary += `请问老师，在书写规范的解答题过程时，我这种分步格式符合${examStdLabel}吗？`;
     onApplyToChat && onApplyToChat(summary);
     onClose();
   };

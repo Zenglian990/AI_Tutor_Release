@@ -264,6 +264,7 @@ function AppInner() {
         body: JSON.stringify({
           profile_id: currentProfileId || 'default',
           student_name: currentProfile?.name || '同学',
+          parent_name: settings?.parentName || '家长',
           grade: currentProfile?.grade || '7_up',
           subject: selectedSubject || '数学'
         })
@@ -458,16 +459,23 @@ function AppInner() {
     } catch (e) { console.error('Failed to sync messages:', e); }
   }, [currentProfileId, currentProfile?.grade, selectedSubject]);
 
-  // Load messages on profile/subject change with race-condition prevention
+  // Load messages on profile/subject change with strict AbortController race-condition prevention
   useEffect(() => {
     let isCancelled = false;
+    const controller = new AbortController();
     const activeProfileId = currentProfileId;
     const activeGrade = currentProfile?.grade || '7_up';
     const activeSubject = selectedSubject;
 
+    // 切换科目/档案瞬间先清空上一科消息，避免在网络返回前短暂展示旧学科对话
+    setMessages([]);
+
     const loadMessages = async () => {
       try {
-        const res = await authFetch(`/api/chat-history?profile_id=${activeProfileId}&grade=${activeGrade}&subject=${activeSubject}`);
+        const res = await authFetch(
+          `/api/chat-history?profile_id=${encodeURIComponent(activeProfileId)}&grade=${encodeURIComponent(activeGrade)}&subject=${encodeURIComponent(activeSubject || '')}`,
+          { signal: controller.signal }
+        );
         if (res.ok) {
           const data = await res.json();
           if (!isCancelled) {
@@ -476,6 +484,7 @@ function AppInner() {
           }
         }
       } catch (e) {
+        if (e?.name === 'AbortError') return;
         console.error('Failed to load history:', e);
       }
       if (!isCancelled) {
@@ -485,6 +494,7 @@ function AppInner() {
     loadMessages();
     return () => {
       isCancelled = true;
+      controller.abort();
       if (messagesRef.current.length > 0) {
         syncMessages(messagesRef.current, activeGrade, activeSubject);
       }
@@ -1486,7 +1496,20 @@ function AppInner() {
           ⏳ 正在加载学习模块...
         </div>
       }>
-      {showMistakes && <MistakeNotebook onClose={() => setShowMistakes(false)} currentProfileId={currentProfileId} defaultGrade={currentProfile?.grade || '7_up'} defaultSubject={selectedSubject} onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace} onGuardAction={(action, reason) => { setGateScope('family'); setGateAction(() => action); setGateReason(reason); setGateOpen(true); }} />}
+      {showMistakes && (
+        <MistakeNotebook
+          onClose={() => setShowMistakes(false)}
+          currentProfileId={currentProfileId}
+          defaultGrade={currentProfile?.grade || '7_up'}
+          defaultSubject={selectedSubject}
+          onOpenPrerequisiteTrace={handleOpenPrerequisiteTrace}
+          onAskTutor={(prompt) => {
+            setShowMistakes(false);
+            handleSubmit(null, prompt);
+          }}
+          onGuardAction={(action, reason) => { setGateScope('family'); setGateAction(() => action); setGateReason(reason); setGateOpen(true); }}
+        />
+      )}
       {showStats && <StatsDashboard profiles={profiles} onClose={() => setShowStats(false)} currentProfileId={currentProfileId} />}
       {showMap && (
         <LearningMap
@@ -1640,6 +1663,7 @@ function AppInner() {
         <A4PrintModal
           isOpen={showPrintModal}
           onClose={() => setShowPrintModal(false)}
+          profileId={currentProfileId || 'default'}
           studentName={currentProfile?.name || '同学'}
           grade={currentProfile?.grade || '8_up'}
           subject={selectedSubject || '数学'}
@@ -1755,6 +1779,7 @@ function AppInner() {
         <StepByStepMathScratchpad
           isOpen={showStepScratchpad}
           initialEquation={stepScratchpadEq}
+          grade={currentProfile?.grade || '7_up'}
           onClose={() => setShowStepScratchpad(false)}
           onApplyToChat={(text) => setInput(text)}
         />
@@ -1846,8 +1871,9 @@ function AppInner() {
           initialSubject={selectedSubject || '数学'}
           initialGrade={currentProfile?.grade || '7_up'}
           onAskTutor={(prompt) => {
-            setInput(prompt);
-            showToast('📖 已将先修基石攻坚设问填入案头，点击发送即可开始', 'info');
+            setShowPrerequisiteTrace(false);
+            handleSubmit(null, prompt);
+            showToast('🚀 已将先修基石攻坚问题直接发给 AI 名师，正在为您拆解...', 'info');
           }}
         />
       )}

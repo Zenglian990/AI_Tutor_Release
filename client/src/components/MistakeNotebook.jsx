@@ -5,12 +5,65 @@ import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { getApiUrl, authFetch, formatGrade, useAppStore } from '../store/useStore';
 import { preprocessLatex } from '../utils/math';
+import { loadMermaid, sanitizeMermaid } from '../utils/mermaid_helper';
 import A4PrintModal from './A4PrintModal';
 import VariantPracticeModal from './VariantPracticeModal';
 import FSRSFlashcardSprintModal from './FSRSFlashcardSprintModal';
 import PrerequisiteTraceModal from './PrerequisiteTraceModal';
 
-export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject, onOpenPrerequisiteTrace }) {
+function MistakeMermaidBlock({ chart }) {
+  const [svg, setSvg] = useState('');
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const m = await loadMermaid();
+        const id = `mistake-mmd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+        const safeCode = sanitizeMermaid(chart);
+        const res = await m.render(id, safeCode);
+        if (active && res?.svg) {
+          setSvg(res.svg);
+          setFailed(false);
+        }
+      } catch {
+        if (active) setFailed(true);
+      }
+    })();
+    return () => { active = false; };
+  }, [chart]);
+
+  if (failed) {
+    return (
+      <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)', fontSize: '0.82rem', color: 'var(--text-secondary, #64748b)' }}>
+        🧭 思维导图结构示意（已在解题文字中展开步骤）
+      </div>
+    );
+  }
+  if (!svg) {
+    return <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #94a3b8)', padding: '6px 0' }}>🎨 正在渲染解题思维导图...</div>;
+  }
+  return (
+    <div
+      className="mermaid-wrapper"
+      style={{ overflowX: 'auto', padding: '10px', borderRadius: '10px', background: '#ffffff', margin: '8px 0', border: '1px solid #e2e8f0' }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+const MISTAKE_MD_COMPONENTS = {
+  code({ inline, className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || '');
+    if (!inline && match && match[1].toLowerCase() === 'mermaid') {
+      return <MistakeMermaidBlock chart={String(children || '').replace(/\n$/, '')} />;
+    }
+    return <code className={className} {...props}>{children}</code>;
+  }
+};
+
+export default function MistakeNotebook({ onClose, currentProfileId, onGuardAction, defaultGrade, defaultSubject, onOpenPrerequisiteTrace, onAskTutor }) {
   const { currentProfile } = useAppStore();
   const studentName = currentProfile?.name || '同学';
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
@@ -543,7 +596,7 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
                   <div className="mistake-answer">
                     <strong>解析：</strong>
                     <div className="md-content">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}>{preprocessLatex(m.answer)}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]} components={MISTAKE_MD_COMPONENTS}>{preprocessLatex(m.answer)}</ReactMarkdown>
                     </div>
                   </div>
                 ) : (
@@ -713,6 +766,13 @@ export default function MistakeNotebook({ onClose, currentProfileId, onGuardActi
           initialTopic={selectedTraceMistake.knowledge_point || selectedTraceMistake.query}
           initialSubject={selectedTraceMistake.subject || filterSubject || defaultSubject || '数学'}
           initialGrade={selectedTraceMistake.grade || filterGrade || defaultGrade || '7_up'}
+          onAskTutor={(prompt) => {
+            setSelectedTraceMistake(null);
+            if (onAskTutor) {
+              onAskTutor(prompt);
+              onClose && onClose();
+            }
+          }}
         />
       )}
 

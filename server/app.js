@@ -254,6 +254,19 @@ function createApp() {
 
   // --- Serve static frontend ---
   if (fs.existsSync(CLIENT_DIST)) {
+    // 优先直出轻量级 PWA 控制文件（sw.js / manifest / favicon），免受限流与冷启动队列挤压
+    app.get(['/sw.js', '/manifest.webmanifest', '/manifest.json'], (req, res, next) => {
+      const target = path.basename(req.path);
+      const fullPath = path.join(CLIENT_DIST, target);
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        return res.sendFile(target, { root: CLIENT_DIST });
+      }
+      return next();
+    });
+
     const staticLimiter = rateLimit({
       windowMs: 1 * 60 * 1000, // 1 minute
       max: 2000, // higher limit for static assets

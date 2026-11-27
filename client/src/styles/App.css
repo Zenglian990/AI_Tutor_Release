@@ -839,21 +839,22 @@ body.light-mode .chat-textarea::placeholder {
 /* ── Socratic Heuristic Shortcut Chips & Scaffold Cards ── */
 .quick-hints-bar {
   display: flex;
-  gap: 8px;
-  padding: 6px 14px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px;
+  max-height: 78px;
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  scroll-padding: 0 14px;
 }
 
 .quick-hints-bar > :first-child {
-  margin-left: 2px;
+  margin-left: 0;
 }
 
 .quick-hints-bar > :last-child {
-  margin-right: 12px;
+  margin-right: 0;
 }
 
 .quick-hints-bar::-webkit-scrollbar {
@@ -864,16 +865,50 @@ body.light-mode .chat-textarea::placeholder {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  padding: 5px 12px;
-  font-size: 0.8rem;
+  padding: 5px 11px;
+  font-size: 0.78rem;
   color: var(--text-color, #e2e8f0);
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
   user-select: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 375px 小屏适配：强制保留顶栏学科选择器，防止次级条与角标三行折断 */
+@media (max-width: 520px) {
+  .header-capsule {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    padding: 4px 6px !important;
+    max-width: 100% !important;
+  }
+  .capsule-subject-item,
+  .header-capsule select {
+    display: inline-flex !important;
+    visibility: visible !important;
+  }
+  .header-capsule select {
+    max-width: 92px !important;
+    font-size: 0.75rem !important;
+    padding: 3px 4px !important;
+  }
+  .chat-nav-bar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .chat-nav-bar button {
+    white-space: nowrap !important;
+    font-size: 0.76rem !important;
+    padding: 5px 9px !important;
+  }
+  .rec-badge {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
 }
 
 .quick-hint-chip:hover {
@@ -1394,21 +1429,158 @@ body.eink-mode .action-card-cta {
   color: #000000 !important;
 }
 
+/* ☀️ 浅色护眼模式全局弹窗适配：消除 8+ 重型模态框强锁暗黑底色的主题割裂 */
+body.light-mode .modal-overlay,
+body.light-mode .mistake-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+body.light-mode .theme-adaptive-modal,
+body.light-mode .knowledge-test-modal,
+body.light-mode .settings-modal,
+body.light-mode .roadmap-modal-card,
+body.light-mode .streak-modal-card,
+body.light-mode .trace-modal-card,
+body.light-mode .formula-modal-card,
+body.light-mode .essay-modal-card,
+body.light-mode .admin-modal-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16) !important;
+}
+
+body.light-mode .knowledge-test-modal h1,
+body.light-mode .knowledge-test-modal h2,
+body.light-mode .knowledge-test-modal h3,
+body.light-mode .knowledge-test-modal label,
+body.light-mode .knowledge-test-modal p,
+body.light-mode .settings-modal h2,
+body.light-mode .settings-modal h3,
+body.light-mode .settings-modal label,
+body.light-mode .roadmap-modal-card h2,
+body.light-mode .roadmap-modal-card h3,
+body.light-mode .streak-modal-card h2,
+body.light-mode .streak-modal-card h3,
+body.light-mode .trace-modal-card h2,
+body.light-mode .trace-modal-card h3,
+body.light-mode .formula-modal-card h2,
+body.light-mode .formula-modal-card h3 {
+  color: #0f172a !important;
+}
+
+body.light-mode .formula-katex-box,
+body.light-mode .formula-plain-box {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light-mode .math-symbols-scroll-bar {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+body.light-mode .symbol-pill-chip {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
 body.eink-mode .grade-selector,
 body.eink-mode button,
 body.eink-mode .input-bar button,
-body.eink-mode select {
+body.eink-mode select,
+body.eink-mode input,
+body.eink-mode textarea {
   border: 1.5px solid #000000 !important;
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 700 !important;
 }
 
+/* 根治墨水屏按钮内部子元素继承内联 #ffffff 导致“白底白字”盲块 */
+body.eink-mode button *,
+body.eink-mode a * {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
 body.eink-mode button:active,
+body.eink-mode button:active *,
 body.eink-mode .active-tag,
-body.eink-mode .btn-active {
+body.eink-mode .active-tag *,
+body.eink-mode .btn-active,
+body.eink-mode .btn-active * {
   background: #000000 !important;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* 根治墨水屏下弹窗容器（设置/战役沙盘/模考/公式/连胜/溯源/错题本）深蓝底荧光字割裂 */
+body.eink-mode .modal-overlay,
+body.eink-mode .mistake-overlay {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+body.eink-mode .modal-content,
+body.eink-mode .mistake-modal,
+body.eink-mode .glass-panel,
+body.eink-mode .theme-adaptive-modal,
+body.eink-mode .knowledge-test-modal,
+body.eink-mode .settings-modal,
+body.eink-mode .roadmap-modal-card,
+body.eink-mode .streak-modal-card,
+body.eink-mode .trace-modal-card,
+body.eink-mode .formula-modal-card,
+body.eink-mode .essay-modal-card,
+body.eink-mode .admin-modal-card,
+body.eink-mode .exam-room-question-pane,
+body.eink-mode .exam-room-question-card {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+}
+
+body.eink-mode .modal-content *,
+body.eink-mode .mistake-modal *,
+body.eink-mode .glass-panel *,
+body.eink-mode .theme-adaptive-modal *,
+body.eink-mode .knowledge-test-modal *,
+body.eink-mode .settings-modal *,
+body.eink-mode .roadmap-modal-card *,
+body.eink-mode .streak-modal-card *,
+body.eink-mode .trace-modal-card *,
+body.eink-mode .formula-modal-card *,
+body.eink-mode .essay-modal-card *,
+body.eink-mode .admin-modal-card *,
+body.eink-mode .exam-room-question-card * {
+  color: #000000 !important;
+  border-color: #333333 !important;
+}
+
+body.eink-mode .modal-content div,
+body.eink-mode .mistake-modal div,
+body.eink-mode .glass-panel div,
+body.eink-mode .knowledge-test-modal div,
+body.eink-mode .settings-modal div,
+body.eink-mode .roadmap-modal-card div,
+body.eink-mode .streak-modal-card div,
+body.eink-mode .trace-modal-card div,
+body.eink-mode .formula-modal-card div {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+body.eink-mode .mistake-item {
+  background: #ffffff !important;
+  border: 1.5px solid #000000 !important;
+}
+
+body.eink-mode .mistake-item button {
+  padding: 5px 10px !important;
+  min-height: 30px !important;
 }
 
 body.eink-mode .message.user {

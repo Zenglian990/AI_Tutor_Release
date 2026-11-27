@@ -41,12 +41,15 @@ function getPeerLevelInfo(xp) {
   return { level: 1, title: '初识小同桌', currentXp, progressPercent: 0 };
 }
 
+const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000;
+
 function getDateStringOffset(daysOffset = 0) {
-  const target = new Date();
-  target.setDate(target.getDate() + daysOffset);
-  const y = target.getFullYear();
-  const m = String(target.getMonth() + 1).padStart(2, '0');
-  const d = String(target.getDate()).padStart(2, '0');
+  // 统一采用北京时间（UTC+8），消除 Cloud Run UTC 容器与国内凌晨 00:00-07:59 跨日倒挂
+  const bjNowMs = Date.now() + BEIJING_OFFSET_MS + daysOffset * 24 * 60 * 60 * 1000;
+  const target = new Date(bjNowMs);
+  const y = target.getUTCFullYear();
+  const m = String(target.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(target.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
@@ -54,12 +57,18 @@ function getTodayString() {
   return getDateStringOffset(0);
 }
 
+function parseUtcMidnightMs(dateStr) {
+  const m = String(dateStr || '').trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return NaN;
+  return Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+}
+
 function getDaysDifference(dateStr1, dateStr2) {
   if (!dateStr1 || !dateStr2) return Infinity;
-  const d1 = new Date(dateStr1);
-  const d2 = new Date(dateStr2);
-  const diffMs = Math.abs(d2.setHours(0,0,0,0) - d1.setHours(0,0,0,0));
-  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const t1 = parseUtcMidnightMs(dateStr1);
+  const t2 = parseUtcMidnightMs(dateStr2);
+  if (Number.isNaN(t1) || Number.isNaN(t2)) return Infinity;
+  return Math.round(Math.abs(t2 - t1) / (1000 * 60 * 60 * 24));
 }
 
 /**

@@ -4,17 +4,27 @@ import { useAppStore } from '../store/useStore';
 export default function StreakModal({ isOpen, onClose }) {
   const { currentProfile, authFetch } = useAppStore();
   const [streakData, setStreakData] = useState(null);
+  const [gamificationProfile, setGamificationProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState(false);
+  const [claimNotice, setClaimNotice] = useState('');
 
   const fetchStreak = async () => {
     try {
       setLoading(true);
-      const res = await authFetch(`/api/gamification/streak?profile_id=${currentProfile?.id || 'default'}`);
-      if (res.ok) {
-        const json = await res.json();
+      const pid = encodeURIComponent(currentProfile?.id || 'default');
+      const [streakRes, profRes] = await Promise.all([
+        authFetch(`/api/gamification/streak?profile_id=${pid}`),
+        authFetch(`/api/gamification/profile?profile_id=${pid}&student_name=${encodeURIComponent(currentProfile?.name || '同学')}`)
+      ]);
+      if (streakRes.ok) {
+        const json = await streakRes.json();
         setStreakData(json.streak);
+      }
+      if (profRes.ok) {
+        const pJson = await profRes.json();
+        setGamificationProfile(pJson);
       }
     } catch (e) {
       console.error('Failed to load streak info:', e);
@@ -27,6 +37,7 @@ export default function StreakModal({ isOpen, onClose }) {
     if (isOpen) {
       fetchStreak();
       setClaimSuccess(false);
+      setClaimNotice('');
     }
   }, [isOpen, currentProfile?.id]);
 
@@ -38,14 +49,18 @@ export default function StreakModal({ isOpen, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile_id: currentProfile?.id || 'default' })
       });
+      const json = await res.json().catch(() => ({}));
       if (res.ok) {
-        const json = await res.json();
         setStreakData(prev => prev ? { ...prev, streakFreezeCount: json.streakFreezeCount } : prev);
         setClaimSuccess(true);
+        setClaimNotice('');
         setTimeout(() => setClaimSuccess(false), 3000);
+      } else {
+        setClaimNotice(json.error || '暂时无法领取连胜冰冻卡');
       }
     } catch (e) {
       console.error('Claim freeze error:', e);
+      setClaimNotice('网络异常，请稍后重试');
     } finally {
       setClaiming(false);
     }
@@ -57,16 +72,25 @@ export default function StreakModal({ isOpen, onClose }) {
   const longestStreak = streakData?.longestStreak || 0;
   const freezeCount = streakData?.streakFreezeCount ?? 2;
   const isTodayDone = streakData?.isTodayCompleted || false;
-  const peer = streakData?.peerIntimacy || { level: 1, title: '初识小同桌', currentXp: 0, progressPercent: 0, perk: '好奇反问与基础辅导' };
+  const peer = {
+    level: 1,
+    title: '初识小同桌',
+    currentXp: 0,
+    nextLevelXp: 100,
+    progressPercent: 0,
+    perk: '好奇反问与基础辅导',
+    ...(streakData?.peerIntimacy || {})
+  };
 
-  // Calculate 7-day view
+  // Calculate 7-day view strictly in Beijing Time (UTC+8)
   const daysOfWeek = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-  const todayIdx = (new Date().getDay() + 6) % 7; // 0=Mon, 6=Sun
+  const bjNowDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const todayIdx = (bjNowDate.getUTCDay() + 6) % 7; // 0=Mon, 6=Sun
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
       <div 
-        className="modal-content streak-modal"
+        className="modal-content streak-modal streak-modal-card"
         onClick={e => e.stopPropagation()}
         style={{
           maxWidth: '460px',
@@ -138,9 +162,8 @@ export default function StreakModal({ isOpen, onClose }) {
             const activeWeekDates = Array.isArray(streakData?.activeDatesWeek) ? streakData.activeDatesWeek : null;
             let isCompleted = false;
             if (activeWeekDates) {
-              const targetDate = new Date();
-              targetDate.setDate(targetDate.getDate() - (todayIdx - idx));
-              const iso = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+              const targetDate = new Date(Date.now() + 8 * 60 * 60 * 1000 - (todayIdx - idx) * 24 * 60 * 60 * 1000);
+              const iso = `${targetDate.getUTCFullYear()}-${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}-${String(targetDate.getUTCDate()).padStart(2, '0')}`;
               isCompleted = activeWeekDates.includes(iso);
             } else if (isToday) {
               isCompleted = isTodayDone;
@@ -203,12 +226,54 @@ export default function StreakModal({ isOpen, onClose }) {
               padding: '6px 12px',
               fontSize: '12px',
               fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               cursor: freezeCount >= 5 ? 'not-allowed' : 'pointer'
             }}
           >
             {claimSuccess ? '已领取 ✓' : (freezeCount >= 5 ? '已满额' : '+补充')}
           </button>
         </div>
+        {claimNotice && (
+          <div style={{ fontSize: '12px', color: '#fbbf24', marginTop: '-12px', marginBottom: '14px', paddingLeft: '4px' }}>
+            💡 {claimNotice}
+          </div>
+        )}
+
+        {/* Phase 3: 真实错题消灭进度与勋章陈列（严格绑定 mistakes 表真实复盘/消灭数） */}
+        {gamificationProfile && (
+          <div style={{
+            background: 'rgba(16, 185, 129, 0.08)',
+            borderRadius: '14px',
+            padding: '12px 14px',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#34d399' }}>
+                🏆 真实攻坚战绩 · {gamificationProfile.rankTier?.icon || '🥉'} {gamificationProfile.rankTier?.name || '求知学童'}
+              </span>
+              <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                已复盘 <strong>{gamificationProfile.reviewedMistakesCount || 0}</strong> 题 · 已消灭 <strong>{gamificationProfile.masteredMistakesCount || 0}</strong> 题
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {(gamificationProfile.badges || ['初露锋芒']).map((b) => (
+                <span key={b} style={{
+                  fontSize: '11px',
+                  padding: '3px 9px',
+                  borderRadius: '999px',
+                  background: b === '错题粉碎机' || b === '周末清零王' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                  border: b === '错题粉碎机' || b === '周末清零王' ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid rgba(255, 255, 255, 0.14)',
+                  color: b === '错题粉碎机' || b === '周末清零王' ? '#6ee7b7' : '#e2e8f0',
+                  fontWeight: 600
+                }}>
+                  🏅 {b}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Virtual Peer Student Intimacy (同桌小明羁绊) */}
         <div style={{

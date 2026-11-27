@@ -20,7 +20,9 @@ const { extractClientAiHeaders, mapAiErrorToHttp } = require('../utils/aiHeaders
 const { clampInt } = require('../utils/paramValidator');
 const { isVerifiedAdminRequest, isValidMasterApiToken, isWeakPinHash, isSetupSecretValid, generateParentSessionToken, ADMIN_SESSION_COOKIE } = require('../utils/adminAuth');
 const { resolveAuthorizedProfileId, buildCookieHeaderValue, appendSetCookie } = require('../middleware/auth');
-const { requireQuotaOrVip } = require('../middleware/quota');
+const { requireQuotaOrVip, hasByokKey, FREE_DAILY_AI_QUOTA } = require('../middleware/quota');
+const { extractLlmText } = require('../utils/jsonParser');
+const { getTodayString } = require('../services/streakService');
 const dataUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
 // Allowed audio MIME types
@@ -325,20 +327,100 @@ router.get('/stats', async (req, res) => {
     const profile_id = authCheck.profileId;
 
     const totalRows = await sqliteDb.get('SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ?', [profile_id]);
+    const masteryRows = await sqliteDb.get(
+      `SELECT
+         SUM(CASE WHEN COALESCE(review_count, 0) >= 1 THEN 1 ELSE 0 END) as reviewed,
+         SUM(CASE WHEN COALESCE(review_count, 0) >= 3 THEN 1 ELSE 0 END) as mastered
+       FROM mistakes WHERE profile_id = ?`,
+      [profile_id]
+    );
     const subjectRows = await sqliteDb.all(
       'SELECT subject, COUNT(*) as count FROM mistakes WHERE profile_id = ? AND subject != "unknown" GROUP BY subject',
       [profile_id]
     );
     const recentRows = await sqliteDb.all(
       `SELECT date(timestamp, '+8 hours') as date, COUNT(*) as count
-       FROM mistakes WHERE profile_id = ? AND timestamp >= datetime('now', '-7 days')
+       FROM mistakes WHERE profile_id = ? AND datetime(timestamp, '+8 hours') >= datetime('now', '+8 hours', '-7 days')
        GROUP BY date(timestamp, '+8 hours') ORDER BY date DESC`,
       [profile_id]
     );
 
-    res.json({ total: totalRows.c, bySubject: subjectRows, recent: recentRows });
+    res.json({
+      total: totalRows.c,
+      reviewedCount: masteryRows?.reviewed || 0,
+      masteredCount: masteryRows?.mastered || 0,
+      todayBeijingDate: getTodayString(),
+      bySubject: subjectRows,
+      recent: recentRows
+    });
   } catch (e) {
     res.status(500).json({ error: "获取统计数据失败", details: NODE_ENV === 'development' ? e.message : undefined });
+  }
+});
+
+// GET /api/quota/status — Phase 3：返回当前用户今日免费 AI 额度余量、VIP 会员及 BYOK 状态
+router.get('/quota/status', async (req, res) => {
+  try {
+    const sqliteDb = getSqliteDb();
+    const requestedPid = req.query.profile_id || 'default';
+    const authCheck = req.auth ? resolveAuthorizedProfileId(req, requestedPid) : null;
+    if (authCheck && !authCheck.ok) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    }
+    const resolvedPid = (authCheck?.profileId || req.auth?.activeProfileId || String(requestedPid || 'default').trim() || 'default');
+    const sessionPrimaryPid = req.auth?.activeProfileId && req.auth.activeProfileId !== 'default'
+      ? req.auth.activeProfileId
+      : resolvedPid;
+    const quotaPid = (resolvedPid === 'default' && sessionPrimaryPid !== 'default') ? sessionPrimaryPid : resolvedPid;
+
+    const isAdmin = Boolean(req.auth?.isAdmin) || await isVerifiedAdminRequest(req);
+    const hasByok = hasByokKey(req);
+    let isVip = false;
+    let vipDaysRemaining = 0;
+    let todayUsed = 0;
+
+    if (sqliteDb) {
+      try {
+        const member = await sqliteDb.get(
+          `SELECT tier, expire_at FROM memberships WHERE profile_id IN (?, ?) ORDER BY expire_at DESC LIMIT 1`,
+          [quotaPid, resolvedPid]
+        );
+        if (member && member.tier && member.tier !== 'free' && member.expire_at) {
+          const expireMs = new Date(member.expire_at).getTime();
+          if (!Number.isNaN(expireMs) && expireMs > Date.now()) {
+            isVip = true;
+            vipDaysRemaining = Math.max(1, Math.ceil((expireMs - Date.now()) / (1000 * 60 * 60 * 24)));
+          }
+        }
+        const usageRow = await sqliteDb.get(
+          `SELECT COUNT(*) as cnt FROM api_usage WHERE profile_id = ? AND date(timestamp, '+8 hours') = date('now', '+8 hours')`,
+          [quotaPid]
+        );
+        todayUsed = usageRow?.cnt || 0;
+      } catch (qErr) {
+        logger.warn('[QuotaStatus] Query warning:', qErr.message);
+      }
+    }
+
+    const unlimited = isAdmin || isVip || hasByok;
+    const remaining = unlimited ? null : Math.max(0, FREE_DAILY_AI_QUOTA - todayUsed);
+
+    res.json({
+      success: true,
+      profileId: quotaPid,
+      date: getTodayString(),
+      dailyLimit: FREE_DAILY_AI_QUOTA,
+      todayUsed,
+      remaining,
+      unlimited,
+      isVip,
+      vipDaysRemaining,
+      isAdmin,
+      hasByok
+    });
+  } catch (e) {
+    logger.error('[QuotaStatus] Error:', e);
+    res.status(500).json({ error: '获取额度状态失败' });
   }
 });
 
@@ -469,29 +551,46 @@ router.post('/report/weekly', requireQuotaOrVip('weekly_report'), async (req, re
     const gradeFilter = (grade && grade !== 'unknown') ? ` AND grade = ?` : '';
     const gradeParams = (grade && grade !== 'unknown') ? [grade] : [];
 
-    // Although chat_history has a grade column, we intentionally count all messages for the profile to reflect overall activity in the weekly report.
+    // 统一与家长远程视图口径：仅统计 role = 'user' 的真实互动轮次，并使用北京时间（UTC+8）
     const chatCount = await sqliteDb.get(
-      `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')`,
+      `SELECT COUNT(*) as c FROM chat_history WHERE profile_id = ? AND role = 'user' AND datetime(timestamp, '+8 hours') >= datetime('now', '+8 hours', '-7 days')`,
       [targetPid]
     );
     const mistakeCount = await sqliteDb.get(
-      `SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ? AND datetime(timestamp) >= datetime('now', '-7 days')` + gradeFilter,
+      `SELECT COUNT(*) as c FROM mistakes WHERE profile_id = ? AND datetime(timestamp, '+8 hours') >= datetime('now', '+8 hours', '-7 days')` + gradeFilter,
       [targetPid, ...gradeParams]
     );
+    const reviewedCountRow = await sqliteDb.get(
+      `SELECT
+         SUM(CASE WHEN COALESCE(review_count, 0) >= 1 THEN 1 ELSE 0 END) as reviewed,
+         SUM(CASE WHEN COALESCE(review_count, 0) >= 3 THEN 1 ELSE 0 END) as mastered
+       FROM mistakes WHERE profile_id = ?` + gradeFilter,
+      [targetPid, ...gradeParams]
+    );
+    const reviewedNum = reviewedCountRow?.reviewed || 0;
+    const masteredNum = reviewedCountRow?.mastered || 0;
+
+    // 严格注入当前真实北京时间日期，彻底杜绝模型胡写“202X年X月X日”占位符
+    const bjNowStr = getTodayString(); // YYYY-MM-DD
+    const [bjY, bjM, bjD] = bjNowStr.split('-');
+    const realDateCn = `${bjY}年${parseInt(bjM, 10)}月${parseInt(bjD, 10)}日`;
 
     const prompt = `你是一位认真负责的"教导主任"，现在要给家长【${parent_name}】发一份关于他的孩子【${student_name}】（${safeGrade}）的【本周AI私教学习周报】。
 
-本周客观数据如下：
-- 师生对话互动总次数：${chatCount.c} 次
-- 攻克/记录的核心错题数：${mistakeCount.c} 题
+本周客观数据如下（统计截止日期：${realDateCn}）：
+- 师生真实互动探讨轮次：${chatCount.c} 轮
+- 本周新收录核心错题：${mistakeCount.c} 题
+- 累计已复盘错题：${reviewedNum} 题（其中已彻底消灭掌握：${masteredNum} 题）
 
 请你根据上述数据，用教导主任那种"严谨、负责、同时带有鼓励"的语气，撰写一份结构清晰的Markdown格式周报。
 包括：
 1. 本周学习数据总结
-2. 数据背后的学习状态分析（比如：互动次数多说明求知欲强，错题多说明敢于暴露弱点）
+2. 数据背后的学习状态分析（如互动轮次少或为 0 请如实说明并温和鼓励，绝不夸大虚构）
 3. 给家长（${parent_name}）的跟进建议
 
-无需过于冗长，字数控制在300字左右即可，排版要精美（可以使用Emoji）。`;
+要求：
+- 无需过于冗长，字数控制在300字左右即可，排版要精美（可以使用Emoji）。
+- 若文末有落款日期，必须严格写为【${realDateCn}】，严禁出现 "202X年X月X日" 或任何占位符！`;
 
     let text;
     try {
@@ -501,27 +600,45 @@ router.post('/report/weekly', requireQuotaOrVip('weekly_report'), async (req, re
         headers: { 'Content-Type': 'application/json', ...extractClientAiHeaders(req) },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.6 }
+          generationConfig: {
+            temperature: 0.5,
+            maxOutputTokens: 1024,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
         })
-      }, 8, 90000);
+      }, 4, 30000);
 
       const data = await response.json();
-      text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      text = extractLlmText(data);
       if (!text) throw new Error("Empty response from LLM");
+      // 二次保险：若上游偶发仍输出 202X年X月X日 占位符，直接替换为真实北京时间日期
+      text = text.replace(/202[Xx]年[Xx\d]{1,2}月[Xx\d]{1,2}日/g, realDateCn);
     } catch (llmErr) {
       logger.warn("Weekly report LLM generation failed, falling back to static report:", llmErr.message);
-      text = `### 📊 本周学习数据总结
-- 师生对话互动总次数：**${chatCount.c}** 次
-- 攻克/记录的核心错题数：**${mistakeCount.c}** 题
+      text = `### 📊 本周学习数据总结（截至 ${realDateCn}）
+- 师生真实互动探讨轮次：**${chatCount.c}** 轮
+- 本周新收录核心错题：**${mistakeCount.c}** 题
+- 累计复盘巩固错题：**${reviewedNum}** 题（已彻底消灭 **${masteredNum}** 题）
 
 ### 📝 学习状态分析
-本周【${student_name}】同学完成了系统的学习交互。在对话中积极探讨问题，并在错题本中记录了关键薄弱点。
+本周【${student_name}】同学在【${safeGrade}】保持了清晰的学习记录。${chatCount.c > 0 ? '在对话中积极追问思考，敢于暴露知识薄弱点。' : '本周互动刚刚起步，建议每天安排 10–15 分钟启发式问答建立节奏。'}
 
 ### 💡 家长跟进建议
-建议家长【${parent_name}】多鼓励孩子对本周记录的 **${mistakeCount.c}** 道错题进行自主复习，通过“举一反三”变式训练进行巩固，养成良好的学习习惯。`;
+建议家长【${parent_name}】周末陪伴孩子打印「周末错题清零 A4 卷」，对本周 **${mistakeCount.c}** 道错题做一次纸笔复盘，形成学—练—测闭环。
+
+—— 教导主任 · ${realDateCn}`;
     }
 
-    res.json({ report: text });
+    res.json({
+      report: text,
+      date: realDateCn,
+      stats: {
+        chatTurns: chatCount.c,
+        newMistakes: mistakeCount.c,
+        reviewedMistakes: reviewedNum,
+        masteredMistakes: masteredNum
+      }
+    });
   } catch (e) {
     logger.error("Weekly report error:", e);
     res.status(500).json({ error: "生成周报失败" });
@@ -1335,8 +1452,10 @@ router.post('/admin/reset-pin', checkPinRateLimit, async (req, res) => {
 
     const secretCandidate = String(setup_secret || req.headers['x-setup-secret'] || '').trim();
     const hasValidSecret = Boolean(secretCandidate && (isSetupSecretValid(secretCandidate) || isValidMasterApiToken(secretCandidate)));
+    // 站长已通过直登密钥/管理员会话认证进入控制台时，允许直接重设管理员 PIN，无需二次索要 setup_secret
+    const isAlreadyVerifiedAdmin = hasValidSecret || await isVerifiedAdminRequest(req);
 
-    if (!hasValidSecret) {
+    if (!isAlreadyVerifiedAdmin) {
       if (!question_id || !answer_hash) {
         return res.status(400).json({ error: "缺少密保验证参数或站长管理密钥" });
       }

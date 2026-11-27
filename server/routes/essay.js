@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../services/logger');
 const { fetchWithKeyRotation, buildChatURL } = require('../services/embedding');
-const { extractAndParseJson } = require('../utils/jsonParser');
+const { extractAndParseJson, extractLlmText } = require('../utils/jsonParser');
 const { parseGradeNumber } = require('../utils/gradeParser');
 const { extractClientAiHeaders } = require('../utils/aiHeaders');
 
@@ -117,7 +117,6 @@ function heuristicEssayEvaluation(title, content, grade = '7_up') {
   } else if (lengthRatio < 0.8) {
     lengthMultiplier = 0.82;
   }
-  const totalScore = Math.min(maxScore, Math.max(1, Math.round(rawSum * (maxScore / 70) * lengthMultiplier)));
 
   // Extract candidate sentences for upgrading (采用完整句法示范改写，彻底杜绝机械子串 replace 造病句)
   const sentences = text.split(/([。！？!?\n])/).filter(s => s.trim().length > 6 && !/^[。！？!?\n]+$/.test(s));
@@ -217,20 +216,58 @@ function heuristicEssayEvaluation(title, content, grade = '7_up') {
     suggestions.push('💡 增加环境烘托：用天气、光影、声音衬托人物内心情感波澜');
   }
 
+  // 严格保证五维满分总和(50)与整卷总分(maxScore)算术同源：先算出五维归一化分，再反算 totalScore 或等比对齐，杜绝五维 29/50 顶部却 15/60 的矛盾
+  const rawDimScores = {
+    depth: Math.max(1, Math.min(10, Math.round((depthScore / 18) * 10 * lengthMultiplier))),
+    structure: Math.max(1, Math.min(10, Math.round((structureScore / 17) * 10 * Math.min(1, lengthMultiplier + 0.15)))),
+    rhetoric: Math.max(1, Math.min(10, Math.round((rhetoricScore / 17) * 10 * Math.min(1, lengthMultiplier + 0.15)))),
+    emotion: Math.max(1, Math.min(10, Math.round((emotionScore / 16) * 10 * Math.min(1, lengthMultiplier + 0.1)))),
+    standards: Math.max(1, Math.min(10, Math.round((standardsScore / 10) * 10 * Math.min(1, lengthMultiplier + 0.2))))
+  };
+  const dimTotal50 = Object.values(rawDimScores).reduce((a, b) => a + b, 0);
+  const totalScore = Math.min(maxScore, Math.max(1, Math.round((dimTotal50 / 50) * maxScore)));
+  const isHighEssay = cfg.stage === 'high';
+
   return {
     total_score: totalScore,
     max_score: maxScore,
     isFallback: true,
-    fallbackNotice: '当前云端批改引擎暂不可用，以下为基于字数、段落与基础修辞的本地启发式预估（非最终 AI 精批）。',
-    grade_level_label: totalScore >= maxScore * 0.85 ? '一类文 (立意生动·文采斐然)' : totalScore >= maxScore * 0.70 ? '二类文 (条理清晰·情感真挚)' : '三类文 (基础扎实·有待升格)',
+    fallbackNotice: '当前云端批改引擎暂不可用或繁忙，以下为基于字数、段落与基础语篇特征的本地启发式预估（非最终 AI 精批）。',
+    grade_level_label: totalScore >= maxScore * 0.85 ? '一类文 (立意深刻·文采斐然)' : totalScore >= maxScore * 0.70 ? '二类文 (条理清晰·论证扎实)' : '三类文 (基础扎实·有待升格)',
     char_count: charCount,
     para_count: paraCount,
     dimensions: {
-      depth: { score: Math.round(depthScore * 10 / 18), label: '立意深度', comment: charCount >= cfg.minWords ? '主题立意明确，能够由表及里展现观察。' : `字数尚显单薄（期望${cfg.minWords}-${cfg.targetWords}字），建议丰富细节充实内容。` },
-      structure: { score: Math.round(structureScore * 10 / 17), label: '结构脉络', comment: paraCount >= 3 ? '起承转合自然，段落划分合理。' : '段落稍显单一，建议按结构分段。' },
-      rhetoric: { score: Math.round(rhetoricScore * 10 / 17), label: '词句文采', comment: hasRhetoricKeywords ? '善用修辞与生动词汇，语言生动富有表现力。' : '多为陈述句，可适当增加比喻、拟人或动作白描。' },
-      emotion: { score: Math.round(emotionScore * 10 / 16), label: '情感真实', comment: '情感自然流露，细节抓取具备一定真情实感。' },
-      standards: { score: Math.round(standardsScore * 10 / 10), label: '书写规范', comment: '标点使用规范，段落格式标准。' }
+      depth: {
+        score: rawDimScores.depth,
+        label: isHighEssay ? '立意思辨' : '立意深度',
+        comment: charCount >= cfg.minWords
+          ? (isHighEssay ? '切题准确，能够围绕核心命题展开思辨剖析。' : '主题立意明确，能够由表及里展现观察。')
+          : `字数尚显单薄（期望${cfg.minWords}-${cfg.targetWords}字），建议充实论据或细节。`
+      },
+      structure: {
+        score: rawDimScores.structure,
+        label: isHighEssay ? '论证结构' : '结构脉络',
+        comment: paraCount >= 3 ? '层次清晰，起承转合与段落推进较自然。' : '段落略显单一，建议按“提出—展开—深化”分段布局。'
+      },
+      rhetoric: {
+        score: rawDimScores.rhetoric,
+        label: isHighEssay ? '思辨表达' : '词句文采',
+        comment: hasRhetoricKeywords
+          ? '善用修辞与凝练句式，语言富有表现力。'
+          : (isHighEssay ? '论述偏平铺直叙，可增加辩证设问、排比论证与精准人文语汇。' : '多为陈述句，可适当增加比喻、拟人或动作细节描写。')
+      },
+      emotion: {
+        score: rawDimScores.emotion,
+        label: isHighEssay ? '现实关照' : '情感真实',
+        comment: isHighEssay
+          ? '具备一定时代视角，可进一步补充典型案例以增强说服力。'
+          : '情感自然流露，如能加入一处具体瞬间会更有感染力。'
+      },
+      standards: {
+        score: rawDimScores.standards,
+        label: '书写规范',
+        comment: '标点使用规范，段落格式清晰整洁。'
+      }
     },
     highlights,
     suggestions,
@@ -241,18 +278,19 @@ function heuristicEssayEvaluation(title, content, grade = '7_up') {
 /**
  * Call real LLM to grade essay and generate customized sentence upgrades
  */
-async function gradeEssayWithLLM(title, content, grade, reqHeaders = {}, promptTheme = '', profileId = 'default') {
+async function gradeEssayWithLLM(title, content, grade, reqHeaders = {}, promptTheme = '', profileId = 'default', imageBase64 = '') {
   const cfg = getEssayGradeConfig(grade);
   const maxScore = cfg.maxScore;
   const charCount = content.trim().length;
   const paragraphs = content.trim().split(/\n+/).filter(p => p.trim().length > 0);
   const paraCount = paragraphs.length;
   const themeLine = promptTheme && String(promptTheme).trim() ? `\n【命题要求/写作主题】：${String(promptTheme).trim().slice(0, 300)}` : '';
+  const imageHint = imageBase64 ? '\n【看图写话原图】：已随本次请求附上原图，请结合画面细节对照评价孩子的观察是否细致、有无遗漏画面要素。' : '';
 
   const prompt = `你是一位拥有20年中小学语文教学与阅卷经验的特级教师。请根据【${cfg.stageName}】的国家新课标作文评价标准（${cfg.standard}），对学生的习作《${title || '未命题'}》进行全维度深度诊断，并挑选2-3处具有提升潜力的平淡语句进行逐句点石成金的升格润色。
 
 【学生年级】：${grade || '七年级'}
-【年级学段标准】：${cfg.stageName}，期望篇幅【${cfg.minWords} - ${cfg.targetWords} 字】${themeLine}
+【年级学段标准】：${cfg.stageName}，期望篇幅【${cfg.minWords} - ${cfg.targetWords} 字】${themeLine}${imageHint}
 【习作题目】：${title || '未命题'}
 【习作正文】：
 ${content}
@@ -295,6 +333,19 @@ ${content}
   ]
 }`;
 
+  const requestParts = [{ text: prompt }];
+  if (imageBase64 && typeof imageBase64 === 'string') {
+    const dataUrlMatch = imageBase64.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i);
+    if (dataUrlMatch) {
+      requestParts.push({
+        inline_data: {
+          mime_type: dataUrlMatch[1].toLowerCase() === 'image/jpg' ? 'image/jpeg' : dataUrlMatch[1].toLowerCase(),
+          data: dataUrlMatch[2]
+        }
+      });
+    }
+  }
+
   const options = {
     method: 'POST',
     profileId,
@@ -303,21 +354,24 @@ ${content}
       ...extractClientAiHeaders(reqHeaders)
     },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ parts: requestParts }],
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 2048,
-        responseMimeType: 'application/json'
+        maxOutputTokens: 3072,
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 }
       }
     })
   };
 
   const response = await fetchWithKeyRotation(buildChatURL, options, 3, 40000);
   if (!response.ok) {
-    throw new Error(`LLM upstream returned status ${response.status}`);
+    const err = new Error(`LLM upstream returned status ${response.status}`);
+    err.statusCode = response.status;
+    throw err;
   }
   const rawData = await response.json();
-  const text = rawData?.candidates?.[0]?.content?.parts?.[0]?.text || rawData?.choices?.[0]?.message?.content;
+  const text = extractLlmText(rawData);
   if (!text) throw new Error('Empty text from LLM response');
 
   const parsed = extractAndParseJson(text);
@@ -325,7 +379,20 @@ ${content}
     throw new Error('Malformed JSON structure from LLM essay grader');
   }
 
-  parsed.total_score = Math.min(maxScore, Math.max(1, Math.round(parsed.total_score)));
+  // 校准五维小分(每项0-10)并与总分算术对齐，消除五维合计与总分比例严重脱节
+  const dimKeys = ['depth', 'structure', 'rhetoric', 'emotion', 'standards'];
+  let validDims = 0;
+  let dimSum = 0;
+  for (const dk of dimKeys) {
+    if (parsed.dimensions[dk] && typeof parsed.dimensions[dk].score === 'number') {
+      parsed.dimensions[dk].score = Math.min(10, Math.max(1, Math.round(parsed.dimensions[dk].score)));
+      dimSum += parsed.dimensions[dk].score;
+      validDims++;
+    }
+  }
+  const rawTotal = Math.min(maxScore, Math.max(1, Math.round(parsed.total_score)));
+  const impliedTotal = validDims === 5 ? Math.min(maxScore, Math.max(1, Math.round((dimSum / 50) * maxScore))) : rawTotal;
+  parsed.total_score = Math.abs(rawTotal - impliedTotal) > Math.ceil(maxScore * 0.12) ? impliedTotal : rawTotal;
   parsed.max_score = maxScore;
   parsed.char_count = charCount;
   parsed.para_count = paraCount;
@@ -343,7 +410,7 @@ ${content}
 const { requireQuotaOrVip } = require('../middleware/quota');
 router.post('/essay/grade-and-upgrade', requireQuotaOrVip('essay'), async (req, res) => {
   try {
-    const { title, content, grade, prompt_theme } = req.body;
+    const { title, content, grade, prompt_theme, image_base64 } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length < 20) {
       return res.status(400).json({ error: '作文内容过短，请至少输入 20 字以上以便名师深入批阅！' });
@@ -354,18 +421,33 @@ router.post('/essay/grade-and-upgrade', requireQuotaOrVip('essay'), async (req, 
 
     const profileId = req.auth?.activeProfileId || 'default';
     try {
-      const llmResult = await gradeEssayWithLLM(title, content, grade, req.headers, prompt_theme, profileId);
+      const llmResult = await gradeEssayWithLLM(title, content, grade, req.headers, prompt_theme, profileId, image_base64);
       logger.info(`[Essay] Successfully graded essay "${title || '未命题'}" via LLM rubric.`);
       return res.json({ success: true, data: llmResult, engine: 'llm-rubric', isFallback: false });
     } catch (llmErr) {
-      logger.warn(`[Essay] LLM grading failed or unavailable (${llmErr.message}), falling back to expert rubric heuristics.`);
+      const errMsg = String(llmErr?.message || '');
+      logger.warn(`[Essay] LLM grading failed or unavailable (${errMsg}), falling back to expert rubric heuristics.`);
       const heuristicResult = heuristicEssayEvaluation(title, content, grade);
+      let fallbackNotice = '云端名师 AI 批改引擎当前繁忙或返回格式波动，已切换本地教研规则先行预估（可稍后点击重试获取 AI 逐字精批）。';
+      let fallbackReason = 'upstream_busy';
+      if (/NO_API_KEY|API Key|missing key|未配置/i.test(errMsg)) {
+        fallbackNotice = '当前未检测到可用 AI 大模型密钥，已启用本地教研基础规则预估；在右上角设置配置 API Key 后即可开启名师逐字精批。';
+        fallbackReason = 'no_api_key';
+      } else if (/429|QUOTA_EXHAUSTED|rate limit/i.test(errMsg)) {
+        fallbackNotice = '云端 AI 模型当前请求拥堵（限流中），本次先提供本地规则预估，请 10 秒后重试获取完整 AI 精批。';
+        fallbackReason = 'rate_limited';
+      } else if (/timeout|AbortError/i.test(errMsg)) {
+        fallbackNotice = '云端 AI 精批响应超时，本次先展示本地规则预估，建议稍后重试。';
+        fallbackReason = 'timeout';
+      }
+      heuristicResult.fallbackNotice = fallbackNotice;
       return res.json({
         success: true,
         data: heuristicResult,
         engine: 'expert-rubric-fallback',
         isFallback: true,
-        fallbackNotice: '当前未配置可用 AI 大模型密钥或上游接口暂不可用，本次评分与句式示范由本地基础规则生成（仅供参考），在右上角设置配置有效 AI Key 后即可开启名师逐字精批。'
+        fallbackReason,
+        fallbackNotice
       });
     }
   } catch (err) {

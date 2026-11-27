@@ -21,6 +21,29 @@ function repairJsonString(str) {
   return s;
 }
 
+/**
+ * 安全提取 LLM 文本正文（自动跳过 Gemini 3 thought 思考块，兼容 OpenAI 响应格式）
+ */
+function extractLlmText(rawData) {
+  if (!rawData || typeof rawData !== 'object') return '';
+  const parts = rawData?.candidates?.[0]?.content?.parts;
+  if (Array.isArray(parts) && parts.length > 0) {
+    const nonThought = parts
+      .filter(p => p && !p.thought && typeof p.text === 'string' && p.text.length > 0)
+      .map(p => p.text)
+      .join('');
+    if (nonThought) return nonThought;
+    const anyText = parts
+      .filter(p => p && typeof p.text === 'string')
+      .map(p => p.text)
+      .join('');
+    if (anyText) return anyText;
+  }
+  const openaiContent = rawData?.choices?.[0]?.message?.content;
+  if (typeof openaiContent === 'string') return openaiContent;
+  return '';
+}
+
 function extractAndParseJson(text) {
   if (!text || typeof text !== 'string') return null;
 
@@ -29,10 +52,18 @@ function extractAndParseJson(text) {
   // Strip markdown code fences (```json ... ``` or ``` ...)
   clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-  // Find boundaries of outer JSON object
+  // 同时支持顶层 JSON 数组 [...] 与顶层 JSON 对象 {...}，按最外层真实起始符截取
   const firstBrace = clean.indexOf('{');
   const lastBrace = clean.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+  const firstBracket = clean.indexOf('[');
+  const lastBracket = clean.lastIndexOf(']');
+
+  const hasValidArray = firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket;
+  const hasValidObject = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace;
+
+  if (hasValidArray && (!hasValidObject || firstBracket < firstBrace)) {
+    clean = clean.substring(firstBracket, lastBracket + 1);
+  } else if (hasValidObject) {
     clean = clean.substring(firstBrace, lastBrace + 1);
   }
 
@@ -85,4 +116,4 @@ function extractAndParseJson(text) {
   }
 }
 
-module.exports = { extractAndParseJson, repairJsonString };
+module.exports = { extractAndParseJson, repairJsonString, extractLlmText };

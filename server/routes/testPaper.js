@@ -19,7 +19,7 @@ const { GRADE_ALIASES } = require('../prompts/guidelines');
 const { decryptField } = require('../utils/crypto');
 const { diagnosePrerequisiteKnowledge, formatGraphRAGPromptSection } = require('../services/knowledgeGraph');
 const { lookupCanonicalQuestion } = require('../services/canonicalQuestions');
-const { extractAndParseJson } = require('../utils/jsonParser');
+const { extractAndParseJson, extractLlmText } = require('../utils/jsonParser');
 const { sendToNetworkPrinter, formatExamForPrinter } = require('../services/printerService');
 const { isVerifiedAdminRequest } = require('../utils/adminAuth');
 const { resolveAuthorizedProfileId } = require('../middleware/auth');
@@ -536,8 +536,39 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
         { type: 'blank', score: 15, question: isHighSchool ? '标准状况下，$0.5\\text{mol}$ 氧气（$\\text{O}_2$）的体积为 ______ $\\text{L}$。' : '地壳中含量最高的金属元素符号是 ______。', answer: isHighSchool ? '11.2' : 'Al', explanation: isHighSchool ? '$V = n \\cdot V_m = 0.5 \\times 22.4 = 11.2\\text{L}$。' : '地壳中元素含量前四位为 O、Si、Al、Fe，金属元素最高为 Al。' },
         { type: 'blank', score: 15, question: isHighSchool ? '配平离子方程式：$\\text{Cu} + \\text{NO}_3^- + \\text{H}^+ \\rightarrow \\text{Cu}^{2+} + \\text{NO}\\uparrow + \\text{H}_2\\text{O}$ 中，$\\text{Cu}$ 的化学计量数为 ______。' : '写出高锰酸钾受热分解产生氧气的气体化学式：______。', answer: isHighSchool ? '3' : 'O2', explanation: isHighSchool ? '$3\\text{Cu} + 2\\text{NO}_3^- + 8\\text{H}^+ = 3\\text{Cu}^{2+} + 2\\text{NO}\\uparrow + 4\\text{H}_2\\text{O}$。' : '高锰酸钾加热分解生成锰酸钾、二氧化锰和氧气 $\\text{O}_2$。' },
         { type: 'essay', score: 40, question: isHighSchool ? '【电化学与工艺流程】写出铜锌原电池的正负极电极反应式与总离子方程式，并说明盐桥中 $\\text{K}^+$ 和 $\\text{Cl}^-$ 的迁移方向。' : '【化学方程式计算】取 $10\\text{g}$ 大理石与足量稀盐酸充分反应，收集到 $2.2\\text{g}$ 二氧化碳，求该大理石中碳酸钙的质量分数。', answer: isHighSchool ? '负极：$\\text{Zn}-2e^-=\\text{Zn}^{2+}$；正极：$\\text{Cu}^{2+}+2e^-=\\text{Cu}$；总反应：$\\text{Zn}+\\text{Cu}^{2+}=\\text{Zn}^{2+}+\\text{Cu}$；$\\text{K}^+$ 向正极，$\\text{Cl}^-$ 向负极。' : '$50\\%$（生成 $2.2\\text{g}$ $\\text{CO}_2$ 需 $5\\text{g}$ $\\text{CaCO}_3$）。', explanation: '按电荷守恒、原子守恒及质量守恒分步书写。' }
+      ],
+      '生物': [
+        { type: 'choice', score: 15, question: isHighSchool ? '下列关于绿色植物光合作用光反应与暗反应的叙述，正确的是（　　）' : '在显微镜下观察洋葱鳞片叶内表皮细胞时，植物细胞特有的结构是（　　）', options: isHighSchool ? ['A. 光反应在叶绿体类囊体薄膜上进行，产生 ATP、NADPH 和 O₂', 'B. 暗反应不需要酶的催化', 'C. 光反应直接消耗 CO₂', 'D. 停止光照后 C₃ 化合物含量瞬时减少'] : ['A. 细胞膜与细胞质', 'B. 细胞壁与大液泡', 'C. 细胞核与线粒体', 'D. 核糖体与中心体'], answer: isHighSchool ? 'A' : 'B', explanation: isHighSchool ? '光反应在类囊体薄膜上进行，水光解产 O₂ 与 NADPH 并合成 ATP。' : '植物细胞区别于动物细胞的典型结构是细胞壁、液泡（绿色部位含叶绿体）。' },
+        { type: 'choice', score: 15, question: isHighSchool ? '减数分裂过程中，同源染色体分离发生在（　　）' : '人体消化和吸收营养物质的主要场所是（　　）', options: isHighSchool ? ['A. 减数第一次分裂后期', 'B. 减数第二次分裂后期', 'C. 有丝分裂中期', 'D. 间期 DNA 复制时'] : ['A. 口腔', 'B. 胃', 'C. 小肠', 'D. 大肠'], answer: isHighSchool ? 'A' : 'C', explanation: isHighSchool ? '减Ⅰ后期同源染色体分离、非同源染色体自由组合。' : '小肠很长且具有皱襞、绒毛和丰富消化液，是消化吸收主要场所。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '有氧呼吸三个阶段中，产生 ATP 最多的是第 ______ 阶段（填数字）。' : '生态系统由生物部分和 ______ 部分组成。', answer: isHighSchool ? '三' : '非生物', explanation: isHighSchool ? '第三阶段在线粒体内膜上进行，[H] 与 O₂ 结合生成水并释放大量能量。' : '生态系统包括生产者、消费者、分解者及非生物的物质和能量。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '基因型为 AaBb（两对基因独立遗传）的个体自交，后代纯合子所占比例为 ______。' : '人体血液循环中，体循环的起点是心脏的 ______。', answer: isHighSchool ? '1/4' : '左心室', explanation: isHighSchool ? 'Aa 自交纯合子占 1/2，Bb 自交纯合子占 1/2，乘积为 1/4。' : '体循环从左心室出发经主动脉流向全身。' },
+        { type: 'essay', score: 40, question: isHighSchool ? '【遗传与代谢综合】请简述孟德尔自由组合定律的实质，并说明为何在测交实验中后代性状分离比为 1:1:1:1。' : '【光合与呼吸实验】为什么大棚种植蔬菜在夜间需要适当降低温度？请结合呼吸作用原理解释。', answer: isHighSchool ? '位于非同源染色体上的非等位基因在减Ⅰ后期自由组合；双杂合子产生 4 种比例相等配子，与隐性纯合子测交得 1:1:1:1。' : '夜间无光不进行光合作用，适当降温可减弱呼吸作用酶活性，减少有机物消耗，利于增产。', explanation: '紧扣细胞学基础与生理过程因果链作答。' }
+      ],
+      '历史': [
+        { type: 'choice', score: 15, question: isHighSchool ? '汉武帝推行“推恩令”的主要历史作用是（　　）' : '中国历史上第一个统一的中央集权封建王朝是（　　）', options: isHighSchool ? ['A. 削弱诸侯王国势力，加强中央集权', 'B. 废除郡县制度', 'C. 实行科举选官', 'D. 开辟海上丝绸之路'] : ['A. 夏朝', 'B. 商朝', 'C. 秦朝', 'D. 汉朝'], answer: isHighSchool ? 'A' : 'C', explanation: isHighSchool ? '推恩令使诸侯王国越分越小，和平削弱地方割据、强化中央集权。' : '公元前 221 年秦王嬴政统一六国建立秦朝。' },
+        { type: 'choice', score: 15, question: isHighSchool ? '第一次工业革命最核心的技术标志是（　　）' : '标志中国近代史开端的历史事件是（　　）', options: isHighSchool ? ['A. 瓦特改良蒸汽机的广泛应用', 'B. 内燃机与电力普及', 'C. 电子计算机发明', 'D. 铁犁牛耕推广'] : ['A. 鸦片战争', 'B. 洋务运动', 'C. 辛亥革命', 'D. 五四运动'], answer: 'A', explanation: isHighSchool ? '改良蒸汽机打破自然动力限制，推动人类进入“蒸汽时代”。' : '1840 年鸦片战争后中国开始沦为半殖民地半封建社会。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '1978 年底召开的中共 ______ 全会开启了改革开放和社会主义现代化建设新时期。' : '西汉时期出使西域、为丝绸之路开辟奠定基础的历史人物是 ______。', answer: isHighSchool ? '十一届三中' : '张骞', explanation: isHighSchool ? '十一届三中全会作出把党和国家工作中心转移到经济建设上来、实行改革开放的历史性决策。' : '张骞两次出使西域打通中原与西域通道。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '唐代三省六部制中，负责草拟政令的机构是 ______ 省。' : '我国古代四大发明包括造纸术、印刷术、火药和 ______。', answer: isHighSchool ? '中书' : '指南针', explanation: isHighSchool ? '中书草拟、门下审核、尚书执行。' : '四大发明是中华文明对世界文明的杰出贡献。' },
+        { type: 'essay', score: 40, question: isHighSchool ? '【史料实证与历史解释】概括从秦朝三公九卿制到唐代三省六部制、宋代二府三司制演变的基本趋势，并分析其对古代国家治理的双重影响。' : '【历史综合问答】简述辛亥革命的历史意义及其历史局限性。', answer: isHighSchool ? '基本趋势：相权不断分散削弱，皇权不断加强；影响：有利于强化行政分工与中央集权稳定，但也易导致官僚机构臃肿与专制僵化。' : '意义：推翻清王朝统治，结束两千多年君主专制制度，建立中华民国，民主共和观念深入人心；局限：未彻底完成反帝反封建任务。', explanation: '坚持唯物史观，辩证分析积极与局限两方面。' }
+      ],
+      '地理': [
+        { type: 'choice', score: 15, question: isHighSchool ? '地中海气候最显著的降水与气温组合特征是（　　）' : '地球自转产生的主要地理现象是（　　）', options: isHighSchool ? ['A. 夏季炎热干燥，冬季温和多雨', 'B. 全年高温多雨', 'C. 夏季高温多雨，冬季寒冷干燥', 'D. 全年温和湿润'] : ['A. 昼夜交替与地方时差', 'B. 四季更替', 'C. 五带划分', 'D. 昼夜长短季节变化'], answer: 'A', explanation: isHighSchool ? '夏季受副热带高气压带控制炎热干燥，冬季受盛行西风影响温和多雨。' : '地球自转产生昼夜交替与时差，公转产生四季与昼夜长短变化。' },
+        { type: 'choice', score: 15, question: isHighSchool ? '下列洋流对沿岸气候起到“增温增湿”作用的是（　　）' : '我国地势的总体特征是（　　）', options: isHighSchool ? ['A. 北大西洋暖流', 'B. 秘鲁寒流', 'C. 加利福尼亚寒流', 'D. 本格拉寒流'] : ['A. 西高东低，呈三级阶梯状分布', 'B. 东高西低，起伏平缓', 'C. 南高北低', 'D. 四周高、中间低'], answer: 'A', explanation: isHighSchool ? '暖流增温增湿，寒流降温减湿。' : '我国地势西高东低、呈三级阶梯状分布，利于海洋湿润气流深入内陆。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '地质构造中，岩层中间老、两翼新的褶皱构造称为 ______。' : '亚洲与非洲的分界线是 ______ 运河。', answer: isHighSchool ? '背斜' : '苏伊士', explanation: isHighSchool ? '判断背斜向斜看岩层新老关系：中老翼新为背斜，中新翼老为向斜。' : '苏伊士运河沟通地中海与红海。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '冷锋过境后，当地的气温会明显下降，气压会明显 ______。' : '我国秦岭—淮河一线大致与 1 月 ______ ℃等温线重合。', answer: isHighSchool ? '升高' : '0', explanation: isHighSchool ? '冷气团取代暖气团控制当地，气温降、气压升、天气转晴。' : '秦岭—淮河一线是 0℃等温线与 800mm 等降水量线重要地理界线。' },
+        { type: 'essay', score: 40, question: isHighSchool ? '【区域综合与人地协调】分析我国长三角地区发展高新技术产业的有利区位条件（至少答出 4 点）。' : '【中国地理综合】说明我国季风气候显著对农业生产的有利影响与不利影响。', answer: isHighSchool ? '高校科研院所密集人才充足；水陆空立体交通发达；产业基础雄厚市场广阔；政策支持与营商环境优越。' : '有利：雨热同期利于农作物生长；不利：降水年际季节变率大，易发生旱涝灾害。', explanation: '从自然条件（气候/地形/水源）与社会经济条件（交通/科技/市场/政策）分条组织答案。' }
+      ],
+      '政治': [
+        { type: 'choice', score: 15, question: isHighSchool ? '“具体问题具体分析”体现的唯物辩证法原理是（　　）' : '在我国，国家的根本法、具有最高法律效力的是（　　）', options: isHighSchool ? ['A. 矛盾的特殊性原理', 'B. 意识决定物质', 'C. 静止是绝对的', 'D. 规律可以任意创造'] : ['A. 宪法', 'B. 民法典', 'C. 刑法', 'D. 义务教育法'], answer: 'A', explanation: isHighSchool ? '不同事物及同一事物不同阶段各有特点，要求具体问题具体分析。' : '宪法是国家根本大法，是其他法律的立法基础和立法依据。' },
+        { type: 'choice', score: 15, question: isHighSchool ? '社会主义市场经济体制中，对资源配置起决定性作用的是（　　）' : '公民参与民主生活、行使民主权利的根本前提是（　　）', options: isHighSchool ? ['A. 市场', 'B. 行政命令', 'C. 平均分配', 'D. 计划指标'] : ['A. 遵守宪法和法律', 'B. 随意发表言论', 'C. 只享权利不尽义务', 'D. 逃避监督'], answer: 'A', explanation: isHighSchool ? '使市场在资源配置中起决定性作用，更好发挥政府作用。' : '公民权利与义务相统一，行使权利必须在宪法和法律范围内进行。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '辩证唯物主义认为，______ 是检验认识的真理性的唯一标准。' : '我国的根本政治制度是 ______ 制度。', answer: isHighSchool ? '实践' : '人民代表大会', explanation: isHighSchool ? '实践是主观见之于客观的物质性活动，是检验真理的唯一标准。' : '人民代表大会制度是我国的根本政治制度。' },
+        { type: 'blank', score: 15, question: isHighSchool ? '发展的实质是事物的前进和上升，是新事物的产生和 ______ 的灭亡。' : '社会主义核心价值观个人层面的要求是：爱国、敬业、诚信、______。', answer: isHighSchool ? '旧事物' : '友善', explanation: isHighSchool ? '把握唯物辩证法发展观核心定义。' : '牢记社会主义核心价值观三个层面 24 字。' },
+        { type: 'essay', score: 40, question: isHighSchool ? '【材料辨析与政治认同】结合“有效市场与有为政府相结合”的经济学道理，说明国家为何既要鼓励人工智能等新质生产力市场创新，又要加强数据安全与伦理监管。' : '【法治与责任】谈谈中学生在网络生活中应当如何正确行使言论自由权利并履行相应义务。', answer: isHighSchool ? '市场通过价格竞争激发创新活力，但存在自发性盲目性滞后性；政府科学宏观调控与市场监管可弥补市场失灵，保障高质量发展。' : '公民在行使自由和权利时不得损害国家社会集体利益和他人合法权益，坚持权利义务相统一，做到文明上网、不信谣不传谣。', explanation: '按“理论观点 + 结合材料 + 现实落脚点”作答。' }
       ]
     };
+    subjBank['生物学'] = subjBank['生物'];
+    subjBank['思想政治'] = subjBank['政治'];
+    subjBank['道德与法治'] = subjBank['政治'];
 
     const genericSubjectQuestions = [
       { type: 'choice', score: 20, question: `【${friendlyGrade}·${subject}】关于本学期【${subject}】核心知识体系的掌握方法，最科学的是（　　）`, options: ['A. 建构因果思维导图并结合典型材料/例题辨析', 'B. 只背结论不看前提条件', 'C. 脱离课本盲目刷偏题怪题', 'D. 错题从不复盘'], answer: 'A', explanation: '学科核心素养强调概念建构、情境迁移与错题复盘。' },
@@ -566,7 +597,7 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
   const choiceScore = isHighSchool ? 5 : (isPrimarySchool ? 3 : 4);
   const blankScore = isHighSchool ? 5 : (isPrimarySchool ? 3 : 4);
   const targetChoices = isHighSchool ? 8 : (isPrimarySchool ? 10 : 8);
-  const targetBlanks = isHighSchool ? 4 : (isPrimarySchool ? 6 : 4);
+  const targetBlanks = isHighSchool ? 3 : (isPrimarySchool ? 6 : 4);
 
   try {
     const db = getSqliteDb();
@@ -670,6 +701,39 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
     pushUnique({ type: 'choice', score: choiceScore, ...tpl });
   }
 
+  // 1.5 高中新高考数学必须包含 3 道多项选择题（每题 6 分共 18 分，与全国新高考 I 卷 8单选+3多选+3填空+5解答=150分 结构严格对齐）
+  if (isHighSchool) {
+    const highSchoolMultiChoices = [
+      {
+        type: 'multi_choice',
+        score: 6,
+        question: '【多选题】已知函数 $f(x) = x^3 - 3x$，下列说法正确的有（　　）',
+        options: ['A. $f(x)$ 是奇函数', 'B. $f(x)$ 在 $(-1, 1)$ 上单调递减', 'C. $x = -1$ 是 $f(x)$ 的极大值点', 'D. $f(x)$ 在 $\\mathbb{R}$ 上有 2 个零点'],
+        answer: 'ABC',
+        explanation: "$f(-x)=-f(x)$ 为奇函数；$f'(x)=3(x^2-1)$，在 $(-1,1)$ 递减，$x=-1$ 处取极大值 $2$；零点为 $0, \\pm\\sqrt{3}$ 共 3 个，故 D 错，选 ABC。"
+      },
+      {
+        type: 'multi_choice',
+        score: 6,
+        question: '【多选题】关于双曲线 $C: \\frac{x^2}{9} - \\frac{y^2}{16} = 1$，下列结论正确的有（　　）',
+        options: ['A. 实轴长为 $6$', 'B. 焦距为 $10$', 'C. 渐近线方程为 $y = \\pm \\frac{4}{3}x$', 'D. 离心率 $e = \\frac{4}{3}$'],
+        answer: 'ABC',
+        explanation: '$a=3, b=4, c=5$，实轴长 $2a=6$，焦距 $2c=10$，渐近线 $y=\\pm\\frac{b}{a}x=\\pm\\frac{4}{3}x$，离心率 $e=\\frac{5}{3}$，故 D 错，选 ABC。'
+      },
+      {
+        type: 'multi_choice',
+        score: 6,
+        question: '【多选题】已知向量 $\\vec{a} = (1, 2)$，$\\vec{b} = (-2, 1)$，下列说法正确的有（　　）',
+        options: ['A. $|\\vec{a}| = |\\vec{b}| = \\sqrt{5}$', 'B. $\\vec{a} \\perp \\vec{b}$', 'C. $\\vec{a} + \\vec{b} = (-1, 3)$', 'D. $\\vec{a} \\parallel \\vec{b}$'],
+        answer: 'ABC',
+        explanation: '$|\\vec{a}|=|\\vec{b}|=\\sqrt{5}$，$\\vec{a}\\cdot\\vec{b}=-2+2=0$ 故垂直不平行，$\\vec{a}+\\vec{b}=(-1,3)$，选 ABC。'
+      }
+    ];
+    for (const mq of highSchoolMultiChoices) {
+      pushUnique(mq);
+    }
+  }
+
   // 2. 补齐填空题（完全去重，绝不重复 6 道同一题）
   const highSchoolBlanks = [
     { question: '曲线 $y = e^x + 2x$ 在点 $(0, 1)$ 处的切线斜率为 ______。', answer: '3', explanation: "求导 $y' = e^x + 2$，代入 $x = 0$ 得 $k = 3$。" },
@@ -702,35 +766,35 @@ async function assembleReliableExamPaper(grade, subject = '数学', type = 'real
   const highSchoolEssayTemplates = [
     {
       type: 'essay',
-      score: 15,
+      score: 13,
       question: '【解三角形综合】在 $\\triangle ABC$ 中，内角 $A, B, C$ 所对的边分别为 $a, b, c$，已知 $a\\cos C + c\\cos A = 2b\\cos B$。\n(1) 求角 $B$ 的大小；\n(2) 若 $b = \\sqrt{7}$，$a + c = 4$，求 $\\triangle ABC$ 的面积。',
       answer: '(1) $B = \\frac{\\pi}{3}$；(2) $S = \\frac{3\\sqrt{3}}{4}$。',
       explanation: '(1) 由正弦定理得 $\\sin(A+C) = 2\\sin B\\cos B \\Rightarrow \\cos B = \\frac{1}{2} \\Rightarrow B = \\frac{\\pi}{3}$；(2) 由余弦定理 $7 = (a+c)^2 - 3ac = 16 - 3ac \\Rightarrow ac = 3$，面积 $S = \\frac{1}{2}ac\\sin B = \\frac{3\\sqrt{3}}{4}$。'
     },
     {
       type: 'essay',
-      score: 17,
+      score: 15,
       question: '【数列与求和】已知公差不为零的等差数列 $\\{a_n\\}$ 满足 $a_1 = 2$，且 $a_1, a_2, a_5$ 成等比数列。\n(1) 求数列 $\\{a_n\\}$ 的通项公式；\n(2) 设 $b_n = \\frac{1}{a_n a_{n+1}}$，求数列 $\\{b_n\\}$ 的前 $n$ 项和 $T_n$。',
       answer: '(1) $a_n = 4n - 2$；(2) $T_n = \\frac{n}{4(2n+1)}$。',
       explanation: '(1) $(2+d)^2 = 2(2+4d) \\Rightarrow d = 4$，故 $a_n = 4n - 2$；(2) 裂项相消：$b_n = \\frac{1}{4}(\\frac{1}{4n-2} - \\frac{1}{4n+2})$，累加得 $T_n = \\frac{1}{4}(\\frac{1}{2} - \\frac{1}{4n+2}) = \\frac{n}{4(2n+1)}$。'
     },
     {
       type: 'essay',
-      score: 18,
+      score: 15,
       question: '【立体几何与空间向量】在直三棱柱 $ABC-A_1B_1C_1$ 中，$AC \\perp BC$，$AC = BC = 2$，$AA_1 = 2$，点 $D$ 为 $AB$ 中点。\n(1) 求证：$CD \\perp$ 平面 $ABB_1A_1$；\n(2) 求直线 $A_1C$ 与平面 $ABB_1A_1$ 所成角的正弦值。',
       answer: '(1) 见解析；(2) $\\frac{1}{2}$。',
       explanation: '(1) 等腰直角三角形中 $CD \\perp AB$，且直棱柱中 $AA_1 \\perp CD$，故 $CD \\perp$ 平面 $ABB_1A_1$；(2) 线面角即 $\\angle CA_1D$，$CD=\\sqrt{2}$，$A_1C=2\\sqrt{2}$，故 $\\sin\\theta = \\frac{CD}{A_1C} = \\frac{1}{2}$。'
     },
     {
       type: 'essay',
-      score: 20,
+      score: 17,
       question: '【圆锥曲线压轴】已知椭圆 $C: \\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1 (a > b > 0)$ 的右焦点为 $F(1, 0)$，离心率为 $\\frac{1}{2}$。\n(1) 求椭圆 $C$ 的标准方程；\n(2) 过点 $F$ 作斜率为 $1$ 的直线 $l$ 交椭圆于 $A, B$ 两点，求弦长 $|AB|$。',
       answer: '(1) $\\frac{x^2}{4} + \\frac{y^2}{3} = 1$；(2) $|AB| = \\frac{24}{7}$。',
       explanation: '(1) $c=1, e=1/2 \\Rightarrow a=2, b^2=3$；(2) 联立 $y=x-1$ 与 $3x^2+4y^2=12$ 得 $7x^2-8x-8=0$，由弦长公式 $|AB| = \\sqrt{1+1^2} \\cdot \\frac{\\sqrt{64+224}}{7} = \\frac{24}{7}$。'
     },
     {
       type: 'essay',
-      score: 20,
+      score: 17,
       question: '【函数与导数压轴】已知函数 $f(x) = a\\ln x - x + 1$（$a \\in \\mathbb{R}$）。\n(1) 当 $a = 1$ 时，求曲线 $y = f(x)$ 在 $x = 1$ 处的切线方程，并证明 $f(x) \\le 0$ 恒成立；\n(2) 讨论函数 $f(x)$ 在定义域 $(0, +\\infty)$ 上的单调性。',
       answer: '(1) 切线 $y = 0$，极大值 $f(1) = 0$；(2) $a \\le 0$ 时单调递减；$a > 0$ 时在 $(0, a)$ 递增，在 $(a, +\\infty)$ 递减。',
       explanation: "定义域 $(0, +\\infty)$，$f'(x) = \\frac{a - x}{x}$。分类讨论 $a \\le 0$ 与 $a > 0$ 的导数符号即可完整得解。"
@@ -841,12 +905,16 @@ router.post('/test-paper/generate', requireQuotaOrVip('test_paper_generate'), as
         headers: getClientAiHeaders(req),
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
         })
-      }, 4, 35000);
+      }, 3, 28000);
 
       const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const text = extractLlmText(data);
       paperObj = parseOrRepairPaperJson(text);
     } catch (llmErr) {
       logger.warn('[TestPaper] LLM generation timed out or failed, falling back to authentic canonical bank:', llmErr.message);
@@ -945,6 +1013,14 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
       let comment = '';
       let gradedByAI = false;
       let parsedStep = null;
+      let needsManualReview = false;
+
+      const normalizeJudgment = (val) => {
+        const s = String(val || '').trim().toLowerCase();
+        if (/^(对|正确|true|t|√|✓|yes|y|1)$/.test(s)) return 'true';
+        if (/^(错|错误|false|f|×|✗|x|no|n|0)$/.test(s)) return 'false';
+        return '';
+      };
 
       // 空答案直接短路判 0 分，绝不为空白题调 LLM 烧钱或拖慢超时
       if (!studentAns) {
@@ -968,6 +1044,18 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
           score = 0;
           comment = `选择题答案错误。标准答案是：${cleanStandard || standardAns}。`;
         }
+      } else if (q.type === 'judgment') {
+        const normS = normalizeJudgment(studentAns);
+        const normStd = normalizeJudgment(standardAns);
+        if (normS && normStd && normS === normStd) {
+          score = maxQScore;
+          comment = '判断题答案正确！';
+        } else if (normS && normStd) {
+          score = 0;
+          comment = `判断题答案有误。标准判断为：${normStd === 'true' ? '正确 (√)' : '错误 (×)'}。`;
+        } else {
+          gradedByAI = true;
+        }
       } else if (q.type === 'blank') {
         const cleanStudent = studentAns.replace(/\s+/g, '').toLowerCase();
         const cleanStandard = standardAns.replace(/\s+/g, '').toLowerCase();
@@ -990,25 +1078,37 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
             headers: getClientAiHeaders(req),
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.1 }
+              generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 1024,
+                responseMimeType: 'application/json',
+                thinkingConfig: { thinkingBudget: 0 }
+              }
             })
           }, 3, 25000);
 
           const data = await response.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0].trim());
-            score = typeof parsed.score === 'number' ? Math.max(0, Math.min(maxQScore, Math.round(parsed.score))) : 0;
-            comment = parsed.comment || '';
+          const text = extractLlmText(data);
+          const parsed = extractAndParseJson(text);
+          if (parsed && typeof parsed.score === 'number') {
+            score = Math.max(0, Math.min(maxQScore, Math.round(parsed.score)));
+            comment = parsed.comment || '已完成智能步步批改。';
             parsedStep = parsed.step_breakdown || null;
           } else {
-            throw new Error('No JSON found in grade response');
+            throw new Error('No valid JSON found in grade response');
           }
         } catch (err) {
-          logger.warn(`Failed to grade question ${q.id} with AI, falling back to 0:`, err.message);
+          const errMsg = String(err?.message || '');
+          logger.warn(`Failed to grade question ${q.id} with AI, marking as pending manual review:`, errMsg);
+          needsManualReview = true;
           score = 0;
-          comment = '当前未配置可用 AI 批改密钥或上游繁忙，主观题暂定 0 分，请对照下方标准解析自查订正。';
+          if (/NO_API_KEY|API Key|missing key|未配置/i.test(errMsg)) {
+            comment = '【待复核】未检测到可用 AI 批改密钥，本题暂未计分，请配置密钥后重批或对照下方标准解析自评。';
+          } else if (/429|QUOTA_EXHAUSTED|rate limit/i.test(errMsg)) {
+            comment = '【待复核】云端批改引擎当前限流繁忙，本题暂未计分（非作答错误），请对照下方标准解析核对步骤或稍后重试。';
+          } else {
+            comment = '【待复核】云端批改响应超时或解析波动，本题暂未计分（非作答错误），请对照下方标准解析自查订正。';
+          }
         }
       }
 
@@ -1018,6 +1118,7 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
         question: q.question,
         score,
         maxScore: maxQScore,
+        needsManualReview,
         studentAnswer: studentAns,
         standardAnswer: standardAns,
         explanation: q.explanation,
@@ -1043,7 +1144,10 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
     const questionsReport = results.map(r => `题号${r.id} (${r.type === 'choice' ? '选择' : r.type === 'blank' ? '填空' : '简答'}): 满分${r.maxScore}分，学生得${r.score}分。评语：${r.comment}`).join('\n');
     const reportPrompt = getOverallReportPrompt(studentName, totalScore, questionsReport, maxTotalScore);
     
-    let overallComment = `${studentName}同学，你本次获得了 ${totalScore} / ${maxTotalScore} 分。请对照错题解析查漏补缺，继续加油！`;
+    const pendingReviewCount = results.filter(r => r.needsManualReview).length;
+    let overallComment = pendingReviewCount > 0
+      ? `${studentName}同学，本次已批改得分 ${totalScore} / ${maxTotalScore} 分（另有 ${pendingReviewCount} 道主观题因云端批改繁忙暂标为【待复核】，请对照标准解析自查加分）。`
+      : `${studentName}同学，你本次获得了 ${totalScore} / ${maxTotalScore} 分。请对照错题解析查漏补缺，继续加油！`;
     try {
       const reportResponse = await fetchWithKeyRotation(buildChatURL, {
         method: 'POST',
@@ -1051,11 +1155,15 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
         headers: getClientAiHeaders(req),
         body: JSON.stringify({
           contents: [{ parts: [{ text: reportPrompt }] }],
-          generationConfig: { temperature: 0.5 }
+          generationConfig: {
+            temperature: 0.5,
+            maxOutputTokens: 1024,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
         })
       }, 2, 20000);
       const reportData = await reportResponse.json();
-      overallComment = reportData.candidates?.[0]?.content?.parts?.[0]?.text || overallComment;
+      overallComment = extractLlmText(reportData) || overallComment;
     } catch (err) {
       logger.warn('Failed to generate overall report with AI:', err.message);
     }
@@ -1063,6 +1171,7 @@ router.post('/test-paper/grade', requireQuotaOrVip('test_paper_grade'), async (r
     res.json({
       score: totalScore,
       totalMaxScore: maxTotalScore,
+      pendingReviewCount,
       overallComment,
       results
     });
@@ -1264,14 +1373,16 @@ ${canonicalSummary}
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          response_mime_type: 'application/json',
-          temperature: 0.4
+          responseMimeType: 'application/json',
+          temperature: 0.4,
+          maxOutputTokens: 4096,
+          thinkingConfig: { thinkingBudget: 0 }
         }
       })
-    }, 8, 90000);
+    }, 4, 45000);
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawText = extractLlmText(data);
     if (!rawText) {
       throw new Error('LLM 未返回有效试卷数据');
     }
@@ -1300,8 +1411,19 @@ ${canonicalSummary}
 // LAN network printer direct raw/IPP socket dispatch
 router.post('/printer/print-ipp', async (req, res) => {
   try {
-    if (!(await isVerifiedAdminRequest(req))) {
-      return res.status(403).json({ error: '出于网络安全防护，云端网络打印调度仅限已鉴权管理员或家长调用' });
+    const isAdmin = await isVerifiedAdminRequest(req);
+    const hasFamilyAuth = Boolean(req.auth?.activeProfileId && req.auth.activeProfileId !== 'default');
+    const isCloudHosted = Boolean(process.env.K_SERVICE || process.env.CLOUD_RUN_JOB);
+
+    if (isCloudHosted && !req.body?.mock) {
+      return res.status(400).json({
+        error: '云端托管服务无法直连您家中的内网打印机，请点击「浏览器打印 / 存 PDF」直接调用本机或无线打印机。',
+        code: 'ERR_CLOUD_LAN_PRINTER_UNREACHABLE'
+      });
+    }
+
+    if (!isAdmin && !hasFamilyAuth) {
+      return res.status(403).json({ error: '出于网络安全防护，局域网直连打印仅限已登录家庭用户或管理员在内网部署环境调用' });
     }
 
     const {
